@@ -174,6 +174,7 @@ const VistaEmpleado: React.FC = () => {
   const [mes, setMes] = useState(mesActual());
   const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" | "warning"; autoHide?: boolean } | null>(null);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -209,6 +210,7 @@ const VistaEmpleado: React.FC = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setCamaraAbierta(false);
+    setCameraReady(false);
   };
 
   const handleCheck = (tipo: "entrada" | "salida") => {
@@ -233,8 +235,14 @@ const VistaEmpleado: React.FC = () => {
       });
       streamRef.current = stream;
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        const vid = videoRef.current;
+        vid.srcObject = stream;
+        vid.addEventListener(
+          "playing",
+          () => { if (vid.videoWidth > 0 && vid.videoHeight > 0) setCameraReady(true); },
+          { once: true }
+        );
+        await vid.play();
       }
     } catch (err: any) {
       cerrarCamara();
@@ -255,8 +263,31 @@ const VistaEmpleado: React.FC = () => {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    const ctx = canvas.getContext("2d");
+    ctx?.drawImage(video, 0, 0);
+
+    // Detect all-black frame before uploading
+    const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
+    if (imageData) {
+      const { data } = imageData;
+      let darkPixels = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] < 20 && data[i + 1] < 20 && data[i + 2] < 20) darkPixels++;
+      }
+      if (darkPixels / (data.length / 4) > 0.95) {
+        setSnack({ msg: "No se capturó bien la foto, intenta de nuevo", sev: "error" });
+        return;
+      }
+    }
+
     const b64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+    const blobSizeBytes = Math.round((b64.length * 3) / 4);
+    console.log("[Asistencia] videoWidth:", video.videoWidth, "videoHeight:", video.videoHeight, "blobSize:", blobSizeBytes, "bytes");
+
+    if (blobSizeBytes < 3072) {
+      setSnack({ msg: "No se capturó bien la foto, intenta de nuevo", sev: "error" });
+      return;
+    }
 
     cerrarCamara();
     setCargando(true);
@@ -399,12 +430,13 @@ const VistaEmpleado: React.FC = () => {
             variant="contained"
             size="large"
             onClick={tomarFoto}
+            disabled={!cameraReady}
             sx={{
               bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" },
               fontSize: 18, fontWeight: 700, px: 6, py: 2,
             }}
           >
-            TOMAR FOTO
+            {cameraReady ? "TOMAR FOTO" : "Iniciando cámara…"}
           </Button>
         </Box>
       </Dialog>
