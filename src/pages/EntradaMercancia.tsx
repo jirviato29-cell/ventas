@@ -99,11 +99,7 @@ const EntradaMercancia = () => {
         }
       );
 
-      setOpcionesProductos(
-        [...res.data].sort((a, b) =>
-          a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
-        )
-      );
+      setOpcionesProductos(res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -219,6 +215,13 @@ const EntradaMercancia = () => {
     }
   };
 
+  const opcionesOrdenadas = [...opcionesProductos].sort((a, b) =>
+    a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
+  );
+  if (opcionesOrdenadas.length > 0) {
+    console.log("[EntradaMercancia] opciones:", opcionesOrdenadas.map((o) => o.clave));
+  }
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" mb={3}>
@@ -247,7 +250,8 @@ const EntradaMercancia = () => {
 
       {/* 🔍 AUTOCOMPLETE */}
       <Autocomplete
-        options={opcionesProductos}
+        options={opcionesOrdenadas}
+        filterOptions={(x) => x}
         loading={loadingBusqueda}
         value={productoEntrada}
         inputValue={busquedaEntrada}
@@ -277,10 +281,10 @@ const EntradaMercancia = () => {
     fullWidth
     inputRef={inputBusquedaRef}
     onKeyDown={(e) => {
-      if (e.key === "Enter" && opcionesProductos.length > 0) {
+      if (e.key === "Enter" && opcionesOrdenadas.length > 0) {
         e.preventDefault();
 
-        const primero = opcionesProductos[0];
+        const primero = opcionesOrdenadas[0];
 
         setProductoEntrada(primero);
 
