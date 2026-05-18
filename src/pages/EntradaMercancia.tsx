@@ -69,6 +69,7 @@ const EntradaMercancia = () => {
 
   useEffect(() => {
     cargarModulos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 🔍 BUSCAR PRODUCTOS
@@ -98,7 +99,11 @@ const EntradaMercancia = () => {
         }
       );
 
-      setOpcionesProductos(res.data);
+      setOpcionesProductos(
+        [...res.data].sort((a, b) =>
+          a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
+        )
+      );
     } catch (err) {
       console.error(err);
     } finally {
