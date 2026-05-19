@@ -4,7 +4,11 @@ import {
   Box,
   Button,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -27,6 +31,12 @@ const MODULOS = [
 ];
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface CicloItem {
+  fechaInicioStr: string;
+  fechaFinStr: string;
+  label: string;
+}
 
 interface ProductoResumen {
   nombre: string;
@@ -53,44 +63,61 @@ const fmtMXN = (n: number) =>
 
 const fmtPct = (label: string) => (label === "$10 fijo" ? "$10" : label);
 
-/** Calcula el ciclo vigente (viernes→jueves) según la hora de Ciudad de México. */
-function calcularCicloActual() {
-  // Obtener la fecha actual en zona horaria Mexico City como "YYYY-MM-DD"
+function sortProductos(productos: ProductoResumen[]): ProductoResumen[] {
+  return [...productos].sort((a, b) => {
+    const rank = (p: ProductoResumen) =>
+      p.tipo === "telefono" ? 0 : p.porcentaje_label === "$10 fijo" ? 1 : 2;
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 2) return a.nombre.localeCompare(b.nombre, "es");
+    return 0;
+  });
+}
+
+/**
+ * Genera los últimos `count` ciclos cerrados (viernes→jueves).
+ * El primero (índice 0) es el ciclo cerrado más reciente.
+ * "Cerrado" = el jueves de ese ciclo ya pasó; si hoy es jueves, no cuenta.
+ */
+function generarCiclos(count: number): CicloItem[] {
   const todayStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
-  // Parsear como fecha LOCAL (no UTC) para que .day() devuelva el día correcto.
-  // dayjs("YYYY-MM-DD") interpreta la cadena como UTC midnight, lo que en CDT
-  // (UTC-5) desplaza al día anterior. new Date(y, m-1, d) usa tiempo local.
+  // Parsear como fecha local para evitar el desplazamiento UTC→CDT
   const [y, m, d] = todayStr.split("-").map(Number);
   const today = dayjs(new Date(y, m - 1, d));
 
-  // day(): 0=dom 1=lun 2=mar 3=mié 4=jue 5=vie 6=sáb
-  const daysBack = (today.day() - 5 + 7) % 7; // días desde el último viernes
-  const inicio = today.subtract(daysBack, "day");
-  const fin = inicio.add(6, "day");
+  // Jueves más reciente YA PASADO (si hoy es jueves, tomar el de la semana anterior)
+  // day() 4 = jueves; (day - 4 + 7) % 7 da 0 cuando hoy es jueves → forzar 7
+  const daysToLastThursday = ((today.day() - 4 + 7) % 7) || 7;
+  const lastThursday = today.subtract(daysToLastThursday, "day");
 
   console.log(
     "[CICLO] hoy:", todayStr,
     "| day():", today.day(),
-    "| daysBack:", daysBack,
-    "| inicio:", inicio.format("YYYY-MM-DD"),
-    "| fin:", fin.format("YYYY-MM-DD")
+    "| daysToLastThursday:", daysToLastThursday,
+    "| fin[0]:", lastThursday.format("YYYY-MM-DD"),
+    "| inicio[0]:", lastThursday.subtract(6, "day").format("YYYY-MM-DD"),
   );
 
-  return {
-    fechaInicioStr: inicio.format("YYYY-MM-DD"),
-    fechaFinStr: fin.format("YYYY-MM-DD"),
-    label: `${inicio.locale("es").format("D MMM")} → ${fin.locale("es").format("D MMM")}`,
-  };
+  return Array.from({ length: count }, (_, i) => {
+    const fin = lastThursday.subtract(i * 7, "day");
+    const inicio = fin.subtract(6, "day");
+    return {
+      fechaInicioStr: inicio.format("YYYY-MM-DD"),
+      fechaFinStr: fin.format("YYYY-MM-DD"),
+      label: `${inicio.locale("es").format("D MMM")} → ${fin.locale("es").format("D MMM")}`,
+    };
+  });
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
 const SueldosEncargadosPage: React.FC = () => {
-  const ciclo = useMemo(() => calcularCicloActual(), []);
-
+  const ciclos = useMemo(() => generarCiclos(8), []);
+  const [cicloSelIdx, setCicloSelIdx] = useState(0);
   const [moduloSel, setModuloSel] = useState<string | null>(null);
   const [datos, setDatos] = useState<SueldoResponse | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -117,13 +144,16 @@ const SueldosEncargadosPage: React.FC = () => {
   );
 
   useEffect(() => {
+    const c = ciclos[cicloSelIdx];
     if (moduloSel) {
-      cargarDatos(moduloSel, ciclo.fechaInicioStr, ciclo.fechaFinStr);
+      cargarDatos(moduloSel, c.fechaInicioStr, c.fechaFinStr);
     } else {
       setDatos(null);
       setError(null);
     }
-  }, [moduloSel, ciclo.fechaInicioStr, ciclo.fechaFinStr, cargarDatos]);
+  }, [moduloSel, cicloSelIdx, ciclos, cargarDatos]);
+
+  const cicloActual = ciclos[cicloSelIdx];
 
   return (
     <Box sx={{ p: 3, maxWidth: 960, mx: "auto" }}>
@@ -133,10 +163,27 @@ const SueldosEncargadosPage: React.FC = () => {
 
       {/* ── Filtros ─────────────────────────────────────────────────── */}
       <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        {/* Ciclo calculado automáticamente */}
-        <Typography fontWeight={600} color="#f97316" fontSize={15} mb={2}>
-          Ciclo actual:&nbsp;{ciclo.label}
-        </Typography>
+        {/* Selector de ciclo */}
+        <Box display="flex" alignItems="center" gap={2} mb={2.5} flexWrap="wrap">
+          <Typography fontWeight={600} color="#64748b" fontSize={14}>
+            Ciclo:
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 210 }}>
+            <InputLabel sx={{ fontSize: 13 }}>Ciclo</InputLabel>
+            <Select
+              label="Ciclo"
+              value={cicloSelIdx}
+              onChange={(e) => setCicloSelIdx(Number(e.target.value))}
+              sx={{ fontSize: 13, color: "#f97316", fontWeight: 600 }}
+            >
+              {ciclos.map((c, i) => (
+                <MenuItem key={c.fechaInicioStr} value={i} sx={{ fontSize: 13 }}>
+                  {i === 0 ? `${c.label} (último cerrado)` : c.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
 
         {/* Botones de módulo */}
         <Box display="flex" flexWrap="wrap" gap={1}>
@@ -210,7 +257,7 @@ const SueldosEncargadosPage: React.FC = () => {
           <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
             Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
             <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
-              {ciclo.label}
+              {cicloActual.label}
             </Box>
           </Typography>
 
@@ -238,7 +285,7 @@ const SueldosEncargadosPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {datos.productos.map((p, idx) => (
+                {sortProductos(datos.productos).map((p, idx) => (
                   <TableRow
                     key={p.nombre}
                     sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
