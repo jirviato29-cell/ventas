@@ -5,6 +5,7 @@ import {
   RadioGroup, Radio, TablePagination, Table, TableHead, TableRow,
   TableCell, TableBody, Divider, Chip, IconButton, Tabs, Tab, useMediaQuery,
   CircularProgress, InputAdornment,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
@@ -353,6 +354,10 @@ const FormularioVentaMultiple = () => {
   const [nominaCicloIdx, setNominaCicloIdx] = useState(0);
   const [nominaChips, setNominaChips] = useState<VentaChip[]>([]);
   const [tabPanel, setTabPanel] = useState(0);
+  const [editPrecioOpen, setEditPrecioOpen] = useState(false);
+  const [editPrecioVenta, setEditPrecioVenta] = useState<Venta | null>(null);
+  const [editPrecioValor, setEditPrecioValor] = useState('');
+  const [editPrecioError, setEditPrecioError] = useState('');
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -650,6 +655,33 @@ const FormularioVentaMultiple = () => {
       if (rol === 'asesor') fetchComisionesHoy();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Error al cancelar la venta');
+    }
+  };
+
+  const abrirEditarPrecio = (v: Venta) => {
+    setEditPrecioVenta(v);
+    setEditPrecioValor(String(v.precio_unitario));
+    setEditPrecioError('');
+    setEditPrecioOpen(true);
+  };
+
+  const guardarPrecio = async () => {
+    if (!editPrecioVenta) return;
+    const nuevo = parseFloat(editPrecioValor);
+    if (isNaN(nuevo) || nuevo <= 0) {
+      setEditPrecioError('El precio debe ser mayor a 0');
+      return;
+    }
+    try {
+      await axios.patch(
+        `${process.env.REACT_APP_API_URL}/ventas/ventas/${editPrecioVenta.id}/precio`,
+        { nuevo_precio: nuevo },
+        config,
+      );
+      setEditPrecioOpen(false);
+      fetchVentas();
+    } catch (err: any) {
+      setEditPrecioError(err.response?.data?.detail || 'Error al editar el precio');
     }
   };
 
@@ -1079,7 +1111,12 @@ const FormularioVentaMultiple = () => {
                     <td style={{ padding: 8 }}>{`${v.fecha} ${v.hora}`}</td>
                     <td style={{ padding: 8 }}>{v.cancelada ? 'Cancelada' : 'Activa'}</td>
                     <td style={{ padding: 8 }}>
-                      <Button variant="outlined" size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                      <Box display="flex" gap={1}>
+                        <Button variant="outlined" size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                        {(user?.rol === 'admin' || user?.rol === 'direccion') && (
+                          <Button variant="outlined" size="small" disabled={v.cancelada} sx={{ borderColor: '#0d1e3a', color: '#0d1e3a' }} onClick={() => abrirEditarPrecio(v)}>Editar precio</Button>
+                        )}
+                      </Box>
                     </td>
                   </tr>
                 ))}
@@ -1126,7 +1163,12 @@ const FormularioVentaMultiple = () => {
                     </span>
                   </td>
                   <td style={{ padding: 8 }}>
-                    <Button variant="outlined" size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                    <Box display="flex" gap={1}>
+                      <Button variant="outlined" size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                      {(user?.rol === 'admin' || user?.rol === 'direccion') && (
+                        <Button variant="outlined" size="small" disabled={v.cancelada} sx={{ borderColor: '#0d1e3a', color: '#0d1e3a' }} onClick={() => abrirEditarPrecio(v)}>Editar precio</Button>
+                      )}
+                    </Box>
                   </td>
                 </tr>
               ))}
@@ -1149,6 +1191,36 @@ const FormularioVentaMultiple = () => {
         </Box>
 
         <Button variant="contained" onClick={() => navigate('/corte')}>Corte</Button>
+
+        <Dialog open={editPrecioOpen} onClose={() => setEditPrecioOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ fontWeight: 700 }}>Editar precio de venta</DialogTitle>
+          <DialogContent>
+            {editPrecioVenta && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+                {editPrecioVenta.producto} — Cant. {editPrecioVenta.cantidad}
+              </Typography>
+            )}
+            <TextField
+              label="Nuevo precio ($)"
+              type="number"
+              fullWidth
+              value={editPrecioValor}
+              onChange={(e) => { setEditPrecioValor(e.target.value); setEditPrecioError(''); }}
+              inputProps={{ min: 0.01, step: 0.01 }}
+              size="small"
+            />
+            {editPrecioError && (
+              <Alert severity="error" sx={{ mt: 1 }}>{editPrecioError}</Alert>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setEditPrecioOpen(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={guardarPrecio}
+              sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' } }}>
+              Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     );
   }
@@ -1964,8 +2036,15 @@ const FormularioVentaMultiple = () => {
                       {v.cancelada ? 'Cancelada' : 'Activa'}
                     </td>
                     <td style={tdStyle}>
-                      <Button variant="outlined" size="small" color="error" disabled={v.cancelada}
-                        onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                      <Box display="flex" gap={1}>
+                        <Button variant="outlined" size="small" color="error" disabled={v.cancelada}
+                          onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                        {(user?.rol === 'admin' || user?.rol === 'direccion') && (
+                          <Button variant="outlined" size="small" disabled={v.cancelada}
+                            sx={{ borderColor: '#0d1e3a', color: '#0d1e3a' }}
+                            onClick={() => abrirEditarPrecio(v)}>Editar precio</Button>
+                        )}
+                      </Box>
                     </td>
                   </tr>
                 ))}
@@ -2020,8 +2099,15 @@ const FormularioVentaMultiple = () => {
                       {v.cancelada ? 'Cancelada' : 'Activa'}
                     </td>
                     <td style={tdStyle}>
-                      <Button variant="outlined" size="small" color="error" disabled={v.cancelada}
-                        onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                      <Box display="flex" gap={1}>
+                        <Button variant="outlined" size="small" color="error" disabled={v.cancelada}
+                          onClick={() => cancelarVenta(v.id)}>Cancelar</Button>
+                        {(user?.rol === 'admin' || user?.rol === 'direccion') && (
+                          <Button variant="outlined" size="small" disabled={v.cancelada}
+                            sx={{ borderColor: '#0d1e3a', color: '#0d1e3a' }}
+                            onClick={() => abrirEditarPrecio(v)}>Editar precio</Button>
+                        )}
+                      </Box>
                     </td>
                   </tr>
                 ))}
@@ -2344,6 +2430,35 @@ const FormularioVentaMultiple = () => {
       </Box>
     )}
 
+      <Dialog open={editPrecioOpen} onClose={() => setEditPrecioOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Editar precio de venta</DialogTitle>
+        <DialogContent>
+          {editPrecioVenta && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+              {editPrecioVenta.producto} — Cant. {editPrecioVenta.cantidad}
+            </Typography>
+          )}
+          <TextField
+            label="Nuevo precio ($)"
+            type="number"
+            fullWidth
+            value={editPrecioValor}
+            onChange={(e) => { setEditPrecioValor(e.target.value); setEditPrecioError(''); }}
+            inputProps={{ min: 0.01, step: 0.01 }}
+            size="small"
+          />
+          {editPrecioError && (
+            <Alert severity="error" sx={{ mt: 1 }}>{editPrecioError}</Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setEditPrecioOpen(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={guardarPrecio}
+            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' } }}>
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
