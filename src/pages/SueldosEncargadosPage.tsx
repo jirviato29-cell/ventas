@@ -174,6 +174,29 @@ const SueldosEncargadosPage: React.FC = () => {
       {/* ── Cuadro 1: Resumen de productos ──────────────────────────── */}
       {!cargando && datos && (
         <Box>
+          {/* Sueldo total */}
+          <Box
+            display="flex"
+            justifyContent="flex-end"
+            alignItems="center"
+            gap={2}
+            mb={2}
+            sx={{
+              bgcolor: "#fff7ed",
+              border: "1px solid #fed7aa",
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+            }}
+          >
+            <Typography fontWeight={600} color="#9a3412" fontSize={15}>
+              Sueldo del encargado
+            </Typography>
+            <Typography fontWeight={800} color="#ea580c" fontSize={22}>
+              {fmtMXN(datos.sueldo_total)}
+            </Typography>
+          </Box>
+
           <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
             Resumen de productos — {datos.modulo} &nbsp;·&nbsp;{" "}
             <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
@@ -236,28 +259,6 @@ const SueldosEncargadosPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
-
-          {/* Sueldo total */}
-          <Box
-            display="flex"
-            justifyContent="flex-end"
-            alignItems="center"
-            gap={2}
-            sx={{
-              bgcolor: "#fff7ed",
-              border: "1px solid #fed7aa",
-              borderRadius: 2,
-              px: 3,
-              py: 1.5,
-            }}
-          >
-            <Typography fontWeight={600} color="#9a3412" fontSize={15}>
-              Sueldo del encargado
-            </Typography>
-            <Typography fontWeight={800} color="#ea580c" fontSize={22}>
-              {fmtMXN(datos.sueldo_total)}
-            </Typography>
-          </Box>
         </Box>
       )}
     </Box>
