@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Alert,
   Box,
@@ -13,9 +13,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import "dayjs/locale/es";
 import axios from "axios";
 
@@ -24,8 +22,8 @@ const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 
 const MODULOS = [
-  "V2", "Cadenas C.", "MI2", "BO", "M1", "M2", "VI", "MF",
-  "AL", "DR", "HA", "VL", "R1", "GI", "PS", "WA", "SA", "Uni", "U2", "RO",
+  "M1", "M2", "VI", "MF", "AL", "DR", "HA", "VL",
+  "R1", "GI", "PS", "WA", "SA", "Uni", "U2", "RO",
 ];
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -50,27 +48,37 @@ interface SueldoResponse {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const fmtDia = (d: Dayjs) => d.locale("es").format("D MMM");
-
 const fmtMXN = (n: number) =>
   "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtPct = (label: string) => (label === "$10 fijo" ? "$10" : label);
 
+/** Calcula el ciclo vigente (viernes→jueves) según la hora de Ciudad de México. */
+function calcularCicloActual() {
+  const todayStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+  }).format(new Date()); // "YYYY-MM-DD"
+  const today = dayjs(todayStr);
+  // day(): 0=dom 1=lun 2=mar 3=mié 4=jue 5=vie 6=sáb
+  const daysBack = (today.day() - 5 + 7) % 7; // días desde el último viernes
+  const inicio = today.subtract(daysBack, "day");
+  const fin = inicio.add(6, "day");
+  return {
+    fechaInicioStr: inicio.format("YYYY-MM-DD"),
+    fechaFinStr: fin.format("YYYY-MM-DD"),
+    label: `${inicio.locale("es").format("D MMM")} → ${fin.locale("es").format("D MMM")}`,
+  };
+}
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 const SueldosEncargadosPage: React.FC = () => {
-  const [fechaInicio, setFechaInicio] = useState<Dayjs | null>(null);
+  const ciclo = useMemo(() => calcularCicloActual(), []);
+
   const [moduloSel, setModuloSel] = useState<string | null>(null);
   const [datos, setDatos] = useState<SueldoResponse | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const fechaFin = fechaInicio ? fechaInicio.add(6, "day") : null;
-  const labelCiclo =
-    fechaInicio && fechaFin
-      ? `${fmtDia(fechaInicio)} → ${fmtDia(fechaFin)}`
-      : null;
 
   const cargarDatos = useCallback(
     async (modulo: string, inicio: string, fin: string) => {
@@ -93,15 +101,13 @@ const SueldosEncargadosPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (moduloSel && fechaInicio) {
-      const inicio = fechaInicio.format("YYYY-MM-DD");
-      const fin = fechaInicio.add(6, "day").format("YYYY-MM-DD");
-      cargarDatos(moduloSel, inicio, fin);
+    if (moduloSel) {
+      cargarDatos(moduloSel, ciclo.fechaInicioStr, ciclo.fechaFinStr);
     } else {
       setDatos(null);
       setError(null);
     }
-  }, [moduloSel, fechaInicio, cargarDatos]);
+  }, [moduloSel, ciclo.fechaInicioStr, ciclo.fechaFinStr, cargarDatos]);
 
   return (
     <Box sx={{ p: 3, maxWidth: 960, mx: "auto" }}>
@@ -111,24 +117,12 @@ const SueldosEncargadosPage: React.FC = () => {
 
       {/* ── Filtros ─────────────────────────────────────────────────── */}
       <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" alignItems="center" gap={2} mb={2.5} flexWrap="wrap">
-          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-            <DatePicker
-              label="Inicio del ciclo (viernes)"
-              value={fechaInicio}
-              onChange={(val) => setFechaInicio(val)}
-              shouldDisableDate={(d) => d.day() !== 5}
-              slotProps={{ textField: { size: "small" } }}
-            />
-          </LocalizationProvider>
+        {/* Ciclo calculado automáticamente */}
+        <Typography fontWeight={600} color="#f97316" fontSize={15} mb={2}>
+          Ciclo actual:&nbsp;{ciclo.label}
+        </Typography>
 
-          {labelCiclo && (
-            <Typography fontWeight={600} color="#f97316" fontSize={15}>
-              Ciclo:&nbsp;{labelCiclo}
-            </Typography>
-          )}
-        </Box>
-
+        {/* Botones de módulo */}
         <Box display="flex" flexWrap="wrap" gap={1}>
           {MODULOS.map((m) => {
             const activo = moduloSel === m;
@@ -198,9 +192,9 @@ const SueldosEncargadosPage: React.FC = () => {
           </Box>
 
           <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
-            Resumen de productos — {datos.modulo} &nbsp;·&nbsp;{" "}
+            Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
             <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
-              {labelCiclo}
+              {ciclo.label}
             </Box>
           </Typography>
 
