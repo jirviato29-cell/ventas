@@ -147,6 +147,15 @@ const formatFecha = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const formatHora24 = (iso: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("es-MX", {
+    hour: "2-digit", minute: "2-digit",
+    hour12: false, timeZone: "America/Mexico_City",
+  });
+};
+
 const mesActual = () => {
   const hoy = new Date();
   return { y: hoy.getFullYear(), m: hoy.getMonth() };
@@ -1176,6 +1185,12 @@ const TabAcumulado: React.FC = () => {
       })
     : [];
 
+  const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra"];
+
+  const cellBase = { py: "4px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
+  const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
+  const stickyLeft = { position: "sticky" as const, left: 0, zIndex: 1 };
+
   return (
     <Box>
       <Box display="flex" alignItems="center" gap={2} mb={2}>
@@ -1202,103 +1217,119 @@ const TabAcumulado: React.FC = () => {
       ) : filas.length === 0 ? (
         <Alert severity="info">Sin datos para este ciclo</Alert>
       ) : (
-        <TableContainer component={Paper} elevation={1} sx={{ overflowX: "auto" }}>
-          <Table size="small">
+        <TableContainer
+          component={Paper}
+          elevation={1}
+          sx={{ overflowX: "auto", overflowY: "auto", maxHeight: 520 }}
+        >
+          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 820 }}>
             <TableHead>
-              <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                {["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra"].map(
-                  (h) => (
-                    <TableCell
-                      key={h}
-                      align={h === "Empleado" ? "left" : "center"}
-                      sx={{ fontWeight: 700, color: "#FF6600", whiteSpace: "nowrap" }}
-                    >
-                      {h}
-                    </TableCell>
-                  )
-                )}
+              <TableRow>
+                {COLS.map((h) => (
+                  <TableCell
+                    key={h}
+                    align={h === "Empleado" ? "left" : "center"}
+                    sx={{
+                      ...cellBase,
+                      ...stickyHead,
+                      ...(h === "Empleado" ? { ...stickyLeft, zIndex: 3, width: 140 } : {}),
+                      ...(["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].includes(h) ? { width: 76 } : {}),
+                      ...( h === "Total h" ? { width: 60 } : {}),
+                      ...( h === "Jornada" ? { width: 68 } : {}),
+                      ...( h === "H. Extra" ? { width: 64 } : {}),
+                      fontWeight: 700,
+                      color: "#FF6600",
+                      borderBottom: "2px solid #e2e8f0",
+                    }}
+                  >
+                    {h}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
-              {filas.map((fila) => (
-                <TableRow key={fila.usuario_id}>
-                  <TableCell sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-                    {fila.nombre_completo || fila.username}
-                  </TableCell>
-                  {diasDelCiclo.map((diaKey) => {
-                    const dia = fila.dias[diaKey];
-                    return (
-                      <TableCell key={diaKey} align="center" sx={{ minWidth: 90 }}>
-                        {dia ? (
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              display="block"
-                              sx={{ whiteSpace: "nowrap" }}
-                            >
-                              {formatHora(dia.entrada)} ▶ {formatHora(dia.salida)}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              display="block"
-                              sx={{ color: "#64748b" }}
-                            >
-                              {dia.horas.toFixed(2)}h
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Typography variant="caption" sx={{ color: "#94a3b8" }}>
-                            Falta
-                          </Typography>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>
-                    {fila.total_horas.toFixed(2)}h
-                  </TableCell>
-                  <TableCell align="center">
-                    <TextField
-                      size="small"
-                      type="number"
-                      value={jornadasEdit[fila.usuario_id] ?? ""}
-                      onChange={(e) =>
-                        setJornadasEdit((prev) => ({
-                          ...prev,
-                          [fila.usuario_id]: e.target.value,
-                        }))
-                      }
-                      onBlur={() => {
-                        const original =
-                          fila.jornada != null ? String(fila.jornada) : "";
-                        if ((jornadasEdit[fila.usuario_id] ?? "") !== original) {
-                          guardarJornada(fila.usuario_id);
-                        }
+              {filas.map((fila, idx) => {
+                const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+                return (
+                  <TableRow key={fila.usuario_id} sx={{ bgcolor: rowBg, height: 36 }}>
+                    <TableCell
+                      sx={{
+                        ...cellBase,
+                        ...stickyLeft,
+                        bgcolor: rowBg,
+                        fontWeight: 600,
+                        width: 140,
+                        boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                       }}
-                      inputProps={{ step: "0.5", min: 0 }}
-                      sx={{ width: 80 }}
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    {fila.horas_extra != null ? (
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: fila.horas_extra < 0 ? "#ef4444" : undefined,
-                          fontWeight: 600,
+                    >
+                      {fila.nombre_completo || fila.username}
+                    </TableCell>
+
+                    {diasDelCiclo.map((diaKey) => {
+                      const dia = fila.dias[diaKey];
+                      return (
+                        <TableCell key={diaKey} align="center" sx={{ ...cellBase, width: 76 }}>
+                          {dia ? (
+                            <Box lineHeight={1.3}>
+                              <Box sx={{ fontSize: 10, whiteSpace: "nowrap", color: "#1e293b" }}>
+                                {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
+                              </Box>
+                              <Box sx={{ fontSize: 10, color: "#64748b" }}>
+                                {dia.horas.toFixed(2)}h
+                              </Box>
+                            </Box>
+                          ) : (
+                            <Box sx={{ fontSize: 11, color: "#94a3b8" }}>Falta</Box>
+                          )}
+                        </TableCell>
+                      );
+                    })}
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 60, fontWeight: 700 }}>
+                      {fila.total_horas.toFixed(2)}h
+                    </TableCell>
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 68, p: "2px 4px" }}>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={jornadasEdit[fila.usuario_id] ?? ""}
+                        onChange={(e) =>
+                          setJornadasEdit((prev) => ({
+                            ...prev,
+                            [fila.usuario_id]: e.target.value,
+                          }))
+                        }
+                        onBlur={() => {
+                          const original = fila.jornada != null ? String(fila.jornada) : "";
+                          if ((jornadasEdit[fila.usuario_id] ?? "") !== original) {
+                            guardarJornada(fila.usuario_id);
+                          }
                         }}
-                      >
-                        {fila.horas_extra > 0 ? "+" : ""}
-                        {fila.horas_extra.toFixed(2)}h
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        —
-                      </Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                        inputProps={{ step: "0.5", min: 0, style: { fontSize: 11, padding: "3px 6px" } }}
+                        sx={{ width: 60 }}
+                      />
+                    </TableCell>
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 64 }}>
+                      {fila.horas_extra != null ? (
+                        <Box
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: fila.horas_extra < 0 ? "#ef4444" : fila.horas_extra > 0 ? "#16a34a" : undefined,
+                          }}
+                        >
+                          {fila.horas_extra > 0 ? "+" : ""}
+                          {fila.horas_extra.toFixed(2)}h
+                        </Box>
+                      ) : (
+                        <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
