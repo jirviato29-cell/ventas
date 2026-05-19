@@ -287,6 +287,12 @@ const Navbar = () => {
                 </Button>
               )}
 
+              {rolToken === "direccion" && (
+                <Button sx={navBtnSx} component={Link} to="/sueldos-encargados">
+                  SUELDOS ENCARGADOS
+                </Button>
+              )}
+
               <Button
                 sx={{
                   ...navBtnSx,
@@ -564,6 +570,13 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/asistencia")}>
               <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
               <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {rolToken === "direccion" && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/sueldos-encargados")}>
+              <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
+              <ListItemText primary="SUELDOS ENCARGADOS" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
