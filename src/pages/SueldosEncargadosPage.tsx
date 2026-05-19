@@ -64,6 +64,21 @@ interface SueldoResponse {
   sueldo_total: number;
 }
 
+interface ResumenEmpleadoNomina {
+  nombre: string;
+  rol: string;
+  sueldo_base: number;
+  horas_extras_pagadas: number;
+  comisiones: number;
+  total: number;
+}
+
+interface ResumenModuloResponse {
+  nomina_inicio: string;
+  nomina_fin: string;
+  empleados: ResumenEmpleadoNomina[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtDiaCorto = (fechaStr: string) => {
@@ -133,6 +148,7 @@ const SueldosEncargadosPage: React.FC = () => {
   const [cicloSelIdx, setCicloSelIdx] = useState(0);
   const [moduloSel, setModuloSel] = useState<string | null>(null);
   const [datos, setDatos] = useState<SueldoResponse | null>(null);
+  const [datosResumen, setDatosResumen] = useState<ResumenModuloResponse | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,14 +157,17 @@ const SueldosEncargadosPage: React.FC = () => {
       setCargando(true);
       setError(null);
       try {
-        const { data } = await axios.get<SueldoResponse>(
-          `${API}/sueldos/encargados?modulo=${encodeURIComponent(modulo)}&fecha_inicio=${inicio}&fecha_fin=${fin}`,
-          { headers: authH() }
-        );
-        setDatos(data);
+        const params = `modulo=${encodeURIComponent(modulo)}&fecha_inicio=${inicio}&fecha_fin=${fin}`;
+        const [{ data: sueldoData }, { data: resumenData }] = await Promise.all([
+          axios.get<SueldoResponse>(`${API}/sueldos/encargados?${params}`, { headers: authH() }),
+          axios.get<ResumenModuloResponse>(`${API}/sueldos/resumen-modulo?${params}`, { headers: authH() }),
+        ]);
+        setDatos(sueldoData);
+        setDatosResumen(resumenData);
       } catch {
         setError("No se pudo cargar el sueldo. Verifica la conexión o el módulo seleccionado.");
         setDatos(null);
+        setDatosResumen(null);
       } finally {
         setCargando(false);
       }
@@ -162,6 +181,7 @@ const SueldosEncargadosPage: React.FC = () => {
       cargarDatos(moduloSel, c.fechaInicioStr, c.fechaFinStr);
     } else {
       setDatos(null);
+      setDatosResumen(null);
       setError(null);
     }
   }, [moduloSel, cicloSelIdx, ciclos, cargarDatos]);
@@ -337,7 +357,7 @@ const SueldosEncargadosPage: React.FC = () => {
             </Box>
 
             {/* Cuadro 2: Desglose por día */}
-            <Box flex="0 1 240px" minWidth={0}>
+            <Box flex="0 1 220px" minWidth={0}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Ventas por día
               </Typography>
@@ -421,6 +441,119 @@ const SueldosEncargadosPage: React.FC = () => {
                 </Table>
               </TableContainer>
             </Box>
+
+            {/* Cuadro 3: Resumen nómina del módulo */}
+            {datosResumen && (
+              <Box flex="1 1 380px" minWidth={0}>
+                <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
+                  Nómina del módulo
+                </Typography>
+                <Typography fontSize={12} color="#64748b" mb={1.5}>
+                  Pago:&nbsp;
+                  {fmtDiaCorto(datosResumen.nomina_inicio)}&nbsp;→&nbsp;
+                  {fmtDiaCorto(datosResumen.nomina_fin)}
+                </Typography>
+
+                <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        {["Empleado", "Sueldo base", "Horas extras", "Comisiones", "Total"].map((h) => (
+                          <TableCell
+                            key={h}
+                            align={h === "Empleado" ? "left" : "right"}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: 12,
+                              color: "#f97316",
+                              borderBottom: "2px solid #e2e8f0",
+                              whiteSpace: "nowrap",
+                              py: "6px",
+                              px: "10px",
+                            }}
+                          >
+                            {h}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {datosResumen.empleados.map((emp, idx) => {
+                        const esEnc = emp.rol === "encargado";
+                        return (
+                          <TableRow
+                            key={emp.nombre}
+                            sx={{
+                              bgcolor: esEnc
+                                ? "#fff7ed"
+                                : idx % 2 === 0
+                                ? "#ffffff"
+                                : "#f8fafc",
+                            }}
+                          >
+                            <TableCell
+                              sx={{
+                                fontSize: 12,
+                                py: "5px",
+                                px: "10px",
+                                fontWeight: esEnc ? 700 : 400,
+                                color: esEnc ? "#ea580c" : "inherit",
+                              }}
+                            >
+                              {emp.nombre}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                              {fmtMXN(emp.sueldo_base)}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                              {fmtMXN(emp.horas_extras_pagadas)}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                              {fmtMXN(emp.comisiones)}
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontSize: 12,
+                                py: "5px",
+                                px: "10px",
+                                fontWeight: 600,
+                                color: esEnc ? "#ea580c" : "inherit",
+                              }}
+                            >
+                              {fmtMXN(emp.total)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {/* Fila TOTAL */}
+                      <TableRow sx={{ bgcolor: "#fff7ed" }}>
+                        {(["TOTAL",
+                          fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.sueldo_base, 0)),
+                          fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.horas_extras_pagadas, 0)),
+                          fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.comisiones, 0)),
+                          fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.total, 0)),
+                        ] as string[]).map((val, i) => (
+                          <TableCell
+                            key={i}
+                            align={i === 0 ? "left" : "right"}
+                            sx={{
+                              fontSize: 12,
+                              py: "5px",
+                              px: "10px",
+                              fontWeight: 700,
+                              color: "#ea580c",
+                            }}
+                          >
+                            {val}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
 
           </Box>
         </Box>
