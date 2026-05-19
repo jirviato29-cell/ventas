@@ -291,7 +291,7 @@ const SueldosEncargadosPage: React.FC = () => {
           <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start">
 
             {/* Cuadro 1: Resumen de productos */}
-            <Box flex="1 1 380px" minWidth={0}>
+            <Box flex="1 1 300px" minWidth={0}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
                 <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
@@ -357,7 +357,7 @@ const SueldosEncargadosPage: React.FC = () => {
             </Box>
 
             {/* Cuadro 2: Desglose por día */}
-            <Box flex="0 1 220px" minWidth={0}>
+            <Box flex="0 1 180px" minWidth={0}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Ventas por día
               </Typography>
@@ -444,14 +444,9 @@ const SueldosEncargadosPage: React.FC = () => {
 
             {/* Cuadro 3: Resumen nómina del módulo */}
             {datosResumen && (
-              <Box flex="1 1 380px" minWidth={0}>
-                <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
-                  Nómina del módulo
-                </Typography>
-                <Typography fontSize={12} color="#64748b" mb={1.5}>
-                  Pago:&nbsp;
-                  {fmtDiaCorto(datosResumen.nomina_inicio)}&nbsp;→&nbsp;
-                  {fmtDiaCorto(datosResumen.nomina_fin)}
+              <Box flex="1 1 300px" minWidth={0}>
+                <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+                  Resumen
                 </Typography>
 
                 <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
