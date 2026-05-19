@@ -37,6 +37,7 @@ const SueldosEncargadosPage: React.FC = () => {
               label="Inicio del ciclo (viernes)"
               value={fechaInicio}
               onChange={(val) => setFechaInicio(val)}
+              shouldDisableDate={(d) => d.day() !== 5}
               slotProps={{ textField: { size: "small" } }}
             />
           </LocalizationProvider>
