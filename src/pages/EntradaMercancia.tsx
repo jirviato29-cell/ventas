@@ -21,7 +21,7 @@ import {
   Alert,
   Chip,
 } from "@mui/material";
-import { Delete, Add, Print, Save, Inventory2, Visibility, Search } from "@mui/icons-material";
+import { Delete, Add, Print, Save, Inventory2, Visibility, Search, Edit } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "axios";
 
@@ -59,6 +59,13 @@ interface EntradaHistorial {
   usuario_username: string;
   usuario_nombre: string;
   productos: ProductoDetalle[];
+}
+
+interface EditItem {
+  producto_id: number;
+  clave: string;
+  producto: string;
+  cantidad: number;
 }
 
 const EntradaMercancia = () => {
@@ -101,6 +108,26 @@ const EntradaMercancia = () => {
   const [entradaDetalle, setEntradaDetalle] = useState<EntradaHistorial | null>(null);
   const [modalDetalle, setModalDetalle] = useState(false);
   const [modoImpresionDetalle, setModoImpresionDetalle] = useState(false);
+
+  // ── Usuario actual (para is_admin) ────────────────────────────────────────────
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // ── Eliminar entrada ──────────────────────────────────────────────────────────
+  const [modalConfirmEliminar, setModalConfirmEliminar] = useState(false);
+  const [eliminandoEntrada, setEliminandoEntrada] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
+
+  // ── Editar entrada ────────────────────────────────────────────────────────────
+  const [modalEditar, setModalEditar] = useState(false);
+  const [editProductos, setEditProductos] = useState<EditItem[]>([]);
+  const [editBusqueda, setEditBusqueda] = useState("");
+  const [editOpciones, setEditOpciones] = useState<any[]>([]);
+  const [editLoadingBusqueda, setEditLoadingBusqueda] = useState(false);
+  const [editProductoSeleccionado, setEditProductoSeleccionado] = useState<any | null>(null);
+  const [editCantidadNueva, setEditCantidadNueva] = useState("");
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [errorEditar, setErrorEditar] = useState<string | null>(null);
+  const [cargandoEditar, setCargandoEditar] = useState(false);
 
   const inputCantidadRef = useRef<HTMLInputElement>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
@@ -156,6 +183,7 @@ const EntradaMercancia = () => {
   useEffect(() => {
     cargarModulos();
     buscarHistorial({});
+    cargarCurrentUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -323,10 +351,168 @@ const EntradaMercancia = () => {
     }, 200);
   };
 
+  // ── Usuario actual ────────────────────────────────────────────────────────────
+
+  const cargarCurrentUser = async () => {
+    try {
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/auth/usuarios/me`,
+        config
+      );
+      setCurrentUser(res.data);
+    } catch {
+      // sin acceso admin — botones no se muestran
+    }
+  };
+
+  // ── Eliminar entrada ──────────────────────────────────────────────────────────
+
+  const handleEliminar = async () => {
+    if (!entradaDetalle) return;
+    setEliminandoEntrada(true);
+    try {
+      await axios.delete(
+        `${process.env.REACT_APP_API_URL}/inventario/inventario/entradas/${entradaDetalle.id}`,
+        config
+      );
+      setModalConfirmEliminar(false);
+      setModalDetalle(false);
+      setEntradaDetalle(null);
+      buscarHistorial();
+    } catch (err: any) {
+      setModalConfirmEliminar(false);
+      const detail = err?.response?.data?.detail;
+      if (err?.response?.status === 400 && detail) {
+        setErrorDetalle(String(detail));
+      } else if (err?.response?.status === 403) {
+        setErrorDetalle("No tienes permisos para eliminar entradas.");
+      } else {
+        setErrorDetalle("Error al eliminar la entrada.");
+      }
+    } finally {
+      setEliminandoEntrada(false);
+    }
+  };
+
+  // ── Editar entrada ────────────────────────────────────────────────────────────
+
+  const abrirEditar = async () => {
+    if (!entradaDetalle) return;
+    setCargandoEditar(true);
+    setErrorDetalle(null);
+    try {
+      const items: EditItem[] = [];
+      for (const p of entradaDetalle.productos) {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
+          { params: { q: p.clave }, ...config }
+        );
+        const match = (res.data as any[]).find((r: any) => r.clave === p.clave);
+        if (!match) {
+          setErrorDetalle(
+            `No se encontró el producto con clave '${p.clave}' en el catálogo. Verifica el inventario general.`
+          );
+          return;
+        }
+        items.push({ producto_id: match.id, clave: p.clave, producto: p.producto, cantidad: p.cantidad });
+      }
+      setEditProductos(items);
+      setEditBusqueda("");
+      setEditOpciones([]);
+      setEditProductoSeleccionado(null);
+      setEditCantidadNueva("");
+      setErrorEditar(null);
+      setModalDetalle(false);
+      setModalEditar(true);
+    } catch {
+      setErrorDetalle("Error al cargar los datos para editar. Intenta de nuevo.");
+    } finally {
+      setCargandoEditar(false);
+    }
+  };
+
+  const buscarProductosEditar = async (texto: string) => {
+    setEditBusqueda(texto);
+    if (!texto || texto.length < 2) { setEditOpciones([]); return; }
+    try {
+      setEditLoadingBusqueda(true);
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
+        { params: { q: texto }, ...config }
+      );
+      setEditOpciones(res.data);
+    } catch {
+      // silent
+    } finally {
+      setEditLoadingBusqueda(false);
+    }
+  };
+
+  const agregarProductoEditar = () => {
+    if (!editProductoSeleccionado) return;
+    const cantidad = parseInt(editCantidadNueva, 10);
+    if (isNaN(cantidad) || cantidad <= 0) { alert("Cantidad inválida"); return; }
+    setEditProductos((prev) => {
+      const index = prev.findIndex((p) => p.producto_id === editProductoSeleccionado.id);
+      if (index !== -1) {
+        const copy = [...prev];
+        copy[index] = { ...copy[index], cantidad: copy[index].cantidad + cantidad };
+        return copy;
+      }
+      return [
+        ...prev,
+        {
+          producto_id: editProductoSeleccionado.id,
+          clave: editProductoSeleccionado.clave,
+          producto: editProductoSeleccionado.producto,
+          cantidad,
+        },
+      ];
+    });
+    setEditProductoSeleccionado(null);
+    setEditBusqueda("");
+    setEditCantidadNueva("");
+    setEditOpciones([]);
+  };
+
+  const handleGuardarEdicion = async () => {
+    if (!entradaDetalle) return;
+    if (editProductos.length === 0) {
+      setErrorEditar("La entrada debe tener al menos un producto.");
+      return;
+    }
+    setGuardandoEdicion(true);
+    setErrorEditar(null);
+    try {
+      await axios.put(
+        `${process.env.REACT_APP_API_URL}/inventario/inventario/entradas/${entradaDetalle.id}`,
+        { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) },
+        config
+      );
+      setModalEditar(false);
+      setEntradaDetalle(null);
+      buscarHistorial();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      if (err?.response?.status === 400 && detail) {
+        setErrorEditar(String(detail));
+      } else if (err?.response?.status === 403) {
+        setErrorEditar("No tienes permisos para editar entradas.");
+      } else {
+        setErrorEditar("Error al guardar los cambios.");
+      }
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
   // ── Derived state ────────────────────────────────────────────────────────────
 
   // Sort centralizado antes del render — el servidor devuelve sin orden garantizado
   const opcionesOrdenadas = [...opcionesProductos].sort((a, b) =>
+    a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
+  );
+  const editOpcionesOrdenadas = [...editOpciones].sort((a, b) =>
     a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
   );
   if (opcionesOrdenadas.length > 0) {
@@ -546,6 +732,7 @@ const EntradaMercancia = () => {
                       sx={{ cursor: "pointer" }}
                       onClick={() => {
                         setEntradaDetalle(entrada);
+                        setErrorDetalle(null);
                         setModalDetalle(true);
                       }}
                     >
@@ -569,6 +756,7 @@ const EntradaMercancia = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEntradaDetalle(entrada);
+                            setErrorDetalle(null);
                             setModalDetalle(true);
                           }}
                         >
@@ -1161,9 +1349,35 @@ const EntradaMercancia = () => {
                   )}
                 </TableBody>
               </Table>
+
+              {errorDetalle && (
+                <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErrorDetalle(null)}>
+                  {errorDetalle}
+                </Alert>
+              )}
             </DialogContent>
 
             <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+              {currentUser?.is_admin && (
+                <>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    onClick={() => { setErrorDetalle(null); setModalConfirmEliminar(true); }}
+                  >
+                    Eliminar
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={cargandoEditar ? <CircularProgress size={16} color="inherit" /> : <Edit />}
+                    onClick={abrirEditar}
+                    disabled={cargandoEditar}
+                  >
+                    Editar
+                  </Button>
+                </>
+              )}
               <Button
                 variant="outlined"
                 startIcon={<Print />}
@@ -1173,7 +1387,7 @@ const EntradaMercancia = () => {
               </Button>
               <Button
                 variant="contained"
-                onClick={() => setModalDetalle(false)}
+                onClick={() => { setModalDetalle(false); setErrorDetalle(null); }}
               >
                 Cerrar
               </Button>
@@ -1181,6 +1395,247 @@ const EntradaMercancia = () => {
           </>
         )}
       </Dialog>
+      {/* ── Modal: confirmar eliminación ── */}
+      <Dialog
+        open={modalConfirmEliminar}
+        onClose={() => !eliminandoEntrada && setModalConfirmEliminar(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Seguro que quieres eliminar la entrada{" "}
+            <strong>{entradaDetalle?.folio}</strong>? Esto ajustará el inventario.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => setModalConfirmEliminar(false)}
+            color="inherit"
+            disabled={eliminandoEntrada}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleEliminar}
+            disabled={eliminandoEntrada}
+            startIcon={
+              eliminandoEntrada ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <Delete />
+              )
+            }
+          >
+            {eliminandoEntrada ? "Eliminando…" : "Confirmar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Modal: editar entrada ── */}
+      <Dialog
+        open={modalEditar}
+        onClose={() => !guardandoEdicion && setModalEditar(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        {entradaDetalle && (
+          <>
+            <DialogTitle sx={{ pb: 1 }}>
+              <Box display="flex" alignItems="baseline" gap={2} flexWrap="wrap">
+                <Typography variant="h5" fontWeight={700}>
+                  Editar entrada
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight={800}
+                  sx={{ color: "#f97316" }}
+                >
+                  {entradaDetalle.folio}
+                </Typography>
+              </Box>
+            </DialogTitle>
+
+            <DialogContent>
+              {errorEditar && (
+                <Alert
+                  severity="error"
+                  sx={{ mb: 2 }}
+                  onClose={() => setErrorEditar(null)}
+                >
+                  {errorEditar}
+                </Alert>
+              )}
+
+              {/* Lista editable de productos */}
+              <Table size="small" sx={{ mb: 3 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Clave</TableCell>
+                    <TableCell>Producto</TableCell>
+                    <TableCell align="right" sx={{ width: 130 }}>
+                      Cantidad
+                    </TableCell>
+                    <TableCell align="center" sx={{ width: 56 }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {editProductos.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        align="center"
+                        sx={{ color: "#64748b", py: 3 }}
+                      >
+                        Sin productos. Agrega al menos uno.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    editProductos.map((p, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell sx={{ fontWeight: 600, color: "#f97316" }}>
+                          {p.clave}
+                        </TableCell>
+                        <TableCell>{p.producto}</TableCell>
+                        <TableCell align="right">
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={p.cantidad}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (isNaN(val) || val < 1) return;
+                              setEditProductos((prev) => {
+                                const copy = [...prev];
+                                copy[idx] = { ...copy[idx], cantidad: val };
+                                return copy;
+                              });
+                            }}
+                            sx={{ width: 100 }}
+                            inputProps={{ min: 1 }}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setEditProductos((prev) =>
+                                prev.filter((_, i) => i !== idx)
+                              )
+                            }
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Agregar producto nuevo */}
+              <Divider sx={{ mb: 2 }} />
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                mb={1.5}
+                color="text.secondary"
+              >
+                Agregar producto
+              </Typography>
+              <Autocomplete
+                options={editOpcionesOrdenadas}
+                filterOptions={(x) => x}
+                loading={editLoadingBusqueda}
+                value={editProductoSeleccionado}
+                inputValue={editBusqueda}
+                onChange={(_, value) => setEditProductoSeleccionado(value)}
+                onInputChange={(_, value) => buscarProductosEditar(value)}
+                getOptionLabel={(option) => `${option.clave} - ${option.producto}`}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Buscar producto (clave o nombre)"
+                    size="small"
+                    fullWidth
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {editLoadingBusqueda && (
+                            <CircularProgress size={16} />
+                          )}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+              {editProductoSeleccionado && (
+                <Box display="flex" alignItems="center" gap={2} mt={1.5} flexWrap="wrap">
+                  <Typography variant="body2" flex={1}>
+                    {editProductoSeleccionado.clave} —{" "}
+                    {editProductoSeleccionado.producto}
+                  </Typography>
+                  <TextField
+                    label="Cantidad"
+                    type="number"
+                    size="small"
+                    value={editCantidadNueva}
+                    onChange={(e) => setEditCantidadNueva(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        agregarProductoEditar();
+                      }
+                    }}
+                    sx={{ width: 110 }}
+                    inputProps={{ min: 1 }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<Add />}
+                    onClick={agregarProductoEditar}
+                    size="small"
+                  >
+                    Agregar
+                  </Button>
+                </Box>
+              )}
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+              <Button
+                onClick={() => { if (!guardandoEdicion) setModalEditar(false); }}
+                color="inherit"
+                disabled={guardandoEdicion}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleGuardarEdicion}
+                disabled={guardandoEdicion || editProductos.length === 0}
+                startIcon={
+                  guardandoEdicion ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <Save />
+                  )
+                }
+              >
+                {guardandoEdicion ? "Guardando…" : "Guardar cambios"}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
     </Box>
   );
 };
