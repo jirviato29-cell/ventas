@@ -55,14 +55,30 @@ const fmtPct = (label: string) => (label === "$10 fijo" ? "$10" : label);
 
 /** Calcula el ciclo vigente (viernes→jueves) según la hora de Ciudad de México. */
 function calcularCicloActual() {
+  // Obtener la fecha actual en zona horaria Mexico City como "YYYY-MM-DD"
   const todayStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
-  }).format(new Date()); // "YYYY-MM-DD"
-  const today = dayjs(todayStr);
+  }).format(new Date());
+
+  // Parsear como fecha LOCAL (no UTC) para que .day() devuelva el día correcto.
+  // dayjs("YYYY-MM-DD") interpreta la cadena como UTC midnight, lo que en CDT
+  // (UTC-5) desplaza al día anterior. new Date(y, m-1, d) usa tiempo local.
+  const [y, m, d] = todayStr.split("-").map(Number);
+  const today = dayjs(new Date(y, m - 1, d));
+
   // day(): 0=dom 1=lun 2=mar 3=mié 4=jue 5=vie 6=sáb
   const daysBack = (today.day() - 5 + 7) % 7; // días desde el último viernes
   const inicio = today.subtract(daysBack, "day");
   const fin = inicio.add(6, "day");
+
+  console.log(
+    "[CICLO] hoy:", todayStr,
+    "| day():", today.day(),
+    "| daysBack:", daysBack,
+    "| inicio:", inicio.format("YYYY-MM-DD"),
+    "| fin:", fin.format("YYYY-MM-DD")
+  );
+
   return {
     fechaInicioStr: inicio.format("YYYY-MM-DD"),
     fechaFinStr: fin.format("YYYY-MM-DD"),
