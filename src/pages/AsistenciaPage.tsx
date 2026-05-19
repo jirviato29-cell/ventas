@@ -112,6 +112,28 @@ interface UsuarioBasico {
   modulo: { id: number; nombre: string } | null;
 }
 
+interface CicloSemana {
+  inicio: string;
+  fin: string;
+  label: string;
+}
+
+interface DiaResumen {
+  entrada: string | null;
+  salida: string | null;
+  horas: number;
+}
+
+interface EmpleadoAcumuladoSemanal {
+  usuario_id: number;
+  username: string;
+  nombre_completo: string;
+  dias: Record<string, DiaResumen | null>;
+  total_horas: number;
+  jornada: number | null;
+  horas_extra: number | null;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const formatHora = (iso: string | null) => {
@@ -1078,6 +1100,214 @@ const TabAlertas: React.FC = () => {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// TAB ACUMULADO SEMANAL (admin)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const TabAcumulado: React.FC = () => {
+  const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
+  const [cicloSel, setCicloSel] = useState<string>("");
+  const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
+  const [jornadasEdit, setJornadasEdit] = useState<Record<number, string>>({});
+  const [cargando, setCargando] = useState(false);
+
+  const cargarAcumulado = useCallback(async (cicloInicio: string) => {
+    if (!cicloInicio) return;
+    setCargando(true);
+    try {
+      const { data } = await axios.get<EmpleadoAcumuladoSemanal[]>(
+        `${API}/asistencia/acumulado-semanal?ciclo=${cicloInicio}`,
+        { headers: authH() }
+      );
+      setFilas(data);
+      const init: Record<number, string> = {};
+      data.forEach((f) => {
+        init[f.usuario_id] = f.jornada != null ? String(f.jornada) : "";
+      });
+      setJornadasEdit(init);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get<CicloSemana[]>(`${API}/asistencia/ciclos`, { headers: authH() })
+      .then(({ data }) => {
+        setCiclos(data);
+        if (data.length > 0) setCicloSel(data[0].inicio);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (cicloSel) cargarAcumulado(cicloSel);
+  }, [cicloSel, cargarAcumulado]);
+
+  const guardarJornada = async (usuarioId: number) => {
+    const val = jornadasEdit[usuarioId] ?? "";
+    const horas = val === "" ? null : parseFloat(val);
+    if (horas !== null && isNaN(horas)) return;
+    try {
+      await axios.put(
+        `${API}/asistencia/jornada`,
+        { usuario_id: usuarioId, ciclo: cicloSel, horas: horas ?? 0 },
+        { headers: authH() }
+      );
+      setFilas((prev) =>
+        prev.map((f) => {
+          if (f.usuario_id !== usuarioId) return f;
+          const horas_extra =
+            horas != null
+              ? parseFloat((f.total_horas - horas).toFixed(2))
+              : null;
+          return { ...f, jornada: horas, horas_extra };
+        })
+      );
+    } catch {
+      // no-op
+    }
+  };
+
+  const diasDelCiclo = cicloSel
+    ? Array.from({ length: 7 }, (_, i) => {
+        const [y, m, d] = cicloSel.split("-").map(Number);
+        const dt = new Date(y, m - 1, d + i);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+      })
+    : [];
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <FormControl size="small" sx={{ minWidth: 280 }}>
+          <InputLabel>Ciclo</InputLabel>
+          <Select
+            label="Ciclo"
+            value={cicloSel}
+            onChange={(e) => setCicloSel(e.target.value as string)}
+          >
+            {ciclos.map((c) => (
+              <MenuItem key={c.inicio} value={c.inicio}>
+                {c.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {cargando ? (
+        <Box textAlign="center" py={4}>
+          <CircularProgress />
+        </Box>
+      ) : filas.length === 0 ? (
+        <Alert severity="info">Sin datos para este ciclo</Alert>
+      ) : (
+        <TableContainer component={Paper} elevation={1} sx={{ overflowX: "auto" }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                {["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra"].map(
+                  (h) => (
+                    <TableCell
+                      key={h}
+                      align={h === "Empleado" ? "left" : "center"}
+                      sx={{ fontWeight: 700, color: "#FF6600", whiteSpace: "nowrap" }}
+                    >
+                      {h}
+                    </TableCell>
+                  )
+                )}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filas.map((fila) => (
+                <TableRow key={fila.usuario_id}>
+                  <TableCell sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {fila.nombre_completo || fila.username}
+                  </TableCell>
+                  {diasDelCiclo.map((diaKey) => {
+                    const dia = fila.dias[diaKey];
+                    return (
+                      <TableCell key={diaKey} align="center" sx={{ minWidth: 90 }}>
+                        {dia ? (
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              display="block"
+                              sx={{ whiteSpace: "nowrap" }}
+                            >
+                              {formatHora(dia.entrada)} ▶ {formatHora(dia.salida)}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              display="block"
+                              sx={{ color: "#64748b" }}
+                            >
+                              {dia.horas.toFixed(2)}h
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" sx={{ color: "#94a3b8" }}>
+                            Falta
+                          </Typography>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>
+                    {fila.total_horas.toFixed(2)}h
+                  </TableCell>
+                  <TableCell align="center">
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={jornadasEdit[fila.usuario_id] ?? ""}
+                      onChange={(e) =>
+                        setJornadasEdit((prev) => ({
+                          ...prev,
+                          [fila.usuario_id]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => {
+                        const original =
+                          fila.jornada != null ? String(fila.jornada) : "";
+                        if ((jornadasEdit[fila.usuario_id] ?? "") !== original) {
+                          guardarJornada(fila.usuario_id);
+                        }
+                      }}
+                      inputProps={{ step: "0.5", min: 0 }}
+                      sx={{ width: 80 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    {fila.horas_extra != null ? (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: fila.horas_extra < 0 ? "#ef4444" : undefined,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {fila.horas_extra > 0 ? "+" : ""}
+                        {fila.horas_extra.toFixed(2)}h
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        —
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Box>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 // VISTA ADMIN / DIRECCION
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1099,6 +1329,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Configurar Módulos" />
         <Tab label="Configurar Promotores" />
         <Tab label="Alertas" />
+        <Tab label="Acumulado semanal" />
       </Tabs>
 
       {tab === 0 && <TabRegistros />}
@@ -1112,6 +1343,7 @@ const VistaAdmin: React.FC = () => {
         </Box>
       )}
       {tab === 3 && <TabAlertas />}
+      {tab === 4 && <TabAcumulado />}
     </Box>
   );
 };
