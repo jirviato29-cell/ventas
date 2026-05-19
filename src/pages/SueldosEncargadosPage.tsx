@@ -38,6 +38,13 @@ interface CicloItem {
   label: string;
 }
 
+interface DiaDiario {
+  fecha: string | null;
+  label: string;
+  equipos: number;
+  accesorios: number;
+}
+
 interface ProductoResumen {
   nombre: string;
   tipo: string;
@@ -53,10 +60,16 @@ interface SueldoResponse {
   fecha_fin: string;
   porcentaje_modulo: number;
   productos: ProductoResumen[];
+  desglose_diario: DiaDiario[];
   sueldo_total: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const fmtDiaCorto = (fechaStr: string) => {
+  const [y, mo, d] = fechaStr.split("-").map(Number);
+  return dayjs(new Date(y, mo - 1, d)).locale("es").format("D-MMM");
+};
 
 const fmtMXN = (n: number) =>
   "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -313,6 +326,93 @@ const SueldosEncargadosPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* ── Cuadro 2: Desglose por día ──────────────────────────── */}
+          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+            Ventas por día — {datos.modulo}&nbsp;·&nbsp;
+            <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
+              {cicloActual.label}
+            </Box>
+          </Typography>
+
+          <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {["Día", "Equipos", "Accesorios"].map((h) => (
+                    <TableCell
+                      key={h}
+                      align={h === "Día" ? "left" : "right"}
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: 12,
+                        color: "#f97316",
+                        borderBottom: "2px solid #e2e8f0",
+                        whiteSpace: "nowrap",
+                        py: "6px",
+                        px: "10px",
+                      }}
+                    >
+                      {h}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {datos.desglose_diario.map((fila, idx) => {
+                  const esTotal = fila.fecha === null;
+                  return (
+                    <TableRow
+                      key={fila.fecha ?? "total"}
+                      sx={{
+                        bgcolor: esTotal
+                          ? "#fff7ed"
+                          : idx % 2 === 0
+                          ? "#ffffff"
+                          : "#f8fafc",
+                      }}
+                    >
+                      <TableCell
+                        sx={{
+                          fontSize: 12,
+                          py: "5px",
+                          px: "10px",
+                          fontWeight: esTotal ? 700 : 400,
+                          color: esTotal ? "#ea580c" : "inherit",
+                        }}
+                      >
+                        {esTotal ? "TOTAL" : fmtDiaCorto(fila.fecha!)}
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          fontSize: 12,
+                          py: "5px",
+                          px: "10px",
+                          fontWeight: esTotal ? 700 : 400,
+                          color: esTotal ? "#ea580c" : "inherit",
+                        }}
+                      >
+                        {fila.equipos}
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          fontSize: 12,
+                          py: "5px",
+                          px: "10px",
+                          fontWeight: esTotal ? 700 : 400,
+                          color: esTotal ? "#ea580c" : "inherit",
+                        }}
+                      >
+                        {fmtMXN(fila.accesorios)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
