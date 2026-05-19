@@ -267,155 +267,162 @@ const SueldosEncargadosPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
-            Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
-            <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
-              {cicloActual.label}
-            </Box>
-          </Typography>
+          {/* ── Cuadros lado a lado (responsive) ───────────────────── */}
+          <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start">
 
-          <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {["Producto", "Cantidad", "Neto", "%", "Comisión"].map((h) => (
-                    <TableCell
-                      key={h}
-                      align={h === "Producto" ? "left" : "right"}
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: 12,
-                        color: "#f97316",
-                        borderBottom: "2px solid #e2e8f0",
-                        whiteSpace: "nowrap",
-                        py: "6px",
-                        px: "10px",
-                      }}
-                    >
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sortProductos(datos.productos).map((p, idx) => (
-                  <TableRow
-                    key={p.nombre}
-                    sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
-                  >
-                    <TableCell sx={{ fontSize: 12, py: "5px", px: "10px" }}>
-                      {p.nombre}
-                    </TableCell>
-                    <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
-                      {p.cantidad}
-                    </TableCell>
-                    <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
-                      {fmtMXN(p.neto)}
-                    </TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b" }}
-                    >
-                      {fmtPct(p.porcentaje_label)}
-                    </TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600 }}
-                    >
-                      {fmtMXN(p.comision)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            {/* Cuadro 1: Resumen de productos */}
+            <Box flex="1 1 380px" minWidth={0}>
+              <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+                Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
+                <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
+                  {cicloActual.label}
+                </Box>
+              </Typography>
 
-          {/* ── Cuadro 2: Desglose por día ──────────────────────────── */}
-          <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
-            Ventas por día — {datos.modulo}&nbsp;·&nbsp;
-            <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
-              {cicloActual.label}
-            </Box>
-          </Typography>
-
-          <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  {["Día", "Equipos", "Accesorios"].map((h) => (
-                    <TableCell
-                      key={h}
-                      align={h === "Día" ? "left" : "right"}
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: 12,
-                        color: "#f97316",
-                        borderBottom: "2px solid #e2e8f0",
-                        whiteSpace: "nowrap",
-                        py: "6px",
-                        px: "10px",
-                      }}
-                    >
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {datos.desglose_diario.map((fila, idx) => {
-                  const esTotal = fila.fecha === null;
-                  return (
-                    <TableRow
-                      key={fila.fecha ?? "total"}
-                      sx={{
-                        bgcolor: esTotal
-                          ? "#fff7ed"
-                          : idx % 2 === 0
-                          ? "#ffffff"
-                          : "#f8fafc",
-                      }}
-                    >
-                      <TableCell
-                        sx={{
-                          fontSize: 12,
-                          py: "5px",
-                          px: "10px",
-                          fontWeight: esTotal ? 700 : 400,
-                          color: esTotal ? "#ea580c" : "inherit",
-                        }}
-                      >
-                        {esTotal ? "TOTAL" : fmtDiaCorto(fila.fecha!)}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          fontSize: 12,
-                          py: "5px",
-                          px: "10px",
-                          fontWeight: esTotal ? 700 : 400,
-                          color: esTotal ? "#ea580c" : "inherit",
-                        }}
-                      >
-                        {fila.equipos}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          fontSize: 12,
-                          py: "5px",
-                          px: "10px",
-                          fontWeight: esTotal ? 700 : 400,
-                          color: esTotal ? "#ea580c" : "inherit",
-                        }}
-                      >
-                        {fmtMXN(fila.accesorios)}
-                      </TableCell>
+              <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {["Producto", "Cantidad", "Neto", "%", "Comisión"].map((h) => (
+                        <TableCell
+                          key={h}
+                          align={h === "Producto" ? "left" : "right"}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: 12,
+                            color: "#f97316",
+                            borderBottom: "2px solid #e2e8f0",
+                            whiteSpace: "nowrap",
+                            py: "6px",
+                            px: "10px",
+                          }}
+                        >
+                          {h}
+                        </TableCell>
+                      ))}
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {sortProductos(datos.productos).map((p, idx) => (
+                      <TableRow
+                        key={p.nombre}
+                        sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
+                      >
+                        <TableCell sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                          {p.nombre}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                          {p.cantidad}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                          {fmtMXN(p.neto)}
+                        </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b" }}
+                        >
+                          {fmtPct(p.porcentaje_label)}
+                        </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600 }}
+                        >
+                          {fmtMXN(p.comision)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+
+            {/* Cuadro 2: Desglose por día */}
+            <Box flex="0 1 240px" minWidth={0}>
+              <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+                Ventas por día
+              </Typography>
+
+              <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      {["Día", "Equipos", "Accesorios"].map((h) => (
+                        <TableCell
+                          key={h}
+                          align={h === "Día" ? "left" : "right"}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: 12,
+                            color: "#f97316",
+                            borderBottom: "2px solid #e2e8f0",
+                            whiteSpace: "nowrap",
+                            py: "6px",
+                            px: "10px",
+                          }}
+                        >
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {datos.desglose_diario.map((fila, idx) => {
+                      const esTotal = fila.fecha === null;
+                      return (
+                        <TableRow
+                          key={fila.fecha ?? "total"}
+                          sx={{
+                            bgcolor: esTotal
+                              ? "#fff7ed"
+                              : idx % 2 === 0
+                              ? "#ffffff"
+                              : "#f8fafc",
+                          }}
+                        >
+                          <TableCell
+                            sx={{
+                              fontSize: 12,
+                              py: "5px",
+                              px: "10px",
+                              fontWeight: esTotal ? 700 : 400,
+                              color: esTotal ? "#ea580c" : "inherit",
+                            }}
+                          >
+                            {esTotal ? "TOTAL" : fmtDiaCorto(fila.fecha!)}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            sx={{
+                              fontSize: 12,
+                              py: "5px",
+                              px: "10px",
+                              fontWeight: esTotal ? 700 : 400,
+                              color: esTotal ? "#ea580c" : "inherit",
+                            }}
+                          >
+                            {fila.equipos}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            sx={{
+                              fontSize: 12,
+                              py: "5px",
+                              px: "10px",
+                              fontWeight: esTotal ? 700 : 400,
+                              color: esTotal ? "#ea580c" : "inherit",
+                            }}
+                          >
+                            {fmtMXN(fila.accesorios)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+
+          </Box>
         </Box>
       )}
     </Box>
