@@ -54,7 +54,10 @@ def registrar_usuario(
             rol=usuario.rol,
             password=hashear_contraseña(usuario.password),
             modulo=modulo_obj,
-            is_admin=usuario.is_admin or False
+            is_admin=usuario.is_admin or False,
+            forma_pago=usuario.forma_pago,
+            cuenta_clabe=usuario.cuenta_clabe,
+            cuenta_interbancaria=usuario.cuenta_interbancaria,
         )
         db.add(usuario_nuevo)
         db.commit()
@@ -132,6 +135,12 @@ def editar_usuario(
             if len(datos.password) < 8 or not any(c.isdigit() for c in datos.password) or not any(c.isalpha() for c in datos.password):
                 raise HTTPException(status_code=400, detail="La contraseña no cumple con los requisitos")
             usuario_db.password = hashear_contraseña(datos.password)
+        if datos.forma_pago is not None:
+            usuario_db.forma_pago = datos.forma_pago
+        if datos.cuenta_clabe is not None:
+            usuario_db.cuenta_clabe = datos.cuenta_clabe
+        if datos.cuenta_interbancaria is not None:
+            usuario_db.cuenta_interbancaria = datos.cuenta_interbancaria
 
         db.commit()
         db.refresh(usuario_db)

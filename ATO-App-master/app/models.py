@@ -30,6 +30,9 @@ class Usuario(Base):
     ventas_chip = relationship("VentaChip", back_populates="empleado")
     modulo = relationship("Modulo", backref="usuarios")
     sueldo_base = Column(Float, default=0)
+    forma_pago = Column(String, nullable=True)
+    cuenta_clabe = Column(String, nullable=True)
+    cuenta_interbancaria = Column(String, nullable=True)
 
 class AsistenciaLegacy(Base):
     __tablename__ = "asistencias"
