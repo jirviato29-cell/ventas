@@ -106,40 +106,28 @@ interface TicketProps {
   productos: (TicketRow & { tipo_producto?: string })[];
 }
 
-const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, productos }: TicketProps) => {
-  const accesorios = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() !== "telefono");
-  const telefonos  = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() === "telefono");
-  return (
-    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
-      <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <strong style={{ fontSize: "13pt", letterSpacing: 0.5 }}>ENTRADA DE MERCANCÍA</strong>
-          <span style={{ fontSize: "10pt", fontWeight: 700 }}>Folio: {folio}</span>
-        </div>
-        <div style={{ display: "flex", gap: 24, marginTop: 4, fontSize: "9pt" }}>
-          <span>Fecha: {fecha}</span>
-          <span>Módulo: {moduloNombreStr}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
-          <span style={{ fontSize: "9pt" }}>Encargado: {encargadoNombre}</span>
-          <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "block" }} />
-        </div>
+const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, productos }: TicketProps) => (
+  <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
+    <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <strong style={{ fontSize: "13pt", letterSpacing: 0.5 }}>ENTRADA DE MERCANCÍA</strong>
+        <span style={{ fontSize: "10pt", fontWeight: 700 }}>Folio: {folio}</span>
       </div>
-      {accesorios.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: "10pt", borderLeft: "3px solid #333", paddingLeft: 6, marginBottom: 4 }}>ACCESORIOS</div>
-          <TablaTicket rows={accesorios} />
-        </div>
-      )}
-      {telefonos.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: "10pt", borderLeft: "3px solid #333", paddingLeft: 6, marginBottom: 4 }}>TELÉFONOS</div>
-          <TablaTicket rows={telefonos} />
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 24, marginTop: 4, fontSize: "9pt" }}>
+        <span>Fecha: {fecha}</span>
+        <span>Módulo: {moduloNombreStr}</span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+        <span style={{ fontSize: "9pt" }}>Encargado: {encargadoNombre}</span>
+        <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "block" }} />
+      </div>
     </div>
-  );
-};
+    <TablaTicket rows={productos} />
+    <div style={{ marginTop: 18, fontSize: "9pt" }}>
+      Revisó: _________________________________________
+    </div>
+  </div>
+);
 
 const EntradaMercancia = () => {
   const token = localStorage.getItem("token");
