@@ -111,9 +111,6 @@ const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, produ
   const telefonos  = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() === "telefono");
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
-      <div style={{ textAlign: "center", marginBottom: 6 }}>
-        <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "inline-block" }} />
-      </div>
       <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <strong style={{ fontSize: "13pt", letterSpacing: 0.5 }}>ENTRADA DE MERCANCÍA</strong>
@@ -122,7 +119,10 @@ const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, produ
         <div style={{ display: "flex", gap: 24, marginTop: 4, fontSize: "9pt" }}>
           <span>Fecha: {fecha}</span>
           <span>Módulo: {moduloNombreStr}</span>
-          <span>Encargado: {encargadoNombre}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+          <span style={{ fontSize: "9pt" }}>Encargado: {encargadoNombre}</span>
+          <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "block" }} />
         </div>
       </div>
       {accesorios.length > 0 && (
