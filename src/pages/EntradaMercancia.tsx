@@ -33,6 +33,7 @@ interface ItemEntrada {
   clave: string;
   cantidad: number;
   existencia_actual: number;
+  tipo_producto?: string;
 }
 
 interface EncargadoInfo {
@@ -47,6 +48,7 @@ interface ProductoDetalle {
   clave: string;
   producto: string;
   cantidad: number;
+  tipo_producto?: string;
 }
 
 interface EntradaHistorial {
@@ -68,6 +70,75 @@ interface EditItem {
   cantidad: number;
 }
 
+// ── Helpers de impresión ─────────────────────────────────────────────────────
+
+interface TicketRow { clave: string; producto: string; cantidad: number; }
+
+const TablaTicket = ({ rows }: { rows: TicketRow[] }) => (
+  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Arial, Helvetica, sans-serif", marginTop: 4 }}>
+    <thead>
+      <tr>
+        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "left", width: "15%", backgroundColor: "#ececec", fontWeight: 700 }}>Clave</th>
+        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "left", width: "55%", backgroundColor: "#ececec", fontWeight: 700 }}>Producto</th>
+        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "center", width: "10%", backgroundColor: "#ececec", fontWeight: 700 }}>Cant.</th>
+        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "center", width: "20%", backgroundColor: "#ececec", fontWeight: 700 }}>Revisado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((p, i) => (
+        <tr key={i} style={{ backgroundColor: i % 2 === 1 ? "#f7f7f7" : "#ffffff" }}>
+          <td style={{ border: "1px solid #ccc", padding: "4px 6px", fontWeight: 600 }}>{p.clave}</td>
+          <td style={{ border: "1px solid #ccc", padding: "4px 6px", wordBreak: "break-word" }}>{p.producto}</td>
+          <td style={{ border: "1px solid #ccc", padding: "4px 6px", textAlign: "center" }}>{p.cantidad}</td>
+          <td style={{ border: "1px solid #ccc", padding: "4px 6px" }}>&nbsp;</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
+interface TicketProps {
+  folio: string;
+  fecha: string;
+  moduloNombreStr: string;
+  usuarioNombre: string;
+  encargadoNombre: string;
+  productos: (TicketRow & { tipo_producto?: string })[];
+}
+
+const TicketImpresion = ({ folio, fecha, moduloNombreStr, usuarioNombre, encargadoNombre, productos }: TicketProps) => {
+  const accesorios = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() !== "telefono");
+  const telefonos  = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() === "telefono");
+  return (
+    <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
+      <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <strong style={{ fontSize: "13pt", letterSpacing: 0.5 }}>ENTRADA DE MERCANCÍA</strong>
+          <span style={{ fontSize: "10pt", fontWeight: 700 }}>Folio: {folio}</span>
+        </div>
+        <div style={{ display: "flex", gap: 24, marginTop: 4, fontSize: "9pt" }}>
+          <span>Fecha: {fecha}</span>
+          <span>Módulo: {moduloNombreStr}</span>
+          <span>Registró: {usuarioNombre}</span>
+        </div>
+        <div style={{ fontSize: "9pt", marginTop: 2 }}>Encargado: {encargadoNombre}</div>
+      </div>
+      {accesorios.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: "10pt", borderLeft: "3px solid #333", paddingLeft: 6, marginBottom: 4 }}>ACCESORIOS</div>
+          <TablaTicket rows={accesorios} />
+        </div>
+      )}
+      {telefonos.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: "10pt", borderLeft: "3px solid #333", paddingLeft: 6, marginBottom: 4 }}>TELÉFONOS</div>
+          <TablaTicket rows={telefonos} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const EntradaMercancia = () => {
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -85,6 +156,7 @@ const EntradaMercancia = () => {
   // ── Encargado ────────────────────────────────────────────────────────────────
   const [encargado, setEncargado] = useState<EncargadoInfo | null>(null);
   const [loadingEncargado, setLoadingEncargado] = useState(false);
+  const [encargadoDetalle, setEncargadoDetalle] = useState<EncargadoInfo | null>(null);
 
   // ── Búsqueda de producto ─────────────────────────────────────────────────────
   const [busquedaEntrada, setBusquedaEntrada] = useState("");
@@ -289,6 +361,7 @@ const EntradaMercancia = () => {
         clave: productoEntrada.clave,
         cantidad,
         existencia_actual: existenciaActual,
+        tipo_producto: productoEntrada.tipo_producto,
       };
       if (index !== -1) {
         const copy = [...prev];
@@ -339,16 +412,29 @@ const EntradaMercancia = () => {
 
   // ── Impresión de detalle histórico ────────────────────────────────────────────
 
-  const imprimirEntradaDetalle = () => {
+  const imprimirEntradaDetalle = async () => {
+    if (!entradaDetalle) return;
     setModalDetalle(false);
+    let enc: EncargadoInfo | null = null;
+    try {
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/modulos/${entradaDetalle.modulo_id}/encargado`,
+        config
+      );
+      enc = res.data ?? null;
+    } catch {
+      enc = null;
+    }
+    setEncargadoDetalle(enc);
     setModoImpresionDetalle(true);
     setTimeout(() => {
       window.print();
       window.onafterprint = () => {
         setModoImpresionDetalle(false);
+        setEncargadoDetalle(null);
         window.onafterprint = null;
       };
-    }, 200);
+    }, 300);
   };
 
   // ── Usuario actual ────────────────────────────────────────────────────────────
@@ -533,14 +619,18 @@ const EntradaMercancia = () => {
     <Box sx={{ p: 3 }}>
       {/* Estilos de impresión */}
       <style>{`
+        @page { size: letter; margin: 1cm; }
         .print-detalle { display: none; }
+        .print-active-ticket { display: none; }
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 32px; }
+          .print-area { position: absolute; left: 0; top: 0; }
+          .print-active-ticket { display: block !important; visibility: visible; }
+          .print-active-ticket * { visibility: visible; }
           .print-detalle { display: block !important; }
           .print-detalle, .print-detalle * { visibility: visible; }
-          .print-detalle { position: absolute; left: 0; top: 0; width: 100%; padding: 32px; }
+          .print-detalle { position: absolute; left: 0; top: 0; }
           .no-print { display: none !important; }
         }
       `}</style>
@@ -775,92 +865,14 @@ const EntradaMercancia = () => {
       {/* ── Print-only: detalle histórico ── */}
       {modoImpresionDetalle && entradaDetalle && (
         <Box className="print-detalle">
-          <Paper
-            elevation={0}
-            sx={{ p: 3, mb: 3, borderLeft: "4px solid #f97316", borderRadius: 2 }}
-          >
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="flex-start"
-              flexWrap="wrap"
-              gap={2}
-            >
-              <Box>
-                <Typography
-                  variant="overline"
-                  sx={{ color: "#64748b", letterSpacing: 2, fontSize: "0.7rem" }}
-                >
-                  Entrada de mercancía
-                </Typography>
-                <Typography
-                  variant="h3"
-                  fontWeight={800}
-                  sx={{ color: "#f97316", lineHeight: 1.1 }}
-                >
-                  {entradaDetalle.folio}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: "right" }}>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  FECHA
-                </Typography>
-                <Typography variant="body1" fontWeight={600}>
-                  {formatFecha(entradaDetalle.fecha)}
-                </Typography>
-              </Box>
-            </Box>
-            <Divider sx={{ my: 2 }} />
-            <Box display="flex" gap={5} flexWrap="wrap">
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "#64748b", letterSpacing: 1, fontWeight: 700 }}
-                  display="block"
-                >
-                  MÓDULO DESTINO
-                </Typography>
-                <Typography variant="body1" fontWeight={700}>
-                  {entradaDetalle.modulo_nombre}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "#64748b", letterSpacing: 1, fontWeight: 700 }}
-                  display="block"
-                >
-                  USUARIO
-                </Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {entradaDetalle.usuario_nombre}
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Clave</TableCell>
-                <TableCell>Producto</TableCell>
-                <TableCell align="right">Cantidad</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {entradaDetalle.productos.map((p, idx) => (
-                <TableRow key={idx}>
-                  <TableCell sx={{ fontWeight: 600, color: "#f97316" }}>
-                    {p.clave}
-                  </TableCell>
-                  <TableCell>{p.producto}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {p.cantidad}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <TicketImpresion
+            folio={entradaDetalle.folio}
+            fecha={formatFecha(entradaDetalle.fecha)}
+            moduloNombreStr={entradaDetalle.modulo_nombre}
+            usuarioNombre={entradaDetalle.usuario_nombre}
+            encargadoNombre={encargadoDetalle?.nombre_completo ?? "-"}
+            productos={entradaDetalle.productos}
+          />
         </Box>
       )}
 
@@ -878,9 +890,22 @@ const EntradaMercancia = () => {
             </Alert>
           )}
 
+          {/* Ticket compacto — solo impresión */}
+          <div className="print-active-ticket">
+            <TicketImpresion
+              folio={folioGuardado ?? ""}
+              fecha={fechaHoy}
+              moduloNombreStr={moduloNombre}
+              usuarioNombre={currentUser?.nombre_completo ?? currentUser?.username ?? "-"}
+              encargadoNombre={encargado?.nombre_completo ?? "-"}
+              productos={entradaLista}
+            />
+          </div>
+
           {/* Cabecera tipo documento */}
           <Paper
             elevation={0}
+            className="no-print"
             sx={{ p: 3, mb: 3, borderLeft: "4px solid #f97316", borderRadius: 2 }}
           >
             <Box
@@ -1067,7 +1092,7 @@ const EntradaMercancia = () => {
 
           {/* Tabla de productos de la entrada activa */}
           {entradaLista.length > 0 && (
-            <Paper elevation={0} sx={{ borderRadius: 2, overflow: "hidden", mb: 3 }}>
+            <Paper elevation={0} className="no-print" sx={{ borderRadius: 2, overflow: "hidden", mb: 3 }}>
               <Box
                 sx={{
                   px: 2.5,
@@ -1205,11 +1230,20 @@ const EntradaMercancia = () => {
             fullWidth
             size="small"
           >
-            {modulos.map((m) => (
-              <MenuItem key={m.id} value={m.id}>
-                {m.nombre}
-              </MenuItem>
-            ))}
+            {modulos
+              .filter((m) =>
+                !['v2', 'cadenas c.', 'mi2', 'bo', 'prueba'].includes(
+                  m.nombre.trim().toLowerCase()
+                )
+              )
+              .sort((a, b) =>
+                a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+              )
+              .map((m) => (
+                <MenuItem key={m.id} value={m.id}>
+                  {m.nombre}
+                </MenuItem>
+              ))}
           </TextField>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
