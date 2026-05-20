@@ -45,21 +45,11 @@ const InventarioPorModulo = () => {
   const [editarIndex, setEditarIndex] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  type ModoOperacion = 'normal' | 'conteo' | 'entrada';
+  type ModoOperacion = 'normal' | 'conteo';
   const [modo, setModo] = useState<ModoOperacion>('normal');
 
-// Entrada de mercancía
-const [busquedaEntrada, setBusquedaEntrada] = useState("");
-const [productoEntrada, setProductoEntrada] = useState<any | null>(null);
-const [cantidadEntrada, setCantidadEntrada] = useState("");
-const [entradaLista, setEntradaLista] = useState<ConteoItem[]>([]);
-const [editarEntradaIndex, setEditarEntradaIndex] = useState<number | null>(null);
-const [guardandoEntrada, setGuardandoEntrada] = useState(false);
 const [productoConteo, setProductoConteo] = useState<any | null>(null);
-const [textoBusqueda, setTextoBusqueda] = useState("");
 
-const [opcionesProductos, setOpcionesProductos] = useState<any[]>([]);
-const [loadingBusqueda, setLoadingBusqueda] = useState(false);
 const inputClaveRef = useRef<HTMLInputElement>(null);
 const [textoBusquedaConteo, setTextoBusquedaConteo] = useState("");
 const [opcionesConteo, setOpcionesConteo] = useState<any[]>([]);
@@ -73,8 +63,6 @@ const [cargandoPreview, setCargandoPreview] = useState(false);
 const [productosValidos, setProductosValidos] = useState<any[]>([]);
 const [erroresExcel, setErroresExcel] = useState<any[]>([]);
 const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
-
-const [existenciaActual, setExistenciaActual] = useState<number>(0);
 
 const [esAdmin, setEsAdmin] = useState(false);
 
@@ -423,141 +411,9 @@ const buscarProductosConteo = async (texto: string) => {
   );
 
 
-const buscarProductosEntrada = async (texto: string) => {
-  if (!texto || texto.length < 2 || !moduloSeleccionado) {
-    setOpcionesProductos([]);
-    return;
-  }
-
-  try {
-    setLoadingBusqueda(true);
-    const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
-      {
-        params: {
-          modulo_id: moduloSeleccionado,
-          q: texto
-        },
-        ...config
-      }
-    );
-
-    setOpcionesProductos(res.data);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoadingBusqueda(false);
-  }
-};
 
 
 
-
-
-const agregarEntrada = () => {
-  if (!productoEntrada) {
-    alert("Selecciona un producto");
-    return;
-  }
-
-  const cantidad = parseInt(cantidadEntrada, 10);
-  if (isNaN(cantidad) || cantidad <= 0) {
-    alert("Cantidad inválida");
-    return;
-  }
-
-  setEntradaLista(prev => {
-    const index = prev.findIndex(
-      p => p.clave === productoEntrada.clave
-    );
-
-    const nuevoItem = {
-      producto_id: productoEntrada.id, // solo referencia
-      producto: productoEntrada.producto,
-      clave: productoEntrada.clave,
-      cantidad,
-      existencia_actual: existenciaActual
-    };
-
-    if (index !== -1) {
-      const copy = [...prev];
-      copy[index].cantidad += cantidad;
-      return copy;
-    }
-
-    return [...prev, nuevoItem];
-  });
-
-  setProductoEntrada(null);
-  setCantidadEntrada("");
-  setBusquedaEntrada("");
-
-  // 🔥 Forzar que el buscador se active otra vez
-  setTimeout(() => {
-    if (inputBusquedaRef.current) {
-      inputBusquedaRef.current.focus();
-      inputBusquedaRef.current.click(); // abre autocomplete
-    }
-  }, 150);
-};
-
-
-const obtenerExistenciaModulo = async (clave: string) => {
-  try {
-    const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
-      {
-        params: { clave },
-        ...config
-      }
-    );
-
-    return res.data.existencia_actual;
-  } catch {
-    return 0;
-  }
-};
-
-
-
-
-const guardarEntradaMercancia = async () => {
-  if (entradaLista.length === 0) {
-    alert("No hay productos en la entrada");
-    return;
-  }
-
-  setGuardandoEntrada(true);
-
-  try {
-    const payload = {
-      modulo_id: moduloSeleccionado,
-      productos: entradaLista.map(p => ({
-        producto_id: p.producto_id,
-        cantidad: p.cantidad
-      }))
-    };
-
-    const res = await axios.post(
-      `${process.env.REACT_APP_API_URL}/inventario/inventario/entrada_mercancia`,
-      payload,
-      config
-    );
-
-    if (res.data.ok) {
-      alert("Entrada registrada correctamente");
-      setEntradaLista([]);
-      cargarInventario();
-      setModo('normal');
-    } else {
-      alert("Error inesperado");
-    }
-  } catch (err) {
-    alert("Error al guardar entrada");
-  } finally {
-    setGuardandoEntrada(false);
-  }
-};
 
 
 const descargarInventario = async () => {
@@ -808,22 +664,6 @@ const confirmarImportacion = async () => {
     </Button>
 
 
-  {/* borrar entrada de mercancia de aqui */}
-
-    {/* <Button
-      variant="contained"
-      color="info"
-      onClick={() => {
-        if (!moduloSeleccionado) {
-          alert("Selecciona un módulo primero");
-          return;
-        }
-        setModo('entrada');
-      }}
-    >
-      Entrada de mercancía
-    </Button> */}
-
     <Button
       variant="contained"
       color="primary"
@@ -1013,132 +853,6 @@ const confirmarImportacion = async () => {
 
 
 
-{modo === 'entrada' && (
-  <Box sx={{ border: "1px solid #ccc", borderRadius: 2, p: 2, mb: 4 }}>
-    <Typography variant="h6">Entrada de mercancía</Typography>
-
-     <Autocomplete
-  options={opcionesProductos}
-  loading={loadingBusqueda}
-  value={productoEntrada}
-  inputValue={busquedaEntrada}
-  onChange={async (e, value) => {
-    setProductoEntrada(value);
-    if (!value) return;
-
-    const existencia = await obtenerExistenciaModulo(value.clave);
-    setExistenciaActual(existencia);
-
-    // 🔥 mover foco a cantidad
-    setTimeout(() => {
-      inputCantidadRef.current?.focus();
-    }, 100);
-  }}
-  onInputChange={(e, value) => {
-    setBusquedaEntrada(value);
-    buscarProductosEntrada(value);
-  }}
-  getOptionLabel={(option) => `${option.clave} - ${option.producto}`}
-  isOptionEqualToValue={(option, value) => option.id === value.id}
-  renderInput={(params) => (
-  <TextField
-    {...params}
-    label="Buscar producto"
-    fullWidth
-    inputRef={inputBusquedaRef}
-    InputProps={{
-      ...params.InputProps,
-      endAdornment: (
-        <>
-          {loadingBusqueda && <CircularProgress size={20} />}
-          {params.InputProps.endAdornment}
-        </>
-      ),
-    }}
-  />
-)}
-/>
-
-
-
-    {productoEntrada && (
-      <Box mt={2}>
-        <Typography>
-          <strong>Producto:</strong> {productoEntrada.clave} ({productoEntrada.producto})
-        </Typography>
-
-              <TextField
-                label="Cantidad recibida"
-                type="number"
-                value={cantidadEntrada}
-                inputRef={inputCantidadRef}
-                onChange={(e) => setCantidadEntrada(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    agregarEntrada();
-                  }
-                }}
-                sx={{ mt: 2, width: 200 }}
-              />
-
-        <Button
-          variant="contained"
-          sx={{ ml: 2, mt: 2 }}
-          onClick={agregarEntrada}
-        >
-          Agregar a lista
-        </Button>
-      </Box>
-    )}
-
-    {entradaLista.length > 0 && (
-      <Box mt={3}>
-        <Typography><strong>Productos recibidos:</strong></Typography>
-
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Clave</TableCell>
-              <TableCell>Producto</TableCell>
-              <TableCell align="right">Cantidad</TableCell>
-              <TableCell>Acciones</TableCell>
-              <TableCell align="right">Existencia actual</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {entradaLista.map((p, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{p.clave}</TableCell>
-                <TableCell>{p.producto}</TableCell>
-                <TableCell align="right">{p.cantidad}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => setEntradaLista(prev => prev.filter((_, i) => i !== idx))}>
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
-                <TableCell align="right">
-                  {p.existencia_actual}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        <Box mt={2}>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={guardarEntradaMercancia}
-            disabled={guardandoEntrada}
-          >
-            Guardar entrada
-          </Button>
-        </Box>
-      </Box>
-    )}
-  </Box>
-  )}
 
 
 
