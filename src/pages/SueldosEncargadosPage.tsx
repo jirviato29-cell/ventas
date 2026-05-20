@@ -194,7 +194,7 @@ const SueldosEncargadosPage: React.FC = () => {
   const cicloActual = ciclos[cicloSelIdx];
 
   return (
-    <Box sx={{ p: 3, maxWidth: 960, mx: "auto" }}>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h5" fontWeight={700} color="#1e293b" mb={3}>
         Sueldos Encargados
       </Typography>
@@ -295,8 +295,8 @@ const SueldosEncargadosPage: React.FC = () => {
           {/* ── Cuadros lado a lado (responsive) ───────────────────── */}
           <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start">
 
-            {/* Cuadro 1: Resumen de productos */}
-            <Box flex="1 1 300px" minWidth={0}>
+            {/* Cuadro 1: Resumen de productos — ~50% */}
+            <Box sx={{ flex: "2 1 300px", minWidth: 0, overflow: "hidden" }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
                 <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
@@ -333,7 +333,17 @@ const SueldosEncargadosPage: React.FC = () => {
                         key={p.nombre}
                         sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
                       >
-                        <TableCell sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                        <TableCell
+                          sx={{
+                            fontSize: 12,
+                            py: "5px",
+                            px: "10px",
+                            maxWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {p.nombre}
                         </TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
@@ -361,8 +371,8 @@ const SueldosEncargadosPage: React.FC = () => {
               </TableContainer>
             </Box>
 
-            {/* Cuadro 2: Desglose por día */}
-            <Box flex="0 1 180px" minWidth={0}>
+            {/* Cuadro 2: Desglose por día — ~25% */}
+            <Box sx={{ flex: "1 1 150px", minWidth: 0, overflow: "hidden" }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Ventas por día
               </Typography>
@@ -447,9 +457,9 @@ const SueldosEncargadosPage: React.FC = () => {
               </TableContainer>
             </Box>
 
-            {/* Cuadro 3: Resumen nómina del módulo */}
+            {/* Cuadro 3: Resumen nómina del módulo — ~25% */}
             {datosResumen && (
-              <Box flex="1 1 300px" minWidth={0}>
+              <Box sx={{ flex: "1 1 150px", minWidth: 0, overflow: "hidden" }}>
                 <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
                   Resumen
                 </Typography>
@@ -501,6 +511,10 @@ const SueldosEncargadosPage: React.FC = () => {
                                 px: "10px",
                                 fontWeight: esEnc ? 700 : 400,
                                 color: esEnc ? "#ea580c" : "inherit",
+                                maxWidth: 0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {emp.nombre}
