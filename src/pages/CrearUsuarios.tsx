@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, MenuItem, TextField, Typography, Alert, Paper,
-  Menu
 } from "@mui/material";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -17,22 +16,29 @@ const CrearUsuario = () => {
   const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
   const navigate = useNavigate();
   const [nombreCompleto, setNombreCompleto] = useState("");
+  const [formaPago, setFormaPago] = useState("");
+  const [cuentaClabe, setCuentaClabe] = useState("");
+  const [cuentaInterbancaria, setCuentaInterbancaria] = useState("");
   const token = localStorage.getItem("token");
   const config = {
     headers: { Authorization: `Bearer ${token}` },
   };
 
   useEffect(() => {
-  const fetchModulos = async () => {
-    try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, config);
-      setModulos(res.data); // res.data debe ser [{id, nombre}, ...]
-    } catch (err) {
-      console.error("Error al cargar módulos");
-    }
-  };
-  fetchModulos();
-}, []);
+    const localToken = localStorage.getItem("token");
+    const cfg = { headers: { Authorization: `Bearer ${localToken}` } };
+    const fetchModulos = async () => {
+      try {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, cfg);
+        setModulos(res.data);
+      } catch {
+        console.error("Error al cargar módulos");
+      }
+    };
+    fetchModulos();
+  }, []);
+
+  const mostrarCuentas = formaPago === "BBVA" || formaPago === "Banco Azteca";
 
   const handleSubmit = async () => {
     try {
@@ -44,7 +50,10 @@ const CrearUsuario = () => {
           password,
           rol,
           modulo_id: rol !== "admin" ? modulo : null,
-          is_admin: isAdmin
+          is_admin: isAdmin,
+          forma_pago: formaPago || null,
+          cuenta_clabe: mostrarCuentas ? (cuentaClabe || null) : null,
+          cuenta_interbancaria: mostrarCuentas ? (cuentaInterbancaria || null) : null,
         },
         config
       );
@@ -55,6 +64,9 @@ const CrearUsuario = () => {
       setRol("");
       setModulo("");
       setIsAdmin(false);
+      setFormaPago("");
+      setCuentaClabe("");
+      setCuentaInterbancaria("");
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
@@ -126,6 +138,40 @@ const CrearUsuario = () => {
               </MenuItem>
             ))}
           </TextField>
+        )}
+
+        <TextField
+          select
+          label="Forma de pago"
+          value={formaPago}
+          onChange={(e) => setFormaPago(e.target.value)}
+          fullWidth
+          margin="normal"
+        >
+          <MenuItem value="">(Sin forma de pago)</MenuItem>
+          <MenuItem value="BBVA">BBVA</MenuItem>
+          <MenuItem value="Banco Azteca">Banco Azteca</MenuItem>
+          <MenuItem value="Kids">Kids</MenuItem>
+        </TextField>
+
+        {mostrarCuentas && (
+          <>
+            <TextField
+              label="Cuenta CLABE"
+              value={cuentaClabe}
+              onChange={(e) => setCuentaClabe(e.target.value)}
+              fullWidth
+              margin="normal"
+              inputProps={{ maxLength: 18 }}
+            />
+            <TextField
+              label="Cuenta interbancaria"
+              value={cuentaInterbancaria}
+              onChange={(e) => setCuentaInterbancaria(e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+          </>
         )}
 
         <Box mt={2}>

@@ -1,67 +1,123 @@
 import React, { useEffect, useState } from "react";
 import {
-  Container, Typography, TextField, IconButton, MenuItem,
-  Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer, Button
+  Container, Typography, IconButton, MenuItem,
+  Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from "@mui/material";
-import { Edit, Save, Delete } from "@mui/icons-material";
+import { Edit, Delete, Close } from "@mui/icons-material";
 import axios from "axios";
-import { Usuario } from "../Types"; // Asegúrate de definir esta interfaz
+import { Usuario } from "../Types";
 
 const roles = ["admin", "encargado", "asesor", "contador"];
 
+interface FormEdicion {
+  username: string;
+  rol: string;
+  modulo_id: string;
+  is_admin: boolean;
+  password: string;
+  sueldo_base: string;
+  forma_pago: string;
+  cuenta_clabe: string;
+  cuenta_interbancaria: string;
+}
+
+const formVacio: FormEdicion = {
+  username: "",
+  rol: "",
+  modulo_id: "",
+  is_admin: false,
+  password: "",
+  sueldo_base: "",
+  forma_pago: "",
+  cuenta_clabe: "",
+  cuenta_interbancaria: "",
+};
+
 const UsuariosAdmin = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [modulos, setModulos] = useState<{ id: number; nombre: string }[]>([]);
+  const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
-  const [formulario, setFormulario] = useState<Partial<Usuario> & { password?: string; modulo_id?: number }>({});
-  const [modulos, setModulos] = useState<{ id: number, nombre: string }[]>([]);
+  const [form, setForm] = useState<FormEdicion>(formVacio);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
+  const mostrarCuentas = form.forma_pago === "BBVA" || form.forma_pago === "Banco Azteca";
+
   const cargarModulos = async () => {
-  try {
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, config);
-    setModulos(res.data);
-  } catch (error) {
-    console.error("Error al cargar módulos", error);
-  }
-};
+    try {
+      const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, config);
+      setModulos(res.data);
+    } catch {
+      console.error("Error al cargar módulos");
+    }
+  };
 
   const cargarUsuarios = async () => {
     try {
       const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, config);
       setUsuarios(res.data);
-    } catch (err) {
+    } catch {
       alert("Error al cargar usuarios");
     }
   };
 
-  const editarUsuario = (usuario: Usuario) => {
-  setEditandoId(usuario.id);
-  setFormulario({ ...usuario });
-};
-
-
-const guardarCambios = async (id: number) => {
-  try {
-    const datos: any = { ...formulario };
-    if (!datos.password) delete datos.password;
-    if (!datos.username) delete datos.username;
-    if (!datos.rol) delete datos.rol;
-    if (datos.modulo_id === "" || isNaN(Number(datos.modulo_id))) delete datos.modulo_id;
-    if (typeof datos.is_admin === "undefined") delete datos.is_admin;
-     delete datos.modulo;
-     delete datos.id;
-    console.log("Enviando datos:", datos); // <-- AGREGA ESTO
-
-    await axios.put(`${process.env.REACT_APP_API_URL}/registro/usuarios/${id}`, datos, config);
-    setEditandoId(null);
-    setFormulario({});
+  useEffect(() => {
     cargarUsuarios();
-  } catch (err: any) {
-    alert(err.response?.data?.detail || "Error al editar usuario");
-  }
-};
+    cargarModulos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const abrirDialog = (u: Usuario) => {
+    setEditandoId(u.id);
+    setForm({
+      username: u.username,
+      rol: u.rol,
+      modulo_id: u.modulo?.id?.toString() ?? "",
+      is_admin: u.is_admin,
+      password: "",
+      sueldo_base: u.sueldo_base?.toString() ?? "0",
+      forma_pago: u.forma_pago ?? "",
+      cuenta_clabe: u.cuenta_clabe ?? "",
+      cuenta_interbancaria: u.cuenta_interbancaria ?? "",
+    });
+    setDialogAbierto(true);
+  };
+
+  const cerrarDialog = () => {
+    setDialogAbierto(false);
+    setEditandoId(null);
+    setForm(formVacio);
+  };
+
+  const guardarCambios = async () => {
+    if (editandoId === null) return;
+    try {
+      const payload: Record<string, unknown> = {
+        is_admin: form.is_admin,
+        sueldo_base: parseFloat(form.sueldo_base) || 0,
+        forma_pago: form.forma_pago || null,
+        cuenta_clabe: mostrarCuentas ? (form.cuenta_clabe || null) : null,
+        cuenta_interbancaria: mostrarCuentas ? (form.cuenta_interbancaria || null) : null,
+      };
+      if (form.username) payload.username = form.username;
+      if (form.rol) payload.rol = form.rol;
+      if (form.modulo_id) payload.modulo_id = parseInt(form.modulo_id);
+      if (form.password) payload.password = form.password;
+
+      await axios.put(
+        `${process.env.REACT_APP_API_URL}/registro/usuarios/${editandoId}`,
+        payload,
+        config
+      );
+      cerrarDialog();
+      cargarUsuarios();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al editar usuario");
+    }
+  };
 
   const eliminarUsuario = async (id: number) => {
     if (!window.confirm("¿Estás seguro de eliminar este usuario?")) return;
@@ -73,108 +129,37 @@ const guardarCambios = async (id: number) => {
     }
   };
 
-  useEffect(() => {
-    cargarUsuarios();
-     cargarModulos();
-  }, []);
+  const setF = (campo: keyof FormEdicion, valor: string | boolean) =>
+    setForm((prev) => ({ ...prev, [campo]: valor }));
 
   return (
     <Container sx={{ mt: 4 }}>
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Nombre</TableCell>
+              <TableCell>Nombre de usuario</TableCell>
+              <TableCell>Nombre completo</TableCell>
               <TableCell>Rol</TableCell>
               <TableCell>Módulo</TableCell>
               <TableCell>Admin</TableCell>
-              <TableCell>Contraseña</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {usuarios.map((u) => (
               <TableRow key={u.id}>
+                <TableCell>{u.username}</TableCell>
+                <TableCell>{u.nombre_completo}</TableCell>
+                <TableCell>{u.rol}</TableCell>
+                <TableCell>{u.modulo?.nombre || "-"}</TableCell>
+                <TableCell>{u.is_admin ? "Sí" : "No"}</TableCell>
                 <TableCell>
-                  {editandoId === u.id ? (
-                    <TextField
-                      value={formulario.username || ""}
-                      onChange={(e) => setFormulario({ ...formulario, username: e.target.value })}
-                      size="small"
-                    />
-                  ) : u.username}
-                </TableCell>
-                <TableCell>
-                  {editandoId === u.id ? (
-                    <TextField
-                      select
-                      value={formulario.rol || ""}
-                      onChange={(e) => setFormulario({ ...formulario, rol: e.target.value as Usuario["rol"] })}
-                      size="small"
-                    >
-                      {roles.map((rol) => (
-                        <MenuItem key={rol} value={rol}>{rol}</MenuItem>
-                      ))}
-                    </TextField>
-                  ) : u.rol}
-                </TableCell>
-                <TableCell>
-                  {editandoId === u.id ? (
-                    <TextField
-                      select
-                      value={formulario.modulo_id ?? ""}
-                      onChange={(e) =>
-                        setFormulario({ ...formulario, modulo_id: parseInt(e.target.value) })
-                      }
-                      size="small"
-                    >
-                      {modulos.map((modulo) => (
-                        <MenuItem key={modulo.id} value={modulo.id}>
-                          {modulo.nombre}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  ) : (
-                    u.modulo?.nombre || "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editandoId === u.id ? (
-                    <TextField
-                      select
-                      value={formulario.is_admin ? "true" : "false"}
-                      onChange={(e) => setFormulario({ ...formulario, is_admin: e.target.value === "true" })}
-                      size="small"
-                    >
-                      <MenuItem value="true">Sí</MenuItem>
-                      <MenuItem value="false">No</MenuItem>
-                    </TextField>
-                  ) : u.is_admin ? "Sí" : "No"}
-                </TableCell>
-                <TableCell>
-                  {editandoId === u.id ? (
-                    <TextField
-                      value={formulario.password || ""}
-                      onChange={(e) => setFormulario({ ...formulario, password: e.target.value })}
-                      size="small"
-                      type="password"
-                      placeholder="Nueva contraseña"
-                    />
-                  ) : (
-                    "••••••••"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editandoId === u.id ? (
-                    <IconButton color="primary" onClick={() => guardarCambios(u.id)}>
-                      <Save />
-                    </IconButton>
-                  ) : (
-                    <IconButton color="info" onClick={() => editarUsuario(u)}>
-                      <Edit />
-                    </IconButton>
-                  )}
+                  <IconButton color="info" onClick={() => abrirDialog(u)}>
+                    <Edit />
+                  </IconButton>
                   <IconButton color="error" onClick={() => eliminarUsuario(u.id)}>
                     <Delete />
                   </IconButton>
@@ -189,6 +174,138 @@ const guardarCambios = async (id: number) => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* ── Dialog de edición ─────────────────────────────────────────── */}
+      <Dialog open={dialogAbierto} onClose={cerrarDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pr: 6 }}>
+          Editar usuario
+          <IconButton
+            onClick={cerrarDialog}
+            size="small"
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <TextField
+            label="Nombre de usuario"
+            value={form.username}
+            onChange={(e) => setF("username", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+          />
+
+          <TextField
+            select
+            label="Rol"
+            value={form.rol}
+            onChange={(e) => setF("rol", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+          >
+            {roles.map((r) => (
+              <MenuItem key={r} value={r}>{r}</MenuItem>
+            ))}
+          </TextField>
+
+          {form.rol !== "admin" && (
+            <TextField
+              select
+              label="Módulo asignado"
+              value={form.modulo_id}
+              onChange={(e) => setF("modulo_id", e.target.value)}
+              fullWidth
+              margin="normal"
+              size="small"
+            >
+              {modulos.map((m) => (
+                <MenuItem key={m.id} value={m.id.toString()}>{m.nombre}</MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          <TextField
+            select
+            label="Admin"
+            value={form.is_admin ? "true" : "false"}
+            onChange={(e) => setF("is_admin", e.target.value === "true")}
+            fullWidth
+            margin="normal"
+            size="small"
+          >
+            <MenuItem value="true">Sí</MenuItem>
+            <MenuItem value="false">No</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Nueva contraseña"
+            type="password"
+            value={form.password}
+            onChange={(e) => setF("password", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+            placeholder="Dejar vacío para no cambiar"
+          />
+
+          <TextField
+            label="Sueldo base"
+            type="number"
+            value={form.sueldo_base}
+            onChange={(e) => setF("sueldo_base", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+            inputProps={{ min: 0, step: 0.01 }}
+          />
+
+          <TextField
+            select
+            label="Forma de pago"
+            value={form.forma_pago}
+            onChange={(e) => setF("forma_pago", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+          >
+            <MenuItem value="">(Sin forma de pago)</MenuItem>
+            <MenuItem value="BBVA">BBVA</MenuItem>
+            <MenuItem value="Banco Azteca">Banco Azteca</MenuItem>
+            <MenuItem value="Kids">Kids</MenuItem>
+          </TextField>
+
+          {mostrarCuentas && (
+            <>
+              <TextField
+                label="Cuenta CLABE"
+                value={form.cuenta_clabe}
+                onChange={(e) => setF("cuenta_clabe", e.target.value)}
+                fullWidth
+                margin="normal"
+                size="small"
+                inputProps={{ maxLength: 18 }}
+              />
+              <TextField
+                label="Cuenta interbancaria"
+                value={form.cuenta_interbancaria}
+                onChange={(e) => setF("cuenta_interbancaria", e.target.value)}
+                fullWidth
+                margin="normal"
+                size="small"
+              />
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={cerrarDialog}>Cancelar</Button>
+          <Button variant="contained" onClick={guardarCambios}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

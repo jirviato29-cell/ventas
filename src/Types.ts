@@ -64,13 +64,16 @@ export interface Usuario {
   id: number;
   nombre_completo: string;
   username: string;
-  rol: "admin" | "encargado" | "asesor";
+  rol: "admin" | "encargado" | "asesor" | "contador";
   modulo: {
     id: number;
     nombre: string;
   } | null;
   is_admin: boolean;
   sueldo_base: number;
+  forma_pago?: string | null;
+  cuenta_clabe?: string | null;
+  cuenta_interbancaria?: string | null;
 }
 
 
@@ -194,7 +197,7 @@ export interface Diferencia {
   diferencia: number;
 }
 
-type EntradaItem = {
+export type EntradaItem = {
   producto_id: number;
   clave: string;
   producto?: string;
