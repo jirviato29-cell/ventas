@@ -24,6 +24,7 @@ import {
 import { Delete, Add, Print, Save, Inventory2, Visibility, Search, Edit } from "@mui/icons-material";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "axios";
+import logoAto from "../ATO.jpeg";
 
 // ── Interfaces de entrada activa ──────────────────────────────────────────────
 
@@ -101,16 +102,18 @@ interface TicketProps {
   folio: string;
   fecha: string;
   moduloNombreStr: string;
-  usuarioNombre: string;
   encargadoNombre: string;
   productos: (TicketRow & { tipo_producto?: string })[];
 }
 
-const TicketImpresion = ({ folio, fecha, moduloNombreStr, usuarioNombre, encargadoNombre, productos }: TicketProps) => {
+const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, productos }: TicketProps) => {
   const accesorios = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() !== "telefono");
   const telefonos  = productos.filter((p) => (p.tipo_producto ?? "").toLowerCase() === "telefono");
   return (
     <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
+      <div style={{ textAlign: "center", marginBottom: 6 }}>
+        <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "inline-block" }} />
+      </div>
       <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <strong style={{ fontSize: "13pt", letterSpacing: 0.5 }}>ENTRADA DE MERCANCÍA</strong>
@@ -119,9 +122,8 @@ const TicketImpresion = ({ folio, fecha, moduloNombreStr, usuarioNombre, encarga
         <div style={{ display: "flex", gap: 24, marginTop: 4, fontSize: "9pt" }}>
           <span>Fecha: {fecha}</span>
           <span>Módulo: {moduloNombreStr}</span>
-          <span>Registró: {usuarioNombre}</span>
+          <span>Encargado: {encargadoNombre}</span>
         </div>
-        <div style={{ fontSize: "9pt", marginTop: 2 }}>Encargado: {encargadoNombre}</div>
       </div>
       {accesorios.length > 0 && (
         <div style={{ marginBottom: 10 }}>
@@ -869,7 +871,6 @@ const EntradaMercancia = () => {
             folio={entradaDetalle.folio}
             fecha={formatFecha(entradaDetalle.fecha)}
             moduloNombreStr={entradaDetalle.modulo_nombre}
-            usuarioNombre={entradaDetalle.usuario_nombre}
             encargadoNombre={encargadoDetalle?.nombre_completo ?? "-"}
             productos={entradaDetalle.productos}
           />
@@ -896,7 +897,6 @@ const EntradaMercancia = () => {
               folio={folioGuardado ?? ""}
               fecha={fechaHoy}
               moduloNombreStr={moduloNombre}
-              usuarioNombre={currentUser?.nombre_completo ?? currentUser?.username ?? "-"}
               encargadoNombre={encargado?.nombre_completo ?? "-"}
               productos={entradaLista}
             />
