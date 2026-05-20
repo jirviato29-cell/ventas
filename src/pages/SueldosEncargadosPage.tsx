@@ -157,10 +157,15 @@ const SueldosEncargadosPage: React.FC = () => {
       setCargando(true);
       setError(null);
       try {
-        const params = `modulo=${encodeURIComponent(modulo)}&fecha_inicio=${inicio}&fecha_fin=${fin}`;
         const [{ data: sueldoData }, { data: resumenData }] = await Promise.all([
-          axios.get<SueldoResponse>(`${API}/sueldos/encargados?${params}`, { headers: authH() }),
-          axios.get<ResumenModuloResponse>(`${API}/sueldos/resumen-modulo?${params}`, { headers: authH() }),
+          axios.get<SueldoResponse>(
+            `${API}/sueldos/encargados?modulo=${encodeURIComponent(modulo)}&fecha_inicio=${inicio}&fecha_fin=${fin}`,
+            { headers: authH() }
+          ),
+          axios.get<ResumenModuloResponse>(
+            `${API}/sueldos/resumen-modulo?modulo=${encodeURIComponent(modulo)}`,
+            { headers: authH() }
+          ),
         ]);
         setDatos(sueldoData);
         setDatosResumen(resumenData);
@@ -445,8 +450,11 @@ const SueldosEncargadosPage: React.FC = () => {
             {/* Cuadro 3: Resumen nómina del módulo */}
             {datosResumen && (
               <Box flex="1 1 300px" minWidth={0}>
-                <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
+                <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
                   Resumen
+                </Typography>
+                <Typography fontSize={11} color="#94a3b8" mb={1.5}>
+                  Semana {fmtDiaCorto(datosResumen.nomina_inicio)}&nbsp;–&nbsp;{fmtDiaCorto(datosResumen.nomina_fin)}
                 </Typography>
 
                 <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
