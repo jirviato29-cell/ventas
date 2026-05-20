@@ -296,7 +296,7 @@ const SueldosEncargadosPage: React.FC = () => {
           <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start">
 
             {/* Cuadro 1: Resumen de productos — ~50% */}
-            <Box sx={{ flex: "2 1 300px", minWidth: 0, overflow: "hidden" }}>
+            <Box sx={{ flex: "2 1 300px", minWidth: 0 }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
                 <Box component="span" color="#64748b" fontWeight={400} fontSize={14}>
@@ -338,29 +338,25 @@ const SueldosEncargadosPage: React.FC = () => {
                             fontSize: 12,
                             py: "5px",
                             px: "10px",
-                            maxWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
                           }}
                         >
                           {p.nombre}
                         </TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
                           {p.cantidad}
                         </TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
                           {fmtMXN(p.neto)}
                         </TableCell>
                         <TableCell
                           align="right"
-                          sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b" }}
+                          sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b", whiteSpace: "nowrap" }}
                         >
                           {fmtPct(p.porcentaje_label)}
                         </TableCell>
                         <TableCell
                           align="right"
-                          sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600 }}
+                          sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600, whiteSpace: "nowrap" }}
                         >
                           {fmtMXN(p.comision)}
                         </TableCell>
@@ -372,7 +368,7 @@ const SueldosEncargadosPage: React.FC = () => {
             </Box>
 
             {/* Cuadro 2: Desglose por día — ~25% */}
-            <Box sx={{ flex: "1 1 150px", minWidth: 0, overflow: "hidden" }}>
+            <Box sx={{ flex: "1 1 150px", minWidth: 0 }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Ventas por día
               </Typography>
@@ -433,6 +429,7 @@ const SueldosEncargadosPage: React.FC = () => {
                               px: "10px",
                               fontWeight: esTotal ? 700 : 400,
                               color: esTotal ? "#ea580c" : "inherit",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {fila.equipos}
@@ -445,6 +442,7 @@ const SueldosEncargadosPage: React.FC = () => {
                               px: "10px",
                               fontWeight: esTotal ? 700 : 400,
                               color: esTotal ? "#ea580c" : "inherit",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {fmtMXN(fila.accesorios)}
@@ -459,7 +457,7 @@ const SueldosEncargadosPage: React.FC = () => {
 
             {/* Cuadro 3: Resumen nómina del módulo — ~25% */}
             {datosResumen && (
-              <Box sx={{ flex: "1 1 150px", minWidth: 0, overflow: "hidden" }}>
+              <Box sx={{ flex: "1 1 150px", minWidth: 0 }}>
                 <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
                   Resumen
                 </Typography>
@@ -511,21 +509,17 @@ const SueldosEncargadosPage: React.FC = () => {
                                 px: "10px",
                                 fontWeight: esEnc ? 700 : 400,
                                 color: esEnc ? "#ea580c" : "inherit",
-                                maxWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
                               }}
                             >
                               {emp.nombre}
                             </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
                               {fmtMXN(emp.sueldo_base)}
                             </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
                               {fmtMXN(emp.horas_extras_pagadas)}
                             </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px" }}>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
                               {fmtMXN(emp.comisiones)}
                             </TableCell>
                             <TableCell
@@ -536,6 +530,7 @@ const SueldosEncargadosPage: React.FC = () => {
                                 px: "10px",
                                 fontWeight: 600,
                                 color: esEnc ? "#ea580c" : "inherit",
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {fmtMXN(emp.total)}
