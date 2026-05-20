@@ -62,7 +62,7 @@ export interface Modulo {
 
 export interface Usuario {
   id: number;
-  nombre_completo: string;
+  nombre_completo?: string | null;
   username: string;
   rol: "admin" | "encargado" | "asesor" | "contador";
   modulo: {

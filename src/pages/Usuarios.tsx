@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  Container, Typography, IconButton, MenuItem,
+  Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from "@mui/material";
@@ -132,43 +132,69 @@ const UsuariosAdmin = () => {
   const setF = (campo: keyof FormEdicion, valor: string | boolean) =>
     setForm((prev) => ({ ...prev, [campo]: valor }));
 
+  const fmtMoneda = (v?: number | null) =>
+    `$${(v ?? 0).toFixed(2)}`;
+
   return (
-    <Container sx={{ mt: 4 }}>
+    <Box sx={{ mt: 4, px: 2 }}>
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
+        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 900 }}>
+          <colgroup>
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "9%" }} />
+          </colgroup>
           <TableHead>
             <TableRow>
-              <TableCell>Nombre de usuario</TableCell>
-              <TableCell>Nombre completo</TableCell>
-              <TableCell>Rol</TableCell>
-              <TableCell>Módulo</TableCell>
-              <TableCell>Admin</TableCell>
-              <TableCell>Acciones</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>ID</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Nombre completo</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Rol</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Módulo</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo base</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {usuarios.map((u) => (
               <TableRow key={u.id}>
-                <TableCell>{u.username}</TableCell>
-                <TableCell>{u.nombre_completo}</TableCell>
-                <TableCell>{u.rol}</TableCell>
-                <TableCell>{u.modulo?.nombre || "-"}</TableCell>
-                <TableCell>{u.is_admin ? "Sí" : "No"}</TableCell>
-                <TableCell>
-                  <IconButton color="info" onClick={() => abrirDialog(u)}>
-                    <Edit />
+                <TableCell sx={{ fontSize: "0.75rem" }}>{u.username}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-word" }}>
+                  {u.nombre_completo || "-"}
+                </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>{u.rol}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>{u.modulo?.nombre || "-"}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>{u.forma_pago || "-"}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
+                  {u.cuenta_clabe || "-"}
+                </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
+                  {u.cuenta_interbancaria || "-"}
+                </TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>
+                  <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
+                    <Edit fontSize="small" />
                   </IconButton>
-                  <IconButton color="error" onClick={() => eliminarUsuario(u.id)}>
-                    <Delete />
+                  <IconButton size="small" color="error" onClick={() => eliminarUsuario(u.id)}>
+                    <Delete fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>
             ))}
             {usuarios.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">No hay usuarios</TableCell>
+                <TableCell colSpan={9} align="center">No hay usuarios</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -306,7 +332,7 @@ const UsuariosAdmin = () => {
           <Button variant="contained" onClick={guardarCambios}>Guardar</Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 
