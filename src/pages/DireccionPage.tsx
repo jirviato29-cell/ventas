@@ -523,34 +523,35 @@ const DireccionPage: React.FC = () => {
         </Button>
       )}
 
-      {/* Caja chica del día siguiente — solo direccion */}
-      {rolToken === 'direccion' && (
-        <Box sx={{ mt: '10px', p: '10px', bgcolor: '#f0f4ff', border: '1px solid #c7d7f9', borderRadius: '8px' }}>
-          <Typography fontSize={11} fontWeight={700} color="#1a2744" sx={{ mb: '6px', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
-            Caja chica del día {fechaSiguiente ? fmtFecha(fechaSiguiente) : '—'}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <TextField
-              size="small"
-              type="number"
-              value={cajaChicaInput}
-              onChange={(e) => setCajaChicaInput(e.target.value)}
-              inputProps={{ min: 0, step: 0.01 }}
-              sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 32, fontSize: 12 }, '& input': { py: '4px !important' } }}
-              placeholder="0.00"
-            />
-            <Button
-              variant="contained"
-              onClick={guardarCajaChica}
-              disabled={savingCajaChica}
-              sx={{ bgcolor: '#1a2744', '&:hover': { bgcolor: '#0f1a35' }, fontWeight: 700, fontSize: 11, height: 32, borderRadius: '6px', letterSpacing: '0.3px', flexShrink: 0 }}
-            >
-              {savingCajaChica ? 'Guardando...' : 'Guardar caja chica'}
-            </Button>
-          </Box>
-        </Box>
-      )}
     </>
+  ) : null;
+
+  // ── Bloque caja chica (director) — visible aunque no haya corte ──────────
+  const bloqueCajaChicaDir = mostrarDetalle && rolToken === 'direccion' ? (
+    <Box sx={{ mt: '10px', p: '10px', bgcolor: '#f0f4ff', border: '1px solid #c7d7f9', borderRadius: '8px' }}>
+      <Typography fontSize={11} fontWeight={700} color="#1a2744" sx={{ mb: '6px', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+        Caja chica del día {fechaSiguiente ? fmtFecha(fechaSiguiente) : '—'}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <TextField
+          size="small"
+          type="number"
+          value={cajaChicaInput}
+          onChange={(e) => setCajaChicaInput(e.target.value)}
+          inputProps={{ min: 0, step: 0.01 }}
+          sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 32, fontSize: 12 }, '& input': { py: '4px !important' } }}
+          placeholder="0.00"
+        />
+        <Button
+          variant="contained"
+          onClick={guardarCajaChica}
+          disabled={savingCajaChica}
+          sx={{ bgcolor: '#1a2744', '&:hover': { bgcolor: '#0f1a35' }, fontWeight: 700, fontSize: 11, height: 32, borderRadius: '6px', letterSpacing: '0.3px', flexShrink: 0 }}
+        >
+          {savingCajaChica ? 'Guardando...' : 'Guardar caja chica'}
+        </Button>
+      </Box>
+    </Box>
   ) : null;
 
   // ── Filter bar ────────────────────────────────────────────────────────────
@@ -657,6 +658,7 @@ const DireccionPage: React.FC = () => {
             {filterBar}
             {sinCorte && !loading && sinCorteAlert}
             {panelDetalle}
+            {bloqueCajaChicaDir}
           </Box>
 
           {/* DESKTOP */}
@@ -693,6 +695,7 @@ const DireccionPage: React.FC = () => {
                 {loading && <Box textAlign="center" py={4}><CircularProgress sx={{ color: '#FF6600' }} size={28} /></Box>}
                 {sinCorte && !loading && sinCorteAlert}
                 {panelDetalle}
+                {bloqueCajaChicaDir}
               </>
             )}
           </Box>
