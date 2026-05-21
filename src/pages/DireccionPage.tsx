@@ -257,6 +257,7 @@ const DireccionPage: React.FC = () => {
   const total_tarjeta         = ta_acc + ta_tel;
   const total_general_corte   = total_efectivo_final + total_tarjeta;
   const moduloNombre          = modulos.find((m) => String(m.id) === moduloId)?.nombre ?? '';
+  const esCorteReal           = Boolean(corte && corte.id);
 
 
   // ── Cards ─────────────────────────────────────────────────────────────────
@@ -346,7 +347,7 @@ const DireccionPage: React.FC = () => {
         <MonetizationOnIcon sx={{ color: '#854D0E', fontSize: 15 }} />
         <Typography fontWeight={700} fontSize={11} color={SECTION_MONTOS.color} letterSpacing={0.3} lineHeight={1.2}>MONTOS ADICIONALES</Typography>
       </Box>
-      {!editandoRecargas && corte && (
+      {!editandoRecargas && esCorteReal && (
         <Button size="small" onClick={() => { setEditRec(String(rec)); setEditTrans(String(trans)); setEditOtr(String(otr)); setEditMay(String(may)); setEditandoRecargas(true); }}
           sx={{ fontSize: 10, py: '1px', px: 1, minHeight: 20, color: '#854D0E', '&:hover': { bgcolor: '#FEF9C3' } }}>
           ✏️ Editar
@@ -509,7 +510,7 @@ const DireccionPage: React.FC = () => {
       {cardTotales}
 
       {/* Botón MARCAR — solo si hay corte real */}
-      {corte && (
+      {esCorteReal && (
         corte.revisado_direccion ? (
           <Alert severity="success" sx={{ mt: '8px', py: 0.5, fontSize: 12, borderRadius: 1 }}>
             ✅ Revisado por <strong>{corte.revisado_por}</strong>{' '}
@@ -658,7 +659,7 @@ const DireccionPage: React.FC = () => {
           <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
             <Divider sx={{ mb: 2 }} />
             {filterBar}
-            {sinCorte && !loading && sinCorteAlert}
+            {(sinCorte || corte?.id === 0) && !loading && sinCorteAlert}
             {panelDetalle}
             {bloqueCajaChicaDir}
           </Box>
@@ -687,15 +688,15 @@ const DireccionPage: React.FC = () => {
                       </>
                     )}
                   </Box>
-                  {corte && (
-                    corte.enviado
+                  {esCorteReal && (
+                    corte!.enviado
                       ? <Box sx={{ bgcolor: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', fontSize: 10, fontWeight: 700, px: 1, py: '2px', borderRadius: '999px', letterSpacing: '0.4px' }}>ENVIADO</Box>
                       : <Box sx={{ bgcolor: '#fef9c3', color: '#854d0e', border: '1px solid #fde047', fontSize: 10, fontWeight: 700, px: 1, py: '2px', borderRadius: '999px', letterSpacing: '0.4px' }}>BORRADOR</Box>
                   )}
                 </Box>
 
                 {loading && <Box textAlign="center" py={4}><CircularProgress sx={{ color: '#FF6600' }} size={28} /></Box>}
-                {sinCorte && !loading && sinCorteAlert}
+                {(sinCorte || corte?.id === 0) && !loading && sinCorteAlert}
                 {panelDetalle}
                 {bloqueCajaChicaDir}
               </>
