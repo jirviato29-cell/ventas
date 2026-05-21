@@ -346,7 +346,7 @@ const DireccionPage: React.FC = () => {
         <MonetizationOnIcon sx={{ color: '#854D0E', fontSize: 15 }} />
         <Typography fontWeight={700} fontSize={11} color={SECTION_MONTOS.color} letterSpacing={0.3} lineHeight={1.2}>MONTOS ADICIONALES</Typography>
       </Box>
-      {!editandoRecargas && (
+      {!editandoRecargas && corte && (
         <Button size="small" onClick={() => { setEditRec(String(rec)); setEditTrans(String(trans)); setEditOtr(String(otr)); setEditMay(String(may)); setEditandoRecargas(true); }}
           sx={{ fontSize: 10, py: '1px', px: 1, minHeight: 20, color: '#854D0E', '&:hover': { bgcolor: '#FEF9C3' } }}>
           ✏️ Editar
@@ -494,7 +494,7 @@ const DireccionPage: React.FC = () => {
   );
 
   // ── Panel detalle ─────────────────────────────────────────────────────────
-  const panelDetalle = corte ? (
+  const panelDetalle = (corte !== null || sinCorte) ? (
     <>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, columnGap: '10px', rowGap: '6px', alignItems: 'start', mb: '6px' }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
@@ -508,19 +508,21 @@ const DireccionPage: React.FC = () => {
       {/* Totales full-width */}
       {cardTotales}
 
-      {/* Botón MARCAR */}
-      {corte.revisado_direccion ? (
-        <Alert severity="success" sx={{ mt: '8px', py: 0.5, fontSize: 12, borderRadius: 1 }}>
-          ✅ Revisado por <strong>{corte.revisado_por}</strong>{' '}
-          {new Date(corte.revisado_at).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </Alert>
-      ) : (
-        <Button
-          variant="contained" fullWidth onClick={() => setDialogConfirm(true)}
-          sx={{ bgcolor: '#166534', '&:hover': { bgcolor: '#14532d' }, fontWeight: 700, fontSize: 12, minHeight: 32, maxHeight: 32, mt: '8px', borderRadius: '6px', letterSpacing: '0.3px' }}
-        >
-          ✅ MARCAR CORTE COMO REVISADO
-        </Button>
+      {/* Botón MARCAR — solo si hay corte real */}
+      {corte && (
+        corte.revisado_direccion ? (
+          <Alert severity="success" sx={{ mt: '8px', py: 0.5, fontSize: 12, borderRadius: 1 }}>
+            ✅ Revisado por <strong>{corte.revisado_por}</strong>{' '}
+            {new Date(corte.revisado_at).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </Alert>
+        ) : (
+          <Button
+            variant="contained" fullWidth onClick={() => setDialogConfirm(true)}
+            sx={{ bgcolor: '#166534', '&:hover': { bgcolor: '#14532d' }, fontWeight: 700, fontSize: 12, minHeight: 32, maxHeight: 32, mt: '8px', borderRadius: '6px', letterSpacing: '0.3px' }}
+          >
+            ✅ MARCAR CORTE COMO REVISADO
+          </Button>
+        )
       )}
 
     </>
