@@ -208,7 +208,8 @@ const DireccionPage: React.FC = () => {
   const sal                   = corte?.salida_efectivo ?? 0;
   const subtotalAcc           = ventasAcc.reduce((s: number, v: any) => s + getTotal(v), 0);
   const subtotalTel           = ventasTel.reduce((s: number, v: any) => s + getTotal(v), 0);
-  const total_efectivo_final  = ef_acc + ef_tel + totalAdicional - sal;
+  const caja_chica            = corte?.caja_chica ?? 0;
+  const total_efectivo_final  = ef_acc + ef_tel + totalAdicional - sal + caja_chica;
   const total_tarjeta         = ta_acc + ta_tel;
   const total_general_corte   = total_efectivo_final + total_tarjeta;
   const moduloNombre          = modulos.find((m) => String(m.id) === moduloId)?.nombre ?? '';
@@ -409,7 +410,7 @@ const DireccionPage: React.FC = () => {
           { label: 'Teléfonos',  ef: ef_tel, ta: ta_tel, tot: ef_tel + ta_tel, alt: true  },
           { label: 'Recargas',   ef: totalAdicional, ta: null, tot: totalAdicional, alt: false },
           { label: 'Salidas',    ef: sal > 0 ? -sal : 0, ta: null, tot: sal > 0 ? -sal : 0, alt: true, red: sal > 0 },
-        ].map(({ label, ef, ta, tot, alt, red }) => (
+        ].map(({ label, ef, ta, tot, alt, red }: { label: string; ef: number; ta: number | null; tot: number; alt: boolean; red?: boolean }) => (
           <TableRow key={label} sx={{ bgcolor: alt ? '#fafbfc' : 'white' }}>
             <TableCell sx={{ fontSize: 11, border: 'none', py: '4px', pl: '12px', color: '#334155', lineHeight: 1.3 }}>{label}</TableCell>
             <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', color: red ? '#b91c1c' : '#0f172a', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>
@@ -423,6 +424,12 @@ const DireccionPage: React.FC = () => {
             </TableCell>
           </TableRow>
         ))}
+        <TableRow sx={{ bgcolor: '#fafbfc' }}>
+          <TableCell sx={{ fontSize: 11, border: 'none', py: '4px', pl: '12px', color: '#334155', lineHeight: 1.3 }}>Caja Chica</TableCell>
+          <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', color: caja_chica > 0 ? '#1565c0' : '#94a3b8', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>${caja_chica.toFixed(2)}</TableCell>
+          <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', color: '#cbd5e1', lineHeight: 1.3 }}>—</TableCell>
+          <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', pr: '12px', color: caja_chica > 0 ? '#1565c0' : '#94a3b8', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>${caja_chica.toFixed(2)}</TableCell>
+        </TableRow>
         {/* divider */}
         <TableRow><TableCell colSpan={4} sx={{ border: 'none', p: 0, borderTop: '1px solid #e5e7eb' }} /></TableRow>
         {/* Grand total row */}
