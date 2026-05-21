@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { obtenerRolDesdeToken } from '../components/Token';
 import {
   Alert,
   Box,
@@ -101,6 +102,7 @@ interface CortePendiente {
 const DireccionPage: React.FC = () => {
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
+  const rolToken = obtenerRolDesdeToken();
   const API = process.env.REACT_APP_API_URL;
 
   const [pendientes, setPendientes]             = useState<CortePendiente[]>([]);
@@ -120,6 +122,8 @@ const DireccionPage: React.FC = () => {
   const [editTrans, setEditTrans]               = useState('');
   const [editOtr, setEditOtr]                   = useState('');
   const [editMay, setEditMay]                   = useState('');
+  const [cajaChicaInput, setCajaChicaInput]     = useState('0');
+  const [savingCajaChica, setSavingCajaChica]   = useState(false);
 
   const cargarPendientes = useCallback(async () => {
     setLoadingPendientes(true);
@@ -145,12 +149,51 @@ const DireccionPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  const buscar = () => { setMostrarDetalle(true); fetchCorte(moduloId, fecha); };
+  const nextDate = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const yy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, '0');
+    const dd = String(next.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  };
+
+  const fetchCajaChica = async (mId: string, fechaNext: string) => {
+    if (!mId || !fechaNext) return;
+    try {
+      const res = await axios.get(`${API}/caja-chica`, { ...config, params: { modulo_id: Number(mId), fecha: fechaNext } });
+      setCajaChicaInput(String(res.data.monto ?? 0));
+    } catch { setCajaChicaInput('0'); }
+  };
+
+  const guardarCajaChica = async () => {
+    const monto = parseFloat(cajaChicaInput);
+    if (isNaN(monto) || monto < 0) {
+      setSnack({ msg: 'Monto inválido. Ingresa un número >= 0.', sev: 'error' });
+      return;
+    }
+    const fechaNext = nextDate(fecha);
+    setSavingCajaChica(true);
+    try {
+      await axios.post(`${API}/caja-chica`, { modulo_id: Number(moduloId), fecha: fechaNext, monto }, config);
+      setSnack({ msg: `Caja chica del ${fmtFecha(fechaNext)} guardada: $${monto.toFixed(2)}`, sev: 'success' });
+    } catch {
+      setSnack({ msg: 'Error al guardar la caja chica', sev: 'error' });
+    } finally { setSavingCajaChica(false); }
+  };
+
+  const buscar = () => {
+    setMostrarDetalle(true);
+    fetchCorte(moduloId, fecha);
+    fetchCajaChica(moduloId, nextDate(fecha));
+  };
   const abrirCortePendiente = (c: CortePendiente) => {
     const mId = String(c.modulo_id);
-    setModuloId(mId); setFecha(c.fecha); setMostrarDetalle(true); fetchCorte(mId, c.fecha);
+    setModuloId(mId); setFecha(c.fecha); setMostrarDetalle(true);
+    fetchCorte(mId, c.fecha);
+    fetchCajaChica(mId, nextDate(c.fecha));
   };
-  const volverAlFiltro = () => { setMostrarDetalle(false); setCorte(null); setSinCorte(false); };
+  const volverAlFiltro = () => { setMostrarDetalle(false); setCorte(null); setSinCorte(false); setCajaChicaInput('0'); };
 
   const marcarRevisado = async () => {
     if (!corte) return;
@@ -208,6 +251,7 @@ const DireccionPage: React.FC = () => {
   const sal                   = corte?.salida_efectivo ?? 0;
   const subtotalAcc           = ventasAcc.reduce((s: number, v: any) => s + getTotal(v), 0);
   const subtotalTel           = ventasTel.reduce((s: number, v: any) => s + getTotal(v), 0);
+  const fechaSiguiente        = fecha ? nextDate(fecha) : '';
   const caja_chica            = corte?.caja_chica ?? 0;
   const total_efectivo_final  = ef_acc + ef_tel + totalAdicional - sal + caja_chica;
   const total_tarjeta         = ta_acc + ta_tel;
@@ -477,6 +521,34 @@ const DireccionPage: React.FC = () => {
         >
           ✅ MARCAR CORTE COMO REVISADO
         </Button>
+      )}
+
+      {/* Caja chica del día siguiente — solo direccion */}
+      {rolToken === 'direccion' && (
+        <Box sx={{ mt: '10px', p: '10px', bgcolor: '#f0f4ff', border: '1px solid #c7d7f9', borderRadius: '8px' }}>
+          <Typography fontSize={11} fontWeight={700} color="#1a2744" sx={{ mb: '6px', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+            Caja chica del día {fechaSiguiente ? fmtFecha(fechaSiguiente) : '—'}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <TextField
+              size="small"
+              type="number"
+              value={cajaChicaInput}
+              onChange={(e) => setCajaChicaInput(e.target.value)}
+              inputProps={{ min: 0, step: 0.01 }}
+              sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 32, fontSize: 12 }, '& input': { py: '4px !important' } }}
+              placeholder="0.00"
+            />
+            <Button
+              variant="contained"
+              onClick={guardarCajaChica}
+              disabled={savingCajaChica}
+              sx={{ bgcolor: '#1a2744', '&:hover': { bgcolor: '#0f1a35' }, fontWeight: 700, fontSize: 11, height: 32, borderRadius: '6px', letterSpacing: '0.3px', flexShrink: 0 }}
+            >
+              {savingCajaChica ? 'Guardando...' : 'Guardar caja chica'}
+            </Button>
+          </Box>
+        </Box>
       )}
     </>
   ) : null;
