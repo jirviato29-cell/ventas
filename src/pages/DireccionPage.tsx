@@ -32,7 +32,7 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 
-const HOY = new Date().toLocaleDateString('en-CA');
+const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
 const MODULOS_OCULTOS = ['V2', 'Cadenas C.', 'MI2', 'BO', 'prueba'];
 // ─── Style helpers ────────────────────────────────────────────────────────────
 const thStyle: React.CSSProperties = {

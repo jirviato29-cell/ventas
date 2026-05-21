@@ -35,7 +35,7 @@ import axios from 'axios';
 import { Navigate } from 'react-router-dom';
 import { obtenerRolDesdeToken } from '../components/Token';
 
-const HOY = new Date().toLocaleDateString('en-CA');
+const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
 
 // ─── Style helpers ────────────────────────────────────────────────────────────
 const thStyle: React.CSSProperties = {

@@ -18,7 +18,7 @@ import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '.
 import { useNavigate } from 'react-router-dom';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-const HOY = new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD" local time
+const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
 const fmtFecha = (d: string) => { const [y, m, day] = (d || '').split('-'); return day ? `${day}/${m}/${y}` : d || ''; };
 const fmtHora  = (h: string) => (h ? h.slice(0, 5) : '');
 
