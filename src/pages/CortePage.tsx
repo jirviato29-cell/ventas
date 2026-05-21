@@ -12,6 +12,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -372,6 +373,9 @@ const CortePage = () => {
   const [msgSalida, setMsgSalida] = useState('');
   const [loadingRecargas, setLoadingRecargas] = useState(false);
   const [loadingSalida, setLoadingSalida] = useState(false);
+  const [cajaChicaInput, setCajaChicaInput] = useState('0');
+  const [savingCajaChica, setSavingCajaChica] = useState(false);
+  const [snackCC, setSnackCC] = useState<{ msg: string; sev: 'success' | 'error' } | null>(null);
 
   // ── encargado right-column state ──────────────────────────────────────────
   const [fechaDerecha, setFechaDerecha] = useState(HOY);
@@ -381,6 +385,8 @@ const CortePage = () => {
   const fetchingFechaRef = useRef('');
   const esHoy = fechaDerecha === HOY;
   const soloLectura = !esHoy;
+  const hoyMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+  const esCorteDeHoy = fechaDerecha === hoyMx;
 
   // ── derived: right column ────────────────────────────────────────────────
   const ventasDerechaAcc = ventasDerecha.filter(
@@ -488,6 +494,41 @@ const CortePage = () => {
     }
   };
 
+  // ── caja chica helpers ────────────────────────────────────────────────────
+  const nextDate = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    const yy = next.getFullYear();
+    const mm = String(next.getMonth() + 1).padStart(2, '0');
+    const dd = String(next.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  };
+
+  const fetchCajaChica = async (moduloId: number, fechaNext: string) => {
+    if (!moduloId || !fechaNext) { setCajaChicaInput('0'); return; }
+    try {
+      const res = await axios.get(`${API}/caja-chica`, { ...config, params: { modulo_id: moduloId, fecha: fechaNext } });
+      setCajaChicaInput(String(res.data.monto ?? 0));
+    } catch { setCajaChicaInput('0'); }
+  };
+
+  const guardarCajaChica = async () => {
+    const monto = parseFloat(cajaChicaInput);
+    if (isNaN(monto) || monto < 0) {
+      setSnackCC({ msg: 'Monto inválido. Ingresa un número >= 0.', sev: 'error' });
+      return;
+    }
+    const moduloId = corteHoy?.modulo_id;
+    if (!moduloId) return;
+    setSavingCajaChica(true);
+    try {
+      await axios.post(`${API}/caja-chica`, { modulo_id: moduloId, fecha: nextDate(fechaDerecha), monto }, config);
+      setSnackCC({ msg: `Caja chica guardada: $${monto.toFixed(2)}`, sev: 'success' });
+    } catch (err: any) {
+      setSnackCC({ msg: err?.response?.data?.detail || 'Error al guardar la caja chica', sev: 'error' });
+    } finally { setSavingCajaChica(false); }
+  };
+
   // ── on mount: load all encargado/asesor data ──────────────────────────────
   useEffect(() => {
     if (rolToken !== 'encargado' && rolToken !== 'asesor') return;
@@ -501,6 +542,13 @@ const CortePage = () => {
     fetchVentasDerecha(HOY);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rolToken]);
+
+  // ── precarga caja chica al cambiar corte o fecha ─────────────────────────
+  useEffect(() => {
+    if ((rolToken !== 'encargado' && rolToken !== 'asesor') || !corteHoy?.modulo_id) return;
+    fetchCajaChica(corteHoy.modulo_id, nextDate(fechaDerecha));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corteHoy?.modulo_id, fechaDerecha]);
 
   // ── notificación corte revisado (encargado) ──────────────────────────────
   useEffect(() => {
@@ -1003,6 +1051,45 @@ const CortePage = () => {
           </TableBody>
         </Table>
       </Paper>
+
+      {/* 8 ── Caja chica día siguiente (encargado/asesor, solo corte de hoy) ── */}
+      {(rolToken === 'encargado' || rolToken === 'asesor') && esCorteDeHoy && (
+        <Paper sx={{ mb: 2, borderRadius: 2, bgcolor: '#f0f4ff', p: 2 }}>
+          <Typography fontWeight={700} fontSize={13} color="#1a2744" sx={{ mb: 1.5, letterSpacing: 0.3 }}>
+            DEJO PARA MAÑANA EN CAJA CHICA: {nextDate(fechaDerecha).split('-').reverse().join('/')}
+          </Typography>
+          <TextField
+            type="number"
+            size="small"
+            fullWidth
+            label="Monto"
+            value={cajaChicaInput}
+            onChange={(e) => setCajaChicaInput(e.target.value)}
+            inputProps={{ min: 0, step: 0.01 }}
+            sx={{ mb: 1.5, bgcolor: 'white', borderRadius: 1 }}
+          />
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={savingCajaChica}
+            onClick={guardarCajaChica}
+            sx={{ bgcolor: '#1a2744', color: 'white', fontWeight: 700, fontSize: 13, py: 1.2, borderRadius: 2, '&:hover': { bgcolor: '#0f1a33' } }}
+          >
+            {savingCajaChica ? 'Guardando...' : 'Guardar caja chica'}
+          </Button>
+        </Paper>
+      )}
+
+      <Snackbar
+        open={!!snackCC}
+        autoHideDuration={4000}
+        onClose={() => setSnackCC(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackCC?.sev ?? 'success'} onClose={() => setSnackCC(null)} sx={{ width: '100%' }}>
+          {snackCC?.msg}
+        </Alert>
+      </Snackbar>
 
     </Box>
   );
