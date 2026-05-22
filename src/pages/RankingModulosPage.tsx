@@ -50,7 +50,7 @@ interface TablaProps {
   headerBg: string;
   headerColor: string;
   icon: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
 }
 
 const PAGE_STYLES = `
@@ -263,6 +263,9 @@ const RankingModulosPage: React.FC = () => {
     );
   }
 
+  const totalTelefonos = ranking.reduce((sum, m) => sum + m.total_tels, 0);
+  const totalPlanes = ranking.reduce((sum, m) => sum + m.planes, 0);
+
   const rankProductividad = [...ranking].sort((a, b) => b.productividad - a.productividad);
   const rankAccesorios = [...ranking].sort(
     (a, b) => b.promedio_venta_accesorios - a.promedio_venta_accesorios
@@ -371,7 +374,7 @@ const RankingModulosPage: React.FC = () => {
             headerBg="#e6f1fb"
             headerColor="#185fa5"
             icon={<SmartphoneIcon style={{ fontSize: 14 }} />}
-            title="Teléfonos"
+            title={<>Teléfonos<span style={{ marginLeft: 6, color: "#185fa5", fontWeight: 500, fontSize: 11.5 }}>· {totalTelefonos}</span></>}
           />
           <TablaRanking
             data={rankPlanes}
@@ -380,7 +383,7 @@ const RankingModulosPage: React.FC = () => {
             headerBg="#eeedfe"
             headerColor="#3c3489"
             icon={<ArticleIcon style={{ fontSize: 14 }} />}
-            title="Planes"
+            title={<>Planes<span style={{ marginLeft: 6, color: "#3c3489", fontWeight: 500, fontSize: 11.5 }}>· {totalPlanes}</span></>}
           />
         </div>
 
