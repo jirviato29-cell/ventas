@@ -245,6 +245,7 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/inventario/modulo">Inventario</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
                   <Button sx={navBtnSx} component={Link} to="/corte" startIcon={<ContentCutIcon />}>Corte</Button>
+                  <Button sx={navBtnSx} component={Link} to="/ranking">ESTADÍSTICAS</Button>
                 </>
               )}
 
@@ -256,6 +257,9 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
                   {modulo !== "Cadenas Comerciales" && (
                     <Button sx={navBtnSx} component={Link} to="/corte" startIcon={<ContentCutIcon />}>Corte</Button>
+                  )}
+                  {modulo !== "Cadenas Comerciales" && (
+                    <Button sx={navBtnSx} component={Link} to="/ranking">ESTADÍSTICAS</Button>
                   )}
                 </>
               )}
@@ -508,6 +512,10 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                 <ListItemText primary="Corte" />
               </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
+                <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
+                <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
             </>
           )}
 
@@ -534,6 +542,12 @@ const Navbar = () => {
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                   <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                   <ListItemText primary="Corte" />
+                </ListItemButton>
+              )}
+              {modulo !== "Cadenas Comerciales" && (
+                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
+                  <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
+                  <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
             </>

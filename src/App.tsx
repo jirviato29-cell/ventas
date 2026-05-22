@@ -28,6 +28,7 @@ import DireccionPage from './pages/DireccionPage';
 import QuienTienePage from './pages/QuienTienePage';
 import AsistenciaPage from './pages/AsistenciaPage';
 import EstadisticasPage from './pages/EstadisticasPage';
+import RankingModulosPage from './pages/RankingModulosPage';
 import TiempoRealPage from './pages/TiempoRealPage';
 import RecargasPage from './pages/RecargasPage';
 import SueldosEncargadosPage from './pages/SueldosEncargadosPage';
@@ -67,6 +68,7 @@ const App: React.FC = () => {
     { path: '/quien-tiene', element: <RutaProtegida><QuienTienePage /></RutaProtegida> },
     { path: '/asistencia', element: <RutaProtegida><AsistenciaPage /></RutaProtegida> },
     { path: '/estadisticas', element: <RutaProtegida><EstadisticasPage /></RutaProtegida> },
+    { path: '/ranking', element: <RutaProtegida><RankingModulosPage /></RutaProtegida> },
     { path: '/tiempo-real', element: <RutaProtegida><TiempoRealPage /></RutaProtegida> },
     { path: '/recargas', element: <RutaProtegida><RecargasPage /></RutaProtegida> },
     { path: '/sueldos-encargados', element: <RutaProtegida><SueldosEncargadosPage /></RutaProtegida> },
