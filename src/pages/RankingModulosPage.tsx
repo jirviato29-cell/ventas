@@ -56,7 +56,7 @@ interface TablaProps {
 const PAGE_STYLES = `
   .dash-grid {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1.3fr 0.7fr;
+    grid-template-columns: 1.4fr 1fr 0.7fr 0.7fr;
     gap: 12px;
   }
   @media (max-width: 1023px) {
@@ -297,32 +297,12 @@ const RankingModulosPage: React.FC = () => {
   ];
 
   const colsTelefonos: ColSpec[] = [
-    { label: "#", width: "13%", render: (_, pos) => <Pos n={pos} /> },
-    { label: "Mód.", width: "16%", align: "left", render: (r) => r.codigo_modulo },
+    { label: "#", width: "26%", render: (_, pos) => <Pos n={pos} /> },
+    { label: "Mód.", width: "38%", align: "left", render: (r) => r.codigo_modulo },
     {
-      label: "Tot.",
-      width: "14%",
+      label: "Total",
+      width: "36%",
       render: (r) => <span style={{ fontWeight: 500 }}>{r.total_tels}</span>,
-    },
-    {
-      label: "Ctd.",
-      width: "14%",
-      render: (r) => <span style={{ color: "#3b6d11" }}>{r.contado}</span>,
-    },
-    {
-      label: "PJ",
-      width: "14%",
-      render: (r) => <span style={{ color: "#ba7517" }}>{r.payjoy}</span>,
-    },
-    {
-      label: "Pag.",
-      width: "14%",
-      render: (r) => <span style={{ color: "#185fa5" }}>{r.paguitos}</span>,
-    },
-    {
-      label: "Tel.PJ",
-      width: "15%",
-      render: (r) => <span style={{ color: "#ba7517" }}>{r.tel_payjoy}</span>,
     },
   ];
 
