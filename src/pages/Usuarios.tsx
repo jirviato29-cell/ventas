@@ -11,6 +11,7 @@ import { Usuario } from "../Types";
 const roles = ["admin", "encargado", "asesor", "contador"];
 
 interface FormEdicion {
+  nombre_completo: string;
   username: string;
   rol: string;
   modulo_id: string;
@@ -24,6 +25,7 @@ interface FormEdicion {
 }
 
 const formVacio: FormEdicion = {
+  nombre_completo: "",
   username: "",
   rol: "",
   modulo_id: "",
@@ -75,6 +77,7 @@ const UsuariosAdmin = () => {
   const abrirDialog = (u: Usuario) => {
     setEditandoId(u.id);
     setForm({
+      nombre_completo: u.nombre_completo ?? "",
       username: u.username,
       rol: u.rol,
       modulo_id: u.modulo?.id?.toString() ?? "",
@@ -99,6 +102,7 @@ const UsuariosAdmin = () => {
     if (editandoId === null) return;
     try {
       const payload: Record<string, unknown> = {
+        nombre_completo: form.nombre_completo || null,
         is_admin: form.is_admin,
         sueldo_base: parseFloat(form.sueldo_base) || 0,
         forma_pago: form.forma_pago || null,
@@ -224,6 +228,15 @@ const UsuariosAdmin = () => {
         </DialogTitle>
 
         <DialogContent dividers>
+          <TextField
+            label="Nombre completo"
+            value={form.nombre_completo}
+            onChange={(e) => setF("nombre_completo", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+          />
+
           <TextField
             label="Nombre de usuario"
             value={form.username}
