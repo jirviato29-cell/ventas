@@ -20,6 +20,7 @@ interface FormEdicion {
   forma_pago: string;
   cuenta_clabe: string;
   cuenta_interbancaria: string;
+  nombre_englobado: string;
 }
 
 const formVacio: FormEdicion = {
@@ -32,6 +33,7 @@ const formVacio: FormEdicion = {
   forma_pago: "",
   cuenta_clabe: "",
   cuenta_interbancaria: "",
+  nombre_englobado: "",
 };
 
 const UsuariosAdmin = () => {
@@ -82,6 +84,7 @@ const UsuariosAdmin = () => {
       forma_pago: u.forma_pago ?? "",
       cuenta_clabe: u.cuenta_clabe ?? "",
       cuenta_interbancaria: u.cuenta_interbancaria ?? "",
+      nombre_englobado: u.nombre_englobado ?? "",
     });
     setDialogAbierto(true);
   };
@@ -101,6 +104,7 @@ const UsuariosAdmin = () => {
         forma_pago: form.forma_pago || null,
         cuenta_clabe: mostrarCuentas ? (form.cuenta_clabe || null) : null,
         cuenta_interbancaria: mostrarCuentas ? (form.cuenta_interbancaria || null) : null,
+        nombre_englobado: form.nombre_englobado || null,
       };
       if (form.username) payload.username = form.username;
       if (form.rol) payload.rol = form.rol;
@@ -140,15 +144,16 @@ const UsuariosAdmin = () => {
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
 
       <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
-        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 900 }}>
+        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1050 }}>
           <colgroup>
             <col style={{ width: "9%" }} />
-            <col style={{ width: "14%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "8%" }} />
             <col style={{ width: "9%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "14%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "12%" }} />
             <col style={{ width: "14%" }} />
             <col style={{ width: "9%" }} />
           </colgroup>
@@ -162,6 +167,7 @@ const UsuariosAdmin = () => {
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Englobado</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -182,6 +188,9 @@ const UsuariosAdmin = () => {
                 <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
                   {u.cuenta_interbancaria || "-"}
                 </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {u.nombre_englobado || "-"}
+                </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
                   <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
                     <Edit fontSize="small" />
@@ -194,7 +203,7 @@ const UsuariosAdmin = () => {
             ))}
             {usuarios.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">No hay usuarios</TableCell>
+                <TableCell colSpan={10} align="center">No hay usuarios</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -325,6 +334,16 @@ const UsuariosAdmin = () => {
               />
             </>
           )}
+
+          <TextField
+            label="Nombre englobado"
+            value={form.nombre_englobado}
+            onChange={(e) => setF("nombre_englobado", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+            placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
+          />
         </DialogContent>
 
         <DialogActions>

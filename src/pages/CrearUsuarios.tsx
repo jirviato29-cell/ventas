@@ -19,6 +19,7 @@ const CrearUsuario = () => {
   const [formaPago, setFormaPago] = useState("");
   const [cuentaClabe, setCuentaClabe] = useState("");
   const [cuentaInterbancaria, setCuentaInterbancaria] = useState("");
+  const [nombreEnglobado, setNombreEnglobado] = useState("");
   const token = localStorage.getItem("token");
   const config = {
     headers: { Authorization: `Bearer ${token}` },
@@ -54,6 +55,7 @@ const CrearUsuario = () => {
           forma_pago: formaPago || null,
           cuenta_clabe: mostrarCuentas ? (cuentaClabe || null) : null,
           cuenta_interbancaria: mostrarCuentas ? (cuentaInterbancaria || null) : null,
+          nombre_englobado: nombreEnglobado || null,
         },
         config
       );
@@ -67,6 +69,7 @@ const CrearUsuario = () => {
       setFormaPago("");
       setCuentaClabe("");
       setCuentaInterbancaria("");
+      setNombreEnglobado("");
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
@@ -173,6 +176,16 @@ const CrearUsuario = () => {
             />
           </>
         )}
+
+        <TextField
+          label="Nombre englobado"
+          value={nombreEnglobado}
+          onChange={(e) => setNombreEnglobado(e.target.value)}
+          fullWidth
+          margin="normal"
+          placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
+          helperText="Opcional. Agrupa varios perfiles de la misma persona en nómina."
+        />
 
         <Box mt={2}>
           <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>

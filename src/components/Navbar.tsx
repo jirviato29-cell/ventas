@@ -201,6 +201,7 @@ const Navbar = () => {
                   >
                     <MenuItem component={Link} to="/usuarios">Usuarios</MenuItem>
                     <MenuItem component={Link} to="/nomina">Nómina</MenuItem>
+                    <MenuItem component={Link} to="/admin/panel-control">Panel de Control</MenuItem>
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
                   </Menu>
@@ -407,6 +408,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/nomina")}>
                     <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
                     <ListItemText primary="Nómina" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/panel-control")}>
+                    <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
+                    <ListItemText primary="Panel de Control" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/comisiones")}>
                     <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>

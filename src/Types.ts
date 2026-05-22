@@ -74,6 +74,7 @@ export interface Usuario {
   forma_pago?: string | null;
   cuenta_clabe?: string | null;
   cuenta_interbancaria?: string | null;
+  nombre_englobado?: string | null;
 }
 
 
