@@ -201,11 +201,13 @@ const Navbar = () => {
                   >
                     <MenuItem component={Link} to="/usuarios">Usuarios</MenuItem>
                     <MenuItem component={Link} to="/nomina">Nómina</MenuItem>
-                    <MenuItem component={Link} to="/admin/panel-control">Panel de Control</MenuItem>
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
                   </Menu>
 
+                  <Button sx={navBtnSx} component={Link} to="/admin/panel-control">
+                    PANEL DE CONTROL
+                  </Button>
                   <Button sx={navBtnSx} component={Link} to="/telcel">
                     TELCEL
                   </Button>
@@ -409,10 +411,6 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
                     <ListItemText primary="Nómina" />
                   </ListItemButton>
-                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/panel-control")}>
-                    <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
-                    <ListItemText primary="Panel de Control" />
-                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/comisiones")}>
                     <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                     <ListItemText primary="Comisiones" />
@@ -424,6 +422,10 @@ const Navbar = () => {
                 </List>
               </Collapse>
 
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/admin/panel-control")}>
+                <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
+                <ListItemText primary="PANEL DE CONTROL" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/telcel")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                 <ListItemText primary="TELCEL" primaryTypographyProps={{ fontWeight: 700 }} />
