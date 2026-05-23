@@ -1231,31 +1231,50 @@ def crear_corte(
     if not user.modulo_id:
         raise HTTPException(status_code=400, detail="El encargado no tiene un módulo asignado")
 
-    nuevo_corte = models.CorteDia(
-        fecha=datetime.now(zona_horaria).date(),
-        modulo_id=user.modulo_id,
-        # Accesorios
+    from sqlalchemy.exc import IntegrityError
+
+    hoy = datetime.now(zona_horaria).date()
+    campos = dict(
         accesorios_efectivo=corte_data.accesorios_efectivo,
         accesorios_tarjeta=corte_data.accesorios_tarjeta,
         accesorios_total=corte_data.accesorios_total,
-        # Teléfonos
         telefonos_efectivo=corte_data.telefonos_efectivo,
         telefonos_tarjeta=corte_data.telefonos_tarjeta,
         telefonos_total=corte_data.telefonos_total,
-        # Totales
         total_efectivo=corte_data.total_efectivo,
         total_tarjeta=corte_data.total_tarjeta,
         total_sistema=corte_data.total_sistema,
         total_general=corte_data.total_general,
-        # Adicionales
         adicional_recargas=corte_data.adicional_recargas,
         adicional_transporte=corte_data.adicional_transporte,
         adicional_otros=corte_data.adicional_otros,
     )
 
+    corte_existente = db.query(models.CorteDia).filter(
+        models.CorteDia.modulo_id == user.modulo_id,
+        models.CorteDia.fecha == hoy,
+    ).first()
+
+    if corte_existente:
+        for campo, valor in campos.items():
+            setattr(corte_existente, campo, valor)
+        # No resetear revisado_direccion si ya estaba en True
+        try:
+            db.commit()
+            db.refresh(corte_existente)
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Ya existe un corte para hoy en este módulo")
+        return corte_existente
+
+    nuevo_corte = models.CorteDia(fecha=hoy, modulo_id=user.modulo_id, **campos)
     db.add(nuevo_corte)
-    db.commit()
-    db.refresh(nuevo_corte)
+    try:
+        db.commit()
+        db.refresh(nuevo_corte)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe un corte para hoy en este módulo")
     return nuevo_corte
 
 
