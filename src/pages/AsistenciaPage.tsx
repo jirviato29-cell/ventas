@@ -1135,7 +1135,6 @@ const TabAcumulado: React.FC = () => {
   const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
   const [cicloSel, setCicloSel] = useState<string>("");
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
-  const [jornadasEdit, setJornadasEdit] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(false);
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
@@ -1147,20 +1146,6 @@ const TabAcumulado: React.FC = () => {
         { headers: authH() }
       );
       setFilas(data);
-      // Inicializar jornadasEdit desde jornada_fija del primer perfil de cada grupo
-      const seen = new Set<string>();
-      const init: Record<string, string> = {};
-      for (const f of data) {
-        const key = f.nombre_englobado ?? f.username;
-        if (!/^[AC]\d+/i.test(key)) continue;
-        if (!seen.has(key)) {
-          seen.add(key);
-          init[key] = f.jornada_fija != null && f.jornada_fija !== 0
-            ? String(f.jornada_fija)
-            : "";
-        }
-      }
-      setJornadasEdit(init);
     } finally {
       setCargando(false);
     }
@@ -1261,31 +1246,6 @@ const TabAcumulado: React.FC = () => {
         return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra };
       });
   }, [filas]);
-
-  const guardarJornada = async (grupo: GrupoAcumulado) => {
-    const val = jornadasEdit[grupo.key] ?? "";
-    const horas = val === "" ? 0 : parseFloat(val);
-    if (isNaN(horas)) return;
-    try {
-      await Promise.all(
-        grupo.ids.map((uid) =>
-          axios.put(
-            `${API}/admin/usuarios/${uid}/jornada-fija`,
-            { jornada: horas },
-            { headers: authH() }
-          )
-        )
-      );
-      setFilas((prev) =>
-        prev.map((f) => {
-          if (!grupo.ids.includes(f.usuario_id)) return f;
-          return { ...f, jornada_fija: horas };
-        })
-      );
-    } catch {
-      // no-op
-    }
-  };
 
   const diasDelCiclo = cicloSel
     ? Array.from({ length: 7 }, (_, i) => {
@@ -1401,28 +1361,11 @@ const TabAcumulado: React.FC = () => {
                       {grupo.total_horas.toFixed(2)}h
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 68, p: "2px 4px" }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={jornadasEdit[grupo.key] ?? ""}
-                        onChange={(e) =>
-                          setJornadasEdit((prev) => ({
-                            ...prev,
-                            [grupo.key]: e.target.value,
-                          }))
-                        }
-                        onBlur={() => {
-                          const original = grupo.jornada != null && grupo.jornada > 0
-                            ? String(grupo.jornada)
-                            : "";
-                          if ((jornadasEdit[grupo.key] ?? "") !== original) {
-                            guardarJornada(grupo);
-                          }
-                        }}
-                        inputProps={{ step: "0.5", min: 0, style: { fontSize: 11, padding: "3px 6px" } }}
-                        sx={{ width: 60 }}
-                      />
+                    <TableCell align="center" sx={{ ...cellBase, width: 68 }}>
+                      {grupo.jornada != null
+                        ? <Box sx={{ fontSize: 11 }}>{grupo.jornada}h</Box>
+                        : <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                      }
                     </TableCell>
 
                     <TableCell align="center" sx={{ ...cellBase, width: 64 }}>

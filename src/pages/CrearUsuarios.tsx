@@ -20,6 +20,7 @@ const CrearUsuario = () => {
   const [cuentaClabe, setCuentaClabe] = useState("");
   const [cuentaInterbancaria, setCuentaInterbancaria] = useState("");
   const [nombreEnglobado, setNombreEnglobado] = useState("");
+  const [jornadaFija, setJornadaFija] = useState("");
   const token = localStorage.getItem("token");
   const config = {
     headers: { Authorization: `Bearer ${token}` },
@@ -56,6 +57,7 @@ const CrearUsuario = () => {
           cuenta_clabe: mostrarCuentas ? (cuentaClabe || null) : null,
           cuenta_interbancaria: mostrarCuentas ? (cuentaInterbancaria || null) : null,
           nombre_englobado: nombreEnglobado || null,
+          jornada_fija: parseFloat(jornadaFija) || 0,
         },
         config
       );
@@ -70,6 +72,7 @@ const CrearUsuario = () => {
       setCuentaClabe("");
       setCuentaInterbancaria("");
       setNombreEnglobado("");
+      setJornadaFija("");
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
@@ -185,6 +188,17 @@ const CrearUsuario = () => {
           margin="normal"
           placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
           helperText="Opcional. Agrupa varios perfiles de la misma persona en nómina."
+        />
+
+        <TextField
+          label="Jornada (h)"
+          type="number"
+          value={jornadaFija}
+          onChange={(e) => setJornadaFija(e.target.value)}
+          fullWidth
+          margin="normal"
+          inputProps={{ min: 0, step: 0.5 }}
+          helperText="Opcional. Horas de jornada semanal fija para el cálculo de horas extra."
         />
 
         <Box mt={2}>

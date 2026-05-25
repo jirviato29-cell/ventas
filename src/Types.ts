@@ -75,6 +75,7 @@ export interface Usuario {
   cuenta_clabe?: string | null;
   cuenta_interbancaria?: string | null;
   nombre_englobado?: string | null;
+  jornada_fija?: number | null;
 }
 
 

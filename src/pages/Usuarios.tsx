@@ -3,6 +3,7 @@ import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Snackbar, Alert,
 } from "@mui/material";
 import { Edit, Delete, Close } from "@mui/icons-material";
 import axios from "axios";
@@ -22,6 +23,7 @@ interface FormEdicion {
   cuenta_clabe: string;
   cuenta_interbancaria: string;
   nombre_englobado: string;
+  jornada_fija: string;
 }
 
 const formVacio: FormEdicion = {
@@ -36,6 +38,7 @@ const formVacio: FormEdicion = {
   cuenta_clabe: "",
   cuenta_interbancaria: "",
   nombre_englobado: "",
+  jornada_fija: "",
 };
 
 const UsuariosAdmin = () => {
@@ -44,6 +47,8 @@ const UsuariosAdmin = () => {
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<FormEdicion>(formVacio);
+  const [jornadasLocal, setJornadasLocal] = useState<Record<number, string>>({});
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -63,6 +68,13 @@ const UsuariosAdmin = () => {
     try {
       const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, config);
       setUsuarios(res.data);
+      const init: Record<number, string> = {};
+      (res.data as Usuario[]).forEach((u) => {
+        init[u.id] = u.jornada_fija != null && u.jornada_fija !== 0
+          ? String(u.jornada_fija)
+          : "";
+      });
+      setJornadasLocal(init);
     } catch {
       alert("Error al cargar usuarios");
     }
@@ -88,6 +100,9 @@ const UsuariosAdmin = () => {
       cuenta_clabe: u.cuenta_clabe ?? "",
       cuenta_interbancaria: u.cuenta_interbancaria ?? "",
       nombre_englobado: u.nombre_englobado ?? "",
+      jornada_fija: u.jornada_fija != null && u.jornada_fija !== 0
+        ? String(u.jornada_fija)
+        : "",
     });
     setDialogAbierto(true);
   };
@@ -109,6 +124,7 @@ const UsuariosAdmin = () => {
         cuenta_clabe: mostrarCuentas ? (form.cuenta_clabe || null) : null,
         cuenta_interbancaria: mostrarCuentas ? (form.cuenta_interbancaria || null) : null,
         nombre_englobado: form.nombre_englobado || null,
+        jornada_fija: parseFloat(form.jornada_fija) || 0,
       };
       if (form.username) payload.username = form.username;
       if (form.rol) payload.rol = form.rol;
@@ -137,6 +153,22 @@ const UsuariosAdmin = () => {
     }
   };
 
+  const guardarJornadaInline = async (userId: number) => {
+    const val = jornadasLocal[userId] ?? "";
+    const jornada = val === "" ? 0 : parseFloat(val);
+    if (isNaN(jornada)) return;
+    try {
+      await axios.put(
+        `${process.env.REACT_APP_API_URL}/admin/usuarios/${userId}/jornada-fija`,
+        { jornada },
+        config
+      );
+      setSavedMsg("Jornada guardada");
+    } catch {
+      // no-op
+    }
+  };
+
   const setF = (campo: keyof FormEdicion, valor: string | boolean) =>
     setForm((prev) => ({ ...prev, [campo]: valor }));
 
@@ -148,18 +180,19 @@ const UsuariosAdmin = () => {
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
 
       <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
-        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1050 }}>
+        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1150 }}>
           <colgroup>
-            <col style={{ width: "9%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "12%" }} />
             <col style={{ width: "7%" }} />
             <col style={{ width: "8%" }} />
+            <col style={{ width: "7%" }} />
             <col style={{ width: "8%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "9%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "10%" }} />
           </colgroup>
           <TableHead>
             <TableRow>
@@ -172,6 +205,7 @@ const UsuariosAdmin = () => {
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Englobado</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Jornada (h)</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -195,6 +229,20 @@ const UsuariosAdmin = () => {
                 <TableCell sx={{ fontSize: "0.75rem" }}>
                   {u.nombre_englobado || "-"}
                 </TableCell>
+                <TableCell sx={{ py: "2px", px: "4px" }}>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={jornadasLocal[u.id] ?? ""}
+                    onChange={(e) =>
+                      setJornadasLocal((prev) => ({ ...prev, [u.id]: e.target.value }))
+                    }
+                    onBlur={() => guardarJornadaInline(u.id)}
+                    onKeyDown={(e) => { if (e.key === "Enter") guardarJornadaInline(u.id); }}
+                    inputProps={{ step: "0.5", min: 0, style: { fontSize: 11, padding: "3px 6px" } }}
+                    sx={{ width: 64 }}
+                  />
+                </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
                   <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
                     <Edit fontSize="small" />
@@ -207,7 +255,7 @@ const UsuariosAdmin = () => {
             ))}
             {usuarios.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} align="center">No hay usuarios</TableCell>
+                <TableCell colSpan={11} align="center">No hay usuarios</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -357,6 +405,18 @@ const UsuariosAdmin = () => {
             size="small"
             placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
           />
+
+          <TextField
+            label="Jornada (h)"
+            type="number"
+            value={form.jornada_fija}
+            onChange={(e) => setF("jornada_fija", e.target.value)}
+            fullWidth
+            margin="normal"
+            size="small"
+            inputProps={{ min: 0, step: 0.5 }}
+            helperText="Horas de jornada semanal fija para el cálculo de horas extra."
+          />
         </DialogContent>
 
         <DialogActions>
@@ -364,6 +424,17 @@ const UsuariosAdmin = () => {
           <Button variant="contained" onClick={guardarCambios}>Guardar</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={savedMsg !== null}
+        autoHideDuration={2000}
+        onClose={() => setSavedMsg(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" onClose={() => setSavedMsg(null)} sx={{ width: "100%" }}>
+          {savedMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
