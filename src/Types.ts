@@ -1,4 +1,10 @@
 
+export interface DiaTrabajo {
+  dia: string;
+  entrada: string | null;
+  salida: string | null;
+  descanso: boolean;
+}
 
 export interface LoginResponse {
     access_token: string;
@@ -76,6 +82,8 @@ export interface Usuario {
   cuenta_interbancaria?: string | null;
   nombre_englobado?: string | null;
   jornada_fija?: number | null;
+  horario_semanal?: DiaTrabajo[] | null;
+  dia_descanso?: string | null;
 }
 
 

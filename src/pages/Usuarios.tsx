@@ -5,9 +5,10 @@ import {
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   Snackbar, Alert,
 } from "@mui/material";
-import { Edit, Delete, Close } from "@mui/icons-material";
+import { Edit, Delete, Close, AccessTime } from "@mui/icons-material";
 import axios from "axios";
-import { Usuario } from "../Types";
+import { DiaTrabajo, Usuario } from "../Types";
+import HorarioDialog from "../components/HorarioDialog";
 
 const roles = ["admin", "encargado", "asesor", "contador"];
 
@@ -23,7 +24,6 @@ interface FormEdicion {
   cuenta_clabe: string;
   cuenta_interbancaria: string;
   nombre_englobado: string;
-  jornada_fija: string;
 }
 
 const formVacio: FormEdicion = {
@@ -38,7 +38,6 @@ const formVacio: FormEdicion = {
   cuenta_clabe: "",
   cuenta_interbancaria: "",
   nombre_englobado: "",
-  jornada_fija: "",
 };
 
 const UsuariosAdmin = () => {
@@ -47,7 +46,8 @@ const UsuariosAdmin = () => {
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<FormEdicion>(formVacio);
-  const [jornadasLocal, setJornadasLocal] = useState<Record<number, string>>({});
+  const [horarioOpen, setHorarioOpen] = useState(false);
+  const [horarioUserId, setHorarioUserId] = useState<number | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   const token = localStorage.getItem("token");
@@ -68,13 +68,6 @@ const UsuariosAdmin = () => {
     try {
       const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, config);
       setUsuarios(res.data);
-      const init: Record<number, string> = {};
-      (res.data as Usuario[]).forEach((u) => {
-        init[u.id] = u.jornada_fija != null && u.jornada_fija !== 0
-          ? String(u.jornada_fija)
-          : "";
-      });
-      setJornadasLocal(init);
     } catch {
       alert("Error al cargar usuarios");
     }
@@ -100,9 +93,6 @@ const UsuariosAdmin = () => {
       cuenta_clabe: u.cuenta_clabe ?? "",
       cuenta_interbancaria: u.cuenta_interbancaria ?? "",
       nombre_englobado: u.nombre_englobado ?? "",
-      jornada_fija: u.jornada_fija != null && u.jornada_fija !== 0
-        ? String(u.jornada_fija)
-        : "",
     });
     setDialogAbierto(true);
   };
@@ -124,7 +114,6 @@ const UsuariosAdmin = () => {
         cuenta_clabe: mostrarCuentas ? (form.cuenta_clabe || null) : null,
         cuenta_interbancaria: mostrarCuentas ? (form.cuenta_interbancaria || null) : null,
         nombre_englobado: form.nombre_englobado || null,
-        jornada_fija: parseFloat(form.jornada_fija) || 0,
       };
       if (form.username) payload.username = form.username;
       if (form.rol) payload.rol = form.rol;
@@ -153,17 +142,24 @@ const UsuariosAdmin = () => {
     }
   };
 
-  const guardarJornadaInline = async (userId: number) => {
-    const val = jornadasLocal[userId] ?? "";
-    const jornada = val === "" ? 0 : parseFloat(val);
-    if (isNaN(jornada)) return;
+  const abrirHorario = (userId: number) => {
+    setHorarioUserId(userId);
+    setHorarioOpen(true);
+  };
 
-    const perfilEditado = usuarios.find((u) => u.id === userId);
-    const englobado = perfilEditado?.nombre_englobado;
+  const guardarHorario = async (
+    horario: DiaTrabajo[],
+    diaDescanso: string,
+    totalHoras: number
+  ) => {
+    if (horarioUserId === null) return;
+
+    const perfilBase = usuarios.find((u) => u.id === horarioUserId);
+    const englobado = perfilBase?.nombre_englobado;
 
     const afectados = englobado
       ? usuarios.filter((u) => u.nombre_englobado === englobado)
-      : perfilEditado ? [perfilEditado] : [];
+      : perfilBase ? [perfilBase] : [];
 
     if (afectados.length === 0) return;
 
@@ -171,8 +167,8 @@ const UsuariosAdmin = () => {
       await Promise.all(
         afectados.map((p) =>
           axios.put(
-            `${process.env.REACT_APP_API_URL}/admin/usuarios/${p.id}/jornada-fija`,
-            { jornada },
+            `${process.env.REACT_APP_API_URL}/admin/usuarios/${p.id}/horario`,
+            { horario_semanal: horario, dia_descanso: diaDescanso || null },
             config
           )
         )
@@ -180,21 +176,23 @@ const UsuariosAdmin = () => {
 
       const idsAfectados = new Set(afectados.map((p) => p.id));
       setUsuarios((prev) =>
-        prev.map((u) => idsAfectados.has(u.id) ? { ...u, jornada_fija: jornada } : u)
+        prev.map((u) =>
+          idsAfectados.has(u.id)
+            ? { ...u, jornada_fija: totalHoras, horario_semanal: horario, dia_descanso: diaDescanso || null }
+            : u
+        )
       );
-      setJornadasLocal((prev) => {
-        const next = { ...prev };
-        idsAfectados.forEach((id) => { next[id] = jornada > 0 ? String(jornada) : ""; });
-        return next;
-      });
 
       setSavedMsg(
         afectados.length > 1
-          ? `Jornada actualizada en ${afectados.length} perfiles de ${englobado}`
-          : "Jornada actualizada"
+          ? `Horario actualizado en ${afectados.length} perfiles de ${englobado}`
+          : "Horario actualizado"
       );
     } catch {
       // no-op
+    } finally {
+      setHorarioOpen(false);
+      setHorarioUserId(null);
     }
   };
 
@@ -220,8 +218,8 @@ const UsuariosAdmin = () => {
             <col style={{ width: "11%" }} />
             <col style={{ width: "11%" }} />
             <col style={{ width: "11%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "10%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "8%" }} />
           </colgroup>
           <TableHead>
             <TableRow>
@@ -259,18 +257,17 @@ const UsuariosAdmin = () => {
                   {u.nombre_englobado || "-"}
                 </TableCell>
                 <TableCell sx={{ py: "2px", px: "4px" }}>
-                  <TextField
+                  <Button
                     size="small"
-                    type="number"
-                    value={jornadasLocal[u.id] ?? ""}
-                    onChange={(e) =>
-                      setJornadasLocal((prev) => ({ ...prev, [u.id]: e.target.value }))
-                    }
-                    onBlur={() => guardarJornadaInline(u.id)}
-                    onKeyDown={(e) => { if (e.key === "Enter") guardarJornadaInline(u.id); }}
-                    inputProps={{ step: "0.5", min: 0, style: { fontSize: 11, padding: "3px 6px" } }}
-                    sx={{ width: 64 }}
-                  />
+                    variant="outlined"
+                    startIcon={<AccessTime sx={{ fontSize: "13px !important" }} />}
+                    onClick={() => abrirHorario(u.id)}
+                    sx={{ fontSize: 11, py: "2px", px: "5px", minWidth: 0, whiteSpace: "nowrap" }}
+                  >
+                    {u.jornada_fija != null && Number(u.jornada_fija) > 0
+                      ? `${u.jornada_fija}h`
+                      : "—"}
+                  </Button>
                 </TableCell>
                 <TableCell sx={{ whiteSpace: "nowrap" }}>
                   <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
@@ -434,18 +431,6 @@ const UsuariosAdmin = () => {
             size="small"
             placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
           />
-
-          <TextField
-            label="Jornada (h)"
-            type="number"
-            value={form.jornada_fija}
-            onChange={(e) => setF("jornada_fija", e.target.value)}
-            fullWidth
-            margin="normal"
-            size="small"
-            inputProps={{ min: 0, step: 0.5 }}
-            helperText="Horas de jornada semanal fija para el cálculo de horas extra."
-          />
         </DialogContent>
 
         <DialogActions>
@@ -453,6 +438,17 @@ const UsuariosAdmin = () => {
           <Button variant="contained" onClick={guardarCambios}>Guardar</Button>
         </DialogActions>
       </Dialog>
+
+      <HorarioDialog
+        open={horarioOpen}
+        onClose={() => { setHorarioOpen(false); setHorarioUserId(null); }}
+        onSave={guardarHorario}
+        initialHorario={
+          horarioUserId !== null
+            ? (usuarios.find((u) => u.id === horarioUserId)?.horario_semanal ?? null)
+            : null
+        }
+      />
 
       <Snackbar
         open={savedMsg !== null}

@@ -2,8 +2,11 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, MenuItem, TextField, Typography, Alert, Paper,
 } from "@mui/material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import HorarioDialog from "../components/HorarioDialog";
+import { DiaTrabajo } from "../Types";
 
 
 const CrearUsuario = () => {
@@ -20,7 +23,9 @@ const CrearUsuario = () => {
   const [cuentaClabe, setCuentaClabe] = useState("");
   const [cuentaInterbancaria, setCuentaInterbancaria] = useState("");
   const [nombreEnglobado, setNombreEnglobado] = useState("");
-  const [jornadaFija, setJornadaFija] = useState("");
+  const [jornadaFija, setJornadaFija] = useState(0);
+  const [horarioLocal, setHorarioLocal] = useState<DiaTrabajo[]>([]);
+  const [horarioOpen, setHorarioOpen] = useState(false);
   const token = localStorage.getItem("token");
   const config = {
     headers: { Authorization: `Bearer ${token}` },
@@ -57,7 +62,8 @@ const CrearUsuario = () => {
           cuenta_clabe: mostrarCuentas ? (cuentaClabe || null) : null,
           cuenta_interbancaria: mostrarCuentas ? (cuentaInterbancaria || null) : null,
           nombre_englobado: nombreEnglobado || null,
-          jornada_fija: parseFloat(jornadaFija) || 0,
+          jornada_fija: jornadaFija,
+          horario_semanal: horarioLocal.length > 0 ? horarioLocal : [],
         },
         config
       );
@@ -72,7 +78,8 @@ const CrearUsuario = () => {
       setCuentaClabe("");
       setCuentaInterbancaria("");
       setNombreEnglobado("");
-      setJornadaFija("");
+      setJornadaFija(0);
+      setHorarioLocal([]);
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
@@ -190,15 +197,33 @@ const CrearUsuario = () => {
           helperText="Opcional. Agrupa varios perfiles de la misma persona en nómina."
         />
 
-        <TextField
-          label="Jornada (h)"
-          type="number"
-          value={jornadaFija}
-          onChange={(e) => setJornadaFija(e.target.value)}
-          fullWidth
-          margin="normal"
-          inputProps={{ min: 0, step: 0.5 }}
-          helperText="Opcional. Horas de jornada semanal fija para el cálculo de horas extra."
+        <Box mt={1} mb={0.5}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Jornada semanal
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<AccessTimeIcon />}
+            onClick={() => setHorarioOpen(true)}
+          >
+            {jornadaFija > 0 ? `${jornadaFija}h configuradas` : "Configurar horario"}
+          </Button>
+          {jornadaFija > 0 && (
+            <Typography variant="caption" display="block" color="text.secondary" mt={0.5}>
+              Total: {jornadaFija}h semanales
+            </Typography>
+          )}
+        </Box>
+
+        <HorarioDialog
+          open={horarioOpen}
+          onClose={() => setHorarioOpen(false)}
+          onSave={(horario, _, total) => {
+            setHorarioLocal(horario);
+            setJornadaFija(total);
+            setHorarioOpen(false);
+          }}
+          initialHorario={horarioLocal.length > 0 ? horarioLocal : null}
         />
 
         <Box mt={2}>
