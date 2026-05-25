@@ -148,9 +148,9 @@ const PanelControlNominaPage: React.FC = () => {
 
   const mostrarCuentas = form.forma_pago === "BBVA" || form.forma_pago === "Banco Azteca";
 
-  const gruposFiltrados = grupos.filter((g) =>
-    g.nombre_englobado.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const gruposFiltrados = grupos
+    .filter((g) => /^[AC]\d+/i.test(g.nombre_englobado))
+    .filter((g) => g.nombre_englobado.toLowerCase().includes(busqueda.toLowerCase()));
 
   if (loading) {
     return (
