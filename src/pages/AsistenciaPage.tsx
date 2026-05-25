@@ -133,6 +133,7 @@ interface EmpleadoAcumuladoSemanal {
   total_horas: number;
   jornada: number | null;
   horas_extra: number | null;
+  jornada_fija?: number | null;
 }
 
 interface DiaCelda {
@@ -1146,7 +1147,7 @@ const TabAcumulado: React.FC = () => {
         { headers: authH() }
       );
       setFilas(data);
-      // Inicializar jornadasEdit con el primer perfil de cada grupo
+      // Inicializar jornadasEdit desde jornada_fija del primer perfil de cada grupo
       const seen = new Set<string>();
       const init: Record<string, string> = {};
       for (const f of data) {
@@ -1154,7 +1155,9 @@ const TabAcumulado: React.FC = () => {
         if (!/^[AC]\d+/i.test(key)) continue;
         if (!seen.has(key)) {
           seen.add(key);
-          init[key] = f.jornada != null ? String(f.jornada) : "";
+          init[key] = f.jornada_fija != null && f.jornada_fija !== 0
+            ? String(f.jornada_fija)
+            : "";
         }
       }
       setJornadasEdit(init);
@@ -1181,7 +1184,7 @@ const TabAcumulado: React.FC = () => {
   const grupos = useMemo((): GrupoAcumulado[] => {
     type Acc = {
       ids: number[];
-      jornadas: (number | null)[];
+      jornadas: number[];
       nombre_completo: string;
       diasAgg: Record<string, { horas: number; count: number; entrada: string | null; salida: string | null }>;
     };
@@ -1201,7 +1204,7 @@ const TabAcumulado: React.FC = () => {
       }
       const g = map.get(key)!;
       g.ids.push(f.usuario_id);
-      g.jornadas.push(f.jornada);
+      g.jornadas.push(f.jornada_fija ?? 0);
 
       for (const [dk, dia] of Object.entries(f.dias)) {
         if (!g.diasAgg[dk]) {
@@ -1226,13 +1229,12 @@ const TabAcumulado: React.FC = () => {
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, g]) => {
-        const vals = g.jornadas.filter((j): j is number => j !== null);
-        if (new Set(vals).size > 1) {
+        if (new Set(g.jornadas).size > 1) {
           const detail = g.ids.map((id, i) => `id=${id}:${g.jornadas[i]}`).join(", ");
-          console.warn(`[JORNADA] ${key}: perfiles con valores distintos antes de unificar → ${detail}`);
+          console.warn(`[JORNADA_FIJA] ${key}: perfiles con valores distintos antes de unificar → ${detail}`);
         }
 
-        const jornada = g.jornadas[0] ?? null;
+        const jornada = g.jornadas[0] > 0 ? g.jornadas[0] : null;
         let total_horas = 0;
         const dias: Record<string, DiaCelda | null> = {};
 
@@ -1262,14 +1264,14 @@ const TabAcumulado: React.FC = () => {
 
   const guardarJornada = async (grupo: GrupoAcumulado) => {
     const val = jornadasEdit[grupo.key] ?? "";
-    const horas = val === "" ? null : parseFloat(val);
-    if (horas !== null && isNaN(horas)) return;
+    const horas = val === "" ? 0 : parseFloat(val);
+    if (isNaN(horas)) return;
     try {
       await Promise.all(
         grupo.ids.map((uid) =>
           axios.put(
-            `${API}/asistencia/jornada`,
-            { usuario_id: uid, ciclo: cicloSel, horas: horas ?? 0 },
+            `${API}/admin/usuarios/${uid}/jornada-fija`,
+            { jornada: horas },
             { headers: authH() }
           )
         )
@@ -1277,9 +1279,7 @@ const TabAcumulado: React.FC = () => {
       setFilas((prev) =>
         prev.map((f) => {
           if (!grupo.ids.includes(f.usuario_id)) return f;
-          const horas_extra =
-            horas != null ? Math.round((f.total_horas - horas) * 100) / 100 : null;
-          return { ...f, jornada: horas, horas_extra };
+          return { ...f, jornada_fija: horas };
         })
       );
     } catch {
@@ -1413,7 +1413,9 @@ const TabAcumulado: React.FC = () => {
                           }))
                         }
                         onBlur={() => {
-                          const original = grupo.jornada != null ? String(grupo.jornada) : "";
+                          const original = grupo.jornada != null && grupo.jornada > 0
+                            ? String(grupo.jornada)
+                            : "";
                           if ((jornadasEdit[grupo.key] ?? "") !== original) {
                             guardarJornada(grupo);
                           }
