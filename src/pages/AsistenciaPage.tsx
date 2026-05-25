@@ -134,6 +134,7 @@ interface EmpleadoAcumuladoSemanal {
   jornada: number | null;
   horas_extra: number | null;
   jornada_fija?: number | null;
+  sueldo_base?: number | null;
 }
 
 interface DiaCelda {
@@ -151,6 +152,7 @@ interface GrupoAcumulado {
   total_horas: number;
   jornada: number | null;
   horas_extra: number | null;
+  sueldo_base: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1180,6 +1182,7 @@ const TabAcumulado: React.FC = () => {
     type Acc = {
       ids: number[];
       jornadas: number[];
+      sueldos: number[];
       nombre_completo: string;
       diasAgg: Record<string, { horas: number; count: number; entrada: string | null; salida: string | null }>;
     };
@@ -1193,6 +1196,7 @@ const TabAcumulado: React.FC = () => {
         map.set(key, {
           ids: [],
           jornadas: [],
+          sueldos: [],
           nombre_completo: f.nombre_completo || f.username,
           diasAgg: {},
         });
@@ -1200,6 +1204,7 @@ const TabAcumulado: React.FC = () => {
       const g = map.get(key)!;
       g.ids.push(f.usuario_id);
       g.jornadas.push(f.jornada_fija ?? 0);
+      g.sueldos.push(f.sueldo_base ?? 0);
 
       for (const [dk, dia] of Object.entries(f.dias)) {
         if (!g.diasAgg[dk]) {
@@ -1253,7 +1258,9 @@ const TabAcumulado: React.FC = () => {
             ? Math.round((total_horas - jornada) * 100) / 100
             : null;
 
-        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra };
+        const sueldo_base = Math.max(0, ...g.sueldos);
+
+        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base };
       });
   }, [filas]);
 
@@ -1275,7 +1282,7 @@ const TabAcumulado: React.FC = () => {
       })
     : [];
 
-  const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo"];
+  const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo", "$ Pago"];
 
   const cellBase = { py: "4px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
   const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
@@ -1312,7 +1319,7 @@ const TabAcumulado: React.FC = () => {
           elevation={1}
           sx={{ overflowX: "auto", overflowY: "auto", maxHeight: 520 }}
         >
-          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 900 }}>
+          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1010 }}>
             <TableHead>
               <TableRow>
                 {COLS.map((h) => (
@@ -1328,6 +1335,7 @@ const TabAcumulado: React.FC = () => {
                       ...( h === "Jornada" ? { width: 68 } : {}),
                       ...( h === "H. Extra" ? { width: 64 } : {}),
                       ...( h === "Redondeo" ? { width: 72 } : {}),
+                      ...( h === "$ Pago" ? { width: 72 } : {}),
                       fontWeight: 700,
                       color: "#FF6600",
                       borderBottom: "2px solid #e2e8f0",
@@ -1435,6 +1443,28 @@ const TabAcumulado: React.FC = () => {
                           sx={{ width: 68 }}
                         />
                       )}
+                    </TableCell>
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
+                      {(() => {
+                        const he = grupo.horas_extra;
+                        const jornada = grupo.jornada;
+                        const sueldo = grupo.sueldo_base;
+                        if (jornada == null || jornada === 0 || sueldo === 0 || he == null) {
+                          return <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>;
+                        }
+                        const valorRed = he >= 0
+                          ? redondearHorasExtra(he)
+                          : parseFloat(descuentosEdit[grupo.key] || String(he));
+                        const pago = (sueldo / jornada) * valorRed;
+                        const color = pago > 0 ? "#16a34a" : pago < 0 ? "#ef4444" : undefined;
+                        const prefix = pago > 0 ? "+" : pago < 0 ? "-" : "";
+                        return (
+                          <Box sx={{ fontSize: 11, fontWeight: 700, color }}>
+                            {prefix}${Math.abs(pago).toFixed(2)}
+                          </Box>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 );
