@@ -155,6 +155,15 @@ interface GrupoAcumulado {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const redondearHorasExtra = (horas: number): number => {
+  const enteros = Math.floor(horas);
+  const decimal = horas - enteros;
+  const minutos = Math.round(decimal * 60);
+  if (minutos <= 29) return enteros;
+  if (minutos <= 50) return enteros + 0.5;
+  return enteros + 1;
+};
+
 const formatHora = (iso: string | null) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -1136,6 +1145,7 @@ const TabAcumulado: React.FC = () => {
   const [cicloSel, setCicloSel] = useState<string>("");
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [descuentosEdit, setDescuentosEdit] = useState<Record<string, string>>({});
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
     if (!cicloInicio) return;
@@ -1247,6 +1257,16 @@ const TabAcumulado: React.FC = () => {
       });
   }, [filas]);
 
+  useEffect(() => {
+    const init: Record<string, string> = {};
+    grupos.forEach((g) => {
+      if (g.horas_extra !== null && g.horas_extra < 0) {
+        init[g.key] = String(g.horas_extra);
+      }
+    });
+    setDescuentosEdit(init);
+  }, [grupos]);
+
   const diasDelCiclo = cicloSel
     ? Array.from({ length: 7 }, (_, i) => {
         const [y, m, d] = cicloSel.split("-").map(Number);
@@ -1255,7 +1275,7 @@ const TabAcumulado: React.FC = () => {
       })
     : [];
 
-  const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra"];
+  const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo"];
 
   const cellBase = { py: "4px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
   const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
@@ -1292,7 +1312,7 @@ const TabAcumulado: React.FC = () => {
           elevation={1}
           sx={{ overflowX: "auto", overflowY: "auto", maxHeight: 520 }}
         >
-          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 820 }}>
+          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 900 }}>
             <TableHead>
               <TableRow>
                 {COLS.map((h) => (
@@ -1307,6 +1327,7 @@ const TabAcumulado: React.FC = () => {
                       ...( h === "Total h" ? { width: 60 } : {}),
                       ...( h === "Jornada" ? { width: 68 } : {}),
                       ...( h === "H. Extra" ? { width: 64 } : {}),
+                      ...( h === "Redondeo" ? { width: 72 } : {}),
                       fontWeight: 700,
                       color: "#FF6600",
                       borderBottom: "2px solid #e2e8f0",
@@ -1382,6 +1403,37 @@ const TabAcumulado: React.FC = () => {
                         </Box>
                       ) : (
                         <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                      )}
+                    </TableCell>
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
+                      {grupo.jornada == null ? (
+                        <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                      ) : grupo.horas_extra !== null && grupo.horas_extra >= 0 ? (
+                        <Box
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: redondearHorasExtra(grupo.horas_extra) > 0 ? "#16a34a" : undefined,
+                          }}
+                        >
+                          {redondearHorasExtra(grupo.horas_extra) > 0 ? "+" : ""}
+                          {redondearHorasExtra(grupo.horas_extra)}h
+                        </Box>
+                      ) : (
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={descuentosEdit[grupo.key] ?? ""}
+                          onChange={(e) =>
+                            setDescuentosEdit((prev) => ({ ...prev, [grupo.key]: e.target.value }))
+                          }
+                          inputProps={{
+                            step: "0.01",
+                            style: { fontSize: 11, padding: "3px 6px", color: "#ef4444" },
+                          }}
+                          sx={{ width: 68 }}
+                        />
                       )}
                     </TableCell>
                   </TableRow>
