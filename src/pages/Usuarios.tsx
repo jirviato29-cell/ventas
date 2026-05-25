@@ -157,13 +157,42 @@ const UsuariosAdmin = () => {
     const val = jornadasLocal[userId] ?? "";
     const jornada = val === "" ? 0 : parseFloat(val);
     if (isNaN(jornada)) return;
+
+    const perfilEditado = usuarios.find((u) => u.id === userId);
+    const englobado = perfilEditado?.nombre_englobado;
+
+    const afectados = englobado
+      ? usuarios.filter((u) => u.nombre_englobado === englobado)
+      : perfilEditado ? [perfilEditado] : [];
+
+    if (afectados.length === 0) return;
+
     try {
-      await axios.put(
-        `${process.env.REACT_APP_API_URL}/admin/usuarios/${userId}/jornada-fija`,
-        { jornada },
-        config
+      await Promise.all(
+        afectados.map((p) =>
+          axios.put(
+            `${process.env.REACT_APP_API_URL}/admin/usuarios/${p.id}/jornada-fija`,
+            { jornada },
+            config
+          )
+        )
       );
-      setSavedMsg("Jornada guardada");
+
+      const idsAfectados = new Set(afectados.map((p) => p.id));
+      setUsuarios((prev) =>
+        prev.map((u) => idsAfectados.has(u.id) ? { ...u, jornada_fija: jornada } : u)
+      );
+      setJornadasLocal((prev) => {
+        const next = { ...prev };
+        idsAfectados.forEach((id) => { next[id] = jornada > 0 ? String(jornada) : ""; });
+        return next;
+      });
+
+      setSavedMsg(
+        afectados.length > 1
+          ? `Jornada actualizada en ${afectados.length} perfiles de ${englobado}`
+          : "Jornada actualizada"
+      );
     } catch {
       // no-op
     }
