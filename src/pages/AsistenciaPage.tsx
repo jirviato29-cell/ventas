@@ -8,7 +8,9 @@ import {
   Chip,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
+  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -34,6 +36,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CloseIcon from "@mui/icons-material/Close";
+import SaveIcon from "@mui/icons-material/Save";
 import axios from "axios";
 import * as XLSX from "xlsx";
 
@@ -1148,6 +1151,10 @@ const TabAcumulado: React.FC = () => {
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
   const [cargando, setCargando] = useState(false);
   const [descuentosEdit, setDescuentosEdit] = useState<Record<string, string>>({});
+  const [guardarOpen, setGuardarOpen] = useState(false);
+  const [etiqueta, setEtiqueta] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [cicloSnack, setCicloSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
     if (!cicloInicio) return;
@@ -1274,6 +1281,56 @@ const TabAcumulado: React.FC = () => {
     setDescuentosEdit(init);
   }, [grupos]);
 
+  const cicloActual = ciclos.find((c) => c.inicio === cicloSel) ?? null;
+
+  const handleGuardarCiclo = async () => {
+    if (!cicloActual || !etiqueta.trim()) return;
+    setGuardando(true);
+    try {
+      const datos = grupos.map((g) => {
+        const he = g.horas_extra;
+        const jornada = g.jornada;
+        const sueldo = g.sueldo_base;
+        let valorRed: number | null = null;
+        let pago: number | null = null;
+        if (he !== null && jornada !== null && jornada > 0 && sueldo > 0) {
+          valorRed = he >= 0
+            ? redondearHorasExtra(he)
+            : parseFloat(descuentosEdit[g.key] || String(he));
+          pago = (sueldo / jornada) * valorRed;
+        }
+        return {
+          empleado: g.key,
+          nombre_completo: g.nombre_completo,
+          jornada: g.jornada,
+          sueldo_base: g.sueldo_base,
+          total_horas: g.total_horas,
+          horas_extra: g.horas_extra,
+          horas_extra_redondeo: valorRed,
+          pago: pago !== null ? parseFloat(pago.toFixed(2)) : null,
+        };
+      });
+      await axios.post(
+        `${API}/admin/ciclos-guardados`,
+        {
+          concepto: "horas_extras",
+          etiqueta: etiqueta.trim(),
+          fecha_inicio: cicloActual.inicio,
+          fecha_fin: cicloActual.fin,
+          datos,
+        },
+        { headers: authH() }
+      );
+      setCicloSnack({ msg: "Ciclo guardado correctamente", sev: "success" });
+      setGuardarOpen(false);
+      setEtiqueta("");
+    } catch {
+      setCicloSnack({ msg: "Error al guardar el ciclo", sev: "error" });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const diasDelCiclo = cicloSel
     ? Array.from({ length: 7 }, (_, i) => {
         const [y, m, d] = cicloSel.split("-").map(Number);
@@ -1305,6 +1362,16 @@ const TabAcumulado: React.FC = () => {
             ))}
           </Select>
         </FormControl>
+        {grupos.length > 0 && !cargando && (
+          <Button
+            variant="outlined"
+            startIcon={<SaveIcon />}
+            onClick={() => { setEtiqueta(""); setGuardarOpen(true); }}
+            size="small"
+          >
+            Guardar ciclo
+          </Button>
+        )}
       </Box>
 
       {cargando ? (
@@ -1473,6 +1540,48 @@ const TabAcumulado: React.FC = () => {
           </Table>
         </TableContainer>
       )}
+
+      {/* ── Dialog: guardar ciclo ── */}
+      <Dialog open={guardarOpen} onClose={() => setGuardarOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Guardar ciclo</DialogTitle>
+        <DialogContent>
+          {cicloActual && (
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              {cicloActual.label}
+            </Typography>
+          )}
+          <TextField
+            autoFocus
+            label="Etiqueta"
+            value={etiqueta}
+            onChange={(e) => setEtiqueta(e.target.value)}
+            fullWidth
+            size="small"
+            placeholder="Ej. Semana 21 mayo"
+            helperText="Nombre para identificar este ciclo guardado"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGuardarOpen(false)} disabled={guardando}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleGuardarCiclo}
+            disabled={!etiqueta.trim() || guardando}
+            startIcon={guardando ? <CircularProgress size={16} /> : <SaveIcon />}
+            sx={{ bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" } }}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={!!cicloSnack} autoHideDuration={4000} onClose={() => setCicloSnack(null)}>
+        <Alert severity={cicloSnack?.sev} variant="filled" onClose={() => setCicloSnack(null)}>
+          {cicloSnack?.msg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
