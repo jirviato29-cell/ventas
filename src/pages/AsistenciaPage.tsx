@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -128,7 +128,25 @@ interface EmpleadoAcumuladoSemanal {
   usuario_id: number;
   username: string;
   nombre_completo: string;
+  nombre_englobado?: string | null;
   dias: Record<string, DiaResumen | null>;
+  total_horas: number;
+  jornada: number | null;
+  horas_extra: number | null;
+}
+
+interface DiaCelda {
+  horas: number;
+  entrada: string | null;
+  salida: string | null;
+  multiple: boolean;
+}
+
+interface GrupoAcumulado {
+  key: string;
+  ids: number[];
+  nombre_completo: string;
+  dias: Record<string, DiaCelda | null>;
   total_horas: number;
   jornada: number | null;
   horas_extra: number | null;
@@ -1116,7 +1134,7 @@ const TabAcumulado: React.FC = () => {
   const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
   const [cicloSel, setCicloSel] = useState<string>("");
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
-  const [jornadasEdit, setJornadasEdit] = useState<Record<number, string>>({});
+  const [jornadasEdit, setJornadasEdit] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(false);
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
@@ -1128,10 +1146,17 @@ const TabAcumulado: React.FC = () => {
         { headers: authH() }
       );
       setFilas(data);
-      const init: Record<number, string> = {};
-      data.forEach((f) => {
-        init[f.usuario_id] = f.jornada != null ? String(f.jornada) : "";
-      });
+      // Inicializar jornadasEdit con el primer perfil de cada grupo
+      const seen = new Set<string>();
+      const init: Record<string, string> = {};
+      for (const f of data) {
+        const key = f.nombre_englobado ?? f.username;
+        if (!/^[AC]\d+/i.test(key)) continue;
+        if (!seen.has(key)) {
+          seen.add(key);
+          init[key] = f.jornada != null ? String(f.jornada) : "";
+        }
+      }
       setJornadasEdit(init);
     } finally {
       setCargando(false);
@@ -1152,23 +1177,108 @@ const TabAcumulado: React.FC = () => {
     if (cicloSel) cargarAcumulado(cicloSel);
   }, [cicloSel, cargarAcumulado]);
 
-  const guardarJornada = async (usuarioId: number) => {
-    const val = jornadasEdit[usuarioId] ?? "";
+  // ── Agrupar por nombre_englobado ?? username, filtrar ^[AC]\d+ ───────────────
+  const grupos = useMemo((): GrupoAcumulado[] => {
+    type Acc = {
+      ids: number[];
+      jornadas: (number | null)[];
+      nombre_completo: string;
+      diasAgg: Record<string, { horas: number; count: number; entrada: string | null; salida: string | null }>;
+    };
+    const map = new Map<string, Acc>();
+
+    for (const f of filas) {
+      const key = f.nombre_englobado ?? f.username;
+      if (!/^[AC]\d+/i.test(key)) continue;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          ids: [],
+          jornadas: [],
+          nombre_completo: f.nombre_completo || f.username,
+          diasAgg: {},
+        });
+      }
+      const g = map.get(key)!;
+      g.ids.push(f.usuario_id);
+      g.jornadas.push(f.jornada);
+
+      for (const [dk, dia] of Object.entries(f.dias)) {
+        if (!g.diasAgg[dk]) {
+          g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null };
+        }
+        if (dia) {
+          const d = g.diasAgg[dk];
+          d.horas += dia.horas;
+          d.count += 1;
+          if (d.count === 1) {
+            d.entrada = dia.entrada;
+            d.salida = dia.salida;
+          } else {
+            // 2+ perfiles activos este día → no mostrar tiempos individuales
+            d.entrada = null;
+            d.salida = null;
+          }
+        }
+      }
+    }
+
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, g]) => {
+        const vals = g.jornadas.filter((j): j is number => j !== null);
+        if (new Set(vals).size > 1) {
+          const detail = g.ids.map((id, i) => `id=${id}:${g.jornadas[i]}`).join(", ");
+          console.warn(`[JORNADA] ${key}: perfiles con valores distintos antes de unificar → ${detail}`);
+        }
+
+        const jornada = g.jornadas[0] ?? null;
+        let total_horas = 0;
+        const dias: Record<string, DiaCelda | null> = {};
+
+        for (const [dk, d] of Object.entries(g.diasAgg)) {
+          if (d.count === 0) {
+            dias[dk] = null;
+          } else {
+            total_horas += d.horas;
+            dias[dk] = {
+              horas: Math.round(d.horas * 100) / 100,
+              entrada: d.entrada,
+              salida: d.salida,
+              multiple: d.count > 1,
+            };
+          }
+        }
+
+        total_horas = Math.round(total_horas * 100) / 100;
+        const horas_extra =
+          jornada !== null
+            ? Math.round((total_horas - jornada) * 100) / 100
+            : null;
+
+        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra };
+      });
+  }, [filas]);
+
+  const guardarJornada = async (grupo: GrupoAcumulado) => {
+    const val = jornadasEdit[grupo.key] ?? "";
     const horas = val === "" ? null : parseFloat(val);
     if (horas !== null && isNaN(horas)) return;
     try {
-      await axios.put(
-        `${API}/asistencia/jornada`,
-        { usuario_id: usuarioId, ciclo: cicloSel, horas: horas ?? 0 },
-        { headers: authH() }
+      await Promise.all(
+        grupo.ids.map((uid) =>
+          axios.put(
+            `${API}/asistencia/jornada`,
+            { usuario_id: uid, ciclo: cicloSel, horas: horas ?? 0 },
+            { headers: authH() }
+          )
+        )
       );
       setFilas((prev) =>
         prev.map((f) => {
-          if (f.usuario_id !== usuarioId) return f;
+          if (!grupo.ids.includes(f.usuario_id)) return f;
           const horas_extra =
-            horas != null
-              ? parseFloat((f.total_horas - horas).toFixed(2))
-              : null;
+            horas != null ? Math.round((f.total_horas - horas) * 100) / 100 : null;
           return { ...f, jornada: horas, horas_extra };
         })
       );
@@ -1214,7 +1324,7 @@ const TabAcumulado: React.FC = () => {
         <Box textAlign="center" py={4}>
           <CircularProgress />
         </Box>
-      ) : filas.length === 0 ? (
+      ) : grupos.length === 0 ? (
         <Alert severity="info">Sin datos para este ciclo</Alert>
       ) : (
         <TableContainer
@@ -1248,10 +1358,10 @@ const TabAcumulado: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filas.map((fila, idx) => {
+              {grupos.map((grupo, idx) => {
                 const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
                 return (
-                  <TableRow key={fila.usuario_id} sx={{ bgcolor: rowBg, height: 36 }}>
+                  <TableRow key={grupo.key} sx={{ bgcolor: rowBg, height: 36 }}>
                     <TableCell
                       sx={{
                         ...cellBase,
@@ -1262,18 +1372,20 @@ const TabAcumulado: React.FC = () => {
                         boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                       }}
                     >
-                      {fila.nombre_completo || fila.username}
+                      {grupo.key}
                     </TableCell>
 
                     {diasDelCiclo.map((diaKey) => {
-                      const dia = fila.dias[diaKey];
+                      const dia = grupo.dias[diaKey];
                       return (
                         <TableCell key={diaKey} align="center" sx={{ ...cellBase, width: 76 }}>
                           {dia ? (
                             <Box lineHeight={1.3}>
-                              <Box sx={{ fontSize: 10, whiteSpace: "nowrap", color: "#1e293b" }}>
-                                {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
-                              </Box>
+                              {!dia.multiple && (
+                                <Box sx={{ fontSize: 10, whiteSpace: "nowrap", color: "#1e293b" }}>
+                                  {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
+                                </Box>
+                              )}
                               <Box sx={{ fontSize: 10, color: "#64748b" }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
@@ -1286,24 +1398,24 @@ const TabAcumulado: React.FC = () => {
                     })}
 
                     <TableCell align="center" sx={{ ...cellBase, width: 60, fontWeight: 700 }}>
-                      {fila.total_horas.toFixed(2)}h
+                      {grupo.total_horas.toFixed(2)}h
                     </TableCell>
 
                     <TableCell align="center" sx={{ ...cellBase, width: 68, p: "2px 4px" }}>
                       <TextField
                         size="small"
                         type="number"
-                        value={jornadasEdit[fila.usuario_id] ?? ""}
+                        value={jornadasEdit[grupo.key] ?? ""}
                         onChange={(e) =>
                           setJornadasEdit((prev) => ({
                             ...prev,
-                            [fila.usuario_id]: e.target.value,
+                            [grupo.key]: e.target.value,
                           }))
                         }
                         onBlur={() => {
-                          const original = fila.jornada != null ? String(fila.jornada) : "";
-                          if ((jornadasEdit[fila.usuario_id] ?? "") !== original) {
-                            guardarJornada(fila.usuario_id);
+                          const original = grupo.jornada != null ? String(grupo.jornada) : "";
+                          if ((jornadasEdit[grupo.key] ?? "") !== original) {
+                            guardarJornada(grupo);
                           }
                         }}
                         inputProps={{ step: "0.5", min: 0, style: { fontSize: 11, padding: "3px 6px" } }}
@@ -1312,16 +1424,16 @@ const TabAcumulado: React.FC = () => {
                     </TableCell>
 
                     <TableCell align="center" sx={{ ...cellBase, width: 64 }}>
-                      {fila.horas_extra != null ? (
+                      {grupo.horas_extra != null ? (
                         <Box
                           sx={{
                             fontSize: 11,
                             fontWeight: 700,
-                            color: fila.horas_extra < 0 ? "#ef4444" : fila.horas_extra > 0 ? "#16a34a" : undefined,
+                            color: grupo.horas_extra < 0 ? "#ef4444" : grupo.horas_extra > 0 ? "#16a34a" : undefined,
                           }}
                         >
-                          {fila.horas_extra > 0 ? "+" : ""}
-                          {fila.horas_extra.toFixed(2)}h
+                          {grupo.horas_extra > 0 ? "+" : ""}
+                          {grupo.horas_extra.toFixed(2)}h
                         </Box>
                       ) : (
                         <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
