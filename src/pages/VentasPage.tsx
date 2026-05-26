@@ -621,7 +621,6 @@ const FormularioVentaMultiple = () => {
         setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
         setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-        if (rol === 'encargado') fetchVentas();
       } else if (okEf && !okTa) {
         setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
       } else if (!okEf && okTa) {
@@ -642,7 +641,6 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
       setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-      if (rol === 'encargado') fetchVentas();
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
     }
@@ -766,7 +764,6 @@ const FormularioVentaMultiple = () => {
         setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
         resetTel();
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-        if (rol === 'encargado') fetchVentas();
       } else if (okEf && !okTa) {
         setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
       } else if (!okEf && okTa) {
@@ -787,7 +784,6 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
       resetTel();
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-      if (rol === 'encargado') fetchVentas();
     } catch (err: any) {
       let msg = 'Error al registrar la venta de teléfono';
       if (Array.isArray(err?.response?.data?.detail)) msg = err.response.data.detail.map((e: any) => e.msg).join(' | ');
@@ -813,14 +809,6 @@ const FormularioVentaMultiple = () => {
   const ventasHoyAcc = ventas.filter((v) => v.tipo_producto === 'accesorios' && v.fecha?.startsWith(HOY)).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
   const ventasHoyTel = ventas.filter((v) => v.tipo_producto === 'telefono' && v.fecha?.startsWith(HOY)).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
   const chipsHoy = chipsDelDia;
-
-  const ventasHoyAccEncargado = ventasHoyAcc.filter((v) => v.empleado?.id === user?.id);
-  const ventasHoyTelEncargado = ventasHoyTel.filter((v) => v.empleado?.id === user?.id);
-  const comisionAccEncargado  = ventasHoyAccEncargado.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
-  const comisionTelEncargado  = ventasHoyTelEncargado.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
-  const totalComisionEncargado = comisionAccEncargado + comisionTelEncargado;
-  const totalPesosAccEncargado = ventasHoyAccEncargado.filter((v) => !v.cancelada).reduce((s, v) => s + v.precio_unitario * v.cantidad, 0);
-  const totalPesosTelEncargado = ventasHoyTelEncargado.filter((v) => !v.cancelada).reduce((s, v) => s + v.precio_unitario * v.cantidad, 0);
 
   const comisionAccHoy  = ventasHoyAcc.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
   const comisionTelHoy  = ventasHoyTel.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
@@ -2217,7 +2205,7 @@ const FormularioVentaMultiple = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {ventasHoyAccEncargado.map((v) => (
+                      {ventasHoyAcc.map((v) => (
                         <tr key={`enc-acc-${v.id}`}>
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
@@ -2230,7 +2218,7 @@ const FormularioVentaMultiple = () => {
                           </td>
                         </tr>
                       ))}
-                      {ventasHoyTelEncargado.map((v) => (
+                      {ventasHoyTel.map((v) => (
                         <tr key={`enc-tel-${v.id}`}>
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
@@ -2243,7 +2231,7 @@ const FormularioVentaMultiple = () => {
                           </td>
                         </tr>
                       ))}
-                      {ventasHoyAccEncargado.length === 0 && ventasHoyTelEncargado.length === 0 && (
+                      {ventasHoyAcc.length === 0 && ventasHoyTel.length === 0 && (
                         <tr>
                           <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
                             Sin ventas registradas hoy
@@ -2255,13 +2243,13 @@ const FormularioVentaMultiple = () => {
                 </Box>
                 <Box display="flex" justifyContent="flex-start" gap={3} mt={1.5} pt={1} sx={{ borderTop: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Accesorios: <strong>{ventasHoyAccEncargado.length}</strong> | <strong>${fmt(totalPesosAccEncargado)}</strong>
+                    Accesorios: <strong>{ventasHoyAcc.length}</strong> | <strong>${fmt(totalPesosAcc)}</strong>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Teléfonos: <strong>{ventasHoyTelEncargado.length}</strong> | <strong>${fmt(totalPesosTelEncargado)}</strong>
+                    Teléfonos: <strong>{ventasHoyTel.length}</strong> | <strong>${fmt(totalPesosTel)}</strong>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Comisión total: <strong>${fmt(totalComisionEncargado)}</strong>
+                    Comisión total: <strong>${fmt(totalComisionHoy)}</strong>
                   </Typography>
                 </Box>
               </Paper>
@@ -2271,17 +2259,17 @@ const FormularioVentaMultiple = () => {
                 <Box display="flex" flexDirection="column" gap={1}>
                   <Box display="flex" justifyContent="space-between">
                     <Typography variant="body2" sx={{ opacity: 0.85 }}>Accesorios</Typography>
-                    <Typography variant="body2" fontWeight={600}>${comisionAccEncargado.toFixed(2)}</Typography>
+                    <Typography variant="body2" fontWeight={600}>${comisionAccHoy.toFixed(2)}</Typography>
                   </Box>
                   <Box display="flex" justifyContent="space-between">
                     <Typography variant="body2" sx={{ opacity: 0.85 }}>Teléfonos</Typography>
-                    <Typography variant="body2" fontWeight={600}>${comisionTelEncargado.toFixed(2)}</Typography>
+                    <Typography variant="body2" fontWeight={600}>${comisionTelHoy.toFixed(2)}</Typography>
                   </Box>
                 </Box>
                 <Divider sx={{ my: 1.5, borderColor: 'rgba(255,255,255,0.35)' }} />
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Typography variant="body1" fontWeight={700}>Total comisionado</Typography>
-                  <Typography variant="h5" fontWeight={800}>${totalComisionEncargado.toFixed(2)}</Typography>
+                  <Typography variant="h5" fontWeight={800}>${totalComisionHoy.toFixed(2)}</Typography>
                 </Box>
               </Paper>
             </>

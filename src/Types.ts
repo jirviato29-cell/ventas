@@ -28,7 +28,6 @@ export interface Venta {
   chip_casado: string;
   metodo_pago?: string;
   empleado?: {
-    id?: number;
     username: string;
   };
 }
