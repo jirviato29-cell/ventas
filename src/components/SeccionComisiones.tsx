@@ -22,6 +22,8 @@ export interface EmpleadoComision {
   seccion: string;
   empleado: string;
   nombre_completo: string;
+  usuario_ids?: number[];
+  sueldo_base: number;
   comisiones_accesorios: number;
   comisiones_telefonos: number;
   comisiones_chips: number;

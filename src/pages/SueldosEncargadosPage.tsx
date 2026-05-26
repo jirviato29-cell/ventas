@@ -4,19 +4,26 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import axios from "axios";
@@ -79,6 +86,14 @@ interface ResumenModuloResponse {
   empleados: ResumenEmpleadoNomina[];
 }
 
+interface EmpleadoSueldo {
+  empleado: string;
+  nombre_completo: string;
+  modulo: string;
+  usuario_ids: number[];
+  sueldo_total: number;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmtDiaCorto = (fechaStr: string) => {
@@ -103,32 +118,16 @@ function sortProductos(productos: ProductoResumen[]): ProductoResumen[] {
   });
 }
 
-/**
- * Genera los últimos `count` ciclos cerrados (viernes→jueves).
- * El primero (índice 0) es el ciclo cerrado más reciente.
- * "Cerrado" = el jueves de ese ciclo ya pasó; si hoy es jueves, no cuenta.
- */
 function generarCiclos(count: number): CicloItem[] {
   const todayStr = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
-  // Parsear como fecha local para evitar el desplazamiento UTC→CDT
   const [y, m, d] = todayStr.split("-").map(Number);
   const today = dayjs(new Date(y, m - 1, d));
 
-  // Jueves más reciente YA PASADO (si hoy es jueves, tomar el de la semana anterior)
-  // day() 4 = jueves; (day - 4 + 7) % 7 da 0 cuando hoy es jueves → forzar 7
   const daysToLastThursday = ((today.day() - 4 + 7) % 7) || 7;
   const lastThursday = today.subtract(daysToLastThursday, "day");
-
-  console.log(
-    "[CICLO] hoy:", todayStr,
-    "| day():", today.day(),
-    "| daysToLastThursday:", daysToLastThursday,
-    "| fin[0]:", lastThursday.format("YYYY-MM-DD"),
-    "| inicio[0]:", lastThursday.subtract(6, "day").format("YYYY-MM-DD"),
-  );
 
   return Array.from({ length: count }, (_, i) => {
     const fin = lastThursday.subtract(i * 7, "day");
@@ -151,6 +150,12 @@ const SueldosEncargadosPage: React.FC = () => {
   const [datosResumen, setDatosResumen] = useState<ResumenModuloResponse | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Guardar ciclo
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [etiquetaCiclo, setEtiquetaCiclo] = useState("");
+  const [guardandoCiclo, setGuardandoCiclo] = useState(false);
+  const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
 
   const cargarDatos = useCallback(
     async (modulo: string, inicio: string, fin: string) => {
@@ -191,17 +196,93 @@ const SueldosEncargadosPage: React.FC = () => {
     }
   }, [moduloSel, cicloSelIdx, ciclos, cargarDatos]);
 
+  const guardarCiclo = async () => {
+    if (!etiquetaCiclo.trim()) return;
+    setGuardandoCiclo(true);
+    try {
+      const ciclo = ciclos[cicloSelIdx];
+      const { data: sueldosData } = await axios.get<EmpleadoSueldo[]>(
+        `${API}/sueldos/encargados-todos?fecha_inicio=${ciclo.fechaInicioStr}&fecha_fin=${ciclo.fechaFinStr}`,
+        { headers: authH() }
+      );
+      await axios.post(
+        `${API}/admin/ciclos-guardados`,
+        {
+          concepto: "sueldos_encargados",
+          etiqueta: etiquetaCiclo.trim(),
+          fecha_inicio: ciclo.fechaInicioStr,
+          fecha_fin: ciclo.fechaFinStr,
+          datos: sueldosData,
+        },
+        { headers: authH() }
+      );
+      setDialogOpen(false);
+      setEtiquetaCiclo("");
+      setSnack({ msg: "Ciclo guardado exitosamente", sev: "success" });
+    } catch (err: any) {
+      setSnack({ msg: err?.response?.data?.detail || "Error al guardar el ciclo", sev: "error" });
+    } finally {
+      setGuardandoCiclo(false);
+    }
+  };
+
   const cicloActual = ciclos[cicloSelIdx];
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={700} color="#1e293b" mb={3}>
-        Sueldos Encargados
-      </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Typography variant="h5" fontWeight={700} color="#1e293b">
+          Sueldos Encargados
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={guardandoCiclo ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+          onClick={() => setDialogOpen(true)}
+          disabled={guardandoCiclo}
+          sx={{
+            borderColor: "#f97316", color: "#f97316",
+            "&:hover": { borderColor: "#f97316", bgcolor: "rgba(249,115,22,0.08)" },
+          }}
+        >
+          Guardar Ciclo
+        </Button>
+      </Box>
+
+      {/* ── Dialog etiqueta ─────────────────────────────────────────── */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Guardar Ciclo de Sueldos Encargados</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={1.5}>
+            Ciclo: <strong>{cicloActual.label}</strong>
+          </Typography>
+          <TextField
+            label="Etiqueta"
+            value={etiquetaCiclo}
+            onChange={(e) => setEtiquetaCiclo(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") guardarCiclo(); }}
+            fullWidth size="small"
+            placeholder={`Ej. Encargados ${cicloActual.label}`}
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} color="inherit" disabled={guardandoCiclo}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={guardarCiclo}
+            disabled={!etiquetaCiclo.trim() || guardandoCiclo}
+            startIcon={guardandoCiclo ? <CircularProgress size={16} color="inherit" /> : undefined}
+            sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6b0a" } }}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── Filtros ─────────────────────────────────────────────────── */}
       <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
-        {/* Selector de ciclo */}
         <Box display="flex" alignItems="center" gap={2} mb={2.5} flexWrap="wrap">
           <Typography fontWeight={600} color="#64748b" fontSize={14}>
             Ciclo:
@@ -223,7 +304,6 @@ const SueldosEncargadosPage: React.FC = () => {
           </FormControl>
         </Box>
 
-        {/* Botones de módulo */}
         <Box display="flex" flexWrap="wrap" gap={1}>
           {MODULOS.map((m) => {
             const activo = moduloSel === m;
@@ -253,7 +333,6 @@ const SueldosEncargadosPage: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* ── Estados ─────────────────────────────────────────────────── */}
       {cargando && (
         <Box display="flex" justifyContent="center" py={4}>
           <CircularProgress sx={{ color: "#f97316" }} />
@@ -266,10 +345,8 @@ const SueldosEncargadosPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* ── Cuadro 1: Resumen de productos ──────────────────────────── */}
       {!cargando && datos && (
         <Box>
-          {/* Sueldo total */}
           <Box
             display="flex"
             justifyContent="flex-end"
@@ -292,10 +369,8 @@ const SueldosEncargadosPage: React.FC = () => {
             </Typography>
           </Box>
 
-          {/* ── Cuadros lado a lado (responsive) ───────────────────── */}
           <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start">
 
-            {/* Cuadro 1: Resumen de productos — ~50% */}
             <Box sx={{ flex: "2 1 300px", minWidth: 0 }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Resumen de productos — {datos.modulo}&nbsp;·&nbsp;
@@ -312,15 +387,7 @@ const SueldosEncargadosPage: React.FC = () => {
                         <TableCell
                           key={h}
                           align={h === "Producto" ? "left" : "right"}
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: 12,
-                            color: "#f97316",
-                            borderBottom: "2px solid #e2e8f0",
-                            whiteSpace: "nowrap",
-                            py: "6px",
-                            px: "10px",
-                          }}
+                          sx={{ fontWeight: 700, fontSize: 12, color: "#f97316", borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap", py: "6px", px: "10px" }}
                         >
                           {h}
                         </TableCell>
@@ -329,37 +396,12 @@ const SueldosEncargadosPage: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {sortProductos(datos.productos).map((p, idx) => (
-                      <TableRow
-                        key={p.nombre}
-                        sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
-                      >
-                        <TableCell
-                          sx={{
-                            fontSize: 12,
-                            py: "5px",
-                            px: "10px",
-                          }}
-                        >
-                          {p.nombre}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
-                          {p.cantidad}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
-                          {fmtMXN(p.neto)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b", whiteSpace: "nowrap" }}
-                        >
-                          {fmtPct(p.porcentaje_label)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600, whiteSpace: "nowrap" }}
-                        >
-                          {fmtMXN(p.comision)}
-                        </TableCell>
+                      <TableRow key={p.nombre} sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                        <TableCell sx={{ fontSize: 12, py: "5px", px: "10px" }}>{p.nombre}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>{p.cantidad}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>{fmtMXN(p.neto)}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", color: "#64748b", whiteSpace: "nowrap" }}>{fmtPct(p.porcentaje_label)}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtMXN(p.comision)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -367,12 +409,10 @@ const SueldosEncargadosPage: React.FC = () => {
               </TableContainer>
             </Box>
 
-            {/* Cuadro 2: Desglose por día — ~25% */}
             <Box sx={{ flex: "1 1 150px", minWidth: 0 }}>
               <Typography variant="h6" fontWeight={700} color="#1e293b" mb={1.5}>
                 Ventas por día
               </Typography>
-
               <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
                 <Table size="small">
                   <TableHead>
@@ -381,15 +421,7 @@ const SueldosEncargadosPage: React.FC = () => {
                         <TableCell
                           key={h}
                           align={h === "Día" ? "left" : "right"}
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: 12,
-                            color: "#f97316",
-                            borderBottom: "2px solid #e2e8f0",
-                            whiteSpace: "nowrap",
-                            py: "6px",
-                            px: "10px",
-                          }}
+                          sx={{ fontWeight: 700, fontSize: 12, color: "#f97316", borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap", py: "6px", px: "10px" }}
                         >
                           {h}
                         </TableCell>
@@ -402,49 +434,15 @@ const SueldosEncargadosPage: React.FC = () => {
                       return (
                         <TableRow
                           key={fila.fecha ?? "total"}
-                          sx={{
-                            bgcolor: esTotal
-                              ? "#fff7ed"
-                              : idx % 2 === 0
-                              ? "#ffffff"
-                              : "#f8fafc",
-                          }}
+                          sx={{ bgcolor: esTotal ? "#fff7ed" : idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
                         >
-                          <TableCell
-                            sx={{
-                              fontSize: 12,
-                              py: "5px",
-                              px: "10px",
-                              fontWeight: esTotal ? 700 : 400,
-                              color: esTotal ? "#ea580c" : "inherit",
-                            }}
-                          >
+                          <TableCell sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: esTotal ? 700 : 400, color: esTotal ? "#ea580c" : "inherit" }}>
                             {esTotal ? "TOTAL" : fmtDiaCorto(fila.fecha!)}
                           </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              fontSize: 12,
-                              py: "5px",
-                              px: "10px",
-                              fontWeight: esTotal ? 700 : 400,
-                              color: esTotal ? "#ea580c" : "inherit",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: esTotal ? 700 : 400, color: esTotal ? "#ea580c" : "inherit", whiteSpace: "nowrap" }}>
                             {fila.equipos}
                           </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              fontSize: 12,
-                              py: "5px",
-                              px: "10px",
-                              fontWeight: esTotal ? 700 : 400,
-                              color: esTotal ? "#ea580c" : "inherit",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: esTotal ? 700 : 400, color: esTotal ? "#ea580c" : "inherit", whiteSpace: "nowrap" }}>
                             {fmtMXN(fila.accesorios)}
                           </TableCell>
                         </TableRow>
@@ -455,7 +453,6 @@ const SueldosEncargadosPage: React.FC = () => {
               </TableContainer>
             </Box>
 
-            {/* Cuadro 3: Resumen nómina del módulo — ~25% */}
             {datosResumen && (
               <Box sx={{ flex: "1 1 150px", minWidth: 0 }}>
                 <Typography variant="h6" fontWeight={700} color="#1e293b" mb={0.5}>
@@ -464,7 +461,6 @@ const SueldosEncargadosPage: React.FC = () => {
                 <Typography fontSize={11} color="#94a3b8" mb={1.5}>
                   Semana {fmtDiaCorto(datosResumen.nomina_inicio)}&nbsp;–&nbsp;{fmtDiaCorto(datosResumen.nomina_fin)}
                 </Typography>
-
                 <TableContainer component={Paper} elevation={1} sx={{ mb: 2 }}>
                   <Table size="small">
                     <TableHead>
@@ -473,15 +469,7 @@ const SueldosEncargadosPage: React.FC = () => {
                           <TableCell
                             key={h}
                             align={h === "Empleado" ? "left" : "right"}
-                            sx={{
-                              fontWeight: 700,
-                              fontSize: 12,
-                              color: "#f97316",
-                              borderBottom: "2px solid #e2e8f0",
-                              whiteSpace: "nowrap",
-                              py: "6px",
-                              px: "10px",
-                            }}
+                            sx={{ fontWeight: 700, fontSize: 12, color: "#f97316", borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap", py: "6px", px: "10px" }}
                           >
                             {h}
                           </TableCell>
@@ -494,69 +482,27 @@ const SueldosEncargadosPage: React.FC = () => {
                         return (
                           <TableRow
                             key={emp.nombre}
-                            sx={{
-                              bgcolor: esEnc
-                                ? "#fff7ed"
-                                : idx % 2 === 0
-                                ? "#ffffff"
-                                : "#f8fafc",
-                            }}
+                            sx={{ bgcolor: esEnc ? "#fff7ed" : idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}
                           >
-                            <TableCell
-                              sx={{
-                                fontSize: 12,
-                                py: "5px",
-                                px: "10px",
-                                fontWeight: esEnc ? 700 : 400,
-                                color: esEnc ? "#ea580c" : "inherit",
-                              }}
-                            >
+                            <TableCell sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: esEnc ? 700 : 400, color: esEnc ? "#ea580c" : "inherit" }}>
                               {emp.nombre}
                             </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
-                              {fmtMXN(emp.sueldo_base)}
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
-                              {fmtMXN(emp.horas_extras_pagadas)}
-                            </TableCell>
-                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>
-                              {fmtMXN(emp.comisiones)}
-                            </TableCell>
-                            <TableCell
-                              align="right"
-                              sx={{
-                                fontSize: 12,
-                                py: "5px",
-                                px: "10px",
-                                fontWeight: 600,
-                                color: esEnc ? "#ea580c" : "inherit",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {fmtMXN(emp.total)}
-                            </TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>{fmtMXN(emp.sueldo_base)}</TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>{fmtMXN(emp.horas_extras_pagadas)}</TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", whiteSpace: "nowrap" }}>{fmtMXN(emp.comisiones)}</TableCell>
+                            <TableCell align="right" sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 600, color: esEnc ? "#ea580c" : "inherit", whiteSpace: "nowrap" }}>{fmtMXN(emp.total)}</TableCell>
                           </TableRow>
                         );
                       })}
-                      {/* Fila TOTAL */}
                       <TableRow sx={{ bgcolor: "#fff7ed" }}>
-                        {(["TOTAL",
+                        {([
+                          "TOTAL",
                           fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.sueldo_base, 0)),
                           fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.horas_extras_pagadas, 0)),
                           fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.comisiones, 0)),
                           fmtMXN(datosResumen.empleados.reduce((s, e) => s + e.total, 0)),
                         ] as string[]).map((val, i) => (
-                          <TableCell
-                            key={i}
-                            align={i === 0 ? "left" : "right"}
-                            sx={{
-                              fontSize: 12,
-                              py: "5px",
-                              px: "10px",
-                              fontWeight: 700,
-                              color: "#ea580c",
-                            }}
-                          >
+                          <TableCell key={i} align={i === 0 ? "left" : "right"} sx={{ fontSize: 12, py: "5px", px: "10px", fontWeight: 700, color: "#ea580c" }}>
                             {val}
                           </TableCell>
                         ))}
@@ -570,6 +516,10 @@ const SueldosEncargadosPage: React.FC = () => {
           </Box>
         </Box>
       )}
+
+      <Snackbar open={!!snack} autoHideDuration={4000} onClose={() => setSnack(null)}>
+        <Alert severity={snack?.sev} onClose={() => setSnack(null)}>{snack?.msg}</Alert>
+      </Snackbar>
     </Box>
   );
 };
