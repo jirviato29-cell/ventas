@@ -86,16 +86,21 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Empleado", "Nombre completo", "Pago H. Extras", "Total Pago"].map((h) => (
+                  {["Empleado", "Nombre completo", "H. Extra", "Pago H. Extras", "Total Pago"].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, color: "#f97316", fontSize: 11 }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {nomina.datos.map((e, i) => (
+                {nomina.datos.map((e, i) => {
+                  const he = (e as any).horas_extra_redondeo as number | null | undefined;
+                  const heColor = he == null ? undefined : he > 0 ? "#16a34a" : he < 0 ? "#ef4444" : undefined;
+                  const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+                  return (
                   <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
                     <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
                     <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
+                    <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
                     <TableCell sx={{ fontSize: 12, color: e.pago_horas_extras >= 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
                       {e.pago_horas_extras >= 0 ? "+" : ""}${Math.abs(e.pago_horas_extras).toFixed(2)}
                     </TableCell>
@@ -103,9 +108,10 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
                       ${e.pago_total.toFixed(2)}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
                 <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                  <TableCell colSpan={3} sx={{ fontWeight: 700, fontSize: 13 }}>TOTAL</TableCell>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700, fontSize: 13 }}>TOTAL</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: 13, color: "#f97316" }}>
                     ${Number(nomina.total_pago).toFixed(2)}
                   </TableCell>

@@ -139,21 +139,27 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <Table size="small" sx={{ mb: 1 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Empleado", "Nombre completo", "$ Pago H. Extras"].map((h) => (
+                  {["Empleado", "Nombre completo", "H. Extra", "$ Pago H. Extras"].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, color: "#f97316", fontSize: 11 }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {empleados.map((e, i) => (
+                {empleados.map((e, i) => {
+                  const he = e.horas_extra_redondeo;
+                  const heColor = he == null ? undefined : he > 0 ? "#16a34a" : he < 0 ? "#ef4444" : undefined;
+                  const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+                  return (
                   <TableRow key={i}>
                     <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
                     <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
+                    <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
                     <TableCell sx={{ fontSize: 12, fontWeight: 700, color: (e.pago ?? 0) >= 0 ? "#16a34a" : "#ef4444" }}>
                       {(e.pago ?? 0) >= 0 ? "+" : ""}${Math.abs(e.pago ?? 0).toFixed(2)}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
             <Box display="flex" justifyContent="flex-end" pr={1}>
