@@ -13,11 +13,13 @@ import {
   InputAdornment,
   MenuItem,
   Paper,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -27,6 +29,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
+import Salarios from "./Salarios";
 
 const API = process.env.REACT_APP_API_URL ?? "";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
@@ -64,6 +67,7 @@ const formVacio: FormNomina = {
 const PanelControlNominaPage: React.FC = () => {
   const navigate = useNavigate();
   const rolToken = obtenerRolDesdeToken();
+  const [tabActivo, setTabActivo] = useState(0);
 
   const [grupos, setGrupos] = useState<GrupoNomina[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,9 +177,24 @@ const PanelControlNominaPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 2, md: 3 } }}>
-      <Typography variant="h5" fontWeight={700} mb={0.5}>
-        Panel de Control — Pago de Nómina
+      <Typography variant="h5" fontWeight={700} mb={2}>
+        Panel de Control
       </Typography>
+
+      <Tabs
+        value={tabActivo}
+        onChange={(_, v) => setTabActivo(v)}
+        sx={{ mb: 3, borderBottom: "1px solid #e2e8f0" }}
+        TabIndicatorProps={{ sx: { bgcolor: "#f97316" } }}
+      >
+        <Tab label="Pago de Nómina" />
+        <Tab label="Salarios" />
+      </Tabs>
+
+      {tabActivo === 1 && <Salarios />}
+
+      {tabActivo === 0 && (
+      <>
       <Typography variant="body2" color="text.secondary" mb={3}>
         Perfiles agrupados por nombre englobado. El sueldo base se asigna al perfil principal; los
         demás quedan en $0.
@@ -440,6 +459,8 @@ const PanelControlNominaPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      </>
+      )}
     </Box>
   );
 };
