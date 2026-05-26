@@ -33,9 +33,11 @@ interface FilaCruzada {
 }
 
 interface Resumen {
-  pagados: number;
-  totalComision: number;
-  noEncontrados: string[];
+  chips_normales_pagados: number;
+  chips_incubadora_validados: number;
+  chips_no_encontrados: number;
+  total_pagado_normales: number;
+  total_pendiente_incubadora: number;
 }
 
 const fmt = (n: number) =>
@@ -140,9 +142,6 @@ const CLineasPage = () => {
     setResumen(null);
     try {
       const numeros = Array.from(seleccionados);
-      const totalComision = filas
-        .filter((f) => seleccionados.has(f.numero))
-        .reduce((s, f) => s + f.comision_telcel, 0);
 
       const res = await axios.post(
         `${process.env.REACT_APP_API_URL}/ventas/venta_chips/pagar_comisiones`,
@@ -150,7 +149,13 @@ const CLineasPage = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setResumen({ pagados: res.data.pagados, noEncontrados: res.data.no_encontrados, totalComision });
+      setResumen({
+        chips_normales_pagados: res.data.chips_normales_pagados,
+        chips_incubadora_validados: res.data.chips_incubadora_validados,
+        chips_no_encontrados: res.data.chips_no_encontrados,
+        total_pagado_normales: res.data.total_pagado_normales,
+        total_pendiente_incubadora: res.data.total_pendiente_incubadora,
+      });
       setSeleccionados(new Set());
       await fetchData();
     } catch (e: any) {
@@ -172,20 +177,28 @@ const CLineasPage = () => {
       {errorMsg && <Alert severity="error" sx={{ mb: 2 }}>{errorMsg}</Alert>}
 
       {resumen && (
-        <Alert
-          severity="success"
-          icon={<CheckCircleIcon />}
-          sx={{ mb: 2 }}
-          onClose={() => setResumen(null)}
-        >
-          <strong>{resumen.pagados}</strong> comisión{resumen.pagados !== 1 ? "es" : ""} pagada{resumen.pagados !== 1 ? "s" : ""}{" · "}
-          Total: <strong>${fmt(resumen.totalComision)}</strong>
-          {resumen.noEncontrados.length > 0 && (
-            <Box mt={0.5} sx={{ fontSize: 13 }}>
-              No encontrados: {resumen.noEncontrados.join(", ")}
-            </Box>
+        <Box sx={{ mb: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+          {resumen.chips_normales_pagados > 0 && (
+            <Alert severity="success" icon={<CheckCircleIcon />} onClose={() => setResumen(null)}>
+              ✅ <strong>{resumen.chips_normales_pagados}</strong> chip{resumen.chips_normales_pagados !== 1 ? "s" : ""} normal{resumen.chips_normales_pagados !== 1 ? "es" : ""} pagado{resumen.chips_normales_pagados !== 1 ? "s" : ""}{" "}
+              (<strong>${fmt(resumen.total_pagado_normales)}</strong>)
+            </Alert>
           )}
-        </Alert>
+          {resumen.chips_incubadora_validados > 0 && (
+            <Alert severity="info" onClose={() => setResumen(null)}>
+              ⏳ <strong>{resumen.chips_incubadora_validados}</strong> chip{resumen.chips_incubadora_validados !== 1 ? "s" : ""} de incubadora validado{resumen.chips_incubadora_validados !== 1 ? "s" : ""}, en espera de Nómina de Incubadora{" "}
+              (<strong>${fmt(resumen.total_pendiente_incubadora)}</strong>)
+            </Alert>
+          )}
+          {resumen.chips_no_encontrados > 0 && (
+            <Alert severity="warning" onClose={() => setResumen(null)}>
+              ⚠️ <strong>{resumen.chips_no_encontrados}</strong> número{resumen.chips_no_encontrados !== 1 ? "s" : ""} no encontrado{resumen.chips_no_encontrados !== 1 ? "s" : ""} en el sistema
+            </Alert>
+          )}
+          {resumen.chips_normales_pagados === 0 && resumen.chips_incubadora_validados === 0 && resumen.chips_no_encontrados === 0 && (
+            <Alert severity="info" onClose={() => setResumen(null)}>Sin cambios registrados.</Alert>
+          )}
+        </Box>
       )}
 
       {cargando ? (
