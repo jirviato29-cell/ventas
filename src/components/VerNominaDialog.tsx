@@ -7,6 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Table,
   TableBody,
   TableCell,
@@ -21,19 +22,36 @@ import axios from "axios";
 const API = process.env.REACT_APP_API_URL ?? "";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
-interface NominaEmpleado {
+const ORANGE = "#f97316";
+const BLUE   = "#3b82f6";
+const GREEN  = "#16a34a";
+const PURPLE = "#9333ea";
+
+interface ItemDatos {
+  seccion?: string;
   empleado: string;
   nombre_completo: string;
-  pago_horas_extras: number;
+  pago_horas_extras?: number;
+  horas_extra_redondeo?: number | null;
   pago_total: number;
+  comisiones_accesorios?: number;
+  comisiones_telefonos?: number;
+  comisiones_chips?: number;
+  comisiones_total?: number;
 }
 
 interface NominaResponse {
   id: number;
   etiqueta: string;
   ciclo_horas_extras_id: number | null;
+  fecha_inicio_asesores: string | null;
+  fecha_fin_asesores: string | null;
+  fecha_inicio_encargados: string | null;
+  fecha_fin_encargados: string | null;
+  fecha_inicio_cadenas: string | null;
+  fecha_fin_cadenas: string | null;
   total_pago: number;
-  datos: NominaEmpleado[];
+  datos: ItemDatos[];
   creado_por: string;
   creado_en: string;
 }
@@ -43,6 +61,88 @@ interface Props {
   onClose: () => void;
   onDescargar: (id: number, tipo: "excel" | "pdf") => void;
 }
+
+const SeccionHorasExtras: React.FC<{ rows: ItemDatos[] }> = ({ rows }) => {
+  const subtotal = rows.reduce((s, e) => s + e.pago_total, 0);
+  return (
+    <>
+      <Typography variant="subtitle2" fontWeight={700} mb={1} sx={{ color: ORANGE }}>
+        Horas Extras
+      </Typography>
+      <Table size="small" sx={{ mb: 1 }}>
+        <TableHead>
+          <TableRow sx={{ bgcolor: "#f8fafc" }}>
+            {["Empleado", "Nombre completo", "H. Extra", "Pago H. Extras", "Total"].map((h) => (
+              <TableCell key={h} sx={{ fontWeight: 700, color: ORANGE, fontSize: 11 }}>{h}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((e, i) => {
+            const he = e.horas_extra_redondeo ?? null;
+            const heColor = he == null ? undefined : he > 0 ? GREEN : he < 0 ? "#ef4444" : undefined;
+            const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+            return (
+              <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
+                <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
+                <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
+                <TableCell sx={{ fontSize: 12, color: (e.pago_horas_extras ?? 0) >= 0 ? GREEN : "#ef4444", fontWeight: 600 }}>
+                  {(e.pago_horas_extras ?? 0) >= 0 ? "+" : ""}${Math.abs(e.pago_horas_extras ?? 0).toFixed(2)}
+                </TableCell>
+                <TableCell sx={{ fontSize: 12, fontWeight: 700 }}>${e.pago_total.toFixed(2)}</TableCell>
+              </TableRow>
+            );
+          })}
+          <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+            <TableCell colSpan={4} sx={{ fontWeight: 700, fontSize: 13 }}>Subtotal</TableCell>
+            <TableCell sx={{ fontWeight: 700, fontSize: 13, color: ORANGE }}>${subtotal.toFixed(2)}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </>
+  );
+};
+
+const SeccionComisionesVer: React.FC<{ rows: ItemDatos[]; label: string; color: string }> = ({ rows, label, color }) => {
+  const subtotal = rows.reduce((s, e) => s + e.pago_total, 0);
+  const conComisiones = rows.filter((e) => (e.comisiones_total ?? 0) > 0).length;
+  return (
+    <>
+      <Typography variant="subtitle2" fontWeight={700} mb={0.5} sx={{ color }}>
+        {label}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" mb={0.5} display="block">
+        {conComisiones} empleado{conComisiones !== 1 ? "s" : ""} con comisiones
+      </Typography>
+      <Table size="small" sx={{ mb: 1 }}>
+        <TableHead>
+          <TableRow sx={{ bgcolor: "#f8fafc" }}>
+            {["Empleado", "Nombre completo", "Accesorios", "Teléfonos", "Chips", "Total"].map((h) => (
+              <TableCell key={h} sx={{ fontWeight: 700, color, fontSize: 11 }}>{h}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((e, i) => (
+            <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+              <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
+              <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
+              <TableCell sx={{ fontSize: 12 }}>${(e.comisiones_accesorios ?? 0).toFixed(2)}</TableCell>
+              <TableCell sx={{ fontSize: 12 }}>${(e.comisiones_telefonos ?? 0).toFixed(2)}</TableCell>
+              <TableCell sx={{ fontSize: 12 }}>${(e.comisiones_chips ?? 0).toFixed(2)}</TableCell>
+              <TableCell sx={{ fontSize: 12, fontWeight: 700, color: GREEN }}>${e.pago_total.toFixed(2)}</TableCell>
+            </TableRow>
+          ))}
+          <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+            <TableCell colSpan={5} sx={{ fontWeight: 700, fontSize: 13 }}>Subtotal</TableCell>
+            <TableCell sx={{ fontWeight: 700, fontSize: 13, color }}>${subtotal.toFixed(2)}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </>
+  );
+};
 
 const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) => {
   const [nomina, setNomina] = useState<NominaResponse | null>(null);
@@ -64,13 +164,21 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
       hour: "2-digit", minute: "2-digit",
     });
 
+  const rowsPorSeccion = (key: string) =>
+    (nomina?.datos ?? []).filter((d) => (d.seccion ?? "horas_extras") === key);
+
+  const horasExtras   = rowsPorSeccion("horas_extras");
+  const asesores      = rowsPorSeccion("comisiones_asesores");
+  const encargados    = rowsPorSeccion("comisiones_encargados");
+  const cadenas       = rowsPorSeccion("comisiones_cadenas");
+
   return (
     <Dialog open={nominaId !== null} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
         {nomina ? nomina.etiqueta : "Cargando…"}
       </DialogTitle>
       <DialogContent dividers>
-        {cargando && <Box textAlign="center" py={4}><CircularProgress sx={{ color: "#f97316" }} /></Box>}
+        {cargando && <Box textAlign="center" py={4}><CircularProgress sx={{ color: ORANGE }} /></Box>}
 
         {!cargando && nomina && (
           <>
@@ -83,41 +191,35 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
               </Typography>
             </Box>
 
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  {["Empleado", "Nombre completo", "H. Extra", "Pago H. Extras", "Total Pago"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, color: "#f97316", fontSize: 11 }}>{h}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {nomina.datos.map((e, i) => {
-                  const he = (e as any).horas_extra_redondeo as number | null | undefined;
-                  const heColor = he == null ? undefined : he > 0 ? "#16a34a" : he < 0 ? "#ef4444" : undefined;
-                  const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
-                  return (
-                  <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
-                    <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
-                    <TableCell sx={{ fontSize: 12, color: e.pago_horas_extras >= 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
-                      {e.pago_horas_extras >= 0 ? "+" : ""}${Math.abs(e.pago_horas_extras).toFixed(2)}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 12, fontWeight: 700 }}>
-                      ${e.pago_total.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-                <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                  <TableCell colSpan={4} sx={{ fontWeight: 700, fontSize: 13 }}>TOTAL</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: "#f97316" }}>
-                    ${Number(nomina.total_pago).toFixed(2)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            {horasExtras.length > 0 && <SeccionHorasExtras rows={horasExtras} />}
+
+            {asesores.length > 0 && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <SeccionComisionesVer rows={asesores} label="Comisiones Asesores" color={BLUE} />
+              </>
+            )}
+
+            {encargados.length > 0 && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <SeccionComisionesVer rows={encargados} label="Comisiones Encargados" color={GREEN} />
+              </>
+            )}
+
+            {cadenas.length > 0 && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <SeccionComisionesVer rows={cadenas} label="Comisiones Cadenas" color={PURPLE} />
+              </>
+            )}
+
+            <Divider sx={{ my: 1.5 }} />
+            <Box display="flex" justifyContent="flex-end" pr={1}>
+              <Typography variant="body1" fontWeight={700}>
+                Total nómina: <span style={{ color: ORANGE }}>${Number(nomina.total_pago).toFixed(2)}</span>
+              </Typography>
+            </Box>
           </>
         )}
       </DialogContent>
