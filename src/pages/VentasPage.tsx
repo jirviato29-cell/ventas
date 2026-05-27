@@ -287,10 +287,12 @@ function labelCiclo(c: Ciclo): string {
 }
 
 function getEstadoChip(c: VentaChip): { label: string; color: string } {
-  if (c.es_incubadora)      return { label: 'En incubadora',        color: '#f97316' };
-  if (c.descripcion_rechazo) return { label: 'Rechazado',            color: '#ef4444' };
-  if (c.validado)            return { label: 'Validado',             color: '#16a34a' };
-  return                            { label: 'Esperando validación', color: '#64748b' };
+  if (c.validado)       return { label: 'Validado',             color: '#16a34a' };
+  if (c.es_incubadora)  return {
+    label: c.descripcion_rechazo ? `Incubadora (${c.descripcion_rechazo})` : 'Incubadora',
+    color: '#f97316',
+  };
+  return                       { label: 'Esperando validación', color: '#64748b' };
 }
 
 const FormularioVentaMultiple = () => {

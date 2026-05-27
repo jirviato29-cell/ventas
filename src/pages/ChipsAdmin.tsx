@@ -236,7 +236,11 @@ const ChipsAdmin = () => {
                                     { headers: { Authorization: `Bearer ${token}` } }
                                   );
                                   setChips((prev) =>
-                                    prev.map((c) => (c.id === chip.id ? { ...c, descripcion_rechazo: motivo } : c))
+                                    prev.map((c) =>
+                                      c.id === chip.id
+                                        ? { ...c, descripcion_rechazo: motivo || null, es_incubadora: !!motivo }
+                                        : c
+                                    )
                                   );
                                 } catch {
                                   alert("Error al enviar motivo de rechazo");
