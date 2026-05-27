@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import axios from "axios";
 import {
   Box,Button,Container,Divider,IconButton,Paper,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,
@@ -40,7 +40,7 @@ const TablaComisiones = () => {
     const config = {
     headers: {Authorization: `Bearer ${token}`,},
 };
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/comisiones/comisiones`, config);
+    const res = await axios.get(`https://ato-appservidor.onrender.com/comisiones/comisiones`, config);
     setComisiones(res.data);
   };
 
@@ -50,7 +50,7 @@ const TablaComisiones = () => {
     const config = {
       headers: { Authorization: `Bearer ${token}` },
     };
-    await axios.post(`${process.env.REACT_APP_API_URL}/comisiones/comisiones`, { producto, cantidad: parseFloat(cantidad) }, config);
+    await axios.post(`https://ato-appservidor.onrender.com/comisiones/comisiones`, { producto, cantidad: parseFloat(cantidad) }, config);
     setProducto("");
     setCantidad("");
     cargarComisiones();
@@ -65,7 +65,7 @@ const guardarEdicion = async (producto: string) => {
     const config = {
       headers: { Authorization: `Bearer ${token}` },
     };
-    await axios.put(`${process.env.REACT_APP_API_URL}/comisiones/comisiones/${producto}`, { cantidad: parseFloat(nuevaCantidad) }, config);
+    await axios.put(`https://ato-appservidor.onrender.com/comisiones/comisiones/${producto}`, { cantidad: parseFloat(nuevaCantidad) }, config);
     setEditando(null);
     setNuevaCantidad("");
     cargarComisiones();
@@ -81,7 +81,7 @@ const eliminarComision = async (producto: string) => {
     const config = {
       headers: { Authorization: `Bearer ${token}` },
     };
-    await axios.delete(`${process.env.REACT_APP_API_URL}/comisiones/comisiones/${producto}`, config);
+    await axios.delete(`https://ato-appservidor.onrender.com/comisiones/comisiones/${producto}`, config);
     cargarComisiones();
   } catch (err) {
     alert("Error al eliminar comisión");
@@ -91,7 +91,7 @@ const eliminarComision = async (producto: string) => {
 const fetchCicloActual = async () => {
   try {
     const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/comisiones/comisiones/ciclo`,
+      `https://ato-appservidor.onrender.com/comisiones/comisiones/ciclo`,
       {
         params: empleadoSeleccionado
           ? { empleado_id: empleadoSeleccionado }
@@ -125,7 +125,7 @@ const fetchCicloPorFechas = async () => {
 
   try {
     const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/comisiones/ciclo_por_fechas`,
+      `https://ato-appservidor.onrender.com/comisiones/ciclo_por_fechas`,
       {
         params,
         headers: { Authorization: `Bearer ${token}` },
@@ -158,7 +158,7 @@ const fetchCicloPorFechas = async () => {
 useEffect(() => {
   const cargarUsuarios = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, {
+      const res = await axios.get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsuarios(res.data);
@@ -266,7 +266,7 @@ useEffect(() => {
                 if (v.id) {
                   try {
                     await axios.put(
-                      `${process.env.REACT_APP_API_URL}/ventas/ventas/${v.id}/cancelar`,
+                      `https://ato-appservidor.onrender.com/ventas/ventas/${v.id}/cancelar`,
                       {},
                       { headers: { Authorization: `Bearer ${token}` } }
                     );
@@ -323,7 +323,7 @@ useEffect(() => {
                 if (v.id) {
                   try {
                     await axios.put(
-                      `${process.env.REACT_APP_API_URL}/ventas/ventas/${v.id}/cancelar`,
+                      `https://ato-appservidor.onrender.com/ventas/ventas/${v.id}/cancelar`,
                       {},
                       { headers: { Authorization: `Bearer ${token}` } }
                     );
@@ -390,7 +390,7 @@ useEffect(() => {
                   if (v.id) {
                     try {
                       await axios.delete(
-                        `${process.env.REACT_APP_API_URL}/ventas/eliminar_chip/${v.id}`,
+                        `https://ato-appservidor.onrender.com/ventas/eliminar_chip/${v.id}`,
                         { headers: { Authorization: `Bearer ${token}` } }
                       );
                     } catch (err) {

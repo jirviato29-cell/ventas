@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Container, TextField, Button, Typography, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer, Box,
@@ -24,12 +24,12 @@ const TraspasosEncargado = () => {
   };
 
   const cargarModulos = async () => {
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, config);
+    const res = await axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, config);
     setModulos(res.data.map((mod: any) => mod.nombre));
   };
 
   const cargarTraspasos = async () => {
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/traspasos/traspasos`, config);
+    const res = await axios.get(`https://ato-appservidor.onrender.com/traspasos/traspasos`, config);
     setTraspasos(res.data);
 
   };
@@ -37,7 +37,7 @@ const TraspasosEncargado = () => {
 
   const cargarProductos = async () => {
   const res = await axios.get(
-    `${process.env.REACT_APP_API_URL}/inventario/inventario/general/productos-nombres`,
+    `https://ato-appservidor.onrender.com/inventario/inventario/general/productos-nombres`,
     config
   );
   setProductos(res.data); // array de strings
@@ -52,7 +52,7 @@ const TraspasosEncargado = () => {
 
   try {
     await axios.post(
-      `${process.env.REACT_APP_API_URL}/traspasos/traspasos`,
+      `https://ato-appservidor.onrender.com/traspasos/traspasos`,
       {
         producto,
         cantidad: parseInt(cantidad),

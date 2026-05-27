@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -18,7 +18,7 @@ import {
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 
-const API = process.env.REACT_APP_API_URL ?? "";
+const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 interface RankingRow {

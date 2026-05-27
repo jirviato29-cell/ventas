@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Paper } from '@mui/material';
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
     formData.append('password', password);
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/auth/token`, formData, {
+      const response = await axios.post(`https://ato-appservidor.onrender.com/auth/token`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 

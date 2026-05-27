@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Box, CircularProgress, Divider, MenuItem, Paper, Table, TableBody, TableCell, TableRow, TextField, Typography } from "@mui/material";
 import { MiNominaResponse } from "../Types";
 import { obtenerRolDesdeToken } from "../components/Token";
@@ -94,8 +94,8 @@ export default function NominaEmpleado() {
   const fetchHistorial = async (semanaInicio?: string) => {
     const headers = { Authorization: `Bearer ${token}` };
     const url = semanaInicio
-      ? `${process.env.REACT_APP_API_URL}/nomina/mi-historial?semana_inicio=${semanaInicio}`
-      : `${process.env.REACT_APP_API_URL}/nomina/mi-historial`;
+      ? `https://ato-appservidor.onrender.com/nomina/mi-historial?semana_inicio=${semanaInicio}`
+      : `https://ato-appservidor.onrender.com/nomina/mi-historial`;
     try {
       const res = await fetch(url, { headers });
       if (res.ok) {
@@ -115,7 +115,7 @@ export default function NominaEmpleado() {
       const headers = { Authorization: `Bearer ${token}` };
 
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/nomina/mi-resumen`, { headers });
+        const res = await fetch(`https://ato-appservidor.onrender.com/nomina/mi-resumen`, { headers });
         if (res.ok) setData(await res.json());
       } catch (_) {}
 

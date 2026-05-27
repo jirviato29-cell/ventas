@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Container, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, TableContainer, Button
@@ -14,7 +14,7 @@ const DiferenciasInventario = () => {
   const cargarDiferencias = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/inventario/reportes/diferencias`,
+        `https://ato-appservidor.onrender.com/inventario/reportes/diferencias`,
         config
       );
       setDiferencias(res.data);
@@ -37,7 +37,7 @@ const DiferenciasInventario = () => {
 
     try {
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/inventario/fisico/upload`,
+        `https://ato-appservidor.onrender.com/inventario/fisico/upload`,
         formData,
         {
           headers: {

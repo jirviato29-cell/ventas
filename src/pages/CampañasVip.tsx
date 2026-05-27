@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Box, TextField, Button, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 
 interface Cliente {
@@ -13,7 +13,7 @@ const CampañasVIP = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch(`${process.env.REACT_APP_API_URL}/ventas/clientes_vip`, {
+    fetch(`https://ato-appservidor.onrender.com/ventas/clientes_vip`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())

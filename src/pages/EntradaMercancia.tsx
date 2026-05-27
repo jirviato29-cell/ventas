@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+﻿import React, { useEffect, useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -199,7 +199,7 @@ const EntradaMercancia = () => {
   const cargarModulos = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/registro/modulos`,
+        `https://ato-appservidor.onrender.com/registro/modulos`,
         config
       );
       setModulos(res.data);
@@ -231,7 +231,7 @@ const EntradaMercancia = () => {
       if (mod) params.modulo_id = mod as number;
 
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/entradas`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/entradas`,
         { params, ...config }
       );
       setHistorialResultados(res.data);
@@ -271,7 +271,7 @@ const EntradaMercancia = () => {
     setEncargado(null);
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/modulos/${moduloId}/encargado`,
+        `https://ato-appservidor.onrender.com/modulos/${moduloId}/encargado`,
         config
       );
       setEncargado(res.data);
@@ -314,7 +314,7 @@ const EntradaMercancia = () => {
     try {
       setLoadingBusqueda(true);
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
       setOpcionesProductos(res.data);
@@ -328,7 +328,7 @@ const EntradaMercancia = () => {
   const obtenerExistenciaModulo = async (clave: string) => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
         { params: { clave }, ...config }
       );
       return res.data.existencia_actual;
@@ -383,7 +383,7 @@ const EntradaMercancia = () => {
         })),
       };
       const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/entrada_mercancia`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/entrada_mercancia`,
         payload,
         config
       );
@@ -408,7 +408,7 @@ const EntradaMercancia = () => {
     let enc: EncargadoInfo | null = null;
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/modulos/${entradaDetalle.modulo_id}/encargado`,
+        `https://ato-appservidor.onrender.com/modulos/${entradaDetalle.modulo_id}/encargado`,
         config
       );
       enc = res.data ?? null;
@@ -432,7 +432,7 @@ const EntradaMercancia = () => {
   const cargarCurrentUser = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/auth/usuarios/me`,
+        `https://ato-appservidor.onrender.com/auth/usuarios/me`,
         config
       );
       setCurrentUser(res.data);
@@ -448,7 +448,7 @@ const EntradaMercancia = () => {
     setEliminandoEntrada(true);
     try {
       await axios.delete(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
         config
       );
       setModalConfirmEliminar(false);
@@ -480,7 +480,7 @@ const EntradaMercancia = () => {
       const items: EditItem[] = [];
       for (const p of entradaDetalle.productos) {
         const res = await axios.get(
-          `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
+          `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
           { params: { q: p.clave }, ...config }
         );
         const match = (res.data as any[]).find((r: any) => r.clave === p.clave);
@@ -513,7 +513,7 @@ const EntradaMercancia = () => {
     try {
       setEditLoadingBusqueda(true);
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/buscar-autocomplete`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { q: texto }, ...config }
       );
       setEditOpciones(res.data);
@@ -561,7 +561,7 @@ const EntradaMercancia = () => {
     setErrorEditar(null);
     try {
       await axios.put(
-        `${process.env.REACT_APP_API_URL}/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
         { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) },
         config
       );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -126,7 +126,7 @@ const Nomina = () => {
   const fetchPeriodoActivo = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/nomina/periodo/activo`,
+        `https://ato-appservidor.onrender.com/nomina/periodo/activo`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPeriodo(res.data);
@@ -146,7 +146,7 @@ const Nomina = () => {
     try {
       // 1. Comisiones actuales
       const resNomina = await axios.get<NominaEmpleado[]>(
-        `${process.env.REACT_APP_API_URL}/nomina/resumen`,
+        `https://ato-appservidor.onrender.com/nomina/resumen`,
         {
           params: { inicio_a: inicioA, fin_a: finA, inicio_c: inicioC, fin_c: finC },
           headers: { Authorization: `Bearer ${token}` },
@@ -158,7 +158,7 @@ const Nomina = () => {
       // 2. Intentar cargar historial guardado para esta semana
       try {
         const resHistorial = await axios.get<any[]>(
-          `${process.env.REACT_APP_API_URL}/nomina/historial`,
+          `https://ato-appservidor.onrender.com/nomina/historial`,
           { params: { semana_inicio: inicioA }, headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -204,7 +204,7 @@ const Nomina = () => {
     const fin    = grupo === "A" ? finA    : finC;
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/nomina/resumen/empleado/${usuarioId}`,
+        `https://ato-appservidor.onrender.com/nomina/resumen/empleado/${usuarioId}`,
         {
           params: { fecha_inicio: inicio, fecha_fin: fin },
           headers: { Authorization: `Bearer ${token}` },
@@ -220,7 +220,7 @@ const Nomina = () => {
   const activarPeriodoNomina = async (inicio: Dayjs, fin: Dayjs) => {
     try {
       const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/nomina/periodo/activar`,
+        `https://ato-appservidor.onrender.com/nomina/periodo/activar`,
         { fecha_inicio: inicio.format("YYYY-MM-DD"), fecha_fin: fin.format("YYYY-MM-DD") },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -234,7 +234,7 @@ const Nomina = () => {
   const cerrarNomina = async () => {
     try {
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/nomina/cerrar`, {},
+        `https://ato-appservidor.onrender.com/nomina/cerrar`, {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPeriodo(null); setNomina([]);
@@ -244,7 +244,7 @@ const Nomina = () => {
   const descargarNominaExcel = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/nomina/descargar`,
+        `https://ato-appservidor.onrender.com/nomina/descargar`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: { semana_inicio: inicioA },
@@ -267,7 +267,7 @@ const Nomina = () => {
   const fetchSemanasGuardadas = async () => {
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/nomina/historial/semanas`,
+        `https://ato-appservidor.onrender.com/nomina/historial/semanas`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSemanasGuardadas(res.data);
@@ -278,7 +278,7 @@ const Nomina = () => {
     setCargandoHistorial(true);
     try {
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/nomina/historial`,
+        `https://ato-appservidor.onrender.com/nomina/historial`,
         { params: { semana_inicio: semana }, headers: { Authorization: `Bearer ${token}` } }
       );
       setNominaHistorial(res.data);
@@ -336,7 +336,7 @@ const Nomina = () => {
       if (pascual) console.log("[guardarNomina] payload C18-PASCUAL:", JSON.stringify(pascual, null, 2));
 
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/nomina/historial`,
+        `https://ato-appservidor.onrender.com/nomina/historial`,
         {
           semana_inicio:       inicioA,
           semana_fin:          finA,

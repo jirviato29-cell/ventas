@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+﻿import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -26,7 +26,7 @@ import VerNominaDialog from "../components/VerNominaDialog";
 import CrearNominaIncubadoraDialog from "../components/CrearNominaIncubadoraDialog";
 import VerNominaIncubadoraDialog from "../components/VerNominaIncubadoraDialog";
 
-const API = process.env.REACT_APP_API_URL ?? "";
+const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const ORANGE = "#f97316";

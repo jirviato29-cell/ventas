@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Typography, Paper, Button, Table, TableHead, TableBody,
   TableRow, TableCell, TableContainer, Alert, CircularProgress,
@@ -77,7 +77,7 @@ const CLineasPage = () => {
       }
 
       const chipsRes = await axios.get(
-        `${process.env.REACT_APP_API_URL}/ventas/venta_chips/pendientes`,
+        `https://ato-appservidor.onrender.com/ventas/venta_chips/pendientes`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -144,7 +144,7 @@ const CLineasPage = () => {
       const numeros = Array.from(seleccionados);
 
       const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/ventas/venta_chips/pagar_comisiones`,
+        `https://ato-appservidor.onrender.com/ventas/venta_chips/pagar_comisiones`,
         { numeros },
         { headers: { Authorization: `Bearer ${token}` } }
       );

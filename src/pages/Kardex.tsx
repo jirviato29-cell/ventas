@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography,
@@ -52,7 +52,7 @@ const Kardex = () => {
     if (tipoMovimiento) params.tipo_movimiento = tipoMovimiento;
 
     const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/kardex/kardex`,
+      `https://ato-appservidor.onrender.com/kardex/kardex`,
       { ...config, params }
     );
 
@@ -61,7 +61,7 @@ const Kardex = () => {
 
   const cargarModulos = async () => {
   const res = await axios.get(
-    `${process.env.REACT_APP_API_URL}/registro/modulos`,
+    `https://ato-appservidor.onrender.com/registro/modulos`,
     config
   );
   setModulos(res.data);

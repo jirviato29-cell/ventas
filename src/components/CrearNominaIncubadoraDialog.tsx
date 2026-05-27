@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -21,7 +21,7 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
-const API = process.env.REACT_APP_API_URL ?? "";
+const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const PURPLE = "#7C3AED";

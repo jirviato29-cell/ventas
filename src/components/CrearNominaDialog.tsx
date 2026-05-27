@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -23,7 +23,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import axios from "axios";
 import SeccionComisiones, { EmpleadoComision } from "./SeccionComisiones";
 
-const API = process.env.REACT_APP_API_URL ?? "";
+const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const ORANGE = "#f97316";

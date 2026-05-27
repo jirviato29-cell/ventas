@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   AppBar, Toolbar, Typography, Button, Box, MenuItem, Menu,
   IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
@@ -89,7 +89,7 @@ const Navbar = () => {
   const cerrarSesion = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/asistencias/logout`, {
+      const res = await fetch(`https://ato-appservidor.onrender.com/asistencias/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

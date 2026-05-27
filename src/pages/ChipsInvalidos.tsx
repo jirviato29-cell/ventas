@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Usuario, VentaChip } from "../Types";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, TextField, Checkbox, Box, IconButton } from "@mui/material";
@@ -24,7 +24,7 @@ const ChipsRechazados = () => {
       }
 
       const res = await axios.get(
-        `${process.env.REACT_APP_API_URL}/ventas/chips_rechazados`,
+        `https://ato-appservidor.onrender.com/ventas/chips_rechazados`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params, 
@@ -40,7 +40,7 @@ const ChipsRechazados = () => {
   useEffect(() => {
     const cargarUsuarios = async () => {
       try {
-        const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, {
+        const res = await axios.get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsuarios(res.data);
@@ -55,7 +55,7 @@ const ChipsRechazados = () => {
 const validarChip = async (id: number, comision_manual?: number) => {
   try {
     await axios.put(
-      `${process.env.REACT_APP_API_URL}/ventas/validar_chip_incubadora/${id}`,
+      `https://ato-appservidor.onrender.com/ventas/validar_chip_incubadora/${id}`,
       { comision_manual }, // 🔥 importante
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -71,7 +71,7 @@ const validarChip = async (id: number, comision_manual?: number) => {
 
 const eliminarChip = async (id: number) => {
     try {
-      await axios.delete(`${process.env.REACT_APP_API_URL}/ventas/eliminar_chip/${id}`, {
+      await axios.delete(`https://ato-appservidor.onrender.com/ventas/eliminar_chip/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRechazados(prev => prev.filter(c => c.id !== id));

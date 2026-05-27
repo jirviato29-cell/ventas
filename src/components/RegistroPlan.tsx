@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+﻿import React, { useRef, useState } from "react";
 import { Box, Button, MenuItem, Paper, TextField, Typography } from "@mui/material";
 import axios from "axios";
 
@@ -28,7 +28,7 @@ const RegistroPlan: React.FC<Props> = ({ empleados, modulos }) => {
   const guardarPlan = async () => {
     try {
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/dashboard/planes`,
+        `https://ato-appservidor.onrender.com/dashboard/planes`,
         {
           ...plan,
           empleado_id: Number(plan.empleado_id),

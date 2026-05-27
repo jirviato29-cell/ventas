@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
@@ -57,7 +57,7 @@ const UsuariosAdmin = () => {
 
   const cargarModulos = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, config);
+      const res = await axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, config);
       setModulos(res.data);
     } catch {
       console.error("Error al cargar módulos");
@@ -66,7 +66,7 @@ const UsuariosAdmin = () => {
 
   const cargarUsuarios = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/usuarios`, config);
+      const res = await axios.get(`https://ato-appservidor.onrender.com/registro/usuarios`, config);
       setUsuarios(res.data);
     } catch {
       alert("Error al cargar usuarios");
@@ -121,7 +121,7 @@ const UsuariosAdmin = () => {
       if (form.password) payload.password = form.password;
 
       await axios.put(
-        `${process.env.REACT_APP_API_URL}/registro/usuarios/${editandoId}`,
+        `https://ato-appservidor.onrender.com/registro/usuarios/${editandoId}`,
         payload,
         config
       );
@@ -135,7 +135,7 @@ const UsuariosAdmin = () => {
   const eliminarUsuario = async (id: number) => {
     if (!window.confirm("¿Estás seguro de eliminar este usuario?")) return;
     try {
-      await axios.delete(`${process.env.REACT_APP_API_URL}/registro/usuarios/${id}`, config);
+      await axios.delete(`https://ato-appservidor.onrender.com/registro/usuarios/${id}`, config);
       cargarUsuarios();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al eliminar usuario");
@@ -167,7 +167,7 @@ const UsuariosAdmin = () => {
       await Promise.all(
         afectados.map((p) =>
           axios.put(
-            `${process.env.REACT_APP_API_URL}/admin/usuarios/${p.id}/horario`,
+            `https://ato-appservidor.onrender.com/admin/usuarios/${p.id}/horario`,
             { horario_semanal: horario, dia_descanso: diaDescanso || null },
             config
           )

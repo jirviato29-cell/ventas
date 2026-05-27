@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import axios from "axios";
 import {
   Box, Typography, Paper, Divider, Button,
@@ -20,7 +20,7 @@ const ComisionesUsuario = () => {
 
   const fetchCicloActual = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/comisiones/comisiones/ciclo`, {
+      const res = await axios.get(`https://ato-appservidor.onrender.com/comisiones/comisiones/ciclo`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setData(res.data);
@@ -37,7 +37,7 @@ const ComisionesUsuario = () => {
         fin: dayjs(fin).format("YYYY-MM-DD"),
       };
     try {
-    const res = await axios.get(`${process.env.REACT_APP_API_URL}/comisiones/ciclo_por_fechas`, {
+    const res = await axios.get(`https://ato-appservidor.onrender.com/comisiones/ciclo_por_fechas`, {
       params,
       headers: { Authorization: `Bearer ${token}` },
     });

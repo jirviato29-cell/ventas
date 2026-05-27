@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, MenuItem, TextField, Typography, Alert, Paper,
 } from "@mui/material";
@@ -36,7 +36,7 @@ const CrearUsuario = () => {
     const cfg = { headers: { Authorization: `Bearer ${localToken}` } };
     const fetchModulos = async () => {
       try {
-        const res = await axios.get(`${process.env.REACT_APP_API_URL}/registro/modulos`, cfg);
+        const res = await axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, cfg);
         setModulos(res.data);
       } catch {
         console.error("Error al cargar módulos");
@@ -50,7 +50,7 @@ const CrearUsuario = () => {
   const handleSubmit = async () => {
     try {
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/registro/registro`,
+        `https://ato-appservidor.onrender.com/registro/registro`,
         {
           nombre_completo: nombreCompleto,
           username,

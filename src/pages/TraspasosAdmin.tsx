@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Container, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, TableContainer, Paper, Button, TextField, Box
@@ -20,8 +20,8 @@ const TraspasosAdmin = () => {
   const cargarTraspasos = async () => {
 
     const url = buscarFolio.trim()
-      ? `${process.env.REACT_APP_API_URL}/traspasos/traspasos?folio=${buscarFolio.trim()}`
-      : `${process.env.REACT_APP_API_URL}/traspasos/traspasos`
+      ? `https://ato-appservidor.onrender.com/traspasos/traspasos?folio=${buscarFolio.trim()}`
+      : `https://ato-appservidor.onrender.com/traspasos/traspasos`
 
     const res = await axios.get(url, config)
 
@@ -36,7 +36,7 @@ const actualizarEstado = async (
 ) => {
   try {
     await axios.put(
-      `${process.env.REACT_APP_API_URL}/traspasos/traspasos/${id}`,
+      `https://ato-appservidor.onrender.com/traspasos/traspasos/${id}`,
       {
         estado,
         ...(estado === "aprobado" && { folio }) // 👈 solo si aplica
@@ -165,7 +165,7 @@ const traspasosFiltrados = traspasos.filter((t) => {
                     title="Marcar como capturado"
                     onChange={async () => {
                       await axios.put(
-                        `${process.env.REACT_APP_API_URL}/traspasos/traspasos/${t.id}/ocultar`,
+                        `https://ato-appservidor.onrender.com/traspasos/traspasos/${t.id}/ocultar`,
                         {},
                         config
                       )

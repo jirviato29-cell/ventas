@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Box, Typography, TextField, Button, Paper, Alert, Table, TableHead,
   TableRow, TableCell, TableBody, Divider
@@ -21,7 +21,7 @@ export const InventarioTelefonosGeneral = () => {
 
   const cargarInventario = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/inventario_telefonos/general`, config);
+      const res = await axios.get(`https://ato-appservidor.onrender.com/inventario_telefonos/general`, config);
       setTelefonos(res.data);
     } catch (err) {
       console.error("Error al cargar inventario", err);
@@ -30,7 +30,7 @@ export const InventarioTelefonosGeneral = () => {
 
   const crearTelefono = async () => {
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/inventario_telefonos/general`, {
+      await axios.post(`https://ato-appservidor.onrender.com/inventario_telefonos/general`, {
         marca,
         modelo,
         cantidad: parseInt(cantidad),
