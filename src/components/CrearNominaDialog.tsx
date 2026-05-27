@@ -497,7 +497,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
             </Box>
           )}
 
-          {/* ── Tabla Unificada (16 columnas) ── */}
+          {/* ── Tabla Unificada (14 columnas) ── */}
           {tablaUnificada.length > 0 && (
             <>
               <Divider sx={{ my: 2 }} />
@@ -505,18 +505,18 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
                 Tabla Unificada
               </Typography>
               <Box sx={{ overflowX: "auto" }}>
-                <Table size="small" sx={{ minWidth: 1400 }}>
+                <Table size="small" sx={{ minWidth: 1200 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: "#f8fafc" }}>
                       {[
-                        "Empleado", "Nombre", "Sueldo", "H.Extra", "$Pago HE",
+                        "Empleado", "Sueldo", "H.Extra", "$Pago HE",
                         "Accesorios", "Teléfonos", "Chips", "Incubadora",
-                        "Planes", "Pendientes", "Bonos",
-                        "Subtotal", "Total", "Sanciones", "Depósito",
+                        "Planes tarifarios", "Com. pendientes", "Bonos",
+                        "Subtotal", "Sanciones", "Depósito",
                       ].map((h) => (
                         <TableCell
                           key={h}
-                          align={["Empleado", "Nombre"].includes(h) ? "left" : "right"}
+                          align={h === "Empleado" ? "left" : "right"}
                           sx={{ fontWeight: 700, fontSize: 10, color: "#1e293b", whiteSpace: "nowrap", py: "5px", px: "6px" }}
                         >
                           {h}
@@ -544,7 +544,6 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
                       return (
                         <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                           <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>{r.empleado}</TableCell>
-                          <TableCell sx={{ fontSize: 10, py: "3px", px: "6px", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_completo}</TableCell>
                           <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
                           <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", color: heColor, fontWeight: 600, whiteSpace: "nowrap" }}>{heLabel}</TableCell>
                           <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
@@ -572,7 +571,6 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
                           </TableCell>
                           {/* Columnas calculadas */}
                           <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>{fmtMXN(subtotal)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: GREEN }}>{fmtMXN(total)}</TableCell>
                           <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
                             <TextField type="number" size="small" value={m.sanciones}
                               onChange={(e) => setM(r.empleado, "sanciones", Math.max(0, Number(e.target.value)))}
@@ -584,7 +582,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
                       );
                     })}
                     <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                      <TableCell colSpan={15} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total depósito</TableCell>
+                      <TableCell colSpan={13} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total depósito</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>{fmtMXN(totalDeposito)}</TableCell>
                     </TableRow>
                   </TableBody>

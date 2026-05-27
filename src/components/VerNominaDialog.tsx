@@ -167,26 +167,26 @@ const SeccionComisionesVer: React.FC<{ rows: ItemDatos[]; label: string; color: 
   );
 };
 
-// ── Render formato nuevo (tabla unificada 16 col) ─────────────────────────────
+// ── Render formato nuevo (tabla unificada 14 col) ─────────────────────────────
 
 const secColor: Record<string, string> = { asesor: BLUE, encargado: GREEN, cadena: PURPLE };
 
 const TablaUnificadaVer: React.FC<{ rows: ItemDatos[]; totalPago: number }> = ({ rows, totalPago }) => {
   const headers = [
-    "Empleado", "Nombre", "Sueldo", "H.Extra", "$Pago HE",
+    "Empleado", "Sueldo", "H.Extra", "$Pago HE",
     "Accesorios", "Teléfonos", "Chips", "Incubadora",
-    "Planes", "Pendientes", "Bonos", "Subtotal", "Total",
+    "Planes tarifarios", "Com. pendientes", "Bonos", "Subtotal",
     "Sanciones", "Depósito",
   ];
   return (
     <Box sx={{ overflowX: "auto" }}>
-      <Table size="small" sx={{ minWidth: 1400 }}>
+      <Table size="small" sx={{ minWidth: 1200 }}>
         <TableHead>
           <TableRow sx={{ bgcolor: "#f8fafc" }}>
             {headers.map((h) => (
               <TableCell
                 key={h}
-                align={["Empleado", "Nombre"].includes(h) ? "left" : "right"}
+                align={h === "Empleado" ? "left" : "right"}
                 sx={{ fontWeight: 700, fontSize: 10, whiteSpace: "nowrap", py: "4px", px: "6px", color: "#1e293b" }}
               >
                 {h}
@@ -203,7 +203,6 @@ const TablaUnificadaVer: React.FC<{ rows: ItemDatos[]; totalPago: number }> = ({
             return (
               <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
                 <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>{r.empleado}</TableCell>
-                <TableCell sx={{ fontSize: 10, py: "3px", px: "6px", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_completo}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", color: heColor, fontWeight: 600 }}>{heLabel}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
@@ -217,7 +216,6 @@ const TablaUnificadaVer: React.FC<{ rows: ItemDatos[]; totalPago: number }> = ({
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pendientes ?? 0)}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.bonos ?? 0)}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>{fmtMXN(r.subtotal ?? 0)}</TableCell>
-                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: GREEN }}>{fmtMXN(r.total ?? r.pago_total)}</TableCell>
                 <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", color: (r.sanciones ?? 0) > 0 ? "#ef4444" : undefined }}>
                   {fmtMXN(r.sanciones ?? 0)}
                 </TableCell>
@@ -228,7 +226,7 @@ const TablaUnificadaVer: React.FC<{ rows: ItemDatos[]; totalPago: number }> = ({
             );
           })}
           <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-            <TableCell colSpan={15} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total nómina</TableCell>
+            <TableCell colSpan={13} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total nómina</TableCell>
             <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>
               {fmtMXN(totalPago)}
             </TableCell>
