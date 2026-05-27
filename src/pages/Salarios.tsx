@@ -23,11 +23,13 @@ import DownloadIcon from "@mui/icons-material/Download";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PublishIcon from "@mui/icons-material/Publish";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import EditIcon from "@mui/icons-material/Edit";
 import axios from "axios";
 import CrearNominaDialog from "../components/CrearNominaDialog";
 import VerNominaDialog from "../components/VerNominaDialog";
 import CrearNominaIncubadoraDialog from "../components/CrearNominaIncubadoraDialog";
 import VerNominaIncubadoraDialog from "../components/VerNominaIncubadoraDialog";
+import EditarNominaDialog from "../components/EditarNominaDialog";
 
 const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
@@ -48,6 +50,7 @@ const Salarios: React.FC = () => {
   const [cargando, setCargando] = useState(true);
   const [crearOpen, setCrearOpen] = useState(false);
   const [verId, setVerId] = useState<number | null>(null);
+  const [editarId, setEditarId] = useState<number | null>(null);
 
   const [nominasIncubadora, setNominasIncubadora] = useState<NominaListItem[]>([]);
   const [cargandoIncubadora, setCargandoIncubadora] = useState(true);
@@ -194,6 +197,11 @@ const Salarios: React.FC = () => {
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Editar nómina">
+                        <IconButton size="small" sx={{ color: "#f59e0b" }} onClick={() => setEditarId(n.id)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title={n.publicada ? "Ya publicada" : "Publicar esta nómina"}>
                         <span>
                           <IconButton
@@ -295,6 +303,12 @@ const Salarios: React.FC = () => {
         nominaId={verId}
         onClose={() => setVerId(null)}
         onDescargar={descargar}
+      />
+
+      <EditarNominaDialog
+        nominaId={editarId}
+        onClose={() => setEditarId(null)}
+        onGuardado={() => { setEditarId(null); cargarNominas(); setSnack({ msg: "Nómina actualizada correctamente", sev: "success" }); }}
       />
 
       <CrearNominaIncubadoraDialog
