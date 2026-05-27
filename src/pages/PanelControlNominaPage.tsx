@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -62,6 +63,111 @@ const formVacio: FormNomina = {
   forma_pago: "",
   cuenta_clabe: "",
   cuenta_interbancaria: "",
+};
+
+// ── Sección Marquesina ────────────────────────────────────────────────────────
+const SeccionMarquesina: React.FC = () => {
+  const [texto, setTexto] = React.useState("");
+  const [guardando, setGuardando] = React.useState(false);
+  const [msg, setMsg] = React.useState<{ ok: boolean; texto: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch(`${API}/config/marquesina`)
+      .then((r) => r.json())
+      .then((d) => setTexto(d.texto ?? ""))
+      .catch(() => {});
+  }, []);
+
+  const guardarMq = async () => {
+    setGuardando(true);
+    setMsg(null);
+    try {
+      await axios.put(`${API}/config/marquesina`, { texto }, { headers: authH() });
+      setMsg({ ok: true, texto: "Guardado correctamente" });
+    } catch {
+      setMsg({ ok: false, texto: "Error al guardar" });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="subtitle1" fontWeight={700} mb={2}>
+        Texto de marquesina
+      </Typography>
+      <TextField
+        multiline
+        rows={5}
+        fullWidth
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Escribe el mensaje que aparecerá en la marquesina..."
+        sx={{ mb: 2 }}
+      />
+      <Button
+        variant="contained"
+        onClick={guardarMq}
+        disabled={guardando}
+        sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6b0a" }, mb: msg ? 2 : 3 }}
+      >
+        {guardando ? "Guardando..." : "Guardar"}
+      </Button>
+      {msg && (
+        <Alert severity={msg.ok ? "success" : "error"} sx={{ mb: 2 }}>
+          {msg.texto}
+        </Alert>
+      )}
+      <Typography variant="subtitle2" fontWeight={700} mb={1} color="text.secondary">
+        Vista previa
+      </Typography>
+      {texto.trim() ? (
+        <Box
+          sx={{
+            bgcolor: "#f97316",
+            height: 32,
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            borderRadius: 1,
+          }}
+        >
+          <Box
+            component="span"
+            sx={{
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 13,
+              whiteSpace: "nowrap",
+              display: "inline-block",
+              animation: "marquee 35s linear infinite",
+              "@keyframes marquee": {
+                "0%":   { transform: "translateX(100vw)" },
+                "100%": { transform: "translateX(-100%)" },
+              },
+            }}
+          >
+            {texto}
+          </Box>
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            height: 32,
+            border: "1px dashed #e2e8f0",
+            borderRadius: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Typography fontSize={12} color="text.secondary">
+            Sin texto — la franja estará oculta
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
 };
 
 const PanelControlNominaPage: React.FC = () => {
@@ -189,9 +295,11 @@ const PanelControlNominaPage: React.FC = () => {
       >
         <Tab label="Pago de Nómina" />
         <Tab label="Salarios" />
+        <Tab label="Marquesina" />
       </Tabs>
 
       {tabActivo === 1 && <Salarios />}
+      {tabActivo === 2 && <SeccionMarquesina />}
 
       {tabActivo === 0 && (
       <>
