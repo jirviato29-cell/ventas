@@ -22,6 +22,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PublishIcon from "@mui/icons-material/Publish";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import axios from "axios";
 import CrearNominaDialog from "../components/CrearNominaDialog";
 import VerNominaDialog from "../components/VerNominaDialog";
@@ -105,6 +106,20 @@ const Salarios: React.FC = () => {
         URL.revokeObjectURL(href);
       })
       .catch(() => setSnack({ msg: `Error al descargar ${tipo.toUpperCase()}`, sev: "error" }));
+  };
+
+  const descargarRH = (id: number) => {
+    const url = `${API}/admin/nominas/${id}/excel-rh`;
+    const token = localStorage.getItem("token") ?? "";
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
+      .then((blob) => {
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href; a.download = `nomina_rh_${id}.xlsx`; a.click();
+        URL.revokeObjectURL(href);
+      })
+      .catch(() => setSnack({ msg: "Error al descargar resumen RH", sev: "error" }));
   };
 
   const descargarIncubadora = (id: number, tipo: "excel" | "pdf") => {
@@ -199,6 +214,11 @@ const Salarios: React.FC = () => {
                       <Tooltip title="Descargar PDF">
                         <IconButton size="small" color="error" onClick={() => descargar(n.id, "pdf")}>
                           <PictureAsPdfIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Descargar resumen para RH">
+                        <IconButton size="small" sx={{ color: "#7c3aed" }} onClick={() => descargarRH(n.id)}>
+                          <AccountBalanceIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>
