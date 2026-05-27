@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { obtenerRolDesdeToken } from "../components/Token";
 import {
   Alert,
   Box,
@@ -26,6 +27,7 @@ interface Periodos {
   asesores?: Periodo;
   encargados?: Periodo;
   cadenas?: Periodo;
+  sueldos_encargados?: Periodo;
 }
 
 interface FilaRecibo {
@@ -125,12 +127,27 @@ const MiNomina: React.FC = () => {
   const { etiqueta, creado_en, periodos, fila } = data;
   const seccionLabel = SECCION_LABEL[fila.seccion] || fila.seccion;
 
-  const periodosOrdenados: [string, Periodo][] = [
-    ["Horas Extra", periodos.horas_extras],
-    ["Comisiones", periodos.asesores],
-    ["Com. Encargados", periodos.encargados],
-    ["Com. Cadenas", periodos.cadenas],
-  ].filter(([, v]) => v) as [string, Periodo][];
+  const rol = obtenerRolDesdeToken();
+
+  const periodosPorRol: Record<string, string[]> = {
+    asesor:    ["horas_extras", "asesores"],
+    encargado: ["horas_extras", "encargados", "sueldos_encargados"],
+    cadena:    ["horas_extras", "cadenas"],
+  };
+
+  const LABEL_PERIODO: Record<string, string> = {
+    horas_extras:       "Horas Extra",
+    asesores:           "Comisiones",
+    encargados:         "Com. Encargados",
+    cadenas:            "Com. Cadenas",
+    sueldos_encargados: "Sueldos Encargados",
+  };
+
+  const clavesPermitidas = periodosPorRol[rol ?? ""] ?? [];
+
+  const periodosOrdenados: [string, Periodo][] = clavesPermitidas
+    .map((clave) => [LABEL_PERIODO[clave], periodos[clave as keyof Periodos]] as [string, Periodo | undefined])
+    .filter((entry): entry is [string, Periodo] => !!entry[1]);
 
   return (
     <Box maxWidth={520} mx="auto" py={3}>
