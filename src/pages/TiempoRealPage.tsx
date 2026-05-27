@@ -33,7 +33,7 @@ import {
 } from 'recharts';
 import axios from 'axios';
 
-const API = process.env.REACT_APP_API_URL ?? '';
+const API = "https://ato-appservidor.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` });
 
 // ── Types ─────────────────────────────────────────────────────────────────────

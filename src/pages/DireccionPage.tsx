@@ -103,7 +103,7 @@ const DireccionPage: React.FC = () => {
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
   const rolToken = obtenerRolDesdeToken();
-  const API = process.env.REACT_APP_API_URL;
+  const API = "https://ato-appservidor.onrender.com";
 
   const [pendientes, setPendientes]             = useState<CortePendiente[]>([]);
   const [loadingPendientes, setLoadingPendientes] = useState(false);
