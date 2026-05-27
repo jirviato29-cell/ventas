@@ -1697,6 +1697,7 @@ const FormularioVentaMultiple = () => {
         {tabAsesor === 3 && esCadenas && (() => {
           const ciclos = getCiclos();
           const cicloActual = ciclos[nominaCicloIdx] ?? ciclos[0];
+          const activaciones = nominaChips.filter((c) => !c.es_incubadora);
           const incubadora = nominaChips.filter((c) => c.es_incubadora);
           const totalCobrar = nominaChips
             .filter((c) => c.validado && !c.es_incubadora)
@@ -1726,13 +1727,13 @@ const FormularioVentaMultiple = () => {
                   </Typography>
                 </Box>
 
-                {nominaChips.length === 0 ? (
+                {activaciones.length === 0 ? (
                   <Box sx={{ px: 2.5, py: 2.5 }}>
                     <Typography color="text.secondary" variant="body2">Sin activaciones en este ciclo.</Typography>
                   </Box>
                 ) : isMobile ? (
                   <Box sx={{ p: 1.5 }}>
-                    {nominaChips.map((c) => {
+                    {activaciones.map((c) => {
                       const est = getEstadoChip(c);
                       return (
                         <Box key={c.id} sx={{ p: 1.5, mb: 1, border: '1px solid #e2e8f0', borderRadius: 1.5, bgcolor: '#f8fafc' }}>
@@ -1772,7 +1773,7 @@ const FormularioVentaMultiple = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {nominaChips.map((c) => {
+                        {activaciones.map((c) => {
                           const est = getEstadoChip(c);
                           return (
                             <tr key={c.id}>
@@ -1846,7 +1847,9 @@ const FormularioVentaMultiple = () => {
                             <td style={tdStyle}>{c.numero_telefono}</td>
                             <td style={tdStyle}>${(c.monto_recarga ?? 0).toFixed(2)}</td>
                             <td style={{ ...tdStyle, fontWeight: 700, color: '#f97316' }}>${(c.comision ?? 0).toFixed(2)}</td>
-                            <td style={{ ...tdStyle, color: '#f97316', fontWeight: 600 }}>En incubadora</td>
+                            <td style={{ ...tdStyle, color: '#f97316', fontWeight: 600 }}>
+                              {c.descripcion_rechazo ? `Incubadora (${c.descripcion_rechazo})` : 'Incubadora'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
