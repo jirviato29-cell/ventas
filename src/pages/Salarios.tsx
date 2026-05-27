@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
   Paper,
@@ -20,6 +21,7 @@ import AddIcon from "@mui/icons-material/Add";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DownloadIcon from "@mui/icons-material/Download";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import PublishIcon from "@mui/icons-material/Publish";
 import axios from "axios";
 import CrearNominaDialog from "../components/CrearNominaDialog";
 import VerNominaDialog from "../components/VerNominaDialog";
@@ -36,6 +38,7 @@ interface NominaListItem {
   id: number;
   etiqueta: string;
   total_pago: number;
+  publicada: boolean;
   creado_en: string;
 }
 
@@ -78,6 +81,16 @@ const Salarios: React.FC = () => {
 
   useEffect(() => { cargarNominas(); }, [cargarNominas]);
   useEffect(() => { cargarNominasIncubadora(); }, [cargarNominasIncubadora]);
+
+  const publicar = async (id: number) => {
+    try {
+      await axios.put(`${API}/admin/nominas/${id}/publicar`, {}, { headers: authH() });
+      cargarNominas();
+      setSnack({ msg: "Nómina publicada correctamente", sev: "success" });
+    } catch {
+      setSnack({ msg: "Error al publicar la nómina", sev: "error" });
+    }
+  };
 
   const descargar = (id: number, tipo: "excel" | "pdf") => {
     const url = `${API}/admin/nominas/${id}/${tipo}`;
@@ -139,7 +152,7 @@ const Salarios: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                {["Etiqueta", "Fecha de creación", "Total", "Acciones"].map((h) => (
+                {["Etiqueta", "Fecha de creación", "Total", "Estado", "Acciones"].map((h) => (
                   <TableCell key={h} sx={{ fontWeight: 700, color: ORANGE, fontSize: 12 }}>{h}</TableCell>
                 ))}
               </TableRow>
@@ -153,11 +166,30 @@ const Salarios: React.FC = () => {
                     ${Number(n.total_pago).toFixed(2)}
                   </TableCell>
                   <TableCell>
+                    {n.publicada ? (
+                      <Chip label="PUBLICADA" size="small" sx={{ bgcolor: "#dcfce7", color: "#16a34a", fontWeight: 700, fontSize: 11 }} />
+                    ) : (
+                      <Chip label="—" size="small" variant="outlined" sx={{ fontSize: 11, color: "#94a3b8" }} />
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Box display="flex" gap={0.5}>
                       <Tooltip title="Ver detalle">
                         <IconButton size="small" onClick={() => setVerId(n.id)}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
+                      </Tooltip>
+                      <Tooltip title={n.publicada ? "Ya publicada" : "Publicar esta nómina"}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            disabled={n.publicada}
+                            onClick={() => publicar(n.id)}
+                          >
+                            <PublishIcon fontSize="small" />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title="Descargar Excel">
                         <IconButton size="small" color="success" onClick={() => descargar(n.id, "excel")}>

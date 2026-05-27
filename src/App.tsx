@@ -33,6 +33,7 @@ import TiempoRealPage from './pages/TiempoRealPage';
 import RecargasPage from './pages/RecargasPage';
 import SueldosEncargadosPage from './pages/SueldosEncargadosPage';
 import PanelControlNominaPage from './pages/PanelControlNominaPage';
+import MiNomina from './pages/MiNomina';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -74,6 +75,7 @@ const App: React.FC = () => {
     { path: '/recargas', element: <RutaProtegida><RecargasPage /></RutaProtegida> },
     { path: '/sueldos-encargados', element: <RutaProtegida><SueldosEncargadosPage /></RutaProtegida> },
     { path: '/admin/panel-control', element: <RutaProtegida><PanelControlNominaPage /></RutaProtegida> },
+    { path: '/mi-nomina', element: <RutaProtegida><MiNomina /></RutaProtegida> },
   ]);
 
   return routes;
