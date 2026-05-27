@@ -1302,6 +1302,7 @@ const TabAcumulado: React.FC = () => {
         return {
           empleado: g.key,
           nombre_completo: g.nombre_completo,
+          usuario_ids: g.ids,
           jornada: g.jornada,
           sueldo_base: g.sueldo_base,
           total_horas: g.total_horas,
