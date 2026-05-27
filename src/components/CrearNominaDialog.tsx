@@ -62,6 +62,7 @@ interface EmpleadoSueldo {
 interface FilaUnificada {
   empleado: string;
   nombre_completo: string;
+  usuario_ids: number[];
   seccion: "asesor" | "encargado" | "cadena";
   sueldo: number;
   horas_extra: number | null;
@@ -205,6 +206,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
       return {
         empleado: e.empleado,
         nombre_completo: e.nombre_completo,
+        usuario_ids: e.usuario_ids ?? [],
         seccion,
         sueldo,
         horas_extra: he?.horas_extra_redondeo ?? null,
@@ -232,14 +234,14 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
       seen.add(e.empleado);
       const sueldo = sueldosEncMap.get(e.empleado) ?? 0;
       const seccion: FilaUnificada["seccion"] = e.empleado.toUpperCase().startsWith("C") ? "cadena" : "asesor";
-      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion, sueldo, horas_extra: e.horas_extra_redondeo, pago_he: e.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
+      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, usuario_ids: e.usuario_ids ?? [], seccion, sueldo, horas_extra: e.horas_extra_redondeo, pago_he: e.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
     }
 
     for (const e of [...(cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[]].sort((a, b) => a.empleado.localeCompare(b.empleado))) {
       if (seen.has(e.empleado)) continue;
       seen.add(e.empleado);
       const he = heMap.get(e.empleado);
-      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion: "encargado", sueldo: e.sueldo_total, horas_extra: he?.horas_extra_redondeo ?? null, pago_he: he?.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
+      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, usuario_ids: e.usuario_ids ?? [], seccion: "encargado", sueldo: e.sueldo_total, horas_extra: he?.horas_extra_redondeo ?? null, pago_he: he?.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
     }
 
     return rows;
@@ -294,6 +296,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
           seccion: r.seccion,
           empleado: r.empleado,
           nombre_completo: r.nombre_completo,
+          usuario_ids: r.usuario_ids,
           sueldo: r.sueldo,
           horas_extra: r.horas_extra,
           pago_he: r.pago_he,
