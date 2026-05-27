@@ -57,6 +57,7 @@ interface EmpleadoSueldo {
   modulo: string;
   usuario_ids: number[];
   sueldo_total: number;
+  modulos_sueldo?: { modulo: string; monto: number }[];
 }
 
 interface FilaUnificada {
@@ -325,6 +326,11 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setGuardando(true);
     setError(null);
     try {
+      const sueldosEncDetalleMap = new Map<string, { modulo: string; monto: number }[]>();
+      for (const e of (cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[]) {
+        if (e.modulos_sueldo) sueldosEncDetalleMap.set(e.empleado, e.modulos_sueldo);
+      }
+
       const datos = tablaUnificada.map((r) => {
         const m           = getM(r.empleado);
         const incub       = incubadoraMap[r.empleado] ?? 0;
@@ -358,6 +364,9 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
           total,
           deposito,
           pago_total: deposito,
+          sueldo_detalle: r.seccion === "encargado"
+            ? (sueldosEncDetalleMap.get(r.empleado) ?? null)
+            : null,
         };
       });
 

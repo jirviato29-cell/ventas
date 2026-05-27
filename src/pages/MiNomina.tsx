@@ -30,6 +30,11 @@ interface Periodos {
   sueldos_encargados?: Periodo;
 }
 
+interface SueldoDetalle {
+  modulo: string;
+  monto: number;
+}
+
 interface FilaRecibo {
   empleado: string;
   seccion: string;
@@ -46,6 +51,7 @@ interface FilaRecibo {
   subtotal?: number;
   sanciones?: number;
   deposito?: number;
+  sueldo_detalle?: SueldoDetalle[];
   [key: string]: unknown;
 }
 
@@ -203,6 +209,12 @@ const MiNomina: React.FC = () => {
         <Box px={2} py={1.5}>
           <Typography fontSize={11} fontWeight={700} color="#94a3b8" letterSpacing={0.5} mb={1}>DESGLOSE</Typography>
           <Row label="Sueldo base" value={fmt(fila.sueldo)} />
+          {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && fila.sueldo_detalle.map((d) => (
+            <Box key={d.modulo} display="flex" justifyContent="space-between" py={0.25} px={2}>
+              <Typography fontSize={12} color="#94a3b8">· {d.modulo}</Typography>
+              <Typography fontSize={12} color="#64748b">{fmt(d.monto)}</Typography>
+            </Box>
+          ))}
           <Row label="Horas extra" value={fila.horas_extra != null ? `${Number(fila.horas_extra) > 0 ? "+" : ""}${Number(fila.horas_extra).toFixed(1)} hrs` : "—"} />
           <Row label="Pago H. Extra" value={fmt(fila.pago_he)} />
           <Row label="Accesorios" value={fmt(fila.accesorios)} />
