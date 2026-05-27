@@ -1151,6 +1151,7 @@ const TabAcumulado: React.FC = () => {
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
   const [cargando, setCargando] = useState(false);
   const [descuentosEdit, setDescuentosEdit] = useState<Record<string, string>>({});
+  const [horasExtraEdit, setHorasExtraEdit] = useState<Record<string, number>>({});
   const [guardarOpen, setGuardarOpen] = useState(false);
   const [etiqueta, setEtiqueta] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -1279,7 +1280,13 @@ const TabAcumulado: React.FC = () => {
       }
     });
     setDescuentosEdit(init);
+    setHorasExtraEdit({});
   }, [grupos]);
+
+  const getHE = (key: string, original: number | null): number | null =>
+    key in horasExtraEdit ? horasExtraEdit[key] : original;
+
+  const heEditada = (key: string): boolean => key in horasExtraEdit;
 
   const cicloActual = ciclos.find((c) => c.inicio === cicloSel) ?? null;
 
@@ -1288,7 +1295,7 @@ const TabAcumulado: React.FC = () => {
     setGuardando(true);
     try {
       const datos = grupos.map((g) => {
-        const he = g.horas_extra;
+        const he = getHE(g.key, g.horas_extra);
         const jornada = g.jornada;
         const sueldo = g.sueldo_base;
         let valorRed: number | null = null;
@@ -1306,7 +1313,7 @@ const TabAcumulado: React.FC = () => {
           jornada: g.jornada,
           sueldo_base: g.sueldo_base,
           total_horas: g.total_horas,
-          horas_extra: g.horas_extra,
+          horas_extra: he,
           horas_extra_redondeo: valorRed,
           pago: pago !== null ? parseFloat(pago.toFixed(2)) : null,
         };
@@ -1465,57 +1472,73 @@ const TabAcumulado: React.FC = () => {
                       }
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 64 }}>
-                      {grupo.horas_extra != null ? (
-                        <Box
-                          sx={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: grupo.horas_extra < 0 ? "#ef4444" : grupo.horas_extra > 0 ? "#16a34a" : undefined,
-                          }}
-                        >
-                          {grupo.horas_extra > 0 ? "+" : ""}
-                          {grupo.horas_extra.toFixed(2)}h
-                        </Box>
-                      ) : (
+                    <TableCell align="center" sx={{ ...cellBase, width: 80, p: "2px 4px" }}>
+                      {grupo.horas_extra == null ? (
                         <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
-                      )}
-                    </TableCell>
-
-                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
-                      {grupo.jornada == null ? (
-                        <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
-                      ) : grupo.horas_extra !== null && grupo.horas_extra >= 0 ? (
-                        <Box
-                          sx={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: redondearHorasExtra(grupo.horas_extra) > 0 ? "#16a34a" : undefined,
-                          }}
-                        >
-                          {redondearHorasExtra(grupo.horas_extra) > 0 ? "+" : ""}
-                          {redondearHorasExtra(grupo.horas_extra)}h
-                        </Box>
                       ) : (
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={descuentosEdit[grupo.key] ?? ""}
-                          onChange={(e) =>
-                            setDescuentosEdit((prev) => ({ ...prev, [grupo.key]: e.target.value }))
-                          }
-                          inputProps={{
-                            step: "0.01",
-                            style: { fontSize: 11, padding: "3px 6px", color: "#ef4444" },
-                          }}
-                          sx={{ width: 68 }}
-                        />
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.3 }}>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={getHE(grupo.key, grupo.horas_extra) ?? ""}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val)) setHorasExtraEdit((prev) => ({ ...prev, [grupo.key]: val }));
+                            }}
+                            inputProps={{ step: "0.01", style: { fontSize: 11, padding: "3px 6px" } }}
+                            sx={{
+                              width: 72,
+                              "& .MuiOutlinedInput-root": heEditada(grupo.key)
+                                ? { "& fieldset": { borderColor: "#3b82f6", borderWidth: 2 } }
+                                : {},
+                            }}
+                          />
+                          {heEditada(grupo.key) && <span style={{ fontSize: 9 }}>✏️</span>}
+                        </Box>
                       )}
                     </TableCell>
 
                     <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
                       {(() => {
-                        const he = grupo.horas_extra;
+                        const heEfectivo = getHE(grupo.key, grupo.horas_extra);
+                        if (grupo.jornada == null) {
+                          return <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>;
+                        }
+                        if (heEfectivo !== null && heEfectivo >= 0) {
+                          return (
+                            <Box
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: redondearHorasExtra(heEfectivo) > 0 ? "#16a34a" : undefined,
+                              }}
+                            >
+                              {redondearHorasExtra(heEfectivo) > 0 ? "+" : ""}
+                              {redondearHorasExtra(heEfectivo)}h
+                            </Box>
+                          );
+                        }
+                        return (
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={descuentosEdit[grupo.key] ?? ""}
+                            onChange={(e) =>
+                              setDescuentosEdit((prev) => ({ ...prev, [grupo.key]: e.target.value }))
+                            }
+                            inputProps={{
+                              step: "0.01",
+                              style: { fontSize: 11, padding: "3px 6px", color: "#ef4444" },
+                            }}
+                            sx={{ width: 68 }}
+                          />
+                        );
+                      })()}
+                    </TableCell>
+
+                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
+                      {(() => {
+                        const he = getHE(grupo.key, grupo.horas_extra);
                         const jornada = grupo.jornada;
                         const sueldo = grupo.sueldo_base;
                         if (jornada == null || jornada === 0 || sueldo === 0 || he == null) {
