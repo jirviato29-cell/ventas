@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar, Toolbar, Typography, Button, Box, MenuItem, Menu,
   IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
@@ -200,7 +200,6 @@ const Navbar = () => {
                     onClose={() => closeMenu(setAnchorAdmin)}
                   >
                     <MenuItem component={Link} to="/usuarios">Usuarios</MenuItem>
-                    <MenuItem component={Link} to="/nomina">Nómina</MenuItem>
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
                   </Menu>
@@ -228,7 +227,6 @@ const Navbar = () => {
 
               {rolToken === "contador" && (
                 <>
-                  <Button sx={navBtnSx} component={Link} to="/nomina">Nómina</Button>
                   <Button sx={navBtnSx} component={Link} to="/corte">Cortes</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/traspasos/admin">Traspasos</Button>
@@ -241,7 +239,6 @@ const Navbar = () => {
               {rolToken === "encargado" && (
                 <>
                   <Button sx={navBtnSx} component={Link} to="/kardex">Kardex</Button>
-                  <Button sx={navBtnSx} component={Link} to="/nominaEmpleado">Nómina</Button>
                   <Button sx={{ ...navBtnSx, color: "#a78bfa" }} component={Link} to="/mi-nomina">Mi Nómina</Button>
                   <Button sx={navBtnSx} component={Link} to="/traspasos">Traspasos</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
@@ -255,7 +252,6 @@ const Navbar = () => {
 
               {rolToken === "asesor" && (
                 <>
-                  <Button sx={navBtnSx} component={Link} to="/nominaEmpleado">Nómina</Button>
                   <Button sx={{ ...navBtnSx, color: "#a78bfa" }} component={Link} to="/mi-nomina">Mi Nómina</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones/usuario">Comisiones</Button>
@@ -409,10 +405,6 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><PeopleIcon /></ListItemIcon>
                     <ListItemText primary="Usuarios" />
                   </ListItemButton>
-                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/nomina")}>
-                    <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
-                    <ListItemText primary="Nómina" />
-                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/comisiones")}>
                     <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                     <ListItemText primary="Comisiones" />
@@ -455,10 +447,6 @@ const Navbar = () => {
           {/* ── CONTADOR ──────────────────────────────────────────────────────── */}
           {rolToken === "contador" && (
             <>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/nomina")}>
-                <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
-                <ListItemText primary="Nómina" />
-              </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                 <ListItemText primary="Cortes" />
@@ -492,10 +480,6 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/kardex")}>
                 <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
                 <ListItemText primary="Kardex" />
-              </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/nominaEmpleado")}>
-                <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
-                <ListItemText primary="Nómina" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
@@ -535,10 +519,6 @@ const Navbar = () => {
           {/* ── ASESOR ────────────────────────────────────────────────────────── */}
           {rolToken === "asesor" && (
             <>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/nominaEmpleado")}>
-                <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
-                <ListItemText primary="Nómina" />
-              </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
                 <ListItemText primary="Mi Nómina" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 600 }} />
