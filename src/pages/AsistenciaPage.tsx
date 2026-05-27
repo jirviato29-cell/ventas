@@ -1349,7 +1349,7 @@ const TabAcumulado: React.FC = () => {
 
   const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo", "$ Pago"];
 
-  const cellBase = { py: "4px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
+  const cellBase = { py: "10px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
   const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
   const stickyLeft = { position: "sticky" as const, left: 0, zIndex: 1 };
 
@@ -1392,7 +1392,7 @@ const TabAcumulado: React.FC = () => {
         <TableContainer
           component={Paper}
           elevation={1}
-          sx={{ overflowX: "auto", overflowY: "auto", maxHeight: 520 }}
+          sx={{ overflowX: "auto" }}
         >
           <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1010 }}>
             <TableHead>
@@ -1425,7 +1425,7 @@ const TabAcumulado: React.FC = () => {
               {grupos.map((grupo, idx) => {
                 const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
                 return (
-                  <TableRow key={grupo.key} sx={{ bgcolor: rowBg, height: 36 }}>
+                  <TableRow key={grupo.key} sx={{ bgcolor: rowBg }}>
                     <TableCell
                       sx={{
                         ...cellBase,
