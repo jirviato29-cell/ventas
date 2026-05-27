@@ -179,18 +179,10 @@ const Salarios: React.FC = () => {
       )}
 
       {/* ── Nóminas de Incubadora ── */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mt={5} mb={2}>
+      <Box display="flex" alignItems="center" mt={5} mb={2}>
         <Typography variant="h6" fontWeight={700} sx={{ color: PURPLE }}>
-          Nóminas de Incubadora
+          Historial de Nóminas de Incubadora (Legacy)
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCrearIncubadoraOpen(true)}
-          sx={{ bgcolor: PURPLE, "&:hover": { bgcolor: "#6d28d9" } }}
-        >
-          Crear Nómina de Incubadora
-        </Button>
       </Box>
 
       {cargandoIncubadora ? (

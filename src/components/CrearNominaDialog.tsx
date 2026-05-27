@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -24,6 +25,15 @@ import SeccionComisiones, { EmpleadoComision } from "./SeccionComisiones";
 
 const API = process.env.REACT_APP_API_URL ?? "";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
+
+const ORANGE = "#f97316";
+const BLUE   = "#3b82f6";
+const GREEN  = "#16a34a";
+const PURPLE = "#9333ea";
+const CYAN   = "#0891b2";
+
+const fmtMXN = (n: number) =>
+  "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface CicloGuardado {
   id: number;
@@ -59,8 +69,31 @@ interface FilaUnificada {
   accesorios: number;
   telefonos: number;
   chips: number;
-  subtotal: number;
-  total: number;
+}
+
+interface ChipDetalle {
+  chip_id: number;
+  tipo_chip: string;
+  numero_telefono: string;
+  comision: number;
+  fecha_venta: string;
+}
+
+interface GrupoIncubadora {
+  empleado: string;
+  nombre_completo: string;
+  usuario_ids: number[];
+  chips_count: number;
+  total_chips_incubadora: number;
+  pago_total: number;
+  detalle: ChipDetalle[];
+}
+
+interface Manuales {
+  planes: number;
+  pendientes: number;
+  bonos: number;
+  sanciones: number;
 }
 
 interface Props {
@@ -68,15 +101,6 @@ interface Props {
   onClose: () => void;
   onCreated: () => void;
 }
-
-const ORANGE = "#f97316";
-const BLUE   = "#3b82f6";
-const GREEN  = "#16a34a";
-const PURPLE = "#9333ea";
-const CYAN   = "#0891b2";
-
-const fmtMXN = (n: number) =>
-  "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
   const [etiqueta, setEtiqueta] = useState("");
@@ -87,17 +111,26 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [fechaInicioAsesores,    setFechaInicioAsesores]    = useState("");
-  const [fechaFinAsesores,       setFechaFinAsesores]       = useState("");
-  const [datosAsesores,          setDatosAsesores]          = useState<EmpleadoComision[]>([]);
+  const [fechaInicioAsesores,   setFechaInicioAsesores]   = useState("");
+  const [fechaFinAsesores,      setFechaFinAsesores]       = useState("");
+  const [datosAsesores,         setDatosAsesores]          = useState<EmpleadoComision[]>([]);
 
-  const [fechaInicioEncargados,  setFechaInicioEncargados]  = useState("");
-  const [fechaFinEncargados,     setFechaFinEncargados]     = useState("");
-  const [datosEncargados,        setDatosEncargados]        = useState<EmpleadoComision[]>([]);
+  const [fechaInicioEncargados, setFechaInicioEncargados] = useState("");
+  const [fechaFinEncargados,    setFechaFinEncargados]     = useState("");
+  const [datosEncargados,       setDatosEncargados]        = useState<EmpleadoComision[]>([]);
 
-  const [fechaInicioCadenas,     setFechaInicioCadenas]     = useState("");
-  const [fechaFinCadenas,        setFechaFinCadenas]        = useState("");
-  const [datosCadenas,           setDatosCadenas]           = useState<EmpleadoComision[]>([]);
+  const [fechaInicioCadenas,    setFechaInicioCadenas]    = useState("");
+  const [fechaFinCadenas,       setFechaFinCadenas]        = useState("");
+  const [datosCadenas,          setDatosCadenas]           = useState<EmpleadoComision[]>([]);
+
+  // Incubadora
+  const [subModalOpen,   setSubModalOpen]   = useState(false);
+  const [gruposInc,      setGruposInc]      = useState<GrupoIncubadora[]>([]);
+  const [cargandoChips,  setCargandoChips]  = useState(false);
+  const [chipsSelIds,    setChipsSelIds]    = useState<Set<number>>(new Set());
+
+  // Inputs manuales por empleado
+  const [manuales, setManuales] = useState<Record<string, Manuales>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +141,10 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setFechaInicioAsesores("");   setFechaFinAsesores("");   setDatosAsesores([]);
     setFechaInicioEncargados(""); setFechaFinEncargados(""); setDatosEncargados([]);
     setFechaInicioCadenas("");    setFechaFinCadenas("");    setDatosCadenas([]);
+    setSubModalOpen(false);
+    setGruposInc([]);
+    setChipsSelIds(new Set());
+    setManuales({});
 
     axios
       .get<CicloGuardado[]>(`${API}/admin/ciclos-guardados?concepto=horas_extras`, { headers: authH() })
@@ -120,10 +157,9 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
       .catch(() => setCiclosEncargados([]));
   }, [open]);
 
-  const cicloSel   = ciclos.find((c) => c.id === cicloId) ?? null;
-  const empleadosHE: EmpleadoCiclo[] = (cicloSel?.datos ?? []) as EmpleadoCiclo[];
-  const totalHE    = empleadosHE.reduce((s, e) => s + (e.pago ?? 0), 0);
-
+  const cicloSel          = ciclos.find((c) => c.id === cicloId) ?? null;
+  const empleadosHE       = (cicloSel?.datos ?? []) as EmpleadoCiclo[];
+  const totalHE           = empleadosHE.reduce((s, e) => s + (e.pago ?? 0), 0);
   const cicloEncargadosSel = ciclosEncargados.find((c) => c.id === cicloEncargadosId) ?? null;
 
   const totalAsesores   = datosAsesores.reduce((s, e) => s + e.pago_total, 0);
@@ -131,7 +167,23 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
   const totalCadenas    = datosCadenas.reduce((s, e) => s + e.pago_total, 0);
   const totalGeneral    = totalHE + totalAsesores + totalEncargados + totalCadenas;
 
-  // ── Tabla unificada ────────────────────────────────────────────────────────
+  // Mapa incubadora: empleado → suma comisiones de chips seleccionados
+  const incubadoraMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const g of gruposInc) {
+      const total = g.detalle.reduce((s, c) => chipsSelIds.has(c.chip_id) ? s + c.comision : s, 0);
+      if (total > 0) m[g.empleado] = total;
+    }
+    return m;
+  }, [gruposInc, chipsSelIds]);
+
+  const getM = (emp: string): Manuales =>
+    manuales[emp] ?? { planes: 0, pendientes: 0, bonos: 0, sanciones: 0 };
+
+  const setM = (emp: string, campo: keyof Manuales, val: number) =>
+    setManuales((prev) => ({ ...prev, [emp]: { ...getM(emp), [campo]: val } }));
+
+  // Tabla unificada base (sin manuales, sin incubadora — se computan en render)
   const tablaUnificada = useMemo((): FilaUnificada[] => {
     const tieneCiclo = cicloSel !== null || cicloEncargadosSel !== null;
     const tieneComisiones = datosAsesores.length > 0 || datosEncargados.length > 0 || datosCadenas.length > 0;
@@ -141,32 +193,25 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     for (const e of (cicloSel?.datos ?? []) as EmpleadoCiclo[]) heMap.set(e.empleado, e);
 
     const sueldosEncMap = new Map<string, number>();
-    for (const e of (cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[]) {
+    for (const e of (cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[])
       sueldosEncMap.set(e.empleado, e.sueldo_total);
-    }
 
     const rows: FilaUnificada[] = [];
     const seen = new Set<string>();
 
     const buildRow = (e: EmpleadoComision, seccion: FilaUnificada["seccion"]): FilaUnificada => {
       const he = heMap.get(e.empleado);
-      const sueldo = seccion === "encargado"
-        ? (sueldosEncMap.get(e.empleado) ?? 0)
-        : (e.sueldo_base ?? 0);
-      const pago_he = he?.pago ?? 0;
-      const sub = e.comisiones_accesorios + e.comisiones_telefonos + e.comisiones_chips;
+      const sueldo = seccion === "encargado" ? (sueldosEncMap.get(e.empleado) ?? 0) : (e.sueldo_base ?? 0);
       return {
         empleado: e.empleado,
         nombre_completo: e.nombre_completo,
         seccion,
         sueldo,
         horas_extra: he?.horas_extra_redondeo ?? null,
-        pago_he,
+        pago_he: he?.pago ?? 0,
         accesorios: e.comisiones_accesorios,
         telefonos: e.comisiones_telefonos,
         chips: e.comisiones_chips,
-        subtotal: sub,
-        total: sueldo + pago_he + sub,
       };
     };
 
@@ -182,58 +227,103 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     addSection(datosEncargados, "encargado");
     addSection(datosCadenas,    "cadena");
 
-    // Empleados de H.Extras no capturados por comisiones
     for (const e of [...(cicloSel?.datos ?? []) as EmpleadoCiclo[]].sort((a, b) => a.empleado.localeCompare(b.empleado))) {
       if (seen.has(e.empleado)) continue;
       seen.add(e.empleado);
       const sueldo = sueldosEncMap.get(e.empleado) ?? 0;
-      const pago_he = e.pago ?? 0;
       const seccion: FilaUnificada["seccion"] = e.empleado.toUpperCase().startsWith("C") ? "cadena" : "asesor";
-      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion, sueldo, horas_extra: e.horas_extra_redondeo, pago_he, accesorios: 0, telefonos: 0, chips: 0, subtotal: 0, total: sueldo + pago_he });
+      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion, sueldo, horas_extra: e.horas_extra_redondeo, pago_he: e.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
     }
 
-    // Encargados del ciclo sueldos no capturados aún
     for (const e of [...(cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[]].sort((a, b) => a.empleado.localeCompare(b.empleado))) {
       if (seen.has(e.empleado)) continue;
       seen.add(e.empleado);
       const he = heMap.get(e.empleado);
-      const pago_he = he?.pago ?? 0;
-      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion: "encargado", sueldo: e.sueldo_total, horas_extra: he?.horas_extra_redondeo ?? null, pago_he, accesorios: 0, telefonos: 0, chips: 0, subtotal: 0, total: e.sueldo_total + pago_he });
+      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, seccion: "encargado", sueldo: e.sueldo_total, horas_extra: he?.horas_extra_redondeo ?? null, pago_he: he?.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
     }
 
     return rows;
   }, [cicloSel, cicloEncargadosSel, datosAsesores, datosEncargados, datosCadenas]);
 
-  const totalUnificado = tablaUnificada.reduce((s, r) => s + r.total, 0);
+  const totalDeposito = useMemo(() =>
+    tablaUnificada.reduce((s, r) => {
+      const m = getM(r.empleado);
+      const incub = incubadoraMap[r.empleado] ?? 0;
+      const sub = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
+      return s + (r.sueldo + r.pago_he + sub - m.sanciones);
+    }, 0),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [tablaUnificada, manuales, incubadoraMap]);
+
+  const handleAbrirSubModal = async () => {
+    setSubModalOpen(true);
+    if (gruposInc.length > 0 || cargandoChips) return;
+    setCargandoChips(true);
+    try {
+      const { data } = await axios.get<GrupoIncubadora[]>(`${API}/admin/chips-incubadora-pendientes`, { headers: authH() });
+      setGruposInc(data);
+    } catch {
+      setGruposInc([]);
+    } finally {
+      setCargandoChips(false);
+    }
+  };
+
+  const toggleGrupo = (g: GrupoIncubadora) => {
+    setChipsSelIds((prev) => {
+      const next = new Set(prev);
+      const allSel = g.detalle.every((c) => prev.has(c.chip_id));
+      g.detalle.forEach((c) => (allSel ? next.delete(c.chip_id) : next.add(c.chip_id)));
+      return next;
+    });
+  };
 
   const guardar = async () => {
     if (!etiqueta.trim()) { setError("La etiqueta no puede estar vacía"); return; }
+    if (tablaUnificada.length === 0) { setError("No hay datos en la tabla unificada"); return; }
     setGuardando(true);
     setError(null);
     try {
-      const datosHE = empleadosHE.map((e) => ({
-        seccion: "horas_extras",
-        empleado: e.empleado,
-        nombre_completo: e.nombre_completo,
-        usuario_ids: e.usuario_ids ?? [],
-        horas_extra_redondeo: e.horas_extra_redondeo,
-        pago_horas_extras: e.pago ?? 0,
-        pago_total: e.pago ?? 0,
-      }));
-
-      const datos = [...datosHE, ...datosAsesores, ...datosEncargados, ...datosCadenas];
+      const datos = tablaUnificada.map((r) => {
+        const m = getM(r.empleado);
+        const incub = incubadoraMap[r.empleado] ?? 0;
+        const subtotal = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
+        const total = r.sueldo + r.pago_he + subtotal;
+        const deposito = total - m.sanciones;
+        return {
+          seccion: r.seccion,
+          empleado: r.empleado,
+          nombre_completo: r.nombre_completo,
+          sueldo: r.sueldo,
+          horas_extra: r.horas_extra,
+          pago_he: r.pago_he,
+          accesorios: r.accesorios,
+          telefonos: r.telefonos,
+          chips: r.chips,
+          incubadora: incub,
+          planes: m.planes,
+          pendientes: m.pendientes,
+          bonos: m.bonos,
+          sanciones: m.sanciones,
+          subtotal,
+          total,
+          deposito,
+          pago_total: deposito,
+        };
+      });
 
       await axios.post(
         `${API}/admin/nominas`,
         {
           etiqueta: etiqueta.trim(),
           ciclo_horas_extras_id: cicloId !== "" ? cicloId : undefined,
-          fecha_inicio_asesores:    fechaInicioAsesores   || undefined,
-          fecha_fin_asesores:       fechaFinAsesores       || undefined,
-          fecha_inicio_encargados:  fechaInicioEncargados  || undefined,
-          fecha_fin_encargados:     fechaFinEncargados     || undefined,
-          fecha_inicio_cadenas:     fechaInicioCadenas     || undefined,
-          fecha_fin_cadenas:        fechaFinCadenas        || undefined,
+          chip_ids_incubadora: chipsSelIds.size > 0 ? Array.from(chipsSelIds) : undefined,
+          fecha_inicio_asesores:   fechaInicioAsesores   || undefined,
+          fecha_fin_asesores:      fechaFinAsesores       || undefined,
+          fecha_inicio_encargados: fechaInicioEncargados  || undefined,
+          fecha_fin_encargados:    fechaFinEncargados      || undefined,
+          fecha_inicio_cadenas:    fechaInicioCadenas     || undefined,
+          fecha_fin_cadenas:       fechaFinCadenas        || undefined,
           datos,
         },
         { headers: authH() }
@@ -247,204 +337,345 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
   };
 
   const seccionColor: Record<FilaUnificada["seccion"], string> = {
-    asesor: BLUE,
-    encargado: GREEN,
-    cadena: PURPLE,
+    asesor: BLUE, encargado: GREEN, cadena: PURPLE,
   };
 
+  const totalIncubadoraSel = Object.values(incubadoraMap).reduce((s, v) => s + v, 0);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>Crear Nómina</DialogTitle>
-      <DialogContent dividers>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Crear Nómina</DialogTitle>
+        <DialogContent dividers>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <TextField
-          label="Etiqueta"
-          value={etiqueta}
-          onChange={(e) => setEtiqueta(e.target.value)}
-          fullWidth size="small" sx={{ mb: 2 }}
-          placeholder="Ej. Nómina Mayo Semana 4"
-        />
-
-        {/* ── Sección 1: Horas Extras ── */}
-        <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} mb={1.5} sx={{ color: ORANGE }}>
-            Horas Extras
-          </Typography>
           <TextField
-            select label="Ciclo de Horas Extras"
-            value={cicloId}
-            onChange={(e) => setCicloId(Number(e.target.value))}
-            fullWidth size="small" sx={{ mb: cicloSel ? 2 : 0 }}
-          >
-            <MenuItem value="">(Sin ciclo)</MenuItem>
-            {ciclos.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.etiqueta} — {c.fecha_inicio} → {c.fecha_fin}
-              </MenuItem>
-            ))}
-          </TextField>
+            label="Etiqueta"
+            value={etiqueta}
+            onChange={(e) => setEtiqueta(e.target.value)}
+            fullWidth size="small" sx={{ mb: 2 }}
+            placeholder="Ej. Nómina Mayo Semana 4"
+          />
 
-          {cicloSel && empleadosHE.length > 0 && (
+          {/* ── Sección 1: Horas Extras ── */}
+          <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700} mb={1.5} sx={{ color: ORANGE }}>
+              Horas Extras
+            </Typography>
+            <TextField
+              select label="Ciclo de Horas Extras"
+              value={cicloId}
+              onChange={(e) => setCicloId(Number(e.target.value))}
+              fullWidth size="small" sx={{ mb: cicloSel ? 2 : 0 }}
+            >
+              <MenuItem value="">(Sin ciclo)</MenuItem>
+              {ciclos.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.etiqueta} — {c.fecha_inicio} → {c.fecha_fin}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {cicloSel && empleadosHE.length > 0 && (
+              <>
+                <Typography variant="caption" color="text.secondary" mb={0.5} display="block">
+                  {empleadosHE.length} empleado{empleadosHE.length !== 1 ? "s" : ""} en el ciclo
+                </Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                      {["Empleado", "Nombre completo", "H. Extra", "$ Pago H. Extras"].map((h) => (
+                        <TableCell key={h} sx={{ fontWeight: 700, color: ORANGE, fontSize: 11 }}>{h}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {empleadosHE.map((e, i) => {
+                      const he = e.horas_extra_redondeo;
+                      const heColor = he == null ? undefined : he > 0 ? GREEN : he < 0 ? "#ef4444" : undefined;
+                      const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+                      return (
+                        <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                          <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
+                          <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
+                          <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
+                          <TableCell sx={{ fontSize: 12, fontWeight: 700, color: (e.pago ?? 0) >= 0 ? GREEN : "#ef4444" }}>
+                            {(e.pago ?? 0) >= 0 ? "+" : ""}${Math.abs(e.pago ?? 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                <Box display="flex" justifyContent="flex-end" pr={1} mt={0.5}>
+                  <Typography variant="body2" fontWeight={700}>
+                    Subtotal: <span style={{ color: ORANGE }}>${totalHE.toFixed(2)}</span>
+                  </Typography>
+                </Box>
+              </>
+            )}
+          </Box>
+
+          {/* ── Sección 2: Sueldos Encargados ── */}
+          <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700} mb={1.5} sx={{ color: CYAN }}>
+              Sueldos Encargados
+            </Typography>
+            <TextField
+              select label="Ciclo de Sueldos Encargados"
+              value={cicloEncargadosId}
+              onChange={(e) => setCicloEncargadosId(Number(e.target.value) || "")}
+              fullWidth size="small"
+            >
+              <MenuItem value="">(Sin ciclo)</MenuItem>
+              {ciclosEncargados.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.etiqueta} — {c.fecha_inicio} → {c.fecha_fin}
+                </MenuItem>
+              ))}
+            </TextField>
+            {cicloEncargadosSel && (
+              <Typography variant="caption" color="text.secondary" mt={1} display="block">
+                {(cicloEncargadosSel.datos as EmpleadoSueldo[]).length} encargado{(cicloEncargadosSel.datos as EmpleadoSueldo[]).length !== 1 ? "s" : ""} ·{" "}
+                Total: <strong style={{ color: CYAN }}>
+                  ${(cicloEncargadosSel.datos as EmpleadoSueldo[]).reduce((s, e) => s + e.sueldo_total, 0).toFixed(2)}
+                </strong>
+              </Typography>
+            )}
+          </Box>
+
+          {/* ── Sección 3: Incubadora ── */}
+          <Box sx={{ border: "1px solid #e9d5ff", borderRadius: 2, p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700} mb={1.5} sx={{ color: PURPLE }}>
+              Incubadora
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleAbrirSubModal}
+              disabled={cargandoChips}
+              startIcon={cargandoChips ? <CircularProgress size={14} color="inherit" /> : undefined}
+              sx={{ borderColor: PURPLE, color: PURPLE, "&:hover": { borderColor: "#7c3aed", bgcolor: "#faf5ff" } }}
+            >
+              {cargandoChips ? "Cargando chips…" : "Seleccionar chips a pagar"}
+            </Button>
+            {chipsSelIds.size > 0 && (
+              <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                {chipsSelIds.size} chip{chipsSelIds.size !== 1 ? "s" : ""} seleccionado{chipsSelIds.size !== 1 ? "s" : ""} ·{" "}
+                Total: <strong style={{ color: PURPLE }}>{fmtMXN(totalIncubadoraSel)}</strong>
+              </Typography>
+            )}
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* ── Secciones 4–6: Comisiones ── */}
+          <SeccionComisiones
+            grupo="asesores" label="Comisiones Asesores" color={BLUE}
+            fechaInicio={fechaInicioAsesores} fechaFin={fechaFinAsesores}
+            onFechaInicioChange={setFechaInicioAsesores} onFechaFinChange={setFechaFinAsesores}
+            onDatosCalculados={setDatosAsesores} datosCalculados={datosAsesores}
+          />
+          <SeccionComisiones
+            grupo="encargados" label="Comisiones Encargados" color={GREEN}
+            fechaInicio={fechaInicioEncargados} fechaFin={fechaFinEncargados}
+            onFechaInicioChange={setFechaInicioEncargados} onFechaFinChange={setFechaFinEncargados}
+            onDatosCalculados={setDatosEncargados} datosCalculados={datosEncargados}
+          />
+          <SeccionComisiones
+            grupo="cadenas" label="Comisiones Cadenas" color={PURPLE}
+            fechaInicio={fechaInicioCadenas} fechaFin={fechaFinCadenas}
+            onFechaInicioChange={setFechaInicioCadenas} onFechaFinChange={setFechaFinCadenas}
+            onDatosCalculados={setDatosCadenas} datosCalculados={datosCadenas}
+          />
+
+          {(cicloSel || datosAsesores.length > 0 || datosEncargados.length > 0 || datosCadenas.length > 0) && (
+            <Box display="flex" justifyContent="flex-end" mt={1} pr={1}>
+              <Typography variant="body2" fontWeight={700}>
+                Subtotal comisiones + HE: <span style={{ color: ORANGE }}>${totalGeneral.toFixed(2)}</span>
+              </Typography>
+            </Box>
+          )}
+
+          {/* ── Tabla Unificada (16 columnas) ── */}
+          {tablaUnificada.length > 0 && (
             <>
-              <Typography variant="caption" color="text.secondary" mb={0.5} display="block">
-                {empleadosHE.length} empleado{empleadosHE.length !== 1 ? "s" : ""} en el ciclo
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" fontWeight={700} mb={1} sx={{ color: "#1e293b" }}>
+                Tabla Unificada
+              </Typography>
+              <Box sx={{ overflowX: "auto" }}>
+                <Table size="small" sx={{ minWidth: 1400 }}>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                      {[
+                        "Empleado", "Nombre", "Sueldo", "H.Extra", "$Pago HE",
+                        "Accesorios", "Teléfonos", "Chips", "Incubadora",
+                        "Planes", "Pendientes", "Bonos",
+                        "Subtotal", "Total", "Sanciones", "Depósito",
+                      ].map((h) => (
+                        <TableCell
+                          key={h}
+                          align={["Empleado", "Nombre"].includes(h) ? "left" : "right"}
+                          sx={{ fontWeight: 700, fontSize: 10, color: "#1e293b", whiteSpace: "nowrap", py: "5px", px: "6px" }}
+                        >
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tablaUnificada.map((r, i) => {
+                      const m = getM(r.empleado);
+                      const incub = incubadoraMap[r.empleado] ?? 0;
+                      const subtotal = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
+                      const total   = r.sueldo + r.pago_he + subtotal;
+                      const deposito = total - m.sanciones;
+                      const color = seccionColor[r.seccion];
+                      const heColor = r.horas_extra == null ? undefined : r.horas_extra > 0 ? GREEN : r.horas_extra < 0 ? "#ef4444" : undefined;
+                      const heLabel = r.horas_extra == null ? "—" : `${r.horas_extra > 0 ? "+" : ""}${r.horas_extra}h`;
+
+                      const inputSx = {
+                        "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px" },
+                        "& .MuiOutlinedInput-root": { borderRadius: 1 },
+                        width: 72,
+                      };
+
+                      return (
+                        <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                          <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>{r.empleado}</TableCell>
+                          <TableCell sx={{ fontSize: 10, py: "3px", px: "6px", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_completo}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", color: heColor, fontWeight: 600, whiteSpace: "nowrap" }}>{heLabel}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.accesorios)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.telefonos)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.chips)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", color: incub > 0 ? PURPLE : undefined, fontWeight: incub > 0 ? 700 : undefined }}>
+                            {fmtMXN(incub)}
+                          </TableCell>
+                          {/* Inputs manuales */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <TextField type="number" size="small" value={m.planes}
+                              onChange={(e) => setM(r.empleado, "planes", Math.max(0, Number(e.target.value)))}
+                              sx={inputSx} inputProps={{ min: 0 }} />
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <TextField type="number" size="small" value={m.pendientes}
+                              onChange={(e) => setM(r.empleado, "pendientes", Math.max(0, Number(e.target.value)))}
+                              sx={inputSx} inputProps={{ min: 0 }} />
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <TextField type="number" size="small" value={m.bonos}
+                              onChange={(e) => setM(r.empleado, "bonos", Math.max(0, Number(e.target.value)))}
+                              sx={inputSx} inputProps={{ min: 0 }} />
+                          </TableCell>
+                          {/* Columnas calculadas */}
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>{fmtMXN(subtotal)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: GREEN }}>{fmtMXN(total)}</TableCell>
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <TextField type="number" size="small" value={m.sanciones}
+                              onChange={(e) => setM(r.empleado, "sanciones", Math.max(0, Number(e.target.value)))}
+                              sx={{ ...inputSx, "& input": { ...inputSx["& input"], color: "#ef4444" } }}
+                              inputProps={{ min: 0 }} />
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: ORANGE }}>{fmtMXN(deposito)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+                      <TableCell colSpan={15} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total depósito</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>{fmtMXN(totalDeposito)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose} color="inherit" disabled={guardando}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={guardar}
+            disabled={!etiqueta.trim() || tablaUnificada.length === 0 || guardando}
+            startIcon={guardando ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+            sx={{ bgcolor: ORANGE, "&:hover": { bgcolor: "#ea6b0a" } }}
+          >
+            Guardar Nómina
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Sub-modal: selección de chips de Incubadora ── */}
+      <Dialog open={subModalOpen} onClose={() => setSubModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: PURPLE }}>
+          Chips de Incubadora Pendientes
+        </DialogTitle>
+        <DialogContent dividers>
+          {cargandoChips ? (
+            <Box textAlign="center" py={4}><CircularProgress sx={{ color: PURPLE }} /></Box>
+          ) : gruposInc.length === 0 ? (
+            <Alert severity="info">No hay chips de incubadora pendientes de pago.</Alert>
+          ) : (
+            <>
+              <Typography variant="caption" color="text.secondary" mb={1} display="block">
+                {chipsSelIds.size} chip{chipsSelIds.size !== 1 ? "s" : ""} seleccionado{chipsSelIds.size !== 1 ? "s" : ""}
+                {chipsSelIds.size > 0 && (
+                  <> · Total: <strong style={{ color: PURPLE }}>{fmtMXN(totalIncubadoraSel)}</strong></>
+                )}
               </Typography>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                    {["Empleado", "Nombre completo", "H. Extra", "$ Pago H. Extras"].map((h) => (
-                      <TableCell key={h} sx={{ fontWeight: 700, color: ORANGE, fontSize: 11 }}>{h}</TableCell>
+                  <TableRow sx={{ bgcolor: "#f5f3ff" }}>
+                    <TableCell padding="checkbox" />
+                    {["Empleado", "Nombre", "# Chips", "Total Comisión"].map((h) => (
+                      <TableCell key={h} sx={{ fontWeight: 700, color: PURPLE, fontSize: 11 }}>{h}</TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {empleadosHE.map((e, i) => {
-                    const he = e.horas_extra_redondeo;
-                    const heColor = he == null ? undefined : he > 0 ? GREEN : he < 0 ? "#ef4444" : undefined;
-                    const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+                  {gruposInc.map((g, i) => {
+                    const seleccionado  = g.detalle.length > 0 && g.detalle.every((c) => chipsSelIds.has(c.chip_id));
+                    const indeterminate = !seleccionado && g.detalle.some((c) => chipsSelIds.has(c.chip_id));
                     return (
-                      <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                        <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{e.empleado}</TableCell>
-                        <TableCell sx={{ fontSize: 12 }}>{e.nombre_completo}</TableCell>
-                        <TableCell sx={{ fontSize: 12, fontWeight: 600, color: heColor }}>{heLabel}</TableCell>
-                        <TableCell sx={{ fontSize: 12, fontWeight: 700, color: (e.pago ?? 0) >= 0 ? GREEN : "#ef4444" }}>
-                          {(e.pago ?? 0) >= 0 ? "+" : ""}${Math.abs(e.pago ?? 0).toFixed(2)}
+                      <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#faf5ff" }}>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            size="small"
+                            checked={seleccionado}
+                            indeterminate={indeterminate}
+                            onChange={() => toggleGrupo(g)}
+                            sx={{ color: PURPLE, "&.Mui-checked": { color: PURPLE }, "&.MuiCheckbox-indeterminate": { color: PURPLE } }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{g.empleado}</TableCell>
+                        <TableCell sx={{ fontSize: 12 }}>{g.nombre_completo}</TableCell>
+                        <TableCell sx={{ fontSize: 12 }}>{g.chips_count}</TableCell>
+                        <TableCell sx={{ fontSize: 12, fontWeight: 700, color: PURPLE }}>
+                          {fmtMXN(g.total_chips_incubadora)}
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
-              <Box display="flex" justifyContent="flex-end" pr={1} mt={0.5}>
-                <Typography variant="body2" fontWeight={700}>
-                  Subtotal: <span style={{ color: ORANGE }}>${totalHE.toFixed(2)}</span>
-                </Typography>
-              </Box>
             </>
           )}
-        </Box>
-
-        {/* ── Sección 2: Sueldos Encargados ── */}
-        <Box sx={{ border: "1px solid #e2e8f0", borderRadius: 2, p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} mb={1.5} sx={{ color: CYAN }}>
-            Sueldos Encargados
-          </Typography>
-          <TextField
-            select label="Ciclo de Sueldos Encargados"
-            value={cicloEncargadosId}
-            onChange={(e) => setCicloEncargadosId(Number(e.target.value) || "")}
-            fullWidth size="small"
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setSubModalOpen(false)} color="inherit">Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={() => setSubModalOpen(false)}
+            sx={{ bgcolor: PURPLE, "&:hover": { bgcolor: "#7c3aed" } }}
           >
-            <MenuItem value="">(Sin ciclo)</MenuItem>
-            {ciclosEncargados.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.etiqueta} — {c.fecha_inicio} → {c.fecha_fin}
-              </MenuItem>
-            ))}
-          </TextField>
-          {cicloEncargadosSel && (
-            <Typography variant="caption" color="text.secondary" mt={1} display="block">
-              {(cicloEncargadosSel.datos as EmpleadoSueldo[]).length} encargado{(cicloEncargadosSel.datos as EmpleadoSueldo[]).length !== 1 ? "s" : ""} ·{" "}
-              Total: <strong style={{ color: CYAN }}>
-                ${(cicloEncargadosSel.datos as EmpleadoSueldo[]).reduce((s, e) => s + e.sueldo_total, 0).toFixed(2)}
-              </strong>
-            </Typography>
-          )}
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* ── Secciones 3–5: Comisiones ── */}
-        <SeccionComisiones
-          grupo="asesores" label="Comisiones Asesores" color={BLUE}
-          fechaInicio={fechaInicioAsesores} fechaFin={fechaFinAsesores}
-          onFechaInicioChange={setFechaInicioAsesores} onFechaFinChange={setFechaFinAsesores}
-          onDatosCalculados={setDatosAsesores} datosCalculados={datosAsesores}
-        />
-        <SeccionComisiones
-          grupo="encargados" label="Comisiones Encargados" color={GREEN}
-          fechaInicio={fechaInicioEncargados} fechaFin={fechaFinEncargados}
-          onFechaInicioChange={setFechaInicioEncargados} onFechaFinChange={setFechaFinEncargados}
-          onDatosCalculados={setDatosEncargados} datosCalculados={datosEncargados}
-        />
-        <SeccionComisiones
-          grupo="cadenas" label="Comisiones Cadenas" color={PURPLE}
-          fechaInicio={fechaInicioCadenas} fechaFin={fechaFinCadenas}
-          onFechaInicioChange={setFechaInicioCadenas} onFechaFinChange={setFechaFinCadenas}
-          onDatosCalculados={setDatosCadenas} datosCalculados={datosCadenas}
-        />
-
-        {(cicloSel || datosAsesores.length > 0 || datosEncargados.length > 0 || datosCadenas.length > 0) && (
-          <Box display="flex" justifyContent="flex-end" mt={1} pr={1}>
-            <Typography variant="body2" fontWeight={700}>
-              Subtotal comisiones + HE: <span style={{ color: ORANGE }}>${totalGeneral.toFixed(2)}</span>
-            </Typography>
-          </Box>
-        )}
-
-        {/* ── Tabla Unificada ── */}
-        {tablaUnificada.length > 0 && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" fontWeight={700} mb={1} sx={{ color: "#1e293b" }}>
-              Tabla Unificada
-            </Typography>
-            <Box sx={{ overflowX: "auto" }}>
-              <Table size="small" sx={{ minWidth: 900 }}>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                    {["Empleado", "Nombre", "Sueldo", "H.Extra", "$Pago HE", "Accesorios", "Teléfonos", "Chips", "Subtotal", "Total"].map((h) => (
-                      <TableCell key={h} align={h === "Empleado" || h === "Nombre" ? "left" : "right"} sx={{ fontWeight: 700, fontSize: 11, color: "#1e293b", whiteSpace: "nowrap", py: "5px", px: "8px" }}>
-                        {h}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tablaUnificada.map((r, i) => {
-                    const color = seccionColor[r.seccion];
-                    const heColor = r.horas_extra == null ? undefined : r.horas_extra > 0 ? GREEN : r.horas_extra < 0 ? "#ef4444" : undefined;
-                    const heLabel = r.horas_extra == null ? "—" : `${r.horas_extra > 0 ? "+" : ""}${r.horas_extra}h`;
-                    return (
-                      <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                        <TableCell sx={{ fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap", py: "4px", px: "8px" }}>{r.empleado}</TableCell>
-                        <TableCell sx={{ fontSize: 11, py: "4px", px: "8px", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_completo}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", color: heColor, fontWeight: 600, whiteSpace: "nowrap" }}>{heLabel}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.accesorios)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.telefonos)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.chips)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, py: "4px", px: "8px", whiteSpace: "nowrap" }}>{fmtMXN(r.subtotal)}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 11, fontWeight: 700, py: "4px", px: "8px", color: GREEN, whiteSpace: "nowrap" }}>{fmtMXN(r.total)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                    <TableCell colSpan={9} sx={{ fontWeight: 700, fontSize: 12, py: "5px", px: "8px" }}>Total nómina</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, py: "5px", px: "8px", color: ORANGE, whiteSpace: "nowrap" }}>{fmtMXN(totalUnificado)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </Box>
-          </>
-        )}
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} color="inherit" disabled={guardando}>Cancelar</Button>
-        <Button
-          variant="contained"
-          onClick={guardar}
-          disabled={!etiqueta.trim() || cicloId === "" || guardando}
-          startIcon={guardando ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-          sx={{ bgcolor: ORANGE, "&:hover": { bgcolor: "#ea6b0a" } }}
-        >
-          Guardar Nómina
-        </Button>
-      </DialogActions>
-    </Dialog>
+            Agregar a la nómina
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

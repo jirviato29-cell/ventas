@@ -27,10 +27,16 @@ const BLUE   = "#3b82f6";
 const GREEN  = "#16a34a";
 const PURPLE = "#9333ea";
 
+const fmtMXN = (n: number | undefined | null) =>
+  n != null
+    ? "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "—";
+
 interface ItemDatos {
   seccion?: string;
   empleado: string;
   nombre_completo: string;
+  // formato viejo
   pago_horas_extras?: number;
   horas_extra_redondeo?: number | null;
   pago_total: number;
@@ -38,6 +44,21 @@ interface ItemDatos {
   comisiones_telefonos?: number;
   comisiones_chips?: number;
   comisiones_total?: number;
+  // formato nuevo
+  sueldo?: number;
+  horas_extra?: number | null;
+  pago_he?: number;
+  accesorios?: number;
+  telefonos?: number;
+  chips?: number;
+  incubadora?: number;
+  planes?: number;
+  pendientes?: number;
+  bonos?: number;
+  sanciones?: number;
+  subtotal?: number;
+  total?: number;
+  deposito?: number;
 }
 
 interface NominaResponse {
@@ -61,6 +82,8 @@ interface Props {
   onClose: () => void;
   onDescargar: (id: number, tipo: "excel" | "pdf") => void;
 }
+
+// ── Render formato viejo ──────────────────────────────────────────────────────
 
 const SeccionHorasExtras: React.FC<{ rows: ItemDatos[] }> = ({ rows }) => {
   const subtotal = rows.reduce((s, e) => s + e.pago_total, 0);
@@ -144,6 +167,80 @@ const SeccionComisionesVer: React.FC<{ rows: ItemDatos[]; label: string; color: 
   );
 };
 
+// ── Render formato nuevo (tabla unificada 16 col) ─────────────────────────────
+
+const secColor: Record<string, string> = { asesor: BLUE, encargado: GREEN, cadena: PURPLE };
+
+const TablaUnificadaVer: React.FC<{ rows: ItemDatos[]; totalPago: number }> = ({ rows, totalPago }) => {
+  const headers = [
+    "Empleado", "Nombre", "Sueldo", "H.Extra", "$Pago HE",
+    "Accesorios", "Teléfonos", "Chips", "Incubadora",
+    "Planes", "Pendientes", "Bonos", "Subtotal", "Total",
+    "Sanciones", "Depósito",
+  ];
+  return (
+    <Box sx={{ overflowX: "auto" }}>
+      <Table size="small" sx={{ minWidth: 1400 }}>
+        <TableHead>
+          <TableRow sx={{ bgcolor: "#f8fafc" }}>
+            {headers.map((h) => (
+              <TableCell
+                key={h}
+                align={["Empleado", "Nombre"].includes(h) ? "left" : "right"}
+                sx={{ fontWeight: 700, fontSize: 10, whiteSpace: "nowrap", py: "4px", px: "6px", color: "#1e293b" }}
+              >
+                {h}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((r, i) => {
+            const color = secColor[r.seccion ?? ""] ?? "#1e293b";
+            const he = r.horas_extra ?? null;
+            const heColor = he == null ? undefined : he > 0 ? GREEN : he < 0 ? "#ef4444" : undefined;
+            const heLabel = he == null ? "—" : `${he > 0 ? "+" : ""}${he}h`;
+            return (
+              <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>{r.empleado}</TableCell>
+                <TableCell sx={{ fontSize: 10, py: "3px", px: "6px", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_completo}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", color: heColor, fontWeight: 600 }}>{heLabel}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.accesorios)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.telefonos)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.chips)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", color: (r.incubadora ?? 0) > 0 ? PURPLE : undefined, fontWeight: (r.incubadora ?? 0) > 0 ? 700 : undefined }}>
+                  {fmtMXN(r.incubadora ?? 0)}
+                </TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.planes ?? 0)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pendientes ?? 0)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.bonos ?? 0)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>{fmtMXN(r.subtotal ?? 0)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: GREEN }}>{fmtMXN(r.total ?? r.pago_total)}</TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", color: (r.sanciones ?? 0) > 0 ? "#ef4444" : undefined }}>
+                  {fmtMXN(r.sanciones ?? 0)}
+                </TableCell>
+                <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: ORANGE }}>
+                  {fmtMXN(r.deposito ?? r.pago_total)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+            <TableCell colSpan={15} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total nómina</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>
+              {fmtMXN(totalPago)}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </Box>
+  );
+};
+
+// ── Dialog principal ──────────────────────────────────────────────────────────
+
 const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) => {
   const [nomina, setNomina] = useState<NominaResponse | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -164,16 +261,29 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
       hour: "2-digit", minute: "2-digit",
     });
 
+  const esFormatoNuevo = (nomina?.datos ?? []).some(
+    (d) => d.seccion === "asesor" || d.seccion === "encargado" || d.seccion === "cadena"
+  );
+
+  const rowsNuevo = esFormatoNuevo
+    ? (nomina?.datos ?? []).filter((d) => ["asesor", "encargado", "cadena"].includes(d.seccion ?? ""))
+    : [];
+
   const rowsPorSeccion = (key: string) =>
     (nomina?.datos ?? []).filter((d) => (d.seccion ?? "horas_extras") === key);
 
-  const horasExtras   = rowsPorSeccion("horas_extras");
-  const asesores      = rowsPorSeccion("comisiones_asesores");
-  const encargados    = rowsPorSeccion("comisiones_encargados");
-  const cadenas       = rowsPorSeccion("comisiones_cadenas");
+  const horasExtras = rowsPorSeccion("horas_extras");
+  const asesores    = rowsPorSeccion("comisiones_asesores");
+  const encargados  = rowsPorSeccion("comisiones_encargados");
+  const cadenas     = rowsPorSeccion("comisiones_cadenas");
 
   return (
-    <Dialog open={nominaId !== null} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={nominaId !== null}
+      onClose={onClose}
+      maxWidth={esFormatoNuevo ? "xl" : "md"}
+      fullWidth
+    >
       <DialogTitle sx={{ fontWeight: 700 }}>
         {nomina ? nomina.etiqueta : "Cargando…"}
       </DialogTitle>
@@ -191,35 +301,41 @@ const VerNominaDialog: React.FC<Props> = ({ nominaId, onClose, onDescargar }) =>
               </Typography>
             </Box>
 
-            {horasExtras.length > 0 && <SeccionHorasExtras rows={horasExtras} />}
-
-            {asesores.length > 0 && (
+            {esFormatoNuevo ? (
+              <TablaUnificadaVer rows={rowsNuevo} totalPago={nomina.total_pago} />
+            ) : (
               <>
+                {horasExtras.length > 0 && <SeccionHorasExtras rows={horasExtras} />}
+
+                {asesores.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <SeccionComisionesVer rows={asesores} label="Comisiones Asesores" color={BLUE} />
+                  </>
+                )}
+
+                {encargados.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <SeccionComisionesVer rows={encargados} label="Comisiones Encargados" color={GREEN} />
+                  </>
+                )}
+
+                {cadenas.length > 0 && (
+                  <>
+                    <Divider sx={{ my: 1.5 }} />
+                    <SeccionComisionesVer rows={cadenas} label="Comisiones Cadenas" color={PURPLE} />
+                  </>
+                )}
+
                 <Divider sx={{ my: 1.5 }} />
-                <SeccionComisionesVer rows={asesores} label="Comisiones Asesores" color={BLUE} />
+                <Box display="flex" justifyContent="flex-end" pr={1}>
+                  <Typography variant="body1" fontWeight={700}>
+                    Total nómina: <span style={{ color: ORANGE }}>${Number(nomina.total_pago).toFixed(2)}</span>
+                  </Typography>
+                </Box>
               </>
             )}
-
-            {encargados.length > 0 && (
-              <>
-                <Divider sx={{ my: 1.5 }} />
-                <SeccionComisionesVer rows={encargados} label="Comisiones Encargados" color={GREEN} />
-              </>
-            )}
-
-            {cadenas.length > 0 && (
-              <>
-                <Divider sx={{ my: 1.5 }} />
-                <SeccionComisionesVer rows={cadenas} label="Comisiones Cadenas" color={PURPLE} />
-              </>
-            )}
-
-            <Divider sx={{ my: 1.5 }} />
-            <Box display="flex" justifyContent="flex-end" pr={1}>
-              <Typography variant="body1" fontWeight={700}>
-                Total nómina: <span style={{ color: ORANGE }}>${Number(nomina.total_pago).toFixed(2)}</span>
-              </Typography>
-            </Box>
           </>
         )}
       </DialogContent>
