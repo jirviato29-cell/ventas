@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -133,6 +133,9 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
   // Inputs manuales por empleado
   const [manuales, setManuales] = useState<Record<string, Manuales>>({});
 
+  // Valores editados manualmente en la tabla unificada (campo → número)
+  const [editados, setEditados] = useState<Record<string, Record<string, number>>>({});
+
   useEffect(() => {
     if (!open) return;
     setEtiqueta("");
@@ -146,6 +149,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setGruposInc([]);
     setChipsSelIds(new Set());
     setManuales({});
+    setEditados({});
 
     axios
       .get<CicloGuardado[]>(`${API}/admin/ciclos-guardados?concepto=horas_extras`, { headers: authH() })
@@ -158,9 +162,9 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
       .catch(() => setCiclosEncargados([]));
   }, [open]);
 
-  const cicloSel          = ciclos.find((c) => c.id === cicloId) ?? null;
-  const empleadosHE       = (cicloSel?.datos ?? []) as EmpleadoCiclo[];
-  const totalHE           = empleadosHE.reduce((s, e) => s + (e.pago ?? 0), 0);
+  const cicloSel           = ciclos.find((c) => c.id === cicloId) ?? null;
+  const empleadosHE        = (cicloSel?.datos ?? []) as EmpleadoCiclo[];
+  const totalHE            = empleadosHE.reduce((s, e) => s + (e.pago ?? 0), 0);
   const cicloEncargadosSel = ciclosEncargados.find((c) => c.id === cicloEncargadosId) ?? null;
 
   const totalAsesores   = datosAsesores.reduce((s, e) => s + e.pago_total, 0);
@@ -183,6 +187,35 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
   const setM = (emp: string, campo: keyof Manuales, val: number) =>
     setManuales((prev) => ({ ...prev, [emp]: { ...getM(emp), [campo]: val } }));
+
+  const getValor = (emp: string, campo: string, original: number): number =>
+    editados[emp]?.[campo] ?? original;
+
+  const fueEditado = (emp: string, campo: string): boolean =>
+    editados[emp]?.[campo] !== undefined;
+
+  const setValor = (emp: string, campo: string, valor: number) =>
+    setEditados((prev) => ({
+      ...prev,
+      [emp]: { ...(prev[emp] ?? {}), [campo]: valor },
+    }));
+
+  const editInputSx = (emp: string, campo: string) => ({
+    "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px" },
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 1,
+      ...(fueEditado(emp, campo) && {
+        "& fieldset": { borderColor: BLUE, borderWidth: 2 },
+      }),
+    },
+    width: 72,
+  });
+
+  const manualInputSx = {
+    "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px" },
+    "& .MuiOutlinedInput-root": { borderRadius: 1 },
+    width: 72,
+  };
 
   // Tabla unificada base (sin manuales, sin incubadora — se computan en render)
   const tablaUnificada = useMemo((): FilaUnificada[] => {
@@ -249,13 +282,19 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
   const totalDeposito = useMemo(() =>
     tablaUnificada.reduce((s, r) => {
-      const m = getM(r.empleado);
-      const incub = incubadoraMap[r.empleado] ?? 0;
-      const sub = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
-      return s + (r.sueldo + r.pago_he + sub - m.sanciones);
+      const m         = getM(r.empleado);
+      const incub     = incubadoraMap[r.empleado] ?? 0;
+      const sueldo_eff  = editados[r.empleado]?.sueldo     ?? r.sueldo;
+      const pago_he_eff = editados[r.empleado]?.pago_he    ?? r.pago_he;
+      const acces_eff   = editados[r.empleado]?.accesorios ?? r.accesorios;
+      const tel_eff     = editados[r.empleado]?.telefonos  ?? r.telefonos;
+      const chips_eff   = editados[r.empleado]?.chips      ?? r.chips;
+      const incub_eff   = editados[r.empleado]?.incubadora ?? incub;
+      const sub = acces_eff + tel_eff + chips_eff + incub_eff + m.planes + m.pendientes + m.bonos;
+      return s + (sueldo_eff + pago_he_eff + sub - m.sanciones);
     }, 0),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [tablaUnificada, manuales, incubadoraMap]);
+  [tablaUnificada, manuales, incubadoraMap, editados]);
 
   const handleAbrirSubModal = async () => {
     setSubModalOpen(true);
@@ -287,23 +326,30 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setError(null);
     try {
       const datos = tablaUnificada.map((r) => {
-        const m = getM(r.empleado);
-        const incub = incubadoraMap[r.empleado] ?? 0;
-        const subtotal = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
-        const total = r.sueldo + r.pago_he + subtotal;
-        const deposito = total - m.sanciones;
+        const m           = getM(r.empleado);
+        const incub       = incubadoraMap[r.empleado] ?? 0;
+        const sueldo_eff  = getValor(r.empleado, "sueldo",      r.sueldo);
+        const pago_he_eff = getValor(r.empleado, "pago_he",     r.pago_he);
+        const acces_eff   = getValor(r.empleado, "accesorios",  r.accesorios);
+        const tel_eff     = getValor(r.empleado, "telefonos",   r.telefonos);
+        const chips_eff   = getValor(r.empleado, "chips",       r.chips);
+        const incub_eff   = getValor(r.empleado, "incubadora",  incub);
+        const he_eff      = getValor(r.empleado, "horas_extra", r.horas_extra ?? 0);
+        const subtotal    = acces_eff + tel_eff + chips_eff + incub_eff + m.planes + m.pendientes + m.bonos;
+        const total       = sueldo_eff + pago_he_eff + subtotal;
+        const deposito    = total - m.sanciones;
         return {
           seccion: r.seccion,
           empleado: r.empleado,
           nombre_completo: r.nombre_completo,
           usuario_ids: r.usuario_ids,
-          sueldo: r.sueldo,
-          horas_extra: r.horas_extra,
-          pago_he: r.pago_he,
-          accesorios: r.accesorios,
-          telefonos: r.telefonos,
-          chips: r.chips,
-          incubadora: incub,
+          sueldo: sueldo_eff,
+          horas_extra: he_eff,
+          pago_he: pago_he_eff,
+          accesorios: acces_eff,
+          telefonos: tel_eff,
+          chips: chips_eff,
+          incubadora: incub_eff,
           planes: m.planes,
           pendientes: m.pendientes,
           bonos: m.bonos,
@@ -500,7 +546,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
             </Box>
           )}
 
-          {/* ── Tabla Unificada (14 columnas) ── */}
+          {/* ── Tabla Unificada ── */}
           {tablaUnificada.length > 0 && (
             <>
               <Divider sx={{ my: 2 }} />
@@ -529,64 +575,162 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
                   </TableHead>
                   <TableBody>
                     {tablaUnificada.map((r, i) => {
-                      const m = getM(r.empleado);
-                      const incub = incubadoraMap[r.empleado] ?? 0;
-                      const subtotal = r.accesorios + r.telefonos + r.chips + incub + m.planes + m.pendientes + m.bonos;
-                      const total   = r.sueldo + r.pago_he + subtotal;
-                      const deposito = total - m.sanciones;
-                      const color = seccionColor[r.seccion];
-                      const heColor = r.horas_extra == null ? undefined : r.horas_extra > 0 ? GREEN : r.horas_extra < 0 ? "#ef4444" : undefined;
-                      const heLabel = r.horas_extra == null ? "—" : `${r.horas_extra > 0 ? "+" : ""}${r.horas_extra}h`;
-
-                      const inputSx = {
-                        "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px" },
-                        "& .MuiOutlinedInput-root": { borderRadius: 1 },
-                        width: 72,
-                      };
+                      const m           = getM(r.empleado);
+                      const incub       = incubadoraMap[r.empleado] ?? 0;
+                      const sueldo_eff  = getValor(r.empleado, "sueldo",      r.sueldo);
+                      const pago_he_eff = getValor(r.empleado, "pago_he",     r.pago_he);
+                      const acces_eff   = getValor(r.empleado, "accesorios",  r.accesorios);
+                      const tel_eff     = getValor(r.empleado, "telefonos",   r.telefonos);
+                      const chips_eff   = getValor(r.empleado, "chips",       r.chips);
+                      const incub_eff   = getValor(r.empleado, "incubadora",  incub);
+                      const he_eff      = getValor(r.empleado, "horas_extra", r.horas_extra ?? 0);
+                      const subtotal    = acces_eff + tel_eff + chips_eff + incub_eff + m.planes + m.pendientes + m.bonos;
+                      const deposito    = sueldo_eff + pago_he_eff + subtotal - m.sanciones;
+                      const color       = seccionColor[r.seccion];
 
                       return (
                         <TableRow key={i} sx={{ bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                          <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>{r.empleado}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.sueldo)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", color: heColor, fontWeight: 600, whiteSpace: "nowrap" }}>{heLabel}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.pago_he)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.accesorios)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.telefonos)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap" }}>{fmtMXN(r.chips)}</TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", color: incub > 0 ? PURPLE : undefined, fontWeight: incub > 0 ? 700 : undefined }}>
-                            {fmtMXN(incub)}
+                          {/* Empleado — no editable */}
+                          <TableCell sx={{ fontSize: 10, fontWeight: 700, color, whiteSpace: "nowrap", py: "3px", px: "6px" }}>
+                            {r.empleado}
                           </TableCell>
-                          {/* Inputs manuales */}
+
+                          {/* Sueldo */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={sueldo_eff}
+                                onChange={(e) => setValor(r.empleado, "sueldo", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "sueldo")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "sueldo") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* H.Extra */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={he_eff}
+                                onChange={(e) => setValor(r.empleado, "horas_extra", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "horas_extra")}
+                              />
+                              {fueEditado(r.empleado, "horas_extra") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* $Pago HE */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={pago_he_eff}
+                                onChange={(e) => setValor(r.empleado, "pago_he", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "pago_he")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "pago_he") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* Accesorios */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={acces_eff}
+                                onChange={(e) => setValor(r.empleado, "accesorios", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "accesorios")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "accesorios") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* Teléfonos */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={tel_eff}
+                                onChange={(e) => setValor(r.empleado, "telefonos", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "telefonos")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "telefonos") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* Chips */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={chips_eff}
+                                onChange={(e) => setValor(r.empleado, "chips", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "chips")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "chips") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* Incubadora */}
+                          <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.3 }}>
+                              <TextField type="number" size="small"
+                                value={incub_eff}
+                                onChange={(e) => setValor(r.empleado, "incubadora", Number(e.target.value))}
+                                sx={editInputSx(r.empleado, "incubadora")}
+                                inputProps={{ min: 0 }}
+                              />
+                              {fueEditado(r.empleado, "incubadora") && <span style={{ fontSize: 9 }}>✏️</span>}
+                            </Box>
+                          </TableCell>
+
+                          {/* Inputs manuales — sin marca visual */}
                           <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
                             <TextField type="number" size="small" value={m.planes}
                               onChange={(e) => setM(r.empleado, "planes", Math.max(0, Number(e.target.value)))}
-                              sx={inputSx} inputProps={{ min: 0 }} />
+                              sx={manualInputSx} inputProps={{ min: 0 }} />
                           </TableCell>
                           <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
                             <TextField type="number" size="small" value={m.pendientes}
                               onChange={(e) => setM(r.empleado, "pendientes", Math.max(0, Number(e.target.value)))}
-                              sx={inputSx} inputProps={{ min: 0 }} />
+                              sx={manualInputSx} inputProps={{ min: 0 }} />
                           </TableCell>
                           <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
                             <TextField type="number" size="small" value={m.bonos}
                               onChange={(e) => setM(r.empleado, "bonos", Math.max(0, Number(e.target.value)))}
-                              sx={inputSx} inputProps={{ min: 0 }} />
+                              sx={manualInputSx} inputProps={{ min: 0 }} />
                           </TableCell>
-                          {/* Columnas calculadas */}
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>{fmtMXN(subtotal)}</TableCell>
+
+                          {/* Subtotal — calculado, no editable */}
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 600 }}>
+                            {fmtMXN(subtotal)}
+                          </TableCell>
+
+                          {/* Sanciones — ya editable, sin marca */}
                           <TableCell align="right" sx={{ py: "2px", px: "4px" }}>
                             <TextField type="number" size="small" value={m.sanciones}
                               onChange={(e) => setM(r.empleado, "sanciones", Math.max(0, Number(e.target.value)))}
-                              sx={{ ...inputSx, "& input": { ...inputSx["& input"], color: "#ef4444" } }}
+                              sx={{
+                                "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px", color: "#ef4444" },
+                                "& .MuiOutlinedInput-root": { borderRadius: 1 },
+                                width: 72,
+                              }}
                               inputProps={{ min: 0 }} />
                           </TableCell>
-                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: ORANGE }}>{fmtMXN(deposito)}</TableCell>
+
+                          {/* Depósito — calculado, no editable */}
+                          <TableCell align="right" sx={{ fontSize: 10, py: "3px", px: "6px", whiteSpace: "nowrap", fontWeight: 700, color: ORANGE }}>
+                            {fmtMXN(deposito)}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
                     <TableRow sx={{ bgcolor: "#f1f5f9" }}>
                       <TableCell colSpan={13} sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px" }}>Total depósito</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>{fmtMXN(totalDeposito)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: 11, py: "5px", px: "6px", color: ORANGE, whiteSpace: "nowrap" }}>
+                        {fmtMXN(totalDeposito)}
+                      </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
