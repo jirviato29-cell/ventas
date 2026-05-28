@@ -556,6 +556,7 @@ const EntradaMercancia = () => {
   };
 
   const handleGuardarEdicion = async () => {
+    console.log("click guardar", { entradaDetalle: entradaDetalle?.id, editProductos });
     if (!entradaDetalle) return;
     if (editProductos.length === 0) {
       setErrorEditar("La entrada debe tener al menos un producto.");
@@ -1547,11 +1548,12 @@ const EntradaMercancia = () => {
                         <TableCell align="center">
                           <IconButton
                             size="small"
-                            onClick={() =>
+                            onClick={() => {
+                              console.log("click eliminar producto idx:", idx, "clave:", p.clave);
                               setEditProductos((prev) =>
                                 prev.filter((_, i) => i !== idx)
-                              )
-                            }
+                              );
+                            }}
                           >
                             <Delete fontSize="small" />
                           </IconButton>
