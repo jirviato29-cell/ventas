@@ -317,10 +317,12 @@ const EntradaMercancia = () => {
         `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
+      console.log("[EM] raw[0]:", res.data[0], "total:", res.data.length);
       const textoBusqueda = texto.toLowerCase();
       const filtrados = (res.data as any[]).filter((p: any) =>
-        p.clave.toLowerCase().startsWith(textoBusqueda)
+        typeof p.clave === "string" && p.clave.toLowerCase().startsWith(textoBusqueda)
       );
+      console.log("[EM] texto:", texto, "filtrados:", filtrados.map((p: any) => p.clave));
       setOpcionesProductos(filtrados);
     } catch (err) {
       console.error(err);
