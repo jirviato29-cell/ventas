@@ -563,16 +563,18 @@ const EntradaMercancia = () => {
     }
     setGuardandoEdicion(true);
     setErrorEditar(null);
+    const payload = { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) };
+    const url = `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`;
+    console.log("[EM-edit] PUT", url);
+    console.log("[EM-edit] payload:", JSON.stringify(payload));
     try {
-      await axios.put(
-        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
-        { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) },
-        config
-      );
+      const res = await axios.put(url, payload, config);
+      console.log("[EM-edit] respuesta OK:", res.status, JSON.stringify(res.data));
       setModalEditar(false);
       setEntradaDetalle(null);
       buscarHistorial();
     } catch (err: any) {
+      console.error("[EM-edit] error:", err?.response?.status, JSON.stringify(err?.response?.data));
       const detail = err?.response?.data?.detail;
       if (err?.response?.status === 400 && detail) {
         setErrorEditar(String(detail));
