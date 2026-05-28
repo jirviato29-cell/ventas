@@ -76,22 +76,22 @@ interface EditItem {
 interface TicketRow { clave: string; producto: string; cantidad: number; }
 
 const TablaTicket = ({ rows }: { rows: TicketRow[] }) => (
-  <table style={{ width: "auto", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Arial, Helvetica, sans-serif", marginTop: 4 }}>
+  <table style={{ width: "auto", borderCollapse: "collapse", fontSize: "13pt", fontFamily: "Arial, Helvetica, sans-serif", marginTop: 4 }}>
     <thead>
       <tr>
-        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "left", whiteSpace: "nowrap", backgroundColor: "#ececec", fontWeight: 700 }}>Clave</th>
-        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "left", backgroundColor: "#ececec", fontWeight: 700 }}>Producto</th>
-        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "center", whiteSpace: "nowrap", backgroundColor: "#ececec", fontWeight: 700 }}>Cant.</th>
-        <th style={{ border: "1px solid #888", padding: "3px 6px", textAlign: "center", whiteSpace: "nowrap", minWidth: 72, backgroundColor: "#ececec", fontWeight: 700 }}>Revisado</th>
+        <th style={{ border: "1px solid #888", padding: "6px 10px", textAlign: "left", whiteSpace: "nowrap", backgroundColor: "#ececec", fontWeight: 700 }}>Clave</th>
+        <th style={{ border: "1px solid #888", padding: "6px 10px", textAlign: "left", backgroundColor: "#ececec", fontWeight: 700 }}>Producto</th>
+        <th style={{ border: "1px solid #888", padding: "6px 10px", textAlign: "center", whiteSpace: "nowrap", backgroundColor: "#ececec", fontWeight: 700 }}>Cant.</th>
+        <th style={{ border: "1px solid #888", padding: "6px 10px", textAlign: "center", whiteSpace: "nowrap", minWidth: 80, backgroundColor: "#ececec", fontWeight: 700 }}>Revisado</th>
       </tr>
     </thead>
     <tbody>
       {rows.map((p, i) => (
         <tr key={i} style={{ backgroundColor: i % 2 === 1 ? "#f7f7f7" : "#ffffff" }}>
-          <td style={{ border: "1px solid #888", padding: "4px 6px", fontWeight: 600, whiteSpace: "nowrap" }}>{p.clave}</td>
-          <td style={{ border: "1px solid #888", padding: "4px 6px" }}>{p.producto}</td>
-          <td style={{ border: "1px solid #888", padding: "4px 6px", textAlign: "center", whiteSpace: "nowrap" }}>{p.cantidad}</td>
-          <td style={{ border: "1px solid #888", padding: "4px 6px", minWidth: 72 }}>&nbsp;</td>
+          <td style={{ border: "1px solid #888", padding: "6px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{p.clave}</td>
+          <td style={{ border: "1px solid #888", padding: "6px 10px" }}>{p.producto}</td>
+          <td style={{ border: "1px solid #888", padding: "6px 10px", textAlign: "center", whiteSpace: "nowrap" }}>{p.cantidad}</td>
+          <td style={{ border: "1px solid #888", padding: "6px 10px", minWidth: 80 }}>&nbsp;</td>
         </tr>
       ))}
     </tbody>
