@@ -317,7 +317,11 @@ const EntradaMercancia = () => {
         `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
-      setOpcionesProductos(res.data);
+      const textoBusqueda = texto.toLowerCase();
+      const filtrados = (res.data as any[]).filter((p: any) =>
+        p.clave.toLowerCase().startsWith(textoBusqueda)
+      );
+      setOpcionesProductos(filtrados);
     } catch (err) {
       console.error(err);
     } finally {
@@ -998,7 +1002,7 @@ const EntradaMercancia = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Buscar producto (clave o nombre)"
+                    label="Buscar producto (clave)"
                     fullWidth
                     inputRef={inputBusquedaRef}
                     onKeyDown={(e) => {
