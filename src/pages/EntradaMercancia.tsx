@@ -991,7 +991,8 @@ const EntradaMercancia = () => {
                   if (!value) return;
                   const existencia = await obtenerExistenciaModulo(value.clave);
                   setExistenciaActual(existencia);
-                  setTimeout(() => { inputCantidadRef.current?.focus(); }, 100);
+                  setCantidadEntrada("1");
+                  setTimeout(() => { inputCantidadRef.current?.focus(); inputCantidadRef.current?.select(); }, 100);
                 }}
                 onInputChange={(_, value) => { buscarProductosEntrada(value); }}
                 getOptionLabel={(option) => `${option.clave} - ${option.producto}`}
@@ -1007,7 +1008,8 @@ const EntradaMercancia = () => {
                         const primero = opcionesOrdenadas[0];
                         setProductoEntrada(primero);
                         obtenerExistenciaModulo(primero.clave).then(setExistenciaActual);
-                        setTimeout(() => { inputCantidadRef.current?.focus(); }, 100);
+                        setCantidadEntrada("1");
+                        setTimeout(() => { inputCantidadRef.current?.focus(); inputCantidadRef.current?.select(); }, 100);
                       }
                     }}
                     InputProps={{
