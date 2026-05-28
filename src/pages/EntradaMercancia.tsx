@@ -317,12 +317,10 @@ const EntradaMercancia = () => {
         `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
-      console.log("[EM] raw[0]:", res.data[0], "total:", res.data.length);
       const textoBusqueda = texto.toLowerCase();
       const filtrados = (res.data as any[]).filter((p: any) =>
         typeof p.clave === "string" && p.clave.toLowerCase().startsWith(textoBusqueda)
       );
-      console.log("[EM] texto:", texto, "filtrados:", filtrados.map((p: any) => p.clave));
       setOpcionesProductos(filtrados);
     } catch (err) {
       console.error(err);
@@ -597,10 +595,6 @@ const EntradaMercancia = () => {
   const editOpcionesOrdenadas = [...editOpciones].sort((a, b) =>
     a.clave.localeCompare(b.clave, "es", { numeric: true, sensitivity: "base" })
   );
-  if (opcionesOrdenadas.length > 0) {
-    console.log("[EntradaMercancia] opciones:", opcionesOrdenadas.map((o) => o.clave));
-  }
-
   const nombreEncargado = encargado?.nombre_completo ?? "Sin encargado asignado";
   const fechaHoy = new Date().toLocaleDateString("es-MX", {
     day: "2-digit",
