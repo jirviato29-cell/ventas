@@ -48,6 +48,8 @@ const ChipsAdmin = () => {
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<number | null>(null);
   const token = localStorage.getItem("token");
   const rol   = obtenerRolDesdeToken();
+  const [chipsAsesor, setChipsAsesor] = useState<VentaChip[]>([]);
+  const [vistaAsesor, setVistaAsesor] = useState<'pendientes' | 'incubadora'>('pendientes');
 
   const fetchChips = async () => {
     try {
@@ -68,6 +70,26 @@ const ChipsAdmin = () => {
     }
   };
 
+  const fetchChipsAsesor = async () => {
+    try {
+      const res = await axios.get<VentaChip[]>(
+        `https://ato-appservidor.onrender.com/ventas/venta_chips`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setChipsAsesor(
+        res.data.sort((a, b) =>
+          new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()
+        )
+      );
+    } catch (error) {
+      console.error("Error al cargar chips del asesor:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (rol === 'asesor' || rol === 'encargado') fetchChipsAsesor();
+  }, []);
+
   useEffect(() => {
     axios
       .get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
@@ -86,6 +108,7 @@ const ChipsAdmin = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setChips((prev) => prev.filter((c) => c.id !== id));
+      setChipsAsesor((prev) => prev.filter((c) => c.id !== id));
     } catch {
       alert("No se pudo eliminar el chip");
     }
@@ -284,65 +307,144 @@ const ChipsAdmin = () => {
 
       {(rol === "encargado" || rol === "asesor") && (
         <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" gutterBottom>Validación de Chips Vendidos</Typography>
-          <Button size="small" href="/chips_invalidos" sx={{ mb: 1 }}>Incubadora</Button>
+          <Typography variant="h6" gutterBottom>Mis Chips Vendidos</Typography>
 
-          <TableContainer component={Paper}>
-            <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
-              <colgroup>
-                {colWidthsUser.map((w, i) => <col key={i} style={{ width: w }} />)}
-              </colgroup>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={headSx}>Empleado</TableCell>
-                  <TableCell sx={headSx}>Tipo</TableCell>
-                  <TableCell sx={headSx}>Número</TableCell>
-                  <TableCell sx={headSx}>Recarga</TableCell>
-                  <TableCell sx={headSx}>Fecha</TableCell>
-                  <TableCell sx={headSx}>Estado</TableCell>
-                  <TableCell sx={headSx}></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(() => {
-                  const filtrados = chips.filter((c) => !c.validado);
-                  const dups = getDuplicados(filtrados);
-                  return sortConDuplicados(filtrados, dups).map((chip) => {
-                    const esDup = dups.has(chip.numero_telefono);
-                    const dupCell = esDup ? { ...cellSx, ...cellDupSx } : cellSx;
-                    return (
-                      <TableRow key={chip.id} sx={esDup ? rowDupSx : {}}>
-                        <TableCell sx={dupCell}>{chip.empleado?.username ?? "Eliminado"}</TableCell>
-                        <TableCell sx={dupCell}>{chip.tipo_chip}</TableCell>
-                        <TableCell sx={esDup ? numDupSx : numSx}>{chip.numero_telefono}</TableCell>
-                        <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
-                        <TableCell sx={cellSx}>{chip.fecha}</TableCell>
-                        <TableCell sx={cellSx}>
-                          {chip.validado
-                            ? chip.comision ? `$${chip.comision}` : "Sin comisión"
-                            : chip.descripcion_rechazo ?? "Pendiente"}
-                        </TableCell>
-                        <TableCell sx={cellSx}>
-                          {!chip.validado && (
-                            <Button color="error" size="small" onClick={() => eliminarChip(chip.id)}>
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </Button>
-                          )}
-                        </TableCell>
+          {/* Botones toggle */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
+            <Button
+              fullWidth
+              size="large"
+              onClick={() => setVistaAsesor('pendientes')}
+              sx={vistaAsesor === 'pendientes'
+                ? { bgcolor: '#f97316', color: 'white', border: '2px solid #f97316', fontWeight: 700, '&:hover': { bgcolor: '#ea6c0a' } }
+                : { bgcolor: 'transparent', color: '#f97316', border: '2px solid #f97316', fontWeight: 700, '&:hover': { bgcolor: 'rgba(249,115,22,0.08)' } }
+              }
+            >
+              CHIPS PENDIENTES POR REVISAR
+            </Button>
+            <Button
+              fullWidth
+              size="large"
+              onClick={() => setVistaAsesor('incubadora')}
+              sx={vistaAsesor === 'incubadora'
+                ? { bgcolor: '#7c3aed', color: 'white', border: '2px solid #7c3aed', fontWeight: 700, '&:hover': { bgcolor: '#6d28d9' } }
+                : { bgcolor: 'transparent', color: '#7c3aed', border: '2px solid #7c3aed', fontWeight: 700, '&:hover': { bgcolor: 'rgba(124,58,237,0.08)' } }
+              }
+            >
+              CHIPS EN INCUBADORA EN ESPERA
+            </Button>
+          </Box>
+
+          {/* Tabla: Pendientes */}
+          {vistaAsesor === 'pendientes' && (() => {
+            const pendientes = chipsAsesor.filter((c) => !c.validado && !c.es_incubadora);
+            const dups = getDuplicados(pendientes);
+            return (
+              <>
+                <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                  Mostrando {pendientes.length} chips
+                </Typography>
+                <TableContainer component={Paper}>
+                  <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                    <colgroup>
+                      {colWidthsUser.map((w, i) => <col key={i} style={{ width: w }} />)}
+                    </colgroup>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={headSx}>Empleado</TableCell>
+                        <TableCell sx={headSx}>Tipo</TableCell>
+                        <TableCell sx={headSx}>Número</TableCell>
+                        <TableCell sx={headSx}>Recarga</TableCell>
+                        <TableCell sx={headSx}>Fecha</TableCell>
+                        <TableCell sx={headSx}>Estado</TableCell>
+                        <TableCell sx={headSx}></TableCell>
                       </TableRow>
-                    );
-                  });
-                })()}
-                {chips.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center" sx={cellSx}>
-                      No hay chips registrados
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {sortConDuplicados(pendientes, dups).map((chip) => {
+                        const esDup = dups.has(chip.numero_telefono);
+                        const dupCell = esDup ? { ...cellSx, ...cellDupSx } : cellSx;
+                        return (
+                          <TableRow key={chip.id} sx={esDup ? rowDupSx : {}}>
+                            <TableCell sx={dupCell}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
+                            <TableCell sx={dupCell}>{chip.tipo_chip}</TableCell>
+                            <TableCell sx={esDup ? numDupSx : numSx}>{chip.numero_telefono}</TableCell>
+                            <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
+                            <TableCell sx={cellSx}>{chip.fecha}</TableCell>
+                            <TableCell sx={cellSx}>Pendiente</TableCell>
+                            <TableCell sx={cellSx}>
+                              <Button color="error" size="small" onClick={() => eliminarChip(chip.id)}>
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {pendientes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center" sx={cellSx}>
+                            No hay chips pendientes
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            );
+          })()}
+
+          {/* Tabla: Incubadora */}
+          {vistaAsesor === 'incubadora' && (() => {
+            const enIncubadora = chipsAsesor.filter((c) => c.es_incubadora);
+            return (
+              <>
+                <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                  Mostrando {enIncubadora.length} chips
+                </Typography>
+                <TableContainer component={Paper}>
+                  <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                    <colgroup>
+                      {['160px', '130px', '130px', '80px', '100px', '1fr'].map((w, i) => (
+                        <col key={i} style={{ width: w }} />
+                      ))}
+                    </colgroup>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={headSx}>Empleado</TableCell>
+                        <TableCell sx={headSx}>Tipo</TableCell>
+                        <TableCell sx={headSx}>Número</TableCell>
+                        <TableCell sx={headSx}>Recarga</TableCell>
+                        <TableCell sx={headSx}>Fecha</TableCell>
+                        <TableCell sx={headSx}>Motivo</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {enIncubadora.map((chip) => (
+                        <TableRow key={chip.id}>
+                          <TableCell sx={cellSx}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
+                          <TableCell sx={cellSx}>{chip.tipo_chip}</TableCell>
+                          <TableCell sx={numSx}>{chip.numero_telefono}</TableCell>
+                          <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
+                          <TableCell sx={cellSx}>{chip.fecha}</TableCell>
+                          <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>
+                            {chip.descripcion_rechazo ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {enIncubadora.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={cellSx}>
+                            No hay chips en incubadora
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            );
+          })()}
         </Box>
       )}
     </Box>
