@@ -24,33 +24,28 @@ const ChipsRechazados = () => {
       }
 
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/ventas/chips_rechazados`,
+        `https://ato-appservidor.onrender.com/ventas/venta_chips`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params, 
+          params,
         }
       );
 
-      setRechazados(res.data);
+      setRechazados((res.data as VentaChip[]).filter((c) => c.es_incubadora));
     } catch (err) {
-      console.error("Error al obtener chips rechazados:", err);
+      console.error("Error al obtener chips en incubadora:", err);
     }
   };
 
   useEffect(() => {
-    const cargarUsuarios = async () => {
-      try {
-        const res = await axios.get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsuarios(res.data);
-      } catch (err) {
-        console.warn("No se pudo cargar usuarios (probablemente no eres admin)");
-      }
-    };
-  
-    cargarUsuarios();
-  }, []);
+    if (rolToken !== "admin") return;
+    axios
+      .get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((r) => setUsuarios(r.data))
+      .catch(() => {});
+  }, [rolToken, token]);
 
 const validarChip = async (id: number, comision_manual?: number) => {
   try {

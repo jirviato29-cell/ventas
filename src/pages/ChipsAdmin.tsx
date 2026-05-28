@@ -58,7 +58,7 @@ const ChipsAdmin = () => {
         params,
       });
       const sinValidados = res.data
-        .filter((c: VentaChip) => !c.validado)
+        .filter((c: VentaChip) => !c.validado && !c.es_incubadora)
         .sort((a: VentaChip, b: VentaChip) =>
           new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()
         );
@@ -154,7 +154,7 @@ const ChipsAdmin = () => {
               </TableHead>
               <TableBody>
                 {(() => {
-                  const filtrados = chips.filter((c) => !c.validado && !c.descripcion_rechazo);
+                  const filtrados = chips.filter((c) => !c.validado && !c.es_incubadora);
                   const dups = getDuplicados(filtrados);
                   return sortConDuplicados(filtrados, dups).map((chip) => {
                     const esDup = dups.has(chip.numero_telefono);
