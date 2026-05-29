@@ -31,6 +31,7 @@ interface MetadatosConteo {
   fila_encabezado: number;
   columna_clave: string; columna_nombre: string; columna_cantidad: string;
   filas_ignoradas_vacias: number; filas_validas: number;
+  negativos_convertidos_a_cero: number;
 }
 interface Preview {
   modulo_id: number; modulo_nombre: string;
@@ -333,7 +334,8 @@ const ConteosFisicos = () => {
           {/* Panel de metadatos del archivo */}
           <Alert
             severity="info" icon={false}
-            sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: 13, alignItems: "center" }}
+            sx={{ mb: preview.metadatos.negativos_convertidos_a_cero > 0 ? 1 : 2,
+                  py: 0.5, px: 1.5, fontSize: 13 }}
           >
             <strong>{preview.metadatos.archivo_nombre}</strong>
             {" — "}
@@ -349,6 +351,15 @@ const ConteosFisicos = () => {
               <> · {preview.metadatos.filas_ignoradas_vacias} filas vacías ignoradas</>
             )}
           </Alert>
+
+          {preview.metadatos.negativos_convertidos_a_cero > 0 && (
+            <Alert severity="warning" icon={false}
+              sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: 13 }}
+            >
+              {preview.metadatos.negativos_convertidos_a_cero} producto(s) venían con cantidad
+              negativa — se convertirán a 0 al aplicar.
+            </Alert>
+          )}
 
           <Tabs
             value={tabIdx}
