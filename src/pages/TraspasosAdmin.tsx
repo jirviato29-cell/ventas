@@ -1,17 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Container, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, TableContainer, Paper, Button, TextField, Box, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
+  MenuItem,
 } from "@mui/material";
 import axios from "axios";
 import { Traspaso } from "../Types";
 
 const BASE = "https://ato-appservidor.onrender.com";
 
+const ESTADOS = ["pendiente", "aprobado", "rechazado"];
+
 const TraspasosAdmin = () => {
-  const [traspasos, setTraspasos]     = useState<Traspaso[]>([]);
-  const [buscarFolio, setBuscarFolio] = useState("");
+  const [traspasos, setTraspasos]         = useState<Traspaso[]>([]);
+  const [modulos, setModulos]             = useState<string[]>([]);
+
+  // filtros
+  const [buscarFolio, setBuscarFolio]     = useState("");
+  const [fechaDesde, setFechaDesde]       = useState("");
+  const [fechaHasta, setFechaHasta]       = useState("");
+  const [filtroOrigen, setFiltroOrigen]   = useState("");
+  const [filtroDestino, setFiltroDestino] = useState("");
+  const [filtroEstado, setFiltroEstado]   = useState("");
 
   // diálogos de confirmación
   const [confirmAprobar, setConfirmAprobar]   = useState<Traspaso | null>(null);
@@ -21,18 +32,69 @@ const TraspasosAdmin = () => {
   const token  = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
-  const cargarTraspasos = async () => {
-    const url = buscarFolio.trim()
-      ? `${BASE}/traspasos/traspasos?folio=${buscarFolio.trim()}`
-      : `${BASE}/traspasos/traspasos`;
-    const res = await axios.get(url, config);
-    setTraspasos(res.data);
+  const cargarModulos = async () => {
+    try {
+      const res = await axios.get(`${BASE}/registro/modulos`, config);
+      setModulos(res.data.map((m: any) => m.nombre));
+    } catch {
+      // silent
+    }
   };
+
+  const buildUrl = useCallback((folio: string) => {
+    const params = new URLSearchParams();
+    params.set("incluir_archivados", "true");
+    if (folio.trim())          params.set("folio", folio.trim());
+    if (fechaDesde)            params.set("fecha_desde", fechaDesde);
+    if (fechaHasta)            params.set("fecha_hasta", fechaHasta);
+    if (filtroOrigen)          params.set("modulo_origen", filtroOrigen);
+    if (filtroDestino)         params.set("modulo_destino", filtroDestino);
+    if (filtroEstado)          params.set("estado", filtroEstado);
+    return `${BASE}/traspasos/traspasos?${params.toString()}`;
+  }, [fechaDesde, fechaHasta, filtroOrigen, filtroDestino, filtroEstado]);
+
+  const cargarTraspasos = useCallback(async (folio: string) => {
+    try {
+      const res = await axios.get(buildUrl(folio), config);
+      setTraspasos(res.data);
+    } catch {
+      setTraspasos([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildUrl]);
+
+  // debounce solo en folio
+  useEffect(() => {
+    const t = setTimeout(() => cargarTraspasos(buscarFolio), 400);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscarFolio]);
+
+  // filtros no-folio aplican inmediatamente
+  useEffect(() => {
+    cargarTraspasos(buscarFolio);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fechaDesde, fechaHasta, filtroOrigen, filtroDestino, filtroEstado]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { cargarModulos(); }, []);
+
+  const limpiarFiltros = () => {
+    setBuscarFolio("");
+    setFechaDesde("");
+    setFechaHasta("");
+    setFiltroOrigen("");
+    setFiltroDestino("");
+    setFiltroEstado("");
+  };
+
+  const hayFiltros =
+    buscarFolio || fechaDesde || fechaHasta || filtroOrigen || filtroDestino || filtroEstado;
 
   const actualizarEstado = async (id: number, estado: "aprobado" | "rechazado") => {
     try {
       await axios.put(`${BASE}/traspasos/traspasos/${id}`, { estado }, config);
-      cargarTraspasos();
+      cargarTraspasos(buscarFolio);
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al actualizar traspaso");
     }
@@ -63,21 +125,75 @@ const TraspasosAdmin = () => {
       timeStyle: "short",
     });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { const t = setTimeout(cargarTraspasos, 400); return () => clearTimeout(t); }, [buscarFolio]);
-
   return (
     <Container sx={{ mt: 4 }}>
       <Typography variant="h5" gutterBottom>Solicitudes de Traspaso</Typography>
 
-      <Box sx={{ mb: 2 }}>
+      {/* ── Filtros ── */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap" alignItems="center">
         <TextField
-          label="Buscar por folio (T-X)"
+          label="Folio (T-X)"
           value={buscarFolio}
           onChange={(e) => setBuscarFolio(e.target.value)}
           size="small"
-          sx={{ width: 220 }}
+          sx={{ width: 160 }}
         />
+        <TextField
+          label="Fecha desde"
+          type="date"
+          value={fechaDesde}
+          onChange={(e) => setFechaDesde(e.target.value)}
+          size="small"
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 160 }}
+        />
+        <TextField
+          label="Fecha hasta"
+          type="date"
+          value={fechaHasta}
+          onChange={(e) => setFechaHasta(e.target.value)}
+          size="small"
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 160 }}
+        />
+        <TextField
+          select
+          label="Módulo origen"
+          value={filtroOrigen}
+          onChange={(e) => setFiltroOrigen(e.target.value)}
+          size="small"
+          sx={{ width: 170 }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          {modulos.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+        </TextField>
+        <TextField
+          select
+          label="Módulo destino"
+          value={filtroDestino}
+          onChange={(e) => setFiltroDestino(e.target.value)}
+          size="small"
+          sx={{ width: 170 }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          {modulos.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+        </TextField>
+        <TextField
+          select
+          label="Estado"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          size="small"
+          sx={{ width: 150 }}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          {ESTADOS.map((e) => <MenuItem key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</MenuItem>)}
+        </TextField>
+        {hayFiltros && (
+          <Button size="small" variant="outlined" onClick={limpiarFiltros}>
+            Limpiar filtros
+          </Button>
+        )}
       </Box>
 
       <TableContainer component={Paper}>
@@ -163,7 +279,11 @@ const TraspasosAdmin = () => {
             ))}
             {traspasos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">No hay solicitudes</TableCell>
+                <TableCell colSpan={9} align="center">
+                  {hayFiltros
+                    ? "No se encontraron traspasos con esos criterios."
+                    : "No hay solicitudes"}
+                </TableCell>
               </TableRow>
             )}
           </TableBody>
