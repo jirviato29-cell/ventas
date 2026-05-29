@@ -396,7 +396,9 @@ const ChipsAdmin = () => {
 
           {/* Tabla: Incubadora */}
           {vistaAsesor === 'incubadora' && (() => {
-            const enIncubadora = chipsAsesor.filter((c) => c.es_incubadora);
+            const enIncubadora = chipsAsesor
+              .filter((c) => c.es_incubadora)
+              .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
             return (
               <>
                 <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>

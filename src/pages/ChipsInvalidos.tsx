@@ -5,6 +5,9 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 import { Delete } from "@mui/icons-material";
 import { obtenerRolDesdeToken } from "../components/Token";
 
+const headSx = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
+const cellSx = { py: "2px", px: "6px", fontSize: 16 };
+
 const ChipsRechazados = () => {
   const [rechazados, setRechazados] = useState<VentaChip[]>([]);
   
@@ -31,7 +34,11 @@ const ChipsRechazados = () => {
         }
       );
 
-      setRechazados((res.data as VentaChip[]).filter((c) => c.es_incubadora));
+      setRechazados(
+        (res.data as VentaChip[])
+          .filter((c) => c.es_incubadora)
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      );
     } catch (err) {
       console.error("Error al obtener chips en incubadora:", err);
     }
@@ -102,28 +109,28 @@ const eliminarChip = async (id: number) => {
           </Box>
         )}
       </Box>
-      <Table>
+      <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Empleado</TableCell>
-            <TableCell>Número</TableCell>
-            <TableCell>Tipo Chip</TableCell>
-            <TableCell>Fecha</TableCell>
-            <TableCell>Motivo de Rechazo</TableCell>
-            {rolToken === "admin" && <TableCell>Eliminar</TableCell>}
-            {rolToken === "admin" && <TableCell>Validar</TableCell>}
+            <TableCell sx={headSx}>Empleado</TableCell>
+            <TableCell sx={headSx}>Número</TableCell>
+            <TableCell sx={headSx}>Tipo Chip</TableCell>
+            <TableCell sx={headSx}>Fecha</TableCell>
+            <TableCell sx={headSx}>Motivo de Rechazo</TableCell>
+            {rolToken === "admin" && <TableCell sx={headSx}>Eliminar</TableCell>}
+            {rolToken === "admin" && <TableCell sx={headSx}>Validar</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
           {rechazados.map((chip) => (
             <TableRow key={chip.id}>
-              <TableCell>{chip.empleado?.username ?? "Empleado eliminado"}</TableCell>
-              <TableCell>{chip.numero_telefono}</TableCell>
-              <TableCell>{chip.tipo_chip}</TableCell>
-              <TableCell>{chip.fecha}</TableCell>
-              <TableCell>{chip.descripcion_rechazo}</TableCell>
+              <TableCell sx={cellSx}>{chip.empleado?.username ?? "Empleado eliminado"}</TableCell>
+              <TableCell sx={cellSx}>{chip.numero_telefono}</TableCell>
+              <TableCell sx={cellSx}>{chip.tipo_chip}</TableCell>
+              <TableCell sx={cellSx}>{chip.fecha}</TableCell>
+              <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>{chip.descripcion_rechazo}</TableCell>
               {rolToken === "admin" && (
-                <TableCell>
+                <TableCell sx={cellSx}>
                   <IconButton
                     color="error"
                     onClick={() => eliminarChip(chip.id)}
@@ -135,7 +142,7 @@ const eliminarChip = async (id: number) => {
 
               {rolToken === "admin" && (
   <>
-    <TableCell>
+    <TableCell sx={cellSx}>
       {chip.tipo_chip === "Activacion" ? (
         <TextField
           size="small"
@@ -157,11 +164,10 @@ const eliminarChip = async (id: number) => {
       )}
     </TableCell>
 
-    <TableCell>
+    <TableCell sx={cellSx}>
       <Checkbox
         checked={false}
         onChange={() => {
-          // 🚨 validación importante
           if (chip.tipo_chip === "Activacion" && !chip.comision_manual) {
             alert("Debes capturar la comisión");
             return;
@@ -174,7 +180,6 @@ const eliminarChip = async (id: number) => {
     </TableCell>
   </>
 )}
-             
             </TableRow>
           ))}
         </TableBody>
