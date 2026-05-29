@@ -193,7 +193,21 @@ const ConteosFisicos = () => {
       setModuloId("");
       cargarHistorial();
     } catch (e: any) {
-      setErrorMsg(e.response?.data?.detail ?? "Error al aplicar el conteo");
+      const status  = e.response?.status;
+      const detalle = e.response?.data?.detail;
+      if (status === 502 || status === 503 || status === 504 || !status) {
+        setErrorMsg(
+          "El servidor tardó demasiado en responder (timeout). " +
+          "Espera unos segundos y vuelve a intentar. " +
+          "Si el error persiste, contacta al administrador."
+        );
+      } else {
+        setErrorMsg(
+          detalle
+            ? `Error ${status}: ${detalle}`
+            : `Error inesperado (${status ?? "sin conexión"}) al aplicar el conteo.`
+        );
+      }
     } finally { setAplicando(false); }
   };
 
