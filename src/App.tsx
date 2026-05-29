@@ -36,6 +36,7 @@ import PanelControlNominaPage from './pages/PanelControlNominaPage';
 import MiNomina from './pages/MiNomina';
 import AjustesInventarioPage from './pages/AjustesInventario';
 import ConteosFisicos from './pages/ConteosFisicos';
+import GestionModulos from './pages/GestionModulos';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -80,6 +81,7 @@ const App: React.FC = () => {
     { path: '/mi-nomina', element: <RutaProtegida><MiNomina /></RutaProtegida> },
     { path: '/ajustes-inventario', element: <RutaProtegida><AjustesInventarioPage /></RutaProtegida> },
     { path: '/conteos-fisicos', element: <RutaProtegida><ConteosFisicos /></RutaProtegida> },
+    { path: '/admin/modulos', element: <RutaProtegida><GestionModulos /></RutaProtegida> },
   ]);
 
   return routes;

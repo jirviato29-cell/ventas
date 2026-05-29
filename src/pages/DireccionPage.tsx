@@ -135,7 +135,7 @@ const DireccionPage: React.FC = () => {
 
   useEffect(() => {
     cargarPendientes();
-    axios.get(`${API}/registro/modulos`, config).then((r) => setModulos(r.data)).catch(console.error);
+    axios.get(`${API}/registro/modulos/todos`, config).then((r) => setModulos(r.data)).catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

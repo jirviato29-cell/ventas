@@ -205,6 +205,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/usuarios">Usuarios</MenuItem>
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
+                    <MenuItem component={Link} to="/admin/modulos">Gestión de Módulos</MenuItem>
                   </Menu>
 
                   <Button sx={navBtnSx} component={Link} to="/admin/panel-control">
@@ -421,6 +422,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/metricas")}>
                     <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                     <ListItemText primary="Métricas" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/modulos")}>
+                    <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
+                    <ListItemText primary="Gestión de Módulos" />
                   </ListItemButton>
                 </List>
               </Collapse>
