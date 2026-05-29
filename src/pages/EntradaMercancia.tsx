@@ -397,8 +397,9 @@ const EntradaMercancia = () => {
       } else {
         alert("Error inesperado");
       }
-    } catch {
-      alert("Error al guardar entrada");
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      alert(detail ? String(detail) : "Error al guardar entrada");
     } finally {
       setGuardandoEntrada(false);
     }
@@ -481,22 +482,31 @@ const EntradaMercancia = () => {
     setCargandoEditar(true);
     setErrorDetalle(null);
     try {
-      const items: EditItem[] = [];
-      for (const p of entradaDetalle.productos) {
-        const res = await axios.get(
-          `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
-          { params: { q: p.clave }, ...config }
+      const res = await axios.get(
+        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
+        config
+      );
+      const productos = res.data.productos as Array<{
+        producto_id: number | null;
+        clave: string;
+        producto: string;
+        cantidad: number;
+      }>;
+      const faltantes = productos.filter((p) => !p.producto_id);
+      if (faltantes.length > 0) {
+        setErrorDetalle(
+          `Los siguientes productos ya no existen en el catálogo: ${faltantes.map((p) => p.producto).join(", ")}`
         );
-        const match = (res.data as any[]).find((r: any) => r.clave === p.clave);
-        if (!match) {
-          setErrorDetalle(
-            `No se encontró el producto con clave '${p.clave}' en el catálogo. Verifica el inventario general.`
-          );
-          return;
-        }
-        items.push({ producto_id: match.id, clave: p.clave, producto: p.producto, cantidad: p.cantidad });
+        return;
       }
-      setEditProductos(items);
+      setEditProductos(
+        productos.map((p) => ({
+          producto_id: p.producto_id as number,
+          clave: p.clave,
+          producto: p.producto,
+          cantidad: p.cantidad,
+        }))
+      );
       setEditBusqueda("");
       setEditOpciones([]);
       setEditProductoSeleccionado(null);
@@ -556,7 +566,6 @@ const EntradaMercancia = () => {
   };
 
   const handleGuardarEdicion = async () => {
-    console.log("click guardar", { entradaDetalle: entradaDetalle?.id, editProductos });
     if (!entradaDetalle) return;
     if (editProductos.length === 0) {
       setErrorEditar("La entrada debe tener al menos un producto.");
@@ -566,11 +575,8 @@ const EntradaMercancia = () => {
     setErrorEditar(null);
     const payload = { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) };
     const url = `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`;
-    console.log("[EM-edit] PUT", url);
-    console.log("[EM-edit] payload:", JSON.stringify(payload));
     try {
-      const res = await axios.put(url, payload, config);
-      console.log("[EM-edit] respuesta OK:", res.status, JSON.stringify(res.data));
+      await axios.put(url, payload, config);
       setModalEditar(false);
       setEntradaDetalle(null);
       buscarHistorial();
@@ -1549,7 +1555,6 @@ const EntradaMercancia = () => {
                           <IconButton
                             size="small"
                             onClick={() => {
-                              console.log("click eliminar producto idx:", idx, "clave:", p.clave);
                               setEditProductos((prev) =>
                                 prev.filter((_, i) => i !== idx)
                               );
