@@ -55,7 +55,28 @@ export interface Traspaso {
   estado: "pendiente" | "aprobado" | "rechazado";
   fecha: string;
   visible_en_pendientes: boolean;
-  folio?: string
+  folio: string | null;
+}
+
+export interface AjusteItem {
+  id: number;
+  clave: string;
+  producto: string;
+  cantidad_anterior: number;
+  cantidad_nueva: number;
+  delta: number;
+}
+
+export interface AjusteInventario {
+  id: number;
+  folio: string;
+  modulo_id: number;
+  modulo_nombre: string;
+  usuario_id: number;
+  usuario_nombre: string;
+  fecha: string;
+  motivo: string | null;
+  items: AjusteItem[];
 }
 
 
