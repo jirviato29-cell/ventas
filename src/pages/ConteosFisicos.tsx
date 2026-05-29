@@ -26,6 +26,12 @@ interface ItemCrear    { clave: string; producto: string; cantidad: number; }
 interface ItemDecision { clave: string; producto: string; cantidad_actual: number; }
 interface ErrorItem    { fila: number; clave: string; motivo: string; }
 
+interface MetadatosConteo {
+  archivo_nombre: string; filas_totales: number;
+  fila_encabezado: number;
+  columna_clave: string; columna_nombre: string; columna_cantidad: string;
+  filas_ignoradas_vacias: number; filas_validas: number;
+}
 interface Preview {
   modulo_id: number; modulo_nombre: string;
   total_filas_excel: number; advertencia_volumen: boolean;
@@ -33,6 +39,7 @@ interface Preview {
   para_crear: ItemCrear[];
   decidir_caso_por_caso: ItemDecision[];
   errores: ErrorItem[];
+  metadatos: MetadatosConteo;
 }
 
 interface ConteoItem {
@@ -322,6 +329,26 @@ const ConteosFisicos = () => {
               <Chip label="⚠ Archivo grande (>5 000 filas)" color="warning" size="small" />
             )}
           </Box>
+
+          {/* Panel de metadatos del archivo */}
+          <Alert
+            severity="info" icon={false}
+            sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: 13, alignItems: "center" }}
+          >
+            <strong>{preview.metadatos.archivo_nombre}</strong>
+            {" — "}
+            {preview.metadatos.filas_validas} productos detectados
+            {" · "}
+            encabezado en fila {preview.metadatos.fila_encabezado}
+            {" · "}
+            columnas&nbsp;
+            {preview.metadatos.columna_clave}/
+            {preview.metadatos.columna_nombre}/
+            {preview.metadatos.columna_cantidad}
+            {preview.metadatos.filas_ignoradas_vacias > 0 && (
+              <> · {preview.metadatos.filas_ignoradas_vacias} filas vacías ignoradas</>
+            )}
+          </Alert>
 
           <Tabs
             value={tabIdx}
