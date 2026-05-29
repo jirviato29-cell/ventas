@@ -189,6 +189,9 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/entrada-mercancia">Entrada de Mercancia</MenuItem>
                     <MenuItem component={Link} to="/traspasos/admin">Traspasos</MenuItem>
                     <MenuItem component={Link} to="/kardex">Kardex</MenuItem>
+                    {rolToken === "admin" && (
+                      <MenuItem component={Link} to="/conteos-fisicos">Conteos Físicos</MenuItem>
+                    )}
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorAdmin)}>
@@ -390,6 +393,12 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
                     <ListItemText primary="Kardex" />
                   </ListItemButton>
+                  {rolToken === "admin" && (
+                    <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/conteos-fisicos")}>
+                      <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
+                      <ListItemText primary="Conteos Físicos" />
+                    </ListItemButton>
+                  )}
                 </List>
               </Collapse>
 
