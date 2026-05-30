@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, Container, Dialog, DialogActions,
-  DialogContent, DialogTitle, IconButton, InputAdornment, Paper, Table,
-  TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
-  Typography,
+  DialogContent, DialogTitle, IconButton, InputAdornment, MenuItem, Paper,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
@@ -27,12 +27,23 @@ const ProductosPage = () => {
   const [cargando, setCargando]           = useState(true);
   const [busqueda, setBusqueda]           = useState('');
 
+  // ── estados editar ────────────────────────────────────────────────────────
   const [editOpen, setEditOpen]           = useState(false);
   const [editProducto, setEditProducto]   = useState<ProductoCatalogo | null>(null);
   const [editPrecio, setEditPrecio]       = useState('');
   const [editComision, setEditComision]   = useState('');
   const [editError, setEditError]         = useState<string | null>(null);
   const [editGuardando, setEditGuardando] = useState(false);
+
+  // ── estados nuevo ─────────────────────────────────────────────────────────
+  const [nuevoOpen, setNuevoOpen]           = useState(false);
+  const [nuevoClave, setNuevoClave]         = useState('');
+  const [nuevoNombre, setNuevoNombre]       = useState('');
+  const [nuevoPrecio, setNuevoPrecio]       = useState('');
+  const [nuevoTipo, setNuevoTipo]           = useState<'accesorios' | 'telefono'>('accesorios');
+  const [nuevoComision, setNuevoComision]   = useState('');
+  const [nuevoError, setNuevoError]         = useState<string | null>(null);
+  const [nuevoGuardando, setNuevoGuardando] = useState(false);
 
   const token  = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -51,6 +62,7 @@ const ProductosPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { cargar(); }, []);
 
+  // ── editar ────────────────────────────────────────────────────────────────
   const abrirEditor = (p: ProductoCatalogo) => {
     setEditProducto(p);
     setEditPrecio(p.precio != null ? String(p.precio) : '');
@@ -61,23 +73,19 @@ const ProductosPage = () => {
 
   const handleGuardar = async () => {
     if (!editProducto) return;
-
     const precioNum = Number(editPrecio);
     if (editPrecio.trim() === '' || isNaN(precioNum) || precioNum < 0) {
       setEditError('El precio debe ser un número mayor o igual a 0');
       return;
     }
-
     const comisionTrim = editComision.trim();
     const comisionNueva = comisionTrim === '' ? null : Number(comisionTrim);
     if (comisionTrim !== '' && isNaN(comisionNueva as number)) {
       setEditError('La comisión debe ser un número válido');
       return;
     }
-
     setEditGuardando(true);
     setEditError(null);
-
     try {
       if (precioNum !== editProducto.precio) {
         await axios.patch(
@@ -86,27 +94,19 @@ const ProductosPage = () => {
           config,
         );
       }
-
       const comisionAntes = editProducto.comision;
       if (comisionAntes === null && comisionNueva !== null) {
-        await axios.post(
-          `${BASE}/comisiones/comisiones`,
-          { producto: editProducto.producto, cantidad: comisionNueva },
-          config,
-        );
+        await axios.post(`${BASE}/comisiones/comisiones`,
+          { producto: editProducto.producto, cantidad: comisionNueva }, config);
       } else if (comisionAntes !== null && comisionNueva !== null && comisionNueva !== comisionAntes) {
         await axios.put(
           `${BASE}/comisiones/comisiones/${encodeURIComponent(editProducto.producto)}`,
-          { cantidad: comisionNueva },
-          config,
-        );
+          { cantidad: comisionNueva }, config);
       } else if (comisionAntes !== null && comisionNueva === null) {
         await axios.delete(
           `${BASE}/comisiones/comisiones/${encodeURIComponent(editProducto.producto)}`,
-          config,
-        );
+          config);
       }
-
       setEditOpen(false);
       await cargar();
     } catch (err: any) {
@@ -116,6 +116,53 @@ const ProductosPage = () => {
     }
   };
 
+  // ── nuevo producto ────────────────────────────────────────────────────────
+  const detectarTipo = (clave: string): 'accesorios' | 'telefono' => {
+    const u = (clave ?? '').toUpperCase();
+    return u.startsWith('TELI') || u.startsWith('TETE') ? 'telefono' : 'accesorios';
+  };
+
+  const abrirNuevo = () => {
+    setNuevoClave(''); setNuevoNombre(''); setNuevoPrecio('');
+    setNuevoTipo('accesorios'); setNuevoComision('');
+    setNuevoError(null); setNuevoOpen(true);
+  };
+
+  const handleCrear = async () => {
+    if (!(nuevoClave ?? '').trim()) { setNuevoError('La clave es obligatoria'); return; }
+    if (!(nuevoNombre ?? '').trim()) { setNuevoError('El nombre es obligatorio'); return; }
+    const precioNum = Number(nuevoPrecio);
+    if (!nuevoPrecio.trim() || isNaN(precioNum) || precioNum <= 0) {
+      setNuevoError('El precio debe ser un número mayor a 0'); return;
+    }
+    const comisionTrim = nuevoComision.trim();
+    const comisionNum = comisionTrim === '' ? null : Number(comisionTrim);
+    if (comisionTrim !== '' && (isNaN(comisionNum as number) || (comisionNum as number) < 0)) {
+      setNuevoError('La comisión debe ser un número mayor o igual a 0'); return;
+    }
+    setNuevoGuardando(true);
+    setNuevoError(null);
+    try {
+      await axios.post(
+        `${BASE}/inventario/inventario/general`,
+        { clave: nuevoClave.trim(), producto: nuevoNombre.trim(),
+          precio: Math.round(precioNum), tipo_producto: nuevoTipo, cantidad: 0 },
+        config,
+      );
+      if (comisionNum !== null) {
+        await axios.post(`${BASE}/comisiones/comisiones`,
+          { producto: nuevoNombre.trim(), cantidad: comisionNum }, config);
+      }
+      setNuevoOpen(false);
+      await cargar();
+    } catch (err: any) {
+      setNuevoError(err?.response?.data?.detail || 'Error al crear el producto');
+    } finally {
+      setNuevoGuardando(false);
+    }
+  };
+
+  // ── filtro ────────────────────────────────────────────────────────────────
   const q = busqueda.toLowerCase();
   const filtrados = productos.filter(
     (p) =>
@@ -129,20 +176,26 @@ const ProductosPage = () => {
         Catálogo de Productos
       </Typography>
 
-      <TextField
-        placeholder="Buscar por clave o nombre…"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        size="small"
-        sx={{ mb: 2, minWidth: 300 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
-        }}
-      />
+      <Box display="flex" gap={2} mb={2} alignItems="center" flexWrap="wrap">
+        <TextField
+          placeholder="Buscar por clave o nombre…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          size="small"
+          sx={{ minWidth: 300 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Button variant="contained" onClick={abrirNuevo}
+          sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' }, whiteSpace: 'nowrap' }}>
+          + Nuevo producto
+        </Button>
+      </Box>
 
       {cargando ? (
         <Box display="flex" justifyContent="center" mt={4}>
@@ -203,12 +256,9 @@ const ProductosPage = () => {
         </>
       )}
 
-      <Dialog
-        open={editOpen}
-        onClose={() => { if (!editGuardando) setEditOpen(false); }}
-        maxWidth="xs"
-        fullWidth
-      >
+      {/* ── Dialog editar ── */}
+      <Dialog open={editOpen} onClose={() => { if (!editGuardando) setEditOpen(false); }}
+        maxWidth="xs" fullWidth>
         <DialogTitle>
           Editar producto
           <Typography variant="caption" display="block" color="text.secondary" sx={{ fontWeight: 400 }}>
@@ -217,42 +267,61 @@ const ProductosPage = () => {
         </DialogTitle>
         <DialogContent>
           {editError && <Alert severity="error" sx={{ mb: 2 }}>{editError}</Alert>}
-          <TextField
-            label="Precio ($)"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={editPrecio}
-            onChange={(e) => setEditPrecio(e.target.value)}
+          <TextField label="Precio ($)" type="number" fullWidth margin="normal"
+            value={editPrecio} onChange={(e) => setEditPrecio(e.target.value)}
             inputProps={{ min: 0, step: 1 }}
             error={editPrecio.trim() !== '' && (isNaN(Number(editPrecio)) || Number(editPrecio) < 0)}
-            helperText="Requerido · mínimo $0"
-          />
-          <TextField
-            label="Comisión ($)"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={editComision}
-            onChange={(e) => setEditComision(e.target.value)}
+            helperText="Requerido · mínimo $0" />
+          <TextField label="Comisión ($)" type="number" fullWidth margin="normal"
+            value={editComision} onChange={(e) => setEditComision(e.target.value)}
             inputProps={{ min: 0, step: 0.01 }}
-            helperText="Dejar vacío para eliminar la comisión"
-          />
+            helperText="Dejar vacío para eliminar la comisión" />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditOpen(false)} disabled={editGuardando}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleGuardar}
-            disabled={editGuardando}
-            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' } }}
-          >
+          <Button onClick={() => setEditOpen(false)} disabled={editGuardando}>Cancelar</Button>
+          <Button variant="contained" onClick={handleGuardar} disabled={editGuardando}
+            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' } }}>
             {editGuardando ? 'Guardando…' : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Dialog nuevo producto ── */}
+      <Dialog open={nuevoOpen} onClose={() => !nuevoGuardando && setNuevoOpen(false)}
+        maxWidth="xs" fullWidth>
+        <DialogTitle>Nuevo producto</DialogTitle>
+        <DialogContent>
+          {nuevoError && <Alert severity="error" sx={{ mb: 2 }}>{nuevoError}</Alert>}
+          <TextField label="Clave" fullWidth margin="normal"
+            value={nuevoClave}
+            onChange={(e) => { setNuevoClave(e.target.value); setNuevoTipo(detectarTipo(e.target.value)); }} />
+          <TextField label="Nombre (producto)" fullWidth margin="normal"
+            value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} />
+          <TextField label="Precio ($)" type="number" fullWidth margin="normal"
+            value={nuevoPrecio} onChange={(e) => setNuevoPrecio(e.target.value)}
+            inputProps={{ min: 1, step: 1 }}
+            error={nuevoPrecio !== '' && (isNaN(Number(nuevoPrecio)) || Number(nuevoPrecio) <= 0)}
+            helperText="Requerido · mayor a $0" />
+          <TextField select label="Tipo de producto" fullWidth margin="normal"
+            value={nuevoTipo}
+            onChange={(e) => setNuevoTipo(e.target.value as 'accesorios' | 'telefono')}>
+            <MenuItem value="accesorios">Accesorios</MenuItem>
+            <MenuItem value="telefono">Teléfono</MenuItem>
+          </TextField>
+          <TextField label="Comisión ($)" type="number" fullWidth margin="normal"
+            value={nuevoComision} onChange={(e) => setNuevoComision(e.target.value)}
+            inputProps={{ min: 0, step: 0.01 }}
+            helperText="Opcional · dejar vacío para sin comisión" />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setNuevoOpen(false)} disabled={nuevoGuardando}>Cancelar</Button>
+          <Button variant="contained" onClick={handleCrear} disabled={nuevoGuardando}
+            sx={{ bgcolor: '#f97316', '&:hover': { bgcolor: '#ea6c0a' } }}>
+            {nuevoGuardando ? 'Guardando…' : 'Crear'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Container>
   );
 };
