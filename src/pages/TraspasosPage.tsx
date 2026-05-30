@@ -91,6 +91,9 @@ const TraspasosEncargado = () => {
   const traspasosEntrantes  = traspasos.filter(
     (t) => t.modulo_destino === propioModulo && t.estado === "pendiente",
   );
+  const traspasosResueltos  = traspasos
+    .filter((t) => t.modulo_destino === propioModulo && t.estado !== "pendiente")
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   return (
     <Container sx={{ mt: 4 }}>
@@ -220,6 +223,47 @@ const TraspasosEncargado = () => {
                         </Button>
                       </Box>
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
+
+      {/* ── Historial de traspasos resueltos (entrantes aprobados/rechazados) ── */}
+      {traspasosResueltos.length > 0 && (
+        <>
+          <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+            Historial de traspasos resueltos
+          </Typography>
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Folio</TableCell>
+                  <TableCell>Producto</TableCell>
+                  <TableCell align="center">Cant.</TableCell>
+                  <TableCell>Origen</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell>Fecha</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {traspasosResueltos.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell sx={{ fontWeight: 600 }}>{t.folio ?? "—"}</TableCell>
+                    <TableCell>{t.producto}</TableCell>
+                    <TableCell align="center">{t.cantidad}</TableCell>
+                    <TableCell>{t.modulo_origen}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={t.estado}
+                        color={t.estado === "aprobado" ? "success" : "error"}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{formatearFecha(t.fecha)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
