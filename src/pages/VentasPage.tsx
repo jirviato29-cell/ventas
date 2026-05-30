@@ -1001,10 +1001,10 @@ const FormularioVentaMultiple = () => {
               return opts.filter(
                 (p) =>
                   (p.clave ?? '').toLowerCase().includes(q) ||
-                  p.producto.toLowerCase().includes(q),
+                  (p.producto ?? '').toLowerCase().includes(q),
               );
             }}
-            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto}` : p.producto)}
+            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
             onInputChange={(_, v) => buscarTelefonos(v)}
             onChange={(_, obj) => {
               if (obj) {
