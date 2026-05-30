@@ -192,6 +192,9 @@ const Navbar = () => {
                     {rolToken === "admin" && (
                       <MenuItem component={Link} to="/conteos-fisicos">Conteos Físicos</MenuItem>
                     )}
+                    {rolToken === "admin" && (
+                      <MenuItem component={Link} to="/inventario/productos">Productos</MenuItem>
+                    )}
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorAdmin)}>
@@ -398,6 +401,12 @@ const Navbar = () => {
                     <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/conteos-fisicos")}>
                       <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                       <ListItemText primary="Conteos Físicos" />
+                    </ListItemButton>
+                  )}
+                  {rolToken === "admin" && (
+                    <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario/productos")}>
+                      <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
+                      <ListItemText primary="Productos" />
                     </ListItemButton>
                   )}
                 </List>
