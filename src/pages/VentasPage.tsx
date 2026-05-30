@@ -485,19 +485,24 @@ const FormularioVentaMultiple = () => {
   }, [ventas]);
 
   useEffect(() => {
-    const fetchProductos = async () => {
-      try {
-        const res = await axios.get(
-          `https://ato-appservidor.onrender.com/inventario/inventario/general`,
-          config,
-        );
-        setProductos(res.data);
-      } catch (err) {
-        console.error('Error al cargar productos:', err);
-      }
-    };
-    fetchProductos();
-  }, []);
+    if (!user) return; // esperar a que cargue el usuario
+    const params: Record<string, number> = {};
+    if (!user.is_admin && user.modulo_id) {
+      // asesor/encargado: solo productos con stock real en su módulo
+      params.modulo_id = user.modulo_id;
+    } else if (user.is_admin && moduloId) {
+      // admin con módulo seleccionado: ver stock de ese módulo
+      params.modulo_id = moduloId;
+    }
+    // admin sin módulo seleccionado: sin param → catálogo completo
+    axios
+      .get(
+        `https://ato-appservidor.onrender.com/inventario/inventario/general`,
+        { ...config, params },
+      )
+      .then((r) => setProductos(r.data))
+      .catch((err) => console.error('Error al cargar productos:', err));
+  }, [user?.id, moduloId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fetchPrecio = async () => {
