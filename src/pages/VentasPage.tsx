@@ -325,12 +325,13 @@ const FormularioVentaMultiple = () => {
 
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
+  const [telefonoClave, setTelefonoClave] = useState('');
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
 
   const [fecha, setFecha] = useState(HOY);
-  const [opcionesTelefonos, setOpcionesTelefonos] = useState<any[]>([]);
+  const [opcionesTelefonos, setOpcionesTelefonos] = useState<{ clave: string; producto: string }[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [moduloId, setModuloId] = useState<number | null>(null);
   const [rol, setRol] = useState<Usuario['rol'] | null>(localStorage.getItem('rol') as Usuario['rol'] | null);
@@ -724,7 +725,7 @@ const FormularioVentaMultiple = () => {
       chip_casado: Chip_casado || null,
     };
     const resetTel = () => {
-      setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoTipo_venta('');
+      setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
       setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); settelefono('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
     };
@@ -992,19 +993,38 @@ const FormularioVentaMultiple = () => {
       {/* ── Teléfono ── */}
       {!esCadenas && tipoVenta === 'telefono' && (
         <>
-          <Autocomplete
-            freeSolo loading={buscando} options={opcionesTelefonos}
-            value={`${telefonoMarca} ${telefonoModelo}`.trim()}
+          <Autocomplete<{ clave: string; producto: string }>
+            loading={buscando} options={opcionesTelefonos}
+            value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
+            filterOptions={(opts, { inputValue }) => {
+              const q = inputValue.toLowerCase();
+              return opts.filter(
+                (p) =>
+                  (p.clave ?? '').toLowerCase().includes(q) ||
+                  p.producto.toLowerCase().includes(q),
+              );
+            }}
+            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto}` : p.producto)}
             onInputChange={(_, v) => buscarTelefonos(v)}
-            onChange={(_, v) => {
-              if (typeof v === 'string') {
-                const p = v.split(' ');
-                setTelefonoMarca(p[0] || '');
-                setTelefonoModelo(p.slice(1).join(' ') || '');
+            onChange={(_, obj) => {
+              if (obj) {
+                const parts = obj.producto.split(' ');
+                setTelefonoMarca(parts[0] || '');
+                setTelefonoModelo(parts.slice(1).join(' ') || '');
+                setTelefonoClave(obj.clave ?? '');
+              } else {
+                setTelefonoMarca('');
+                setTelefonoModelo('');
+                setTelefonoClave('');
               }
             }}
             renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth margin="normal" />}
           />
+          {telefonoMarca && (
+            <Typography variant="caption" sx={{ ml: 0.5, color: '#64748b' }}>
+              {telefonoClave ? `${telefonoClave} - ` : ''}{telefonoMarca} {telefonoModelo}
+            </Typography>
+          )}
           <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth margin="normal">
             <MenuItem value="Contado">Contado</MenuItem>
             <MenuItem value="Pajoy">Pajoy</MenuItem>
