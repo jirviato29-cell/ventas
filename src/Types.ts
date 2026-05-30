@@ -149,6 +149,7 @@ export interface ProductoEnVenta {
   id: number;
   nombre: string;
   producto: string;
+  clave: string;
   cantidad: number;
   precio_unitario: number;
   tipo_producto: "accesorios" | "telefono";

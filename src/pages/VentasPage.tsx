@@ -306,6 +306,7 @@ const FormularioVentaMultiple = () => {
   const ventasTelefonos = ventas.filter((v) => v.tipo_producto === 'telefono');
 
   const [producto, setProducto] = useState('');
+  const [productoClave, setProductoClave] = useState('');
   const [precio, setPrecio] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState<number>(1);
   const [metodoPago, setMetodoPago] = useState('');
@@ -500,24 +501,6 @@ const FormularioVentaMultiple = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPrecio = async () => {
-      if (producto) {
-        try {
-          const res = await axios.get(
-            `https://ato-appservidor.onrender.com/inventario/inventario/general/${encodeURIComponent(producto)}`,
-            config,
-          );
-          setPrecio(res.data.precio);
-        } catch {
-          setPrecio(null);
-          setMensaje({ tipo: 'error', texto: 'Producto no encontrado en inventario.' });
-        }
-      }
-    };
-    fetchPrecio();
-  }, [producto]);
-
-  useEffect(() => {
     const fetchUserAndModulos = async () => {
       try {
         if (token) {
@@ -582,8 +565,9 @@ const FormularioVentaMultiple = () => {
   // ── Acciones ─────────────────────────────────────────────────────────────
   const agregarAlCarrito = () => {
     if (!producto || precio === null || cantidad <= 0) return;
-    setCarrito([...carrito, { producto, cantidad, precio_unitario: precio, id: 0, nombre: '', tipo_producto: 'accesorios' }]);
+    setCarrito([...carrito, { producto, clave: productoClave, cantidad, precio_unitario: precio, id: 0, nombre: '', tipo_producto: 'accesorios' }]);
     setProducto('');
+    setProductoClave('');
     setCantidad(1);
     setPrecio(null);
   };
@@ -844,13 +828,31 @@ const FormularioVentaMultiple = () => {
       {/* ── Accesorio ── */}
       {!esCadenas && tipoVenta === 'accesorio' && (
         <>
-          <Autocomplete
+          <Autocomplete<InventarioGeneral>
             options={productos
               .filter((p) => !p.producto.toLowerCase().includes('telefono') && p.cantidad > 0)
-              .sort((a, b) => a.producto.localeCompare(b.producto, 'es'))
-              .map((p) => p.producto)}
-            value={producto}
-            onChange={(_, v) => setProducto(v || '')}
+              .sort((a, b) => a.producto.localeCompare(b.producto, 'es'))}
+            value={productos.find((p) => p.producto === producto) ?? null}
+            filterOptions={(opts, { inputValue }) => {
+              const q = inputValue.toLowerCase();
+              return opts.filter(
+                (p) =>
+                  (p.clave ?? '').toLowerCase().includes(q) ||
+                  p.producto.toLowerCase().includes(q),
+              );
+            }}
+            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto}` : p.producto)}
+            onChange={(_, obj) => {
+              if (obj) {
+                setProducto(obj.producto);
+                setProductoClave(obj.clave ?? '');
+                setPrecio(obj.precio);
+              } else {
+                setProducto('');
+                setProductoClave('');
+                setPrecio(null);
+              }
+            }}
             renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="normal" />}
           />
           <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} fullWidth margin="normal" />
@@ -863,7 +865,7 @@ const FormularioVentaMultiple = () => {
               ? <Typography color="text.secondary">No hay productos agregados</Typography>
               : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => (
                   <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
-                    {p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
+                    {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
                   </li>
                 ))}</ul>}
           </Box>
@@ -919,7 +921,7 @@ const FormularioVentaMultiple = () => {
                       const totalItem = item.precio_unitario * item.cantidad;
                       return (
                         <Typography key={i} variant="caption" sx={{ display: 'block', color: '#94a3b8', fontSize: 11 }}>
-                          • {item.producto}: ${(totalItem * pctEf).toFixed(2)} ef + ${(totalItem * pctTa).toFixed(2)} ta
+                          • {item.clave ? `${item.clave} - ` : ''}{item.producto}: ${(totalItem * pctEf).toFixed(2)} ef + ${(totalItem * pctTa).toFixed(2)} ta
                         </Typography>
                       );
                     })}
