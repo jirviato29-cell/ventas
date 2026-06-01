@@ -184,7 +184,7 @@ const ventasDiaFormateado = ventasDia.map((v) => ({
     try {
       const [resEmp, resMod] = await Promise.all([
         axios.get(`${API}/registro/usuarios`, config),
-        axios.get(`${API}/registro/modulos/todos`, config),
+        axios.get(`${API}/registro/modulos`, config),
       ]);
 
       setEmpleados(resEmp.data);

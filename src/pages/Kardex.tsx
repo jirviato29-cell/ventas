@@ -61,7 +61,7 @@ const Kardex = () => {
 
   const cargarModulos = async () => {
   const res = await axios.get(
-    `https://ato-appservidor.onrender.com/registro/modulos/todos`,
+    `https://ato-appservidor.onrender.com/registro/modulos`,
     config
   );
   setModulos(res.data);

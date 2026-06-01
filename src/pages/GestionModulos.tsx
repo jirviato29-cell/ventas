@@ -30,7 +30,7 @@ const GestionModulos = () => {
     setCargando(true);
     setErrorMsg(null);
     try {
-      const r = await axios.get(`${BASE}/registro/modulos/todos`, config);
+      const r = await axios.get(`${BASE}/registro/modulos`, config);
       setModulos(r.data);
     } catch {
       setErrorMsg("No se pudieron cargar los módulos.");
