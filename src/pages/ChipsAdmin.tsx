@@ -397,7 +397,7 @@ const ChipsAdmin = () => {
           {/* Tabla: Incubadora */}
           {vistaAsesor === 'incubadora' && (() => {
             const enIncubadora = chipsAsesor
-              .filter((c) => c.es_incubadora)
+              .filter((c) => c.es_incubadora && !(c.validado && c.comision_pagada))
               .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
             return (
               <>
