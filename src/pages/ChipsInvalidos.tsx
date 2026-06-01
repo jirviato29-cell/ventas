@@ -68,6 +68,7 @@ const validarChip = async (id: number, comision_manual?: number) => {
 
   } catch (error) {
     console.error("Error al validar chip", error);
+    alert((error as any).response?.data?.detail || "Error al validar el chip");
   }
 };
 
@@ -166,8 +167,10 @@ const eliminarChip = async (id: number) => {
 
     <TableCell sx={cellSx}>
       <Checkbox
-        checked={false}
+        checked={chip.validado}
+        disabled={chip.validado}
         onChange={() => {
+          if (chip.validado) return;
           if (chip.tipo_chip === "Activacion" && !chip.comision_manual) {
             alert("Debes capturar la comisión");
             return;
