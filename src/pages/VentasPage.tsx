@@ -320,6 +320,7 @@ const FormularioVentaMultiple = () => {
   const [numero, setNumero] = useState('');
   const [numeroDuplicado, setNumeroDuplicado] = useState(false);
   const [verificandoNumero, setVerificandoNumero] = useState(false);
+  const [registrando, setRegistrando] = useState(false);
   const [recarga, setRecarga] = useState('');
   const [tadDevice, setTadDevice] = useState('');
 
@@ -692,6 +693,7 @@ const FormularioVentaMultiple = () => {
 
   const handleSubmit = async () => {
     const esPayJoy = tipoChip === 'Tarjetas PayJoy';
+    setRegistrando(true);
     try {
       await axios.post(
         `https://ato-appservidor.onrender.com/ventas/venta_chips`,
@@ -709,6 +711,8 @@ const FormularioVentaMultiple = () => {
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
+    } finally {
+      setRegistrando(false);
     }
   };
 
@@ -984,7 +988,7 @@ const FormularioVentaMultiple = () => {
           )}
           <Button
             variant="contained" fullWidth onClick={handleSubmit}
-            disabled={!tipoChip || (tipoChip === 'Tarjetas PayJoy' ? !tadDevice : (!numero || !recarga || numeroDuplicado || verificandoNumero))}
+            disabled={registrando || !tipoChip || (tipoChip === 'Tarjetas PayJoy' ? !tadDevice : (!numero || !recarga || numeroDuplicado || verificandoNumero))}
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
         </>
