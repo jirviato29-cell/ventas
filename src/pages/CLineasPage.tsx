@@ -25,6 +25,7 @@ interface FilaTelcel {
 }
 
 interface FilaCruzada {
+  id: number;
   numero: string;
   empleado: string;
   tipo_chip: string;
@@ -47,7 +48,7 @@ const CLineasPage = () => {
   const token = localStorage.getItem("token");
 
   const [filas, setFilas] = useState<FilaCruzada[]>([]);
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [cargando, setCargando] = useState(false);
   const [pagando, setPagando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -95,6 +96,7 @@ const CLineasPage = () => {
         const t = mapTelcel.get(numeroLimpio);
         if (!t) continue;
         cruzadas.push({
+          id: chip.id,
           numero: chip.numero_telefono,
           empleado: chip.empleado?.username ?? "—",
           tipo_chip: chip.tipo_chip,
@@ -113,10 +115,10 @@ const CLineasPage = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const toggleFila = (numero: string) => {
+  const toggleFila = (id: number) => {
     setSeleccionados((prev) => {
       const next = new Set(prev);
-      next.has(numero) ? next.delete(numero) : next.add(numero);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -127,12 +129,12 @@ const CLineasPage = () => {
     if (todosSeleccionados) {
       setSeleccionados(new Set());
     } else {
-      setSeleccionados(new Set(filas.map((f) => f.numero)));
+      setSeleccionados(new Set(filas.map((f) => f.id)));
     }
   };
 
   const totalSeleccionado = filas
-    .filter((f) => seleccionados.has(f.numero))
+    .filter((f) => seleccionados.has(f.id))
     .reduce((s, f) => s + f.comision_telcel, 0);
 
   const pagarSeleccionados = async () => {
@@ -141,11 +143,11 @@ const CLineasPage = () => {
     setErrorMsg(null);
     setResumen(null);
     try {
-      const numeros = Array.from(seleccionados);
+      const chip_ids = Array.from(seleccionados);
 
       const res = await axios.post(
         `https://ato-appservidor.onrender.com/ventas/venta_chips/pagar_comisiones`,
-        { numeros },
+        { chip_ids },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -285,16 +287,16 @@ const CLineasPage = () => {
                 ) : (
                   filas.map((f) => (
                     <TableRow
-                      key={f.numero}
+                      key={f.id}
                       hover
-                      selected={seleccionados.has(f.numero)}
-                      onClick={() => toggleFila(f.numero)}
+                      selected={seleccionados.has(f.id)}
+                      onClick={() => toggleFila(f.id)}
                       sx={{ cursor: "pointer" }}
                     >
                       <TableCell padding="checkbox">
                         <Checkbox
-                          checked={seleccionados.has(f.numero)}
-                          onChange={() => toggleFila(f.numero)}
+                          checked={seleccionados.has(f.id)}
+                          onChange={() => toggleFila(f.id)}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </TableCell>
