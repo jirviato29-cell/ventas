@@ -7,9 +7,10 @@ import {
 } from "@mui/material";
 import {
   AddCircle, CheckCircle, CloudUpload, Error as ErrorIcon,
-  HelpOutline, Refresh, Visibility,
+  FileDownload, HelpOutline, Refresh, Visibility,
 } from "@mui/icons-material";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { Modulo } from "../Types";
 
 const BASE = "https://ato-appservidor.onrender.com";
@@ -236,6 +237,27 @@ const ConteosFisicos = () => {
     } catch (e: any) {
       alert(e.response?.data?.detail ?? "Error al revertir el conteo");
     } finally { setRevirtiendoFolio(null); }
+  };
+
+  const handleDescargarExcel = () => {
+    if (!detalle) return;
+    const filas = resumenDetalle.items;
+    const fechaStr = new Date(detalle.fecha).toLocaleString("es-MX");
+    const encabezado = [
+      ["Folio", detalle.folio, "", "Módulo", detalle.modulo, "", "Fecha", fechaStr],
+      [],
+      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado"],
+    ];
+    const datos = filas.map(i => {
+      const dif = i.diferencia;
+      const estado = dif === 0 ? "Cuadra" : dif < 0 ? "Falta" : "Sobra";
+      return [i.clave, i.producto, i.cantidad_anterior, i.cantidad_nueva, dif, estado];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([...encabezado, ...datos]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Conteo");
+    const nombre = `Conteo_${detalle.folio}_${detalle.modulo}.xlsx`;
+    XLSX.writeFile(wb, nombre);
   };
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -727,6 +749,13 @@ const ConteosFisicos = () => {
                   sx={{ fontSize: 11, ml: "auto" }}
                 >
                   {soloDescuadres ? "Ver todos" : "Solo descuadres"}
+                </Button>
+                <Button
+                  size="small" variant="outlined" startIcon={<FileDownload sx={{ fontSize: 14 }} />}
+                  onClick={handleDescargarExcel}
+                  sx={{ fontSize: 11 }}
+                >
+                  Descargar Excel
                 </Button>
               </Box>
               <TableContainer>
