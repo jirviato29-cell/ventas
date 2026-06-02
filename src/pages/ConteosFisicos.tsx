@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert, Box, Button, Checkbox, Chip, CircularProgress, Container,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
@@ -83,11 +83,13 @@ const ConteosFisicos = () => {
   // Historial
   const [historial, setHistorial]     = useState<ConteoListItem[]>([]);
   const [cargandoHist, setCargandoHist] = useState(false);
+  const [filtroModulo, setFiltroModulo] = useState("");
 
   // Detalle modal
   const [detalle, setDetalle]         = useState<ConteoDetalle | null>(null);
   const [modalDetalle, setModalDetalle] = useState(false);
   const [cargandoDet, setCargandoDet] = useState(false);
+  const [soloDescuadres, setSoloDescuadres] = useState(false);
 
   // Revertir
   const [confirmFolio, setConfirmFolio]   = useState<string | null>(null);
@@ -215,6 +217,7 @@ const ConteosFisicos = () => {
     setCargandoDet(true);
     setDetalle(null);
     setModalDetalle(true);
+    setSoloDescuadres(false);
     try {
       const r = await axios.get(`${BASE}/conteos-fisicos/${folio}/detalle`, config);
       setDetalle(r.data);
@@ -242,12 +245,30 @@ const ConteosFisicos = () => {
     : 0;
   const hayAlgoQueAplicar = totalCambios > 0;
 
+  const historialFiltrado = filtroModulo
+    ? historial.filter(c => c.modulo.toLowerCase().includes(filtroModulo.toLowerCase()))
+    : historial;
+
   const accionColor = (accion: string) => {
     if (accion === "creado")         return "info";
     if (accion === "puesto_en_cero") return "error";
     if (accion === "conservado")     return "default";
     return "success";
   };
+
+  const resumenDetalle = useMemo(() => {
+    if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number })[] };
+    const items = detalle.items.map(i => ({
+      ...i,
+      diferencia: (i.cantidad_nueva ?? 0) - (i.cantidad_anterior ?? 0),
+    }));
+    return {
+      cuadran:   items.filter(i => i.diferencia === 0).length,
+      faltantes: items.filter(i => i.diferencia < 0).length,
+      sobrantes: items.filter(i => i.diferencia > 0).length,
+      items: soloDescuadres ? items.filter(i => i.diferencia !== 0) : items,
+    };
+  }, [detalle, soloDescuadres]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -583,14 +604,23 @@ const ConteosFisicos = () => {
 
       {/* ─── SECCIÓN 3: HISTORIAL ───────────────────────────────────────────── */}
       <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>Historial de conteos</Typography>
-          <Button
-            size="small" startIcon={<Refresh />}
-            onClick={cargarHistorial} disabled={cargandoHist}
-          >
-            Actualizar
-          </Button>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <TextField
+              size="small" placeholder="Filtrar por módulo…"
+              value={filtroModulo}
+              onChange={e => setFiltroModulo(e.target.value)}
+              sx={{ width: 180 }}
+              inputProps={{ style: { fontSize: 13 } }}
+            />
+            <Button
+              size="small" startIcon={<Refresh />}
+              onClick={cargarHistorial} disabled={cargandoHist}
+            >
+              Actualizar
+            </Button>
+          </Box>
         </Box>
 
         {cargandoHist ? (
@@ -598,6 +628,12 @@ const ConteosFisicos = () => {
         ) : historial.length === 0 ? (
           <Typography color="text.secondary">Sin conteos registrados.</Typography>
         ) : (
+          <>
+            {filtroModulo && (
+              <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
+                {historialFiltrado.length} de {historial.length} conteos
+              </Typography>
+            )}
           <TableContainer>
             <Table size="small">
               <TableHead>
@@ -614,7 +650,7 @@ const ConteosFisicos = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historial.map(c => (
+                {historialFiltrado.map(c => (
                   <TableRow key={c.id}>
                     <TableCell sx={{ ...cellSx, fontWeight: 700, color: "#f97316" }}>{c.folio}</TableCell>
                     <TableCell sx={cellSx}>{c.modulo}</TableCell>
@@ -656,6 +692,7 @@ const ConteosFisicos = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          </>
         )}
       </Paper>
 
@@ -675,37 +712,63 @@ const ConteosFisicos = () => {
           ) : !detalle ? (
             <Typography>No se pudo cargar el detalle.</Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={headSx}>Clave</TableCell>
-                    <TableCell sx={headSx}>Producto</TableCell>
-                    <TableCell sx={{ ...headSx, textAlign: "right" }}>Anterior</TableCell>
-                    <TableCell sx={{ ...headSx, textAlign: "right" }}>Nueva</TableCell>
-                    <TableCell sx={headSx}>Acción</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {detalle.items.map(i => (
-                    <TableRow key={i.id}>
-                      <TableCell sx={cellSx}>{i.clave}</TableCell>
-                      <TableCell sx={cellSx}>{i.producto}</TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right" }}>{i.cantidad_anterior}</TableCell>
-                      <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>{i.cantidad_nueva}</TableCell>
-                      <TableCell sx={cellSx}>
-                        <Chip
-                          label={i.accion.replace(/_/g, " ")}
-                          size="small"
-                          color={accionColor(i.accion) as any}
-                          sx={{ fontSize: 11 }}
-                        />
-                      </TableCell>
+            <>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                <Chip label={`${resumenDetalle.cuadran} cuadran`} size="small"
+                  sx={{ bgcolor: "#dcfce7", color: "#16a34a", fontWeight: 700 }} />
+                <Chip label={`${resumenDetalle.faltantes} faltantes`} size="small"
+                  sx={{ bgcolor: "#fee2e2", color: "#dc2626", fontWeight: 700 }} />
+                <Chip label={`${resumenDetalle.sobrantes} sobrantes`} size="small"
+                  sx={{ bgcolor: "#dbeafe", color: "#2563eb", fontWeight: 700 }} />
+                <Button
+                  size="small"
+                  variant={soloDescuadres ? "contained" : "outlined"}
+                  onClick={() => setSoloDescuadres(v => !v)}
+                  sx={{ fontSize: 11, ml: "auto" }}
+                >
+                  {soloDescuadres ? "Ver todos" : "Solo descuadres"}
+                </Button>
+              </Box>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={headSx}>Clave</TableCell>
+                      <TableCell sx={headSx}>Producto</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Anterior</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Nueva</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Diferencia</TableCell>
+                      <TableCell sx={headSx}>Acción</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {resumenDetalle.items.map(i => {
+                      const dif = i.diferencia;
+                      const difColor = dif === 0 ? "#16a34a" : dif < 0 ? "#dc2626" : "#2563eb";
+                      return (
+                        <TableRow key={i.id}>
+                          <TableCell sx={cellSx}>{i.clave}</TableCell>
+                          <TableCell sx={cellSx}>{i.producto}</TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "right" }}>{i.cantidad_anterior}</TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>{i.cantidad_nueva}</TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700, color: difColor }}>
+                            {dif > 0 ? `+${dif}` : dif}
+                          </TableCell>
+                          <TableCell sx={cellSx}>
+                            <Chip
+                              label={i.accion.replace(/_/g, " ")}
+                              size="small"
+                              color={accionColor(i.accion) as any}
+                              sx={{ fontSize: 11 }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           )}
         </DialogContent>
         <DialogActions>
