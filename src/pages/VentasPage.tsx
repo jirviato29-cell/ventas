@@ -156,7 +156,10 @@ const TEL_EXACT_MAP: Record<string, number> = {
   'TELEFONO TELCEL ZTE V60 SMART': 100,
 };
 
-const calcComision = (v: Venta): number => {
+const calcComision = (
+  v: Venta,
+  catalogo: { producto: string; cantidad: number }[]
+): number => {
   const nombre = (v.producto || '').toUpperCase();
   if (v.tipo_producto === 'telefono') {
     const tipo = (v.tipo_venta || '').toLowerCase();
@@ -168,10 +171,8 @@ const calcComision = (v: Venta): number => {
     return 0;
   }
   if (v.tipo_producto === 'accesorios') {
-    for (const [keyword, comision] of ACC_KEYWORDS) {
-      if (nombre.includes(keyword)) return comision;
-    }
-    return 0;
+    const item = catalogo.find((c) => c.producto.toUpperCase() === nombre);
+    return item ? item.cantidad : 0;
   }
   return 0;
 };
@@ -500,6 +501,7 @@ const FormularioVentaMultiple = () => {
       }
     };
     fetchProductos();
+    fetchCatalogoComisiones();
   }, []);
 
   useEffect(() => {
@@ -801,8 +803,8 @@ const FormularioVentaMultiple = () => {
   const ventasHoyTel = ventas.filter((v) => v.tipo_producto === 'telefono' && v.fecha?.startsWith(HOY)).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
   const chipsHoy = chipsDelDia;
 
-  const comisionAccHoy  = ventasHoyAcc.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
-  const comisionTelHoy  = ventasHoyTel.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
+  const comisionAccHoy  = ventasHoyAcc.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v, catalogoComisiones), 0);
+  const comisionTelHoy  = ventasHoyTel.filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v, catalogoComisiones), 0);
   const totalComisionHoy = comisionAccHoy + comisionTelHoy;
 
   const totalPesosAcc = ventasHoyAcc.filter((v) => !v.cancelada).reduce((s, v) => s + v.precio_unitario * v.cantidad, 0);
@@ -1264,7 +1266,7 @@ const FormularioVentaMultiple = () => {
       .filter((v) => !v.cancelada)
       .reduce((s, v) => s + v.precio_unitario * v.cantidad, 0);
     const totalMisVentasComision =
-      [...misVentasAcc, ...misVentasTel].filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
+      [...misVentasAcc, ...misVentasTel].filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v, catalogoComisiones), 0);
 
     const tablaComisionesItems = [
       ...catalogoComisiones.map((c) => ({
@@ -1410,7 +1412,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
                               <DeleteIcon fontSize="small" />
@@ -1423,7 +1425,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
                               <DeleteIcon fontSize="small" />
@@ -1576,7 +1578,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
                               {v.cancelada ? 'Cancelada' : 'Activa'}
@@ -1589,7 +1591,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
                               {v.cancelada ? 'Cancelada' : 'Activa'}
@@ -2168,7 +2170,7 @@ const FormularioVentaMultiple = () => {
   const misVentasAccEnc  = misVentasData.filter((v) => v.tipo_producto === 'accesorios' && v.empleado?.username === usuarioActualEnc);
   const misVentasTelEnc  = misVentasData.filter((v) => v.tipo_producto === 'telefono'   && v.empleado?.username === usuarioActualEnc);
   const totalMisVentasPesosEnc     = [...misVentasAccEnc, ...misVentasTelEnc].filter((v) => !v.cancelada).reduce((s, v) => s + v.precio_unitario * v.cantidad, 0);
-  const totalMisVentasComisionEnc  = [...misVentasAccEnc, ...misVentasTelEnc].filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v), 0);
+  const totalMisVentasComisionEnc  = [...misVentasAccEnc, ...misVentasTelEnc].filter((v) => !v.cancelada).reduce((s, v) => s + calcComision(v, catalogoComisiones), 0);
   const tablaComisionesItemsEnc = [
     ...catalogoComisiones.map((c) => ({ nombre: c.producto, comision: c.cantidad, esTelefono: c.producto.toUpperCase().startsWith('TELEFONO') })),
     { nombre: 'Contado',  comision: 10,  esTelefono: true },
@@ -2241,7 +2243,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
                               <DeleteIcon fontSize="small" />
@@ -2254,7 +2256,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                          <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                          <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
                               <DeleteIcon fontSize="small" />
@@ -2365,7 +2367,7 @@ const FormularioVentaMultiple = () => {
                     <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                     <td style={tdStyle}>{v.producto}</td>
                     <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                    <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                    <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                     <td style={tdStyle}>
                       <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
                         {v.cancelada ? 'Cancelada' : 'Activa'}
@@ -2378,7 +2380,7 @@ const FormularioVentaMultiple = () => {
                     <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                     <td style={tdStyle}>{v.producto}</td>
                     <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
-                    <td style={tdStyle}>${fmt(calcComision(v))}</td>
+                    <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                     <td style={tdStyle}>
                       <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
                         {v.cancelada ? 'Cancelada' : 'Activa'}
