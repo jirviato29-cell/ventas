@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import {
   AddCircle, CheckCircle, CloudUpload, Error as ErrorIcon,
-  FileDownload, HelpOutline, Refresh, Visibility,
+  FileDownload, HelpOutline, QueryStats, Refresh, Visibility,
 } from "@mui/icons-material";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -57,6 +57,22 @@ interface ConteoListItem {
 }
 interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
 
+interface KardexLinea {
+  fecha: string; tipo: string;
+  entrada: number; salida: number; existencia: number;
+}
+interface KardexConteoAnterior { folio: string; fecha: string; saldo_inicial: number; }
+interface KardexData {
+  clave: string; producto: string; modulo: string;
+  tiene_comparativo: boolean;
+  conteo_anterior: KardexConteoAnterior | null;
+  movimientos: KardexLinea[];
+  total_entradas: number; total_salidas: number;
+  saldo_calculado: number | null;
+  contado: number;
+  diferencia: number | null;
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 const ConteosFisicos = () => {
@@ -95,6 +111,11 @@ const ConteosFisicos = () => {
   // Revertir
   const [confirmFolio, setConfirmFolio]   = useState<string | null>(null);
   const [revirtiendoFolio, setRevirtiendoFolio] = useState<string | null>(null);
+
+  // Kardex modal
+  const [kardexOpen, setKardexOpen]       = useState(false);
+  const [kardexLoading, setKardexLoading] = useState(false);
+  const [kardexData, setKardexData]       = useState<KardexData | null>(null);
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -237,6 +258,38 @@ const ConteosFisicos = () => {
     } catch (e: any) {
       alert(e.response?.data?.detail ?? "Error al revertir el conteo");
     } finally { setRevirtiendoFolio(null); }
+  };
+
+  const handleVerKardex = async (clave: string) => {
+    if (!detalle) return;
+    setKardexData(null);
+    setKardexLoading(true);
+    setKardexOpen(true);
+    try {
+      const r = await axios.get(`${BASE}/conteos-fisicos/${detalle.folio}/kardex/${clave}`, config);
+      setKardexData(r.data);
+    } catch { setKardexData(null); }
+    finally { setKardexLoading(false); }
+  };
+
+  const handleDescargarExcelKardex = () => {
+    if (!kardexData || !detalle) return;
+    const encabezado = [
+      ["Producto", kardexData.producto, "", "Clave", kardexData.clave, "", "Módulo", kardexData.modulo, "", "Folio", detalle.folio],
+      [],
+      ["Fecha", "Tipo", "Entrada", "Salida", "Existencia"],
+    ];
+    const datos = kardexData.movimientos.map(m => [
+      new Date(m.fecha).toLocaleString("es-MX"),
+      m.tipo,
+      m.entrada,
+      m.salida,
+      m.existencia,
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([...encabezado, ...datos]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Kardex");
+    XLSX.writeFile(wb, `Kardex_${detalle.folio}_${kardexData.clave}.xlsx`);
   };
 
   const handleDescargarExcel = () => {
@@ -768,6 +821,7 @@ const ConteosFisicos = () => {
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Nueva</TableCell>
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Diferencia</TableCell>
                       <TableCell sx={headSx}>Acción</TableCell>
+                      <TableCell sx={headSx}>Kardex</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -791,6 +845,16 @@ const ConteosFisicos = () => {
                               sx={{ fontSize: 11 }}
                             />
                           </TableCell>
+                          <TableCell sx={cellSx}>
+                            <Button
+                              size="small"
+                              startIcon={<QueryStats sx={{ fontSize: 14 }} />}
+                              onClick={() => handleVerKardex(i.clave)}
+                              sx={{ fontSize: 11, color: "#7c3aed" }}
+                            >
+                              Kardex
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -802,6 +866,124 @@ const ConteosFisicos = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setModalDetalle(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── MODAL: KARDEX DE PRODUCTO ──────────────────────────────────────── */}
+      <Dialog open={kardexOpen} onClose={() => setKardexOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Kardex — {kardexData?.producto ?? "…"}
+          {kardexData && (
+            <Typography variant="body2" color="text.secondary">
+              {kardexData.clave} · {kardexData.modulo}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {kardexLoading ? (
+            <Box sx={{ textAlign: "center", py: 4 }}><CircularProgress /></Box>
+          ) : !kardexData ? (
+            <Typography color="error">No se pudo cargar el kardex.</Typography>
+          ) : (
+            <>
+              {!kardexData.tiene_comparativo && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Este es el primer conteo de este módulo. No hay saldo anterior para comparar.
+                  Desde el próximo conteo se podrá comparar contra este.
+                </Alert>
+              )}
+
+              {kardexData.tiene_comparativo && (
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+                  {[
+                    { label: "Saldo anterior", value: kardexData.conteo_anterior?.saldo_inicial ?? 0, color: "#64748b" },
+                    { label: "+ Entradas",     value: kardexData.total_entradas,  color: "#16a34a" },
+                    { label: "− Salidas",      value: kardexData.total_salidas,   color: "#dc2626" },
+                    { label: "= Calculado",    value: kardexData.saldo_calculado ?? 0, color: "#1e293b" },
+                    { label: "Contado",        value: kardexData.contado,         color: "#1e293b" },
+                    {
+                      label: "Diferencia",
+                      value: kardexData.diferencia ?? 0,
+                      color: (kardexData.diferencia ?? 0) === 0 ? "#16a34a"
+                           : (kardexData.diferencia ?? 0) < 0   ? "#dc2626"
+                           : "#2563eb",
+                    },
+                  ].map(({ label, value, color }) => (
+                    <Box key={label} sx={{ textAlign: "center", minWidth: 80 }}>
+                      <Typography variant="caption" color="text.secondary">{label}</Typography>
+                      <Typography sx={{ fontWeight: 700, color, fontSize: 16 }}>
+                        {typeof value === "number" && value > 0 && label === "Diferencia" ? `+${value}` : value}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+                <Button
+                  size="small" variant="outlined"
+                  startIcon={<FileDownload sx={{ fontSize: 14 }} />}
+                  onClick={handleDescargarExcelKardex}
+                  sx={{ fontSize: 11 }}
+                >
+                  Descargar Excel
+                </Button>
+              </Box>
+
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={headSx}>Fecha</TableCell>
+                      <TableCell sx={headSx}>Tipo</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Entrada</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Salida</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Existencia</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {kardexData.movimientos.map((m, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell sx={{ ...cellSx, whiteSpace: "nowrap" }}>
+                          {new Date(m.fecha).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
+                        </TableCell>
+                        <TableCell sx={cellSx}>
+                          <Chip
+                            label={m.tipo.replace(/_/g, " ")} size="small"
+                            sx={{
+                              fontSize: 10, fontWeight: 700,
+                              bgcolor: m.tipo === "VENTA" ? "#fee2e2"
+                                     : m.tipo === "ENTRADA" ? "#dcfce7"
+                                     : m.tipo === "CANCELACION_VENTA" ? "#dbeafe"
+                                     : m.tipo.startsWith("TRASPASO") ? "#fef9c3"
+                                     : "#f1f5f9",
+                              color: m.tipo === "VENTA" ? "#dc2626"
+                                   : m.tipo === "ENTRADA" ? "#16a34a"
+                                   : m.tipo === "CANCELACION_VENTA" ? "#2563eb"
+                                   : m.tipo.startsWith("TRASPASO") ? "#854d0e"
+                                   : "#475569",
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", color: "#16a34a", fontWeight: m.entrada > 0 ? 700 : 400 }}>
+                          {m.entrada > 0 ? `+${m.entrada}` : "—"}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", color: "#dc2626", fontWeight: m.salida > 0 ? 700 : 400 }}>
+                          {m.salida > 0 ? `-${m.salida}` : "—"}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>
+                          {m.existencia}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setKardexOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 
