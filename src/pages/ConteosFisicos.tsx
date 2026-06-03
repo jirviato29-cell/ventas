@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert, Box, Button, Checkbox, Chip, CircularProgress, Container,
+  Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, Container,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  Divider, MenuItem, Paper, Tab, Table, TableBody, TableCell,
+  Divider, IconButton, MenuItem, Paper, Tab, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Tabs, TextField, Typography,
 } from "@mui/material";
 import {
-  AddCircle, CheckCircle, CloudUpload, Error as ErrorIcon,
+  AddCircle, CheckCircle, CloudUpload, Delete, Error as ErrorIcon,
   FileDownload, HelpOutline, QueryStats, Refresh, Visibility,
 } from "@mui/icons-material";
 import axios from "axios";
@@ -56,6 +56,9 @@ interface ConteoListItem {
   productos_en_cero?: number; estado: string; notas?: string;
 }
 interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
+
+interface ProductoModulo { id: number; clave: string; producto: string; cantidad: number; }
+interface FilaCaptura   { clave: string; producto: string; cantidad: number; }
 
 interface KardexLinea {
   fecha: string; tipo: string;
@@ -112,6 +115,14 @@ const ConteosFisicos = () => {
   const [confirmFolio, setConfirmFolio]   = useState<string | null>(null);
   const [revirtiendoFolio, setRevirtiendoFolio] = useState<string | null>(null);
 
+  // Captura manual
+  const [modoCaptura, setModoCaptura]     = useState<"excel" | "manual">("excel");
+  const [catalogoModulo, setCatalogoModulo] = useState<ProductoModulo[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
+  const [prodSel, setProdSel]             = useState<ProductoModulo | null>(null);
+  const [cantInput, setCantInput]         = useState<string>("");
+  const [filasCaptura, setFilasCaptura]   = useState<FilaCaptura[]>([]);
+
   // Kardex modal
   const [kardexOpen, setKardexOpen]       = useState(false);
   const [kardexLoading, setKardexLoading] = useState(false);
@@ -125,6 +136,15 @@ const ConteosFisicos = () => {
       .catch(() => {});
     cargarHistorial();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!moduloId || modoCaptura !== "manual") return;
+    setCargandoCatalogo(true);
+    axios.get(`${BASE}/inventario/inventario/modulo`, { ...config, params: { modulo_id: moduloId } })
+      .then(r => setCatalogoModulo(r.data))
+      .catch(() => setCatalogoModulo([]))
+      .finally(() => setCargandoCatalogo(false));
+  }, [moduloId, modoCaptura]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -260,6 +280,53 @@ const ConteosFisicos = () => {
     } finally { setRevirtiendoFolio(null); }
   };
 
+  const handleAgregarFila = () => {
+    if (!prodSel || !cantInput) return;
+    const cant = parseInt(cantInput, 10);
+    if (isNaN(cant) || cant < 0) return;
+    setFilasCaptura(prev => {
+      const idx = prev.findIndex(f => f.clave === prodSel.clave);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], cantidad: next[idx].cantidad + cant };
+        return next;
+      }
+      return [...prev, { clave: prodSel.clave, producto: prodSel.producto, cantidad: cant }];
+    });
+    setProdSel(null);
+    setCantInput("");
+  };
+
+  const handleEliminarFila = (clave: string) => {
+    setFilasCaptura(prev => prev.filter(f => f.clave !== clave));
+  };
+
+  const handleProcesarCaptura = async () => {
+    if (!moduloId || filasCaptura.length === 0) return;
+    setProcesando(true);
+    setErrorMsg(null);
+    setPreview(null);
+    try {
+      const datos = filasCaptura.map(f => [f.clave, f.producto, f.cantidad]);
+      const ws = XLSX.utils.aoa_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Conteo");
+      const wbout: ArrayBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const file = new File([blob], "captura_manual.xlsx", { type: blob.type });
+      const form = new FormData();
+      form.append("modulo_id", String(moduloId));
+      form.append("archivo", file);
+      const r = await axios.post(`${BASE}/conteos-fisicos/procesar`, form, config);
+      setPreview(r.data);
+      setTabIdx(0);
+    } catch (e: any) {
+      setErrorMsg(e.response?.data?.detail ?? "Error al procesar la captura manual");
+    } finally {
+      setProcesando(false);
+    }
+  };
+
   const handleVerKardex = async (clave: string) => {
     if (!detalle) return;
     setKardexData(null);
@@ -361,71 +428,191 @@ const ConteosFisicos = () => {
 
       {/* ─── SECCIÓN 1: NUEVA IMPORTACIÓN ──────────────────────────────────── */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-          Nueva importación
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>Nueva importación</Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              size="small"
+              variant={modoCaptura === "excel" ? "contained" : "outlined"}
+              onClick={() => setModoCaptura("excel")}
+              sx={{ fontSize: 12, ...(modoCaptura === "excel" ? { bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } } : {}) }}
+            >
+              Subir Excel
+            </Button>
+            <Button
+              size="small"
+              variant={modoCaptura === "manual" ? "contained" : "outlined"}
+              onClick={() => setModoCaptura("manual")}
+              sx={{ fontSize: 12, ...(modoCaptura === "manual" ? { bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } } : {}) }}
+            >
+              Captura manual
+            </Button>
+          </Box>
+        </Box>
 
         <TextField
           select label="Módulo destino" value={moduloId} size="small"
           sx={{ minWidth: 260, mb: 2, display: "block" }}
-          onChange={e => { setModuloId(Number(e.target.value)); setPreview(null); }}
+          onChange={e => { setModuloId(Number(e.target.value)); setPreview(null); setFilasCaptura([]); }}
         >
           {modulos.map(m => <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>)}
         </TextField>
 
-        {/* Drag & Drop Zone */}
-        <Box
-          sx={{
-            border: `2px dashed ${dragging ? "#f97316" : "#94a3b8"}`,
-            borderRadius: 2, p: 4, textAlign: "center", cursor: "pointer",
-            bgcolor: dragging ? "rgba(249,115,22,0.05)" : "#f8fafc",
-            transition: "border-color 0.2s, background-color 0.2s",
-            mb: 2, userSelect: "none",
-          }}
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) seleccionarArchivo(f); }}
-          onClick={() => inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef} type="file" accept=".xlsx" hidden
-            onChange={e => { const f = e.target.files?.[0]; if (f) seleccionarArchivo(f); e.target.value = ""; }}
-          />
-          <CloudUpload sx={{ fontSize: 48, color: dragging ? "#f97316" : "#94a3b8", mb: 1 }} />
-          {archivo ? (
-            <Typography sx={{ fontWeight: 700, color: "#f97316" }}>
-              📄 {archivo.name}{"  "}
-              <span style={{ color: "#64748b", fontWeight: 400 }}>
-                ({(archivo.size / 1024).toFixed(1)} KB)
-              </span>
-            </Typography>
-          ) : (
-            <>
-              <Typography sx={{ fontWeight: 600, color: "#475569" }}>
-                Arrastra tu archivo .xlsx aquí
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                o haz clic para seleccionarlo · máx. 10 MB
-              </Typography>
-            </>
-          )}
-        </Box>
+        {modoCaptura === "excel" ? (
+          <>
+            {/* Drag & Drop Zone */}
+            <Box
+              sx={{
+                border: `2px dashed ${dragging ? "#f97316" : "#94a3b8"}`,
+                borderRadius: 2, p: 4, textAlign: "center", cursor: "pointer",
+                bgcolor: dragging ? "rgba(249,115,22,0.05)" : "#f8fafc",
+                transition: "border-color 0.2s, background-color 0.2s",
+                mb: 2, userSelect: "none",
+              }}
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) seleccionarArchivo(f); }}
+              onClick={() => inputRef.current?.click()}
+            >
+              <input
+                ref={inputRef} type="file" accept=".xlsx" hidden
+                onChange={e => { const f = e.target.files?.[0]; if (f) seleccionarArchivo(f); e.target.value = ""; }}
+              />
+              <CloudUpload sx={{ fontSize: 48, color: dragging ? "#f97316" : "#94a3b8", mb: 1 }} />
+              {archivo ? (
+                <Typography sx={{ fontWeight: 700, color: "#f97316" }}>
+                  📄 {archivo.name}{"  "}
+                  <span style={{ color: "#64748b", fontWeight: 400 }}>
+                    ({(archivo.size / 1024).toFixed(1)} KB)
+                  </span>
+                </Typography>
+              ) : (
+                <>
+                  <Typography sx={{ fontWeight: 600, color: "#475569" }}>
+                    Arrastra tu archivo .xlsx aquí
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    o haz clic para seleccionarlo · máx. 10 MB
+                  </Typography>
+                </>
+              )}
+            </Box>
 
-        {errorMsg && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>
-            {errorMsg}
-          </Alert>
+            {errorMsg && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>
+                {errorMsg}
+              </Alert>
+            )}
+
+            <Button
+              variant="contained"
+              disabled={!moduloId || !archivo || procesando}
+              onClick={handleProcesar}
+              sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}
+              startIcon={procesando ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {procesando ? "Procesando…" : "Procesar archivo"}
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* ── Captura manual ── */}
+            {!moduloId ? (
+              <Alert severity="info" sx={{ mb: 2 }}>Selecciona un módulo para cargar el catálogo.</Alert>
+            ) : cargandoCatalogo ? (
+              <Box sx={{ py: 2 }}><CircularProgress size={24} /></Box>
+            ) : (
+              <>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", mb: 2, flexWrap: "wrap" }}>
+                  <Autocomplete
+                    options={catalogoModulo}
+                    getOptionLabel={o => `${o.clave} — ${o.producto}`}
+                    filterOptions={(opts, { inputValue }) => {
+                      const q = inputValue.toUpperCase();
+                      return opts.filter(o =>
+                        o.clave.toUpperCase().includes(q) || o.producto.toUpperCase().includes(q)
+                      );
+                    }}
+                    value={prodSel}
+                    onChange={(_, v) => setProdSel(v)}
+                    renderInput={params => (
+                      <TextField {...params} label="Buscar por clave o nombre" size="small" sx={{ minWidth: 320 }} />
+                    )}
+                    noOptionsText="Sin coincidencias"
+                    isOptionEqualToValue={(o, v) => o.clave === v.clave}
+                  />
+                  <TextField
+                    label="Cantidad" size="small" type="number"
+                    value={cantInput}
+                    onChange={e => setCantInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleAgregarFila(); }}
+                    sx={{ width: 110 }}
+                    inputProps={{ min: 0 }}
+                  />
+                  <Button
+                    variant="contained" size="small"
+                    disabled={!prodSel || cantInput === "" || parseInt(cantInput, 10) < 0}
+                    onClick={handleAgregarFila}
+                    startIcon={<AddCircle sx={{ fontSize: 16 }} />}
+                    sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" }, height: 40 }}
+                  >
+                    Agregar
+                  </Button>
+                </Box>
+
+                {filasCaptura.length > 0 && (
+                  <>
+                    <TableContainer sx={{ mb: 2, maxHeight: 320 }}>
+                      <Table size="small" stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={headSx}>Clave</TableCell>
+                            <TableCell sx={headSx}>Producto</TableCell>
+                            <TableCell sx={{ ...headSx, textAlign: "right" }}>Cantidad</TableCell>
+                            <TableCell sx={headSx}></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {filasCaptura.map(f => (
+                            <TableRow key={f.clave}>
+                              <TableCell sx={{ ...cellSx, fontWeight: 700, color: "#f97316" }}>{f.clave}</TableCell>
+                              <TableCell sx={cellSx}>{f.producto}</TableCell>
+                              <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700 }}>{f.cantidad}</TableCell>
+                              <TableCell sx={cellSx}>
+                                <IconButton size="small" color="error" onClick={() => handleEliminarFila(f.clave)}>
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                      {filasCaptura.length} producto(s) · {filasCaptura.reduce((s, f) => s + f.cantidad, 0)} unidades totales
+                    </Typography>
+                  </>
+                )}
+
+                {errorMsg && (
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>
+                    {errorMsg}
+                  </Alert>
+                )}
+
+                <Button
+                  variant="contained"
+                  disabled={!moduloId || filasCaptura.length === 0 || procesando}
+                  onClick={handleProcesarCaptura}
+                  sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}
+                  startIcon={procesando ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
+                  {procesando ? "Procesando…" : `Procesar captura (${filasCaptura.length} productos)`}
+                </Button>
+              </>
+            )}
+          </>
         )}
-
-        <Button
-          variant="contained"
-          disabled={!moduloId || !archivo || procesando}
-          onClick={handleProcesar}
-          sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}
-          startIcon={procesando ? <CircularProgress size={16} color="inherit" /> : undefined}
-        >
-          {procesando ? "Procesando…" : "Procesar archivo"}
-        </Button>
       </Paper>
 
       {/* ─── SECCIÓN 2: VISTA PREVIA ─────────────────────────────────────── */}
