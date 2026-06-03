@@ -30,3 +30,4 @@ yarn-error.log*
 # backups locales y tokens temporales — nunca subir a GitHub
 backup_venta_chips_*.json
 .env.backup_temp
+check_duplicados.py
