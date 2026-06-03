@@ -57,7 +57,7 @@ interface ConteoListItem {
 }
 interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
 
-interface ProductoModulo { id: number; clave: string; producto: string; cantidad: number; }
+interface ProductoModulo { id: number; clave: string; producto: string; precio?: number; }
 interface FilaCaptura   { clave: string; producto: string; cantidad: number; }
 
 interface KardexLinea {
@@ -117,8 +117,10 @@ const ConteosFisicos = () => {
 
   // Captura manual
   const [modoCaptura, setModoCaptura]     = useState<"excel" | "manual">("excel");
-  const [catalogoModulo, setCatalogoModulo] = useState<ProductoModulo[]>([]);
-  const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
+  const [opcionesBusqueda, setOpcionesBusqueda] = useState<ProductoModulo[]>([]);
+  const [busquedaLoading, setBusquedaLoading]   = useState(false);
+  const [busquedaInput, setBusquedaInput]       = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [prodSel, setProdSel]             = useState<ProductoModulo | null>(null);
   const [cantInput, setCantInput]         = useState<string>("");
   const [filasCaptura, setFilasCaptura]   = useState<FilaCaptura[]>([]);
@@ -138,13 +140,17 @@ const ConteosFisicos = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!moduloId || modoCaptura !== "manual") return;
-    setCargandoCatalogo(true);
-    axios.get(`${BASE}/inventario/inventario/modulo`, { ...config, params: { modulo_id: moduloId } })
-      .then(r => setCatalogoModulo(r.data))
-      .catch(() => setCatalogoModulo([]))
-      .finally(() => setCargandoCatalogo(false));
-  }, [moduloId, modoCaptura]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (busquedaInput.length < 2) { setOpcionesBusqueda([]); return; }
+    debounceRef.current = setTimeout(() => {
+      setBusquedaLoading(true);
+      axios.get(`${BASE}/inventario/inventario/buscar-autocomplete`, { params: { q: busquedaInput } })
+        .then(r => setOpcionesBusqueda(r.data))
+        .catch(() => setOpcionesBusqueda([]))
+        .finally(() => setBusquedaLoading(false));
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [busquedaInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -518,27 +524,37 @@ const ConteosFisicos = () => {
           <>
             {/* ── Captura manual ── */}
             {!moduloId ? (
-              <Alert severity="info" sx={{ mb: 2 }}>Selecciona un módulo para cargar el catálogo.</Alert>
-            ) : cargandoCatalogo ? (
-              <Box sx={{ py: 2 }}><CircularProgress size={24} /></Box>
+              <Alert severity="info" sx={{ mb: 2 }}>Selecciona un módulo destino para continuar.</Alert>
             ) : (
               <>
                 <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", mb: 2, flexWrap: "wrap" }}>
                   <Autocomplete
-                    options={catalogoModulo}
+                    options={opcionesBusqueda}
                     getOptionLabel={o => `${o.clave} — ${o.producto}`}
-                    filterOptions={(opts, { inputValue }) => {
-                      const q = inputValue.toUpperCase();
-                      return opts.filter(o =>
-                        o.clave.toUpperCase().includes(q) || o.producto.toUpperCase().includes(q)
-                      );
-                    }}
+                    filterOptions={(x) => x}
                     value={prodSel}
                     onChange={(_, v) => setProdSel(v)}
+                    inputValue={busquedaInput}
+                    onInputChange={(_, val) => setBusquedaInput(val)}
+                    loading={busquedaLoading}
                     renderInput={params => (
-                      <TextField {...params} label="Buscar por clave o nombre" size="small" sx={{ minWidth: 320 }} />
+                      <TextField
+                        {...params}
+                        label="Buscar por clave o nombre"
+                        size="small"
+                        sx={{ minWidth: 320 }}
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {busquedaLoading ? <CircularProgress size={14} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
                     )}
-                    noOptionsText="Sin coincidencias"
+                    noOptionsText={busquedaInput.length < 2 ? "Escribe al menos 2 caracteres" : "Sin coincidencias"}
                     isOptionEqualToValue={(o, v) => o.clave === v.clave}
                   />
                   <TextField
