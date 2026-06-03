@@ -94,8 +94,8 @@ export default function NominaEmpleado() {
   const fetchHistorial = async (semanaInicio?: string) => {
     const headers = { Authorization: `Bearer ${token}` };
     const url = semanaInicio
-      ? `https://ato-appservidor.onrender.com/nomina/mi-historial?semana_inicio=${semanaInicio}`
-      : `https://ato-appservidor.onrender.com/nomina/mi-historial`;
+      ? `https://ato-appservidor-nvxt.onrender.com/nomina/mi-historial?semana_inicio=${semanaInicio}`
+      : `https://ato-appservidor-nvxt.onrender.com/nomina/mi-historial`;
     try {
       const res = await fetch(url, { headers });
       if (res.ok) {
@@ -115,7 +115,7 @@ export default function NominaEmpleado() {
       const headers = { Authorization: `Bearer ${token}` };
 
       try {
-        const res = await fetch(`https://ato-appservidor.onrender.com/nomina/mi-resumen`, { headers });
+        const res = await fetch(`https://ato-appservidor-nvxt.onrender.com/nomina/mi-resumen`, { headers });
         if (res.ok) setData(await res.json());
       } catch (_) {}
 

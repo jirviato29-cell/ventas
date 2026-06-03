@@ -36,7 +36,7 @@ const CrearUsuario = () => {
     const cfg = { headers: { Authorization: `Bearer ${localToken}` } };
     const fetchModulos = async () => {
       try {
-        const res = await axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, cfg);
+        const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/modulos`, cfg);
         setModulos(res.data);
       } catch {
         console.error("Error al cargar módulos");
@@ -50,7 +50,7 @@ const CrearUsuario = () => {
   const handleSubmit = async () => {
     try {
       await axios.post(
-        `https://ato-appservidor.onrender.com/registro/registro`,
+        `https://ato-appservidor-nvxt.onrender.com/registro/registro`,
         {
           nombre_completo: nombreCompleto,
           username,

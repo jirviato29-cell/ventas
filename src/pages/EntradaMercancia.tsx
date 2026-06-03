@@ -199,7 +199,7 @@ const EntradaMercancia = () => {
   const cargarModulos = async () => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/registro/modulos`,
+        `https://ato-appservidor-nvxt.onrender.com/registro/modulos`,
         config
       );
       setModulos(res.data);
@@ -231,7 +231,7 @@ const EntradaMercancia = () => {
       if (mod) params.modulo_id = mod as number;
 
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/inventario/entradas`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas`,
         { params, ...config }
       );
       setHistorialResultados(res.data);
@@ -271,7 +271,7 @@ const EntradaMercancia = () => {
     setEncargado(null);
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/modulos/${moduloId}/encargado`,
+        `https://ato-appservidor-nvxt.onrender.com/modulos/${moduloId}/encargado`,
         config
       );
       setEncargado(res.data);
@@ -314,7 +314,7 @@ const EntradaMercancia = () => {
     try {
       setLoadingBusqueda(true);
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
       const textoBusqueda = texto.toLowerCase();
@@ -332,7 +332,7 @@ const EntradaMercancia = () => {
   const obtenerExistenciaModulo = async (clave: string) => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
         { params: { clave }, ...config }
       );
       return res.data.existencia_actual;
@@ -387,7 +387,7 @@ const EntradaMercancia = () => {
         })),
       };
       const res = await axios.post(
-        `https://ato-appservidor.onrender.com/inventario/inventario/entrada_mercancia`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entrada_mercancia`,
         payload,
         config
       );
@@ -413,7 +413,7 @@ const EntradaMercancia = () => {
     let enc: EncargadoInfo | null = null;
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/modulos/${entradaDetalle.modulo_id}/encargado`,
+        `https://ato-appservidor-nvxt.onrender.com/modulos/${entradaDetalle.modulo_id}/encargado`,
         config
       );
       enc = res.data ?? null;
@@ -437,7 +437,7 @@ const EntradaMercancia = () => {
   const cargarCurrentUser = async () => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/auth/usuarios/me`,
+        `https://ato-appservidor-nvxt.onrender.com/auth/usuarios/me`,
         config
       );
       setCurrentUser(res.data);
@@ -453,7 +453,7 @@ const EntradaMercancia = () => {
     setEliminandoEntrada(true);
     try {
       await axios.delete(
-        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
         config
       );
       setModalConfirmEliminar(false);
@@ -483,7 +483,7 @@ const EntradaMercancia = () => {
     setErrorDetalle(null);
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
         config
       );
       const productos = res.data.productos as Array<{
@@ -527,7 +527,7 @@ const EntradaMercancia = () => {
     try {
       setEditLoadingBusqueda(true);
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-autocomplete`,
         { params: { q: texto }, ...config }
       );
       setEditOpciones(res.data);
@@ -574,7 +574,7 @@ const EntradaMercancia = () => {
     setGuardandoEdicion(true);
     setErrorEditar(null);
     const payload = { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) };
-    const url = `https://ato-appservidor.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`;
+    const url = `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`;
     try {
       await axios.put(url, payload, config);
       setModalEditar(false);

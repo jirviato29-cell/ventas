@@ -78,7 +78,7 @@ const CLineasPage = () => {
       }
 
       const chipsRes = await axios.get(
-        `https://ato-appservidor.onrender.com/ventas/venta_chips/pendientes`,
+        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/pendientes`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -146,7 +146,7 @@ const CLineasPage = () => {
       const chip_ids = Array.from(seleccionados);
 
       const res = await axios.post(
-        `https://ato-appservidor.onrender.com/ventas/venta_chips/pagar_comisiones`,
+        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/pagar_comisiones`,
         { chip_ids },
         { headers: { Authorization: `Bearer ${token}` } }
       );

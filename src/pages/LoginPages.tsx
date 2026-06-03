@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
     formData.append('password', password);
 
     try {
-      const response = await axios.post(`https://ato-appservidor.onrender.com/auth/token`, formData, {
+      const response = await axios.post(`https://ato-appservidor-nvxt.onrender.com/auth/token`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 

@@ -17,7 +17,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import axios from 'axios';
 import { Navigate } from 'react-router-dom';
 
-const API = "https://ato-appservidor.onrender.com";
+const API = "https://ato-appservidor-nvxt.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` });
 
 const fmt$ = (n: number) =>

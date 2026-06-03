@@ -8,7 +8,7 @@ import axios from "axios";
 import { Traspaso } from "../Types";
 import Autocomplete from "@mui/material/Autocomplete";
 
-const BASE = "https://ato-appservidor.onrender.com";
+const BASE = "https://ato-appservidor-nvxt.onrender.com";
 
 const TraspasosEncargado = () => {
   const [producto, setProducto]   = useState("");

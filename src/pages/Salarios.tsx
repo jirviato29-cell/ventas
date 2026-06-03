@@ -31,7 +31,7 @@ import CrearNominaIncubadoraDialog from "../components/CrearNominaIncubadoraDial
 import VerNominaIncubadoraDialog from "../components/VerNominaIncubadoraDialog";
 import EditarNominaDialog from "../components/EditarNominaDialog";
 
-const API = "https://ato-appservidor.onrender.com";
+const API = "https://ato-appservidor-nvxt.onrender.com";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const ORANGE = "#f97316";

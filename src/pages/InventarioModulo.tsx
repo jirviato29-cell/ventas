@@ -75,20 +75,20 @@ const inputCantidadRef = useRef<HTMLInputElement>(null);
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
   const cargarModulos = async () => {
-    const res = await axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, config);
+    const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/modulos`, config);
     setModulos(res.data);
   };
 
   const cargarInventario = async () => {
     if (!moduloSeleccionado) return;
-    const res = await axios.get(`https://ato-appservidor.onrender.com/inventario/inventario/modulo?modulo_id=${moduloSeleccionado}`, config);
+    const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo?modulo_id=${moduloSeleccionado}`, config);
     setInventario(res.data);
   };
 
   const agregarProducto = async () => {
     try {
       if (tipo === 'producto') {
-        await axios.post(`https://ato-appservidor.onrender.com/inventario/inventario/modulo`, {
+        await axios.post(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo`, {
           producto: nuevo.producto,
           clave: nuevo.clave,
           cantidad: parseInt(nuevo.cantidad),
@@ -97,7 +97,7 @@ const inputCantidadRef = useRef<HTMLInputElement>(null);
           modulo_id: moduloSeleccionado,
         }, config);
       } else {
-        await axios.post(`https://ato-appservidor.onrender.com/inventario/inventario/modulo`, {
+        await axios.post(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo`, {
           producto: nuevo.producto,
           clave: nuevo.clave,
           cantidad: parseInt(nuevo.cantidad),
@@ -121,7 +121,7 @@ const congelarInventario = async () => {
 
   try {
     const response = await axios.get(
-      `https://ato-appservidor.onrender.com/inventario/inventario/congelar/${moduloSeleccionado}`,
+      `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/congelar/${moduloSeleccionado}`,
       {
         ...config,
         responseType: 'blob'
@@ -162,7 +162,7 @@ const buscarProductosConteo = async (texto: string) => {
   try {
     setLoadingConteo(true);
     const res = await axios.get(
-      `https://ato-appservidor.onrender.com/inventario/inventario/buscar-autocomplete`,
+      `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-autocomplete`,
       {
         params: {
           modulo_id: moduloSeleccionado,
@@ -279,7 +279,7 @@ const buscarProductosConteo = async (texto: string) => {
     };
 
     const res = await axios.post(
-      `https://ato-appservidor.onrender.com/inventario/guardar_conteo`,
+      `https://ato-appservidor-nvxt.onrender.com/inventario/guardar_conteo`,
       payload,
       config
     );
@@ -311,7 +311,7 @@ const buscarProductosConteo = async (texto: string) => {
   formData.append("modulo_id", moduloSeleccionado.toString());
 
   const res = await axios.post(
-    `https://ato-appservidor.onrender.com/inventario/preview_excel`,
+    `https://ato-appservidor-nvxt.onrender.com/inventario/preview_excel`,
     formData,
     {
       headers: {
@@ -343,7 +343,7 @@ const buscarProductosConteo = async (texto: string) => {
 
     try {
       const res = await axios.post(
-        `https://ato-appservidor.onrender.com/inventario/actualizar_inventario_excel`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/actualizar_inventario_excel`,
         formData,
         {
           headers: {
@@ -370,7 +370,7 @@ const buscarProductosConteo = async (texto: string) => {
 
     try {
       await axios.put(
-        `https://ato-appservidor.onrender.com/inventario/inventario/modulo/${encodeURIComponent(selectedItem.producto)}`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo/${encodeURIComponent(selectedItem.producto)}`,
         { cantidad: parseInt(nuevaCantidad), modulo_id: moduloSeleccionado },
         config
       );
@@ -384,7 +384,7 @@ const buscarProductosConteo = async (texto: string) => {
 
   const guardarEdicion = async (producto: string) => {
     try {
-      await axios.put(`https://ato-appservidor.onrender.com/inventario/inventario/modulo/${encodeURIComponent(producto)}`, {
+      await axios.put(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo/${encodeURIComponent(producto)}`, {
         cantidad: parseInt(editarData.cantidad),
         precio: parseFloat(editarData.precio),
         modulo_id: moduloSeleccionado
@@ -399,7 +399,7 @@ const buscarProductosConteo = async (texto: string) => {
   const eliminarProducto = async (id: number) => {
     if (!window.confirm("¿Eliminar este producto del módulo?")) return;
     try {
-      await axios.delete(`https://ato-appservidor.onrender.com/inventario/inventario/modulo/${id}?modulo=${moduloSeleccionado}`, config);
+      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo/${id}?modulo=${moduloSeleccionado}`, config);
       cargarInventario();
     } catch {
       alert("Error al eliminar");
@@ -424,7 +424,7 @@ const descargarInventario = async () => {
 
   try {
     const res = await axios.get(
-      `https://ato-appservidor.onrender.com/inventario/inventario/descargar/${moduloSeleccionado}`,
+      `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/descargar/${moduloSeleccionado}`,
       {
         ...config,
         responseType: "blob"
@@ -476,7 +476,7 @@ const confirmarImportacion = async () => {
 
   try {
     const res = await axios.post(
-      `https://ato-appservidor.onrender.com/inventario/actualizar_inventario_excel`,
+      `https://ato-appservidor-nvxt.onrender.com/inventario/actualizar_inventario_excel`,
       formData,
       {
         headers: {

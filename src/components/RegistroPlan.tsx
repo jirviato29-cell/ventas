@@ -28,7 +28,7 @@ const RegistroPlan: React.FC<Props> = ({ empleados, modulos }) => {
   const guardarPlan = async () => {
     try {
       await axios.post(
-        `https://ato-appservidor.onrender.com/dashboard/planes`,
+        `https://ato-appservidor-nvxt.onrender.com/dashboard/planes`,
         {
           ...plan,
           empleado_id: Number(plan.empleado_id),

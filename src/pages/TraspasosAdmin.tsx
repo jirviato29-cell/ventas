@@ -8,7 +8,7 @@ import {
 import axios from "axios";
 import { Traspaso } from "../Types";
 
-const BASE = "https://ato-appservidor.onrender.com";
+const BASE = "https://ato-appservidor-nvxt.onrender.com";
 
 const ESTADOS = ["pendiente", "aprobado", "rechazado"];
 

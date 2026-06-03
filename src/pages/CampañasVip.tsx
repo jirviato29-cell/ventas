@@ -13,7 +13,7 @@ const CampañasVIP = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch(`https://ato-appservidor.onrender.com/ventas/clientes_vip`, {
+    fetch(`https://ato-appservidor-nvxt.onrender.com/ventas/clientes_vip`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())

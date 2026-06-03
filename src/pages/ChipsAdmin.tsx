@@ -55,7 +55,7 @@ const ChipsAdmin = () => {
     try {
       const params: any = {};
       if (empleadoSeleccionado) params.empleado_id = empleadoSeleccionado;
-      const res = await axios.get(`https://ato-appservidor.onrender.com/ventas/venta_chips`, {
+      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
@@ -73,7 +73,7 @@ const ChipsAdmin = () => {
   const fetchChipsAsesor = async () => {
     try {
       const res = await axios.get<VentaChip[]>(
-        `https://ato-appservidor.onrender.com/ventas/venta_chips`,
+        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setChipsAsesor(
@@ -92,7 +92,7 @@ const ChipsAdmin = () => {
 
   useEffect(() => {
     axios
-      .get(`https://ato-appservidor.onrender.com/registro/usuarios`, {
+      .get(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((r) => setUsuarios(r.data))
@@ -104,7 +104,7 @@ const ChipsAdmin = () => {
   const eliminarChip = async (id: number) => {
     if (!window.confirm("¿Seguro que quieres eliminar este chip?")) return;
     try {
-      await axios.delete(`https://ato-appservidor.onrender.com/ventas/eliminar_chip/${id}`, {
+      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/ventas/eliminar_chip/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setChips((prev) => prev.filter((c) => c.id !== id));
@@ -124,7 +124,7 @@ const ChipsAdmin = () => {
     }
     try {
       await axios.put(
-        `https://ato-appservidor.onrender.com/ventas/venta_chips/${id}/validar`,
+        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/${id}/validar`,
         { comision_manual: comision },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -254,7 +254,7 @@ const ChipsAdmin = () => {
                                 const motivo = e.target.value;
                                 try {
                                   await axios.put(
-                                    `https://ato-appservidor.onrender.com/ventas/venta_chips/${chip.id}/motivo_rechazo`,
+                                    `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/${chip.id}/motivo_rechazo`,
                                     { descripcion: motivo },
                                     { headers: { Authorization: `Bearer ${token}` } }
                                   );

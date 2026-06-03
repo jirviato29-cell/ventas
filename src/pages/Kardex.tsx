@@ -52,7 +52,7 @@ const Kardex = () => {
     if (tipoMovimiento) params.tipo_movimiento = tipoMovimiento;
 
     const res = await axios.get(
-      `https://ato-appservidor.onrender.com/kardex/kardex`,
+      `https://ato-appservidor-nvxt.onrender.com/kardex/kardex`,
       { ...config, params }
     );
 
@@ -61,7 +61,7 @@ const Kardex = () => {
 
   const cargarModulos = async () => {
   const res = await axios.get(
-    `https://ato-appservidor.onrender.com/registro/modulos`,
+    `https://ato-appservidor-nvxt.onrender.com/registro/modulos`,
     config
   );
   setModulos(res.data);

@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
-const BASE   = "https://ato-appservidor.onrender.com";
+const BASE   = "https://ato-appservidor-nvxt.onrender.com";
 const headSx = { py: "4px", px: "6px", fontSize: 13, fontWeight: 700 };
 const cellSx = { py: "2px", px: "6px", fontSize: 13 };
 

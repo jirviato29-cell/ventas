@@ -40,7 +40,7 @@ const [mostrandoPreview, setMostrandoPreview] = useState(false);
 
   const buscarEnModulos = async () => {
   const res = await axios.get(
-    `https://ato-appservidor.onrender.com/inventario/inventario/buscar-modulos?producto=${buscarProductoModulo}`,
+    `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-modulos?producto=${buscarProductoModulo}`,
     config
   )
 
@@ -49,16 +49,16 @@ const [mostrandoPreview, setMostrandoPreview] = useState(false);
 
 
   const cargarInventario = async () => {
-    const resProd = await axios.get(`https://ato-appservidor.onrender.com/inventario/inventario/general`, config);
+    const resProd = await axios.get(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`, config);
     setProductos(resProd.data);
-    const resTel = await axios.get(`https://ato-appservidor.onrender.com/inventario_telefonos/inventario_telefonos/general`, config);
+    const resTel = await axios.get(`https://ato-appservidor-nvxt.onrender.com/inventario_telefonos/inventario_telefonos/general`, config);
     setTelefonos(resTel.data);
   };
 
   const agregar = async () => {
     try {
       if (tipo === 'producto') {
-        await axios.post(`https://ato-appservidor.onrender.com/inventario/inventario/general`, {
+        await axios.post(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`, {
           producto: nuevo.producto,
           clave: nuevo.clave,
           precio: parseFloat(nuevo.precio),
@@ -66,7 +66,7 @@ const [mostrandoPreview, setMostrandoPreview] = useState(false);
           tipo_producto: 'producto',
         }, config);
       } else {
-        await axios.post(`https://ato-appservidor.onrender.com/inventario/inventario/general`, {
+        await axios.post(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`, {
           producto: nuevo.producto,
           clave: nuevo.clave,
           precio: parseFloat(nuevo.precio),
@@ -92,7 +92,7 @@ const [mostrandoPreview, setMostrandoPreview] = useState(false);
 const guardarCambios = async (item: any) => {
   try {
     
-      await axios.put(`https://ato-appservidor.onrender.com/inventario/inventario/general/${item.id}`, {
+      await axios.put(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general/${item.id}`, {
         cantidad: parseInt(editarData.cantidad)
       }, config);
 
@@ -115,7 +115,7 @@ const actualizarCantidad = async () => {
 
   try {
       await axios.put(
-        `https://ato-appservidor.onrender.com/inventario/inventario/general/${encodeURIComponent(selectedItem.nombre)}`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general/${encodeURIComponent(selectedItem.nombre)}`,
         { cantidad: parseInt(nuevaCantidad) },
         config
       );
@@ -136,9 +136,9 @@ const eliminarItem = async (item: any) => {
 
   try {
     if (item.tipo === 'producto') {
-      await axios.delete(`https://ato-appservidor.onrender.com/inventario/inventario/general/${item.id}`, config);
+      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general/${item.id}`, config);
     } else {
-      await axios.delete(`https://ato-appservidor.onrender.com/inventario_telefonos/inventario_telefonos/general/${item.id}`, config);
+      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/inventario_telefonos/inventario_telefonos/general/${item.id}`, config);
     }
 
     cargarInventario();
@@ -179,7 +179,7 @@ const eliminarItem = async (item: any) => {
   formData.append("archivo", file);
 
   const res = await axios.post(
-    `https://ato-appservidor.onrender.com/inventario/preview_excel_general`,
+    `https://ato-appservidor-nvxt.onrender.com/inventario/preview_excel_general`,
     formData,
     config
   );
@@ -194,8 +194,8 @@ const eliminarItem = async (item: any) => {
   const fetchExtras = async () => {
     try {
       const [resEmp, resMod] = await Promise.all([
-        axios.get(`https://ato-appservidor.onrender.com/registro/usuarios`, config),
-        axios.get(`https://ato-appservidor.onrender.com/registro/modulos`, config),
+        axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios`, config),
+        axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/modulos`, config),
       ]);
 
       setEmpleados(resEmp.data);
@@ -219,7 +219,7 @@ const confirmarImportacion = async () => {
   formData.append("archivo", archivoExcel);
 
   await axios.post(
-    `https://ato-appservidor.onrender.com/inventario/actualizar_inventario_excel_general`,
+    `https://ato-appservidor-nvxt.onrender.com/inventario/actualizar_inventario_excel_general`,
     formData,
     config
   );

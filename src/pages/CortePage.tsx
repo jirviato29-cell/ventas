@@ -347,7 +347,7 @@ const CortePage = () => {
   const moduloNombreGlobal = localStorage.getItem('modulo') || '';
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
-  const API = "https://ato-appservidor.onrender.com";
+  const API = "https://ato-appservidor-nvxt.onrender.com";
 
   // ── admin / contador state ────────────────────────────────────────────────
   const [cortesGuardados, setCortesGuardados] = useState<any[]>([]);

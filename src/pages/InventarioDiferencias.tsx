@@ -14,7 +14,7 @@ const DiferenciasInventario = () => {
   const cargarDiferencias = async () => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor.onrender.com/inventario/reportes/diferencias`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/reportes/diferencias`,
         config
       );
       setDiferencias(res.data);
@@ -37,7 +37,7 @@ const DiferenciasInventario = () => {
 
     try {
       await axios.post(
-        `https://ato-appservidor.onrender.com/inventario/fisico/upload`,
+        `https://ato-appservidor-nvxt.onrender.com/inventario/fisico/upload`,
         formData,
         {
           headers: {
