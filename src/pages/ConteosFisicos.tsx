@@ -534,7 +534,7 @@ const ConteosFisicos = () => {
                 <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", mb: 2, flexWrap: "wrap" }}>
                   <Autocomplete
                     options={opcionesBusqueda}
-                    getOptionLabel={o => `${o.clave} — ${o.producto}`}
+                    getOptionLabel={o => o.clave}
                     filterOptions={(x) => x}
                     autoHighlight
                     value={prodSel}
