@@ -58,7 +58,7 @@ interface ConteoListItem {
 interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
 
 interface ProductoModulo { id: number; clave: string; producto: string; precio?: number; }
-interface FilaCaptura   { clave: string; producto: string; cantidad: number; }
+interface FilaCaptura   { id: number; clave: string; producto: string; cantidad: number; }
 
 interface KardexLinea {
   fecha: string; tipo: string;
@@ -117,10 +117,9 @@ const ConteosFisicos = () => {
 
   // Captura manual
   const [modoCaptura, setModoCaptura]     = useState<"excel" | "manual">("excel");
-  const [opcionesBusqueda, setOpcionesBusqueda] = useState<ProductoModulo[]>([]);
-  const [busquedaLoading, setBusquedaLoading]   = useState(false);
+  const [catalogoGeneral, setCatalogoGeneral] = useState<ProductoModulo[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
   const [busquedaInput, setBusquedaInput]       = useState("");
-  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cantInputRef  = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [prodSel, setProdSel]             = useState<ProductoModulo | null>(null);
@@ -142,23 +141,13 @@ const ConteosFisicos = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (busquedaInput.length < 2) { setOpcionesBusqueda([]); return; }
-    debounceRef.current = setTimeout(() => {
-      setBusquedaLoading(true);
-      axios.get(`${BASE}/inventario/inventario/buscar-autocomplete`, { params: { q: busquedaInput } })
-        .then(r => {
-          const q = busquedaInput.toLowerCase();
-          const data: ProductoModulo[] = r.data;
-          const grupoA = data.filter(p => p.clave.toLowerCase().startsWith(q));
-          const grupoB = data.filter(p => !p.clave.toLowerCase().startsWith(q) && p.producto.toLowerCase().includes(q));
-          setOpcionesBusqueda([...grupoA, ...grupoB]);
-        })
-        .catch(() => setOpcionesBusqueda([]))
-        .finally(() => setBusquedaLoading(false));
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [busquedaInput]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (modoCaptura !== "manual" || catalogoGeneral.length > 0) return;
+    setCargandoCatalogo(true);
+    axios.get(`${BASE}/inventario/inventario/general`, config)
+      .then(r => setCatalogoGeneral(r.data))
+      .catch(() => {})
+      .finally(() => setCargandoCatalogo(false));
+  }, [modoCaptura]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -298,24 +287,15 @@ const ConteosFisicos = () => {
     if (!prodSel || !cantInput) return;
     const cant = parseInt(cantInput, 10);
     if (isNaN(cant) || cant < 0) return;
-    setFilasCaptura(prev => {
-      const idx = prev.findIndex(f => f.clave === prodSel.clave);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], cantidad: next[idx].cantidad + cant };
-        return next;
-      }
-      return [...prev, { clave: prodSel.clave, producto: prodSel.producto, cantidad: cant }];
-    });
+    setFilasCaptura(prev => [...prev, { id: Date.now(), clave: prodSel.clave, producto: prodSel.producto, cantidad: cant }]);
     setProdSel(null);
     setCantInput("");
     setBusquedaInput("");
-    setOpcionesBusqueda([]);
     setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
-  const handleEliminarFila = (clave: string) => {
-    setFilasCaptura(prev => prev.filter(f => f.clave !== clave));
+  const handleEliminarFila = (id: number) => {
+    setFilasCaptura(prev => prev.filter(f => f.id !== id));
   };
 
   const handleProcesarCaptura = async () => {
@@ -324,7 +304,12 @@ const ConteosFisicos = () => {
     setErrorMsg(null);
     setPreview(null);
     try {
-      const datos = filasCaptura.map(f => [f.clave, f.producto, f.cantidad]);
+      const agrupado = filasCaptura.reduce<Record<string, { producto: string; cantidad: number }>>((acc, f) => {
+        if (acc[f.clave]) { acc[f.clave].cantidad += f.cantidad; }
+        else { acc[f.clave] = { producto: f.producto, cantidad: f.cantidad }; }
+        return acc;
+      }, {});
+      const datos = Object.entries(agrupado).map(([clave, { producto, cantidad }]) => [clave, producto, cantidad]);
       const ws = XLSX.utils.aoa_to_sheet(datos);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Conteo");
@@ -414,6 +399,14 @@ const ConteosFisicos = () => {
     if (accion === "conservado")     return "default";
     return "success";
   };
+
+  const opcionesBusqueda = useMemo(() => {
+    if (busquedaInput.length < 2) return [];
+    const q = busquedaInput.toLowerCase();
+    const grupoA = catalogoGeneral.filter(p => p.clave.toLowerCase().startsWith(q));
+    const grupoB = catalogoGeneral.filter(p => !p.clave.toLowerCase().startsWith(q) && p.producto.toLowerCase().includes(q));
+    return [...grupoA, ...grupoB];
+  }, [busquedaInput, catalogoGeneral]);
 
   const resumenDetalle = useMemo(() => {
     if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number })[] };
@@ -551,7 +544,7 @@ const ConteosFisicos = () => {
                     }}
                     inputValue={busquedaInput}
                     onInputChange={(_, val) => setBusquedaInput(val)}
-                    loading={busquedaLoading}
+                    loading={cargandoCatalogo}
                     renderInput={params => (
                       <TextField
                         {...params}
@@ -563,14 +556,14 @@ const ConteosFisicos = () => {
                           ...params.InputProps,
                           endAdornment: (
                             <>
-                              {busquedaLoading ? <CircularProgress size={14} /> : null}
+                              {cargandoCatalogo ? <CircularProgress size={14} /> : null}
                               {params.InputProps.endAdornment}
                             </>
                           ),
                         }}
                       />
                     )}
-                    noOptionsText={busquedaInput.length < 2 ? "Escribe al menos 2 caracteres" : "Sin coincidencias"}
+                    noOptionsText={cargandoCatalogo ? "Cargando catálogo…" : busquedaInput.length < 2 ? "Escribe al menos 2 caracteres" : "Sin coincidencias"}
                     isOptionEqualToValue={(o, v) => o.clave === v.clave}
                   />
                   <TextField
@@ -607,12 +600,12 @@ const ConteosFisicos = () => {
                         </TableHead>
                         <TableBody>
                           {filasCaptura.map(f => (
-                            <TableRow key={f.clave}>
+                            <TableRow key={f.id}>
                               <TableCell sx={{ ...cellSx, fontWeight: 700, color: "#f97316" }}>{f.clave}</TableCell>
                               <TableCell sx={cellSx}>{f.producto}</TableCell>
                               <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700 }}>{f.cantidad}</TableCell>
                               <TableCell sx={cellSx}>
-                                <IconButton size="small" color="error" onClick={() => handleEliminarFila(f.clave)}>
+                                <IconButton size="small" color="error" onClick={() => handleEliminarFila(f.id)}>
                                   <Delete fontSize="small" />
                                 </IconButton>
                               </TableCell>
@@ -622,7 +615,7 @@ const ConteosFisicos = () => {
                       </Table>
                     </TableContainer>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                      {filasCaptura.length} producto(s) · {filasCaptura.reduce((s, f) => s + f.cantidad, 0)} unidades totales
+                      {filasCaptura.length} línea(s) · {filasCaptura.reduce((s, f) => s + f.cantidad, 0)} unidades · {new Set(filasCaptura.map(f => f.clave)).size} claves únicas
                     </Typography>
                   </>
                 )}
