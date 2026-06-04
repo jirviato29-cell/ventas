@@ -145,7 +145,13 @@ const ConteosFisicos = () => {
     debounceRef.current = setTimeout(() => {
       setBusquedaLoading(true);
       axios.get(`${BASE}/inventario/inventario/buscar-autocomplete`, { params: { q: busquedaInput } })
-        .then(r => setOpcionesBusqueda(r.data))
+        .then(r => {
+          const q = busquedaInput.toLowerCase();
+          const data: ProductoModulo[] = r.data;
+          const grupoA = data.filter(p => p.clave.toLowerCase().startsWith(q));
+          const grupoB = data.filter(p => !p.clave.toLowerCase().startsWith(q) && p.producto.toLowerCase().includes(q));
+          setOpcionesBusqueda([...grupoA, ...grupoB]);
+        })
         .catch(() => setOpcionesBusqueda([]))
         .finally(() => setBusquedaLoading(false));
     }, 300);
