@@ -667,34 +667,38 @@ const ConteosFisicos = () => {
             )}
           </Box>
 
-          {/* Panel de metadatos del archivo */}
-          <Alert
-            severity="info" icon={false}
-            sx={{ mb: preview.metadatos.negativos_convertidos_a_cero > 0 ? 1 : 2,
-                  py: 0.5, px: 1.5, fontSize: 13 }}
-          >
-            <strong>{preview.metadatos.archivo_nombre}</strong>
-            {" — "}
-            {preview.metadatos.filas_validas} productos detectados
-            {" · "}
-            encabezado en fila {preview.metadatos.fila_encabezado}
-            {" · "}
-            columnas&nbsp;
-            {preview.metadatos.columna_clave}/
-            {preview.metadatos.columna_nombre}/
-            {preview.metadatos.columna_cantidad}
-            {preview.metadatos.filas_ignoradas_vacias > 0 && (
-              <> · {preview.metadatos.filas_ignoradas_vacias} filas vacías ignoradas</>
-            )}
-          </Alert>
+          {/* Panel de metadatos del archivo — solo si el backend los devuelve */}
+          {preview.metadatos && (
+            <>
+              <Alert
+                severity="info" icon={false}
+                sx={{ mb: preview.metadatos.negativos_convertidos_a_cero > 0 ? 1 : 2,
+                      py: 0.5, px: 1.5, fontSize: 13 }}
+              >
+                <strong>{preview.metadatos.archivo_nombre}</strong>
+                {" — "}
+                {preview.metadatos.filas_validas} productos detectados
+                {" · "}
+                encabezado en fila {preview.metadatos.fila_encabezado}
+                {" · "}
+                columnas&nbsp;
+                {preview.metadatos.columna_clave}/
+                {preview.metadatos.columna_nombre}/
+                {preview.metadatos.columna_cantidad}
+                {preview.metadatos.filas_ignoradas_vacias > 0 && (
+                  <> · {preview.metadatos.filas_ignoradas_vacias} filas vacías ignoradas</>
+                )}
+              </Alert>
 
-          {preview.metadatos.negativos_convertidos_a_cero > 0 && (
-            <Alert severity="warning" icon={false}
-              sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: 13 }}
-            >
-              {preview.metadatos.negativos_convertidos_a_cero} producto(s) venían con cantidad
-              negativa — se convertirán a 0 al aplicar.
-            </Alert>
+              {preview.metadatos.negativos_convertidos_a_cero > 0 && (
+                <Alert severity="warning" icon={false}
+                  sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: 13 }}
+                >
+                  {preview.metadatos.negativos_convertidos_a_cero} producto(s) venían con cantidad
+                  negativa — se convertirán a 0 al aplicar.
+                </Alert>
+              )}
+            </>
           )}
 
           <Tabs
