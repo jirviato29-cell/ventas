@@ -668,7 +668,7 @@ const ConteosFisicos = () => {
           </Box>
 
           {/* Panel de metadatos del archivo — solo si el backend los devuelve */}
-          {preview.metadatos && (
+          {preview.metadatos && modoCaptura === "excel" && (
             <>
               <Alert
                 severity="info" icon={false}
