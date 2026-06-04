@@ -120,7 +120,9 @@ const ConteosFisicos = () => {
   const [opcionesBusqueda, setOpcionesBusqueda] = useState<ProductoModulo[]>([]);
   const [busquedaLoading, setBusquedaLoading]   = useState(false);
   const [busquedaInput, setBusquedaInput]       = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cantInputRef  = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [prodSel, setProdSel]             = useState<ProductoModulo | null>(null);
   const [cantInput, setCantInput]         = useState<string>("");
   const [filasCaptura, setFilasCaptura]   = useState<FilaCaptura[]>([]);
@@ -307,6 +309,9 @@ const ConteosFisicos = () => {
     });
     setProdSel(null);
     setCantInput("");
+    setBusquedaInput("");
+    setOpcionesBusqueda([]);
+    setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
   const handleEliminarFila = (clave: string) => {
@@ -538,14 +543,19 @@ const ConteosFisicos = () => {
                     options={opcionesBusqueda}
                     getOptionLabel={o => `${o.clave} — ${o.producto}`}
                     filterOptions={(x) => x}
+                    autoHighlight
                     value={prodSel}
-                    onChange={(_, v) => setProdSel(v)}
+                    onChange={(_, v) => {
+                      setProdSel(v);
+                      if (v) setTimeout(() => cantInputRef.current?.focus(), 0);
+                    }}
                     inputValue={busquedaInput}
                     onInputChange={(_, val) => setBusquedaInput(val)}
                     loading={busquedaLoading}
                     renderInput={params => (
                       <TextField
                         {...params}
+                        inputRef={searchInputRef}
                         label="Buscar por clave o nombre"
                         size="small"
                         sx={{ minWidth: 320 }}
@@ -568,6 +578,7 @@ const ConteosFisicos = () => {
                     value={cantInput}
                     onChange={e => setCantInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") handleAgregarFila(); }}
+                    inputRef={cantInputRef}
                     sx={{ width: 110 }}
                     inputProps={{ min: 0 }}
                   />
