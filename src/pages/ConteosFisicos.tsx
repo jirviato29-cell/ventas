@@ -213,13 +213,13 @@ const ConteosFisicos = () => {
   };
 
   const handleAplicar = async () => {
-    if (!preview || !archivo) return;
+    if (!preview || (!archivo && modoCaptura === "excel")) return;
     setAplicando(true);
     setErrorMsg(null);
     try {
       const body = {
         modulo_id:          preview.modulo_id,
-        archivo_nombre:     archivo.name,
+        archivo_nombre:     archivo?.name ?? "captura_manual.xlsx",
         total_filas_excel:  preview.total_filas_excel,
         para_actualizar:    preview.para_actualizar.map(i => ({
           clave: i.clave, producto: i.producto, cantidad_nueva: i.cantidad_nueva,
