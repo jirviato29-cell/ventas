@@ -565,6 +565,19 @@ const ConteosFisicos = () => {
                     )}
                     noOptionsText={cargandoCatalogo ? "Cargando catálogo…" : busquedaInput.length < 2 ? "Escribe al menos 2 caracteres" : "Sin coincidencias"}
                     isOptionEqualToValue={(o, v) => o.clave === v.clave}
+                    renderOption={(props, o) => (
+                      <li {...props} key={o.clave} style={{ padding: "4px 12px" }}>
+                        <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, width: "100%", overflow: "hidden" }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", flexShrink: 0, color: "#f97316" }}>
+                            {o.clave}
+                          </Typography>
+                          <Typography sx={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#475569" }}>
+                            {o.producto}
+                          </Typography>
+                        </Box>
+                      </li>
+                    )}
+                    slotProps={{ paper: { sx: { minWidth: 460 } } }}
                   />
                   <TextField
                     label="Cantidad" size="small" type="number"
