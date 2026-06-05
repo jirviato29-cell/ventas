@@ -305,6 +305,12 @@ const Navbar = () => {
                 </Button>
               )}
 
+              {rolToken === "direccion" && (
+                <Button sx={navBtnSx} component={Link} to="/reportes-director">
+                  REPORTE DIARIO
+                </Button>
+              )}
+
               <Button
                 sx={{
                   ...navBtnSx,
@@ -611,6 +617,13 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/sueldos-encargados")}>
               <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
               <ListItemText primary="SUELDOS ENCARGADOS" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {rolToken === "direccion" && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/reportes-director")}>
+              <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
+              <ListItemText primary="REPORTE DIARIO" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
