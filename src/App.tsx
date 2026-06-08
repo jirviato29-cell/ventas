@@ -38,6 +38,7 @@ import AjustesInventarioPage from './pages/AjustesInventario';
 import ConteosFisicos from './pages/ConteosFisicos';
 import GestionModulos from './pages/GestionModulos';
 import ProductosPage from './pages/ProductosPage';
+import ReportesDirector from './pages/ReportesDirector';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -84,6 +85,7 @@ const App: React.FC = () => {
     { path: '/conteos-fisicos', element: <RutaProtegida><ConteosFisicos /></RutaProtegida> },
     { path: '/admin/modulos', element: <RutaProtegida><GestionModulos /></RutaProtegida> },
     { path: '/inventario/productos', element: <RutaProtegida><ProductosPage /></RutaProtegida> },
+    { path: '/reportes-director', element: <RutaProtegida><ReportesDirector /></RutaProtegida> },
   ]);
 
   return routes;

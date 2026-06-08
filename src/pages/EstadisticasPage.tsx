@@ -198,12 +198,14 @@ const EstadisticasPage: React.FC = () => {
           {/* ── S1: RESUMEN GENERAL ──────────────────────────────────────── */}
           <Grid container spacing={2} mb={3}>
             {[
+              /* OCULTO: tarjeta 'Total facturado' — descomentar para restaurar
               {
                 label: 'Total facturado',
                 value: fmt$(data.resumen_general.total_ventas_mxn),
                 icon: '💰',
                 gradient: 'linear-gradient(135deg, #15803d 0%, #22c55e 100%)',
               },
+              */
               {
                 label: 'Teléfonos vendidos',
                 value: fmtN(data.resumen_general.total_telefonos),
