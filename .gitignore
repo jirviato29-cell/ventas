@@ -31,3 +31,4 @@ yarn-error.log*
 backup_venta_chips_*.json
 .env.backup_temp
 check_duplicados.py
+ATO-App-master/
