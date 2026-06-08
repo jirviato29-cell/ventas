@@ -81,6 +81,7 @@ interface KardexData {
 const ConteosFisicos = () => {
   const token  = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
+  const esAdmin = localStorage.getItem("rol") === "admin";
 
   // Upload
   const [modulos, setModulos]         = useState<Modulo[]>([]);
@@ -131,6 +132,11 @@ const ConteosFisicos = () => {
   const [kardexLoading, setKardexLoading] = useState(false);
   const [kardexData, setKardexData]       = useState<KardexData | null>(null);
 
+  // Congelar módulo
+  const [estadoCongelado, setEstadoCongelado] = useState<{id: number, nombre: string, congelado: boolean}[]>([]);
+  const [congelando, setCongelando]           = useState(false);
+  const [confirmCongelarOpen, setConfirmCongelarOpen] = useState(false);
+
   // ── Effects ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -138,6 +144,9 @@ const ConteosFisicos = () => {
       .then(r => setModulos(r.data))
       .catch(() => {});
     cargarHistorial();
+    axios.get(`${BASE}/conteos-fisicos/modulos/estado-congelado`, config)
+      .then(r => setEstadoCongelado(r.data))
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -382,7 +391,39 @@ const ConteosFisicos = () => {
     XLSX.writeFile(wb, nombre);
   };
 
+  const handleCongelar = async () => {
+    if (!moduloId) return;
+    setCongelando(true);
+    try {
+      await axios.post(`${BASE}/conteos-fisicos/modulos/${moduloId}/congelar`, {}, config);
+      setEstadoCongelado(prev => prev.map(m => m.id === moduloId ? { ...m, congelado: true } : m));
+      setExitoMsg("Módulo congelado. Las ventas están bloqueadas mientras cuentas.");
+    } catch {
+      setErrorMsg("Error al congelar el módulo.");
+    } finally {
+      setCongelando(false);
+      setConfirmCongelarOpen(false);
+    }
+  };
+
+  const handleDescongelar = async () => {
+    if (!moduloId) return;
+    setCongelando(true);
+    try {
+      await axios.post(`${BASE}/conteos-fisicos/modulos/${moduloId}/descongelar`, {}, config);
+      setEstadoCongelado(prev => prev.map(m => m.id === moduloId ? { ...m, congelado: false } : m));
+      setExitoMsg("Módulo descongelado. Las ventas están habilitadas.");
+    } catch {
+      setErrorMsg("Error al descongelar el módulo.");
+    } finally {
+      setCongelando(false);
+    }
+  };
+
   // ── Derived ────────────────────────────────────────────────────────────────
+
+  const moduloSeleccionado = estadoCongelado.find(m => m.id === moduloId);
+  const estaCongelado = moduloSeleccionado?.congelado ?? false;
 
   const totalCambios = preview
     ? preview.para_actualizar.length + preview.para_crear.length + enCero.size
@@ -462,11 +503,34 @@ const ConteosFisicos = () => {
 
         <TextField
           select label="Módulo destino" value={moduloId} size="small"
-          sx={{ minWidth: 260, mb: 2, display: "block" }}
+          sx={{ minWidth: 260, mb: 1, display: "block" }}
           onChange={e => { setModuloId(Number(e.target.value)); setPreview(null); setFilasCaptura([]); }}
         >
           {modulos.map(m => <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>)}
         </TextField>
+
+        {moduloId !== "" && esAdmin && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            {estaCongelado ? (
+              <>
+                <Chip label="CONGELADO" color="error" size="small" />
+                <Button size="small" variant="outlined" color="success"
+                  disabled={congelando}
+                  onClick={handleDescongelar}
+                  sx={{ minWidth: 120 }}>
+                  {congelando ? <CircularProgress size={14} /> : "Descongelar"}
+                </Button>
+              </>
+            ) : (
+              <Button size="small" variant="outlined" color="warning"
+                disabled={congelando}
+                onClick={() => setConfirmCongelarOpen(true)}
+                sx={{ minWidth: 150 }}>
+                {congelando ? <CircularProgress size={14} /> : "Congelar módulo"}
+              </Button>
+            )}
+          </Box>
+        )}
 
         {modoCaptura === "excel" ? (
           <>
@@ -1236,6 +1300,23 @@ const ConteosFisicos = () => {
           <Button onClick={() => setConfirmFolio(null)}>Cancelar</Button>
           <Button onClick={handleRevertir} color="error" variant="contained">
             Sí, revertir
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmCongelarOpen} onClose={() => setConfirmCongelarOpen(false)}>
+        <DialogTitle sx={{ fontWeight: 700 }}>¿Congelar módulo?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Vas a congelar <strong>{moduloSeleccionado?.nombre}</strong>. Los asesores NO podrán
+            vender ni hacer traspasos en este módulo hasta que lo descongeles o apliques el conteo.
+            ¿Continuar?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCongelarOpen(false)}>Cancelar</Button>
+          <Button variant="contained" color="error" disabled={congelando} onClick={handleCongelar}>
+            {congelando ? <CircularProgress size={16} /> : "Sí, congelar"}
           </Button>
         </DialogActions>
       </Dialog>
