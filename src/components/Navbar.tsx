@@ -209,6 +209,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
                     <MenuItem component={Link} to="/admin/modulos">Gestión de Módulos</MenuItem>
+                    <MenuItem component={Link} to="/admin/planes">Planes</MenuItem>
                   </Menu>
 
                   <Button sx={navBtnSx} component={Link} to="/admin/panel-control">
