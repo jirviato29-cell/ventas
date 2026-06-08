@@ -16,6 +16,7 @@ import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
 import { useNavigate } from 'react-router-dom';
+import { PLANES_CASCADA } from '../data/planesCascada';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -316,7 +317,7 @@ const FormularioVentaMultiple = () => {
   const [montoDividido, setMontoDividido] = useState({ efectivo: '', tarjeta: '' });
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
 
-  const [tipoVenta, setTipoVenta] = useState<'accesorio' | 'chip' | 'telefono'>(esCadenas ? 'chip' : 'accesorio');
+  const [tipoVenta, setTipoVenta] = useState<'accesorio' | 'chip' | 'telefono' | 'plan'>(esCadenas ? 'chip' : 'accesorio');
   const [tipoChip, setTipoChip] = useState('');
   const [numero, setNumero] = useState('');
   const [numeroDuplicado, setNumeroDuplicado] = useState(false);
@@ -331,6 +332,19 @@ const FormularioVentaMultiple = () => {
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
+
+  const [planTipo, setPlanTipo] = useState('');
+  const [planEstatus, setPlanEstatus] = useState('');
+  const [planCategoria, setPlanCategoria] = useState('');
+  const [planClasificacion, setPlanClasificacion] = useState('');
+  const [planEquipo, setPlanEquipo] = useState('');
+  const [planImei, setPlanImei] = useState('');
+  const [planPrecio, setPlanPrecio] = useState('');
+  const [planPlazo, setPlanPlazo] = useState('');
+  const [planLinea, setPlanLinea] = useState('');
+  const [planCuenta, setPlanCuenta] = useState('');
+  const [planPagoInicial, setPlanPagoInicial] = useState(false);
+  const [planMontoPagoInicial, setPlanMontoPagoInicial] = useState('');
 
   const [fecha, setFecha] = useState(HOY);
   const [opcionesTelefonos, setOpcionesTelefonos] = useState<{ clave: string; producto: string }[]>([]);
@@ -785,6 +799,42 @@ const FormularioVentaMultiple = () => {
     }
   };
 
+  const resetPlan = () => {
+    setPlanTipo(''); setPlanEstatus(''); setPlanCategoria(''); setPlanClasificacion('');
+    setPlanEquipo(''); setPlanImei(''); setPlanPrecio(''); setPlanPlazo('');
+    setPlanLinea(''); setPlanCuenta(''); setPlanPagoInicial(false); setPlanMontoPagoInicial('');
+  };
+
+  const registrarPlan = async () => {
+    if (!planTipo || !planEstatus || !planCategoria || !planClasificacion) {
+      setMensaje({ tipo: 'error', texto: 'Completa Tipo, Estatus, Categoría y Clasificación' });
+      return;
+    }
+    try {
+      const payload = {
+        tipo_plan: planTipo,
+        estatus: planEstatus,
+        categoria: planCategoria,
+        clasificacion: planClasificacion,
+        equipo: planEquipo || null,
+        imei: planImei || null,
+        precio_equipo: planPrecio ? Number(planPrecio) : null,
+        plazo: planPlazo ? Number(planPlazo) : null,
+        linea: planLinea || null,
+        cuenta: planCuenta || null,
+        pago_inicial: planPagoInicial,
+        monto_pago_inicial: planPagoInicial && planMontoPagoInicial ? Number(planMontoPagoInicial) : 0,
+      };
+      await axios.post('https://ato-appservidor-nvxt.onrender.com/planes-tarifarios', payload, config);
+      setMensaje({ tipo: 'success', texto: 'Plan registrado correctamente' });
+      resetPlan();
+      if (rol === 'asesor') { fetchVentas(); }
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || 'Error al registrar el plan';
+      setMensaje({ tipo: 'error', texto: msg });
+    }
+  };
+
   const buscarTelefonos = async (texto: string) => {
     if (!texto || texto.length < 2) { setOpcionesTelefonos([]); return; }
     setBuscando(true);
@@ -829,6 +879,7 @@ const FormularioVentaMultiple = () => {
           <MenuItem value="accesorio">Accesorio</MenuItem>
           <MenuItem value="chip">Chip</MenuItem>
           <MenuItem value="telefono">Teléfono</MenuItem>
+          <MenuItem value="plan">Plan tarifario</MenuItem>
         </TextField>
       )}
 
@@ -1082,6 +1133,108 @@ const FormularioVentaMultiple = () => {
           <Button variant="contained" color="secondary" fullWidth onClick={registrarVentaTelefono}
             disabled={!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago} sx={{ mt: 2 }}>
             Registrar Venta Teléfono
+          </Button>
+        </>
+      )}
+
+      {!esCadenas && tipoVenta === 'plan' && (
+        <>
+          <TextField select label="Tipo de plan" value={planTipo}
+            onChange={(e) => {
+              setPlanTipo(e.target.value);
+              setPlanCategoria('');
+              setPlanClasificacion('');
+              setPlanEquipo('');
+              setPlanImei('');
+              setPlanPrecio('');
+              setPlanPlazo('');
+            }}
+            fullWidth margin="normal">
+            {Object.keys(PLANES_CASCADA).map((t) => (
+              <MenuItem key={t} value={t}>{t}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField select label="Estatus" value={planEstatus}
+            onChange={(e) => setPlanEstatus(e.target.value)}
+            fullWidth margin="normal">
+            <MenuItem value="ABIERTO">ABIERTO</MenuItem>
+            <MenuItem value="CONTROLADO">CONTROLADO</MenuItem>
+          </TextField>
+
+          <TextField select label="Categoría" value={planCategoria}
+            onChange={(e) => { setPlanCategoria(e.target.value); setPlanClasificacion(''); }}
+            fullWidth margin="normal" disabled={!planTipo}>
+            {planTipo && Object.keys(PLANES_CASCADA[planTipo] || {}).map((c) => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField select label="Clasificación" value={planClasificacion}
+            onChange={(e) => setPlanClasificacion(e.target.value)}
+            fullWidth margin="normal" disabled={!planCategoria}>
+            {planTipo && planCategoria && (PLANES_CASCADA[planTipo]?.[planCategoria] || []).map((cl) => (
+              <MenuItem key={cl} value={cl}>{cl}</MenuItem>
+            ))}
+          </TextField>
+
+          {planTipo === 'FORZOSO' && (
+            <>
+              <Autocomplete
+                options={opcionesTelefonos}
+                getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
+                filterOptions={(opts, { inputValue }) => {
+                  const q = inputValue.toLowerCase();
+                  return opts.filter(
+                    (p) =>
+                      (p.clave ?? '').toLowerCase().includes(q) ||
+                      (p.producto ?? '').toLowerCase().includes(q),
+                  );
+                }}
+                loading={buscando}
+                onInputChange={(_, v) => buscarTelefonos(v)}
+                onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
+                )}
+              />
+
+              <TextField label="IMEI" value={planImei}
+                onChange={(e) => setPlanImei(e.target.value)} fullWidth margin="normal" />
+
+              <TextField label="Precio equipo" type="number" value={planPrecio}
+                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth margin="normal" />
+
+              <TextField select label="Plazo (meses)" value={planPlazo}
+                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth margin="normal">
+                <MenuItem value="12">12 meses</MenuItem>
+                <MenuItem value="18">18 meses</MenuItem>
+                <MenuItem value="24">24 meses</MenuItem>
+                <MenuItem value="36">36 meses</MenuItem>
+              </TextField>
+            </>
+          )}
+
+          <TextField label="Línea" value={planLinea}
+            onChange={(e) => setPlanLinea(e.target.value)} fullWidth margin="normal" />
+
+          <TextField label="Cuenta" value={planCuenta}
+            onChange={(e) => setPlanCuenta(e.target.value)} fullWidth margin="normal" />
+
+          <TextField select label="¿Requiere pago inicial?" value={planPagoInicial ? 'si' : 'no'}
+            onChange={(e) => setPlanPagoInicial(e.target.value === 'si')}
+            fullWidth margin="normal">
+            <MenuItem value="no">No</MenuItem>
+            <MenuItem value="si">Sí</MenuItem>
+          </TextField>
+
+          {planPagoInicial && (
+            <TextField label="Monto pago inicial" type="number" value={planMontoPagoInicial}
+              onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth margin="normal" />
+          )}
+
+          <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }} onClick={registrarPlan}>
+            Registrar Plan
           </Button>
         </>
       )}
