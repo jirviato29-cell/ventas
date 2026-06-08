@@ -1140,7 +1140,15 @@ const FormularioVentaMultiple = () => {
       {!esCadenas && tipoVenta === 'plan' && (
         <>
           <TextField select label="Tipo de plan" value={planTipo}
-            onChange={(e) => { setPlanTipo(e.target.value); setPlanCategoria(''); setPlanClasificacion(''); }}
+            onChange={(e) => {
+              setPlanTipo(e.target.value);
+              setPlanCategoria('');
+              setPlanClasificacion('');
+              setPlanEquipo('');
+              setPlanImei('');
+              setPlanPrecio('');
+              setPlanPlazo('');
+            }}
             fullWidth margin="normal">
             {Object.keys(PLANES_CASCADA).map((t) => (
               <MenuItem key={t} value={t}>{t}</MenuItem>
@@ -1170,30 +1178,34 @@ const FormularioVentaMultiple = () => {
             ))}
           </TextField>
 
-          <Autocomplete
-            options={opcionesTelefonos}
-            getOptionLabel={(o) => o.producto ?? ''}
-            loading={buscando}
-            onInputChange={(_, v) => buscarTelefonos(v)}
-            onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
-            renderInput={(params) => (
-              <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
-            )}
-          />
+          {planTipo === 'FORZOSO' && (
+            <>
+              <Autocomplete
+                options={opcionesTelefonos}
+                getOptionLabel={(o) => o.producto ?? ''}
+                loading={buscando}
+                onInputChange={(_, v) => buscarTelefonos(v)}
+                onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
+                )}
+              />
 
-          <TextField label="IMEI" value={planImei}
-            onChange={(e) => setPlanImei(e.target.value)} fullWidth margin="normal" />
+              <TextField label="IMEI" value={planImei}
+                onChange={(e) => setPlanImei(e.target.value)} fullWidth margin="normal" />
 
-          <TextField label="Precio equipo" type="number" value={planPrecio}
-            onChange={(e) => setPlanPrecio(e.target.value)} fullWidth margin="normal" />
+              <TextField label="Precio equipo" type="number" value={planPrecio}
+                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth margin="normal" />
 
-          <TextField select label="Plazo (meses)" value={planPlazo}
-            onChange={(e) => setPlanPlazo(e.target.value)} fullWidth margin="normal">
-            <MenuItem value="12">12 meses</MenuItem>
-            <MenuItem value="18">18 meses</MenuItem>
-            <MenuItem value="24">24 meses</MenuItem>
-            <MenuItem value="36">36 meses</MenuItem>
-          </TextField>
+              <TextField select label="Plazo (meses)" value={planPlazo}
+                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth margin="normal">
+                <MenuItem value="12">12 meses</MenuItem>
+                <MenuItem value="18">18 meses</MenuItem>
+                <MenuItem value="24">24 meses</MenuItem>
+                <MenuItem value="36">36 meses</MenuItem>
+              </TextField>
+            </>
+          )}
 
           <TextField label="Línea" value={planLinea}
             onChange={(e) => setPlanLinea(e.target.value)} fullWidth margin="normal" />
