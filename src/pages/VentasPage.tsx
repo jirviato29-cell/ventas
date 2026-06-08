@@ -1182,7 +1182,15 @@ const FormularioVentaMultiple = () => {
             <>
               <Autocomplete
                 options={opcionesTelefonos}
-                getOptionLabel={(o) => o.producto ?? ''}
+                getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
+                filterOptions={(opts, { inputValue }) => {
+                  const q = inputValue.toLowerCase();
+                  return opts.filter(
+                    (p) =>
+                      (p.clave ?? '').toLowerCase().includes(q) ||
+                      (p.producto ?? '').toLowerCase().includes(q),
+                  );
+                }}
                 loading={buscando}
                 onInputChange={(_, v) => buscarTelefonos(v)}
                 onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
