@@ -136,6 +136,7 @@ const ConteosFisicos = () => {
   const [estadoCongelado, setEstadoCongelado] = useState<{id: number, nombre: string, congelado: boolean}[]>([]);
   const [congelando, setCongelando]           = useState(false);
   const [confirmCongelarOpen, setConfirmCongelarOpen] = useState(false);
+  const [descargandoCongelados, setDescargandoCongelados] = useState(false);
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -420,6 +421,31 @@ const ConteosFisicos = () => {
     }
   };
 
+  const handleDescargarCongelados = async () => {
+    if (!moduloId) return;
+    setDescargandoCongelados(true);
+    try {
+      const r = await axios.get(
+        `${BASE}/inventario/inventario/modulo?modulo_id=${moduloId}`,
+        config,
+      );
+      const productos: { clave: string; producto: string; cantidad: number }[] = r.data;
+      const nombreModulo = moduloSeleccionado?.nombre ?? String(moduloId);
+      const fechaStr = new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
+      const encabezado = [`Productos congelados - Módulo ${nombreModulo} - Fecha ${fechaStr}`];
+      const cabeceras = ["Clave", "Producto", "Existencia actual"];
+      const filas = productos.map(p => [p.clave, p.producto, p.cantidad]);
+      const ws = XLSX.utils.aoa_to_sheet([encabezado, [], cabeceras, ...filas]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Congelados");
+      XLSX.writeFile(wb, `Congelados_${nombreModulo}.xlsx`);
+    } catch {
+      setErrorMsg("Error al descargar los productos del módulo.");
+    } finally {
+      setDescargandoCongelados(false);
+    }
+  };
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const moduloSeleccionado = estadoCongelado.find(m => m.id === moduloId);
@@ -519,6 +545,12 @@ const ConteosFisicos = () => {
                   onClick={handleDescongelar}
                   sx={{ minWidth: 120 }}>
                   {congelando ? <CircularProgress size={14} /> : "Descongelar"}
+                </Button>
+                <Button size="small" variant="outlined" color="info"
+                  disabled={descargandoCongelados}
+                  onClick={handleDescargarCongelados}
+                  sx={{ minWidth: 170 }}>
+                  {descargandoCongelados ? <CircularProgress size={14} /> : "Productos congelados"}
                 </Button>
               </>
             ) : (
