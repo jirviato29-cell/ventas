@@ -345,6 +345,7 @@ const FormularioVentaMultiple = () => {
   const [planCuenta, setPlanCuenta] = useState('');
   const [planPagoInicial, setPlanPagoInicial] = useState(false);
   const [planMontoPagoInicial, setPlanMontoPagoInicial] = useState('');
+  const [planMetodoPagoInicial, setPlanMetodoPagoInicial] = useState('efectivo');
 
   const [fecha, setFecha] = useState(HOY);
   const [opcionesTelefonos, setOpcionesTelefonos] = useState<{ clave: string; producto: string }[]>([]);
@@ -802,7 +803,7 @@ const FormularioVentaMultiple = () => {
   const resetPlan = () => {
     setPlanTipo(''); setPlanEstatus(''); setPlanCategoria(''); setPlanClasificacion('');
     setPlanEquipo(''); setPlanImei(''); setPlanPrecio(''); setPlanPlazo('');
-    setPlanLinea(''); setPlanCuenta(''); setPlanPagoInicial(false); setPlanMontoPagoInicial('');
+    setPlanLinea(''); setPlanCuenta(''); setPlanPagoInicial(false); setPlanMontoPagoInicial(''); setPlanMetodoPagoInicial('efectivo');
   };
 
   const registrarPlan = async () => {
@@ -824,6 +825,7 @@ const FormularioVentaMultiple = () => {
         cuenta: planCuenta || null,
         pago_inicial: planPagoInicial,
         monto_pago_inicial: planPagoInicial && planMontoPagoInicial ? Number(planMontoPagoInicial) : 0,
+        metodo_pago_inicial: planPagoInicial ? planMetodoPagoInicial : null,
       };
       await axios.post('https://ato-appservidor-nvxt.onrender.com/planes-tarifarios', payload, config);
       setMensaje({ tipo: 'success', texto: 'Plan registrado correctamente' });
@@ -1229,8 +1231,16 @@ const FormularioVentaMultiple = () => {
           </TextField>
 
           {planPagoInicial && (
-            <TextField label="Monto pago inicial" type="number" value={planMontoPagoInicial}
-              onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth margin="normal" />
+            <>
+              <TextField label="Monto pago inicial" type="number" value={planMontoPagoInicial}
+                onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth margin="normal" />
+              <TextField select label="¿Cómo paga el pago inicial?" value={planMetodoPagoInicial}
+                onChange={(e) => setPlanMetodoPagoInicial(e.target.value)}
+                fullWidth margin="normal">
+                <MenuItem value="efectivo">Efectivo</MenuItem>
+                <MenuItem value="tarjeta">Tarjeta</MenuItem>
+              </TextField>
+            </>
           )}
 
           <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }} onClick={registrarPlan}>
