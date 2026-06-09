@@ -176,6 +176,7 @@ const PanelControlNominaPage: React.FC = () => {
   const [tabActivo, setTabActivo] = useState(0);
 
   const [grupos, setGrupos] = useState<GrupoNomina[]>([]);
+  const [clavesActivas, setClavesActivas] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
@@ -185,6 +186,23 @@ const PanelControlNominaPage: React.FC = () => {
   const [guardando, setGuardando] = useState(false);
   const [msgGuardado, setMsgGuardado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    axios
+      .get(`${API}/registro/usuarios`, { headers: authH() })
+      .then((res) => {
+        const set = new Set<string>();
+        for (const u of res.data) {
+          if (u.activo === true && u.nombre_englobado) {
+            set.add(String(u.nombre_englobado).trim().toUpperCase());
+          }
+        }
+        setClavesActivas(set);
+      })
+      .catch(() => {
+        // si falla, dejamos el set vacío => no se aplica el filtro (se ve todo)
+      });
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -260,6 +278,10 @@ const PanelControlNominaPage: React.FC = () => {
 
   const gruposFiltrados = grupos
     .filter((g) => /^[AC]\d+/i.test(g.nombre_englobado))
+    .filter((g) =>
+      clavesActivas.size === 0 ||
+      clavesActivas.has(g.nombre_englobado.trim().toUpperCase())
+    )
     .filter((g) => g.nombre_englobado.toLowerCase().includes(busqueda.toLowerCase()));
 
   if (loading) {
