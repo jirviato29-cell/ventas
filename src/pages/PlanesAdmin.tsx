@@ -41,6 +41,7 @@ const PlanesAdmin = () => {
 
   // ── Hooks (todos antes de cualquier return condicional) ───────────────────
   const [planes, setPlanes]     = useState<PlanTarifario[]>([]);
+  const [claves, setClaves]     = useState<Record<number, string>>({});
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -50,6 +51,16 @@ const PlanesAdmin = () => {
     try {
       const r = await axios.get(`${BASE}/planes-tarifarios`, config);
       setPlanes(r.data);
+      try {
+        const ru = await axios.get(`${BASE}/usuarios`, config);
+        const mapa: Record<number, string> = {};
+        for (const u of ru.data) {
+          if (u.id != null) mapa[u.id] = u.nombre_englobado ?? "";
+        }
+        setClaves(mapa);
+      } catch {
+        // si falla, la columna cae al empleado_id numérico
+      }
     } catch {
       setErrorMsg("No se pudieron cargar los planes tarifarios.");
     } finally {
@@ -120,9 +131,11 @@ const PlanesAdmin = () => {
                     <TableRow key={p.id}>
                       <TableCell sx={cellSx}>{p.id}</TableCell>
                       <TableCell sx={cellSx}>
-                        {p.fecha ? new Date(p.fecha).toLocaleString("es-MX") : "-"}
+                        {p.fecha ? new Date(p.fecha).toLocaleDateString("es-MX") : "-"}
                       </TableCell>
-                      <TableCell sx={cellSx}>{nil(p.empleado_id)}</TableCell>
+                      <TableCell sx={cellSx}>
+                        {p.empleado_id != null ? (claves[p.empleado_id] || nil(p.empleado_id)) : "-"}
+                      </TableCell>
                       <TableCell sx={cellSx}>{nil(p.modulo_id)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.tipo_plan)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.estatus)}</TableCell>
