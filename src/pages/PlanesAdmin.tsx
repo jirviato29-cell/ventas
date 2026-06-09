@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert, Box, CircularProgress, Container,
+  Alert, Box, Button, CircularProgress, Container,
   Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Typography,
 } from "@mui/material";
@@ -30,6 +30,9 @@ interface PlanTarifario {
   cuenta: string | null;
   pago_inicial: boolean;
   monto_pago_inicial: number | null;
+  pagado: boolean | null;
+  fecha_pago: string | null;
+  contrato_listo: boolean | null;
 }
 
 const nil = (v: string | number | null | undefined): string =>
@@ -73,6 +76,32 @@ const PlanesAdmin = () => {
       setErrorMsg("No se pudieron cargar los planes tarifarios.");
     } finally {
       setCargando(false);
+    }
+  };
+
+  const togglePagado = async (plan: PlanTarifario) => {
+    const nuevo = !plan.pagado;
+    try {
+      await axios.patch(`${BASE}/planes-tarifarios/${plan.id}/pagado?pagado=${nuevo}`, {}, config);
+      setPlanes(prev => prev.map(x =>
+        x.id === plan.id
+          ? { ...x, pagado: nuevo, fecha_pago: nuevo ? new Date().toISOString() : null }
+          : x
+      ));
+    } catch {
+      setErrorMsg("No se pudo actualizar el estado de pago.");
+    }
+  };
+
+  const toggleContrato = async (plan: PlanTarifario) => {
+    const nuevo = !plan.contrato_listo;
+    try {
+      await axios.patch(`${BASE}/planes-tarifarios/${plan.id}/contrato-listo?contrato_listo=${nuevo}`, {}, config);
+      setPlanes(prev => prev.map(x =>
+        x.id === plan.id ? { ...x, contrato_listo: nuevo } : x
+      ));
+    } catch {
+      setErrorMsg("No se pudo actualizar el estado del contrato.");
     }
   };
 
@@ -125,12 +154,14 @@ const PlanesAdmin = () => {
                   <TableCell sx={headSx}>Pago inicial</TableCell>
                   <TableCell sx={headSx}>Monto PI</TableCell>
                   <TableCell sx={headSx}>Comisión</TableCell>
+                  <TableCell sx={headSx}>Contrato</TableCell>
+                  <TableCell sx={headSx}>Pagado</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {planes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
+                    <TableCell colSpan={18} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
                       No hay planes registrados
                     </TableCell>
                   </TableRow>
@@ -163,6 +194,31 @@ const PlanesAdmin = () => {
                           const c = calcularComision(p.categoria, p.clasificacion, p.tipo_plan);
                           return c != null ? `$${c}` : "-";
                         })()}
+                      </TableCell>
+                      <TableCell sx={cellSx}>
+                        <Button
+                          size="small"
+                          variant={p.contrato_listo ? "contained" : "outlined"}
+                          color={p.contrato_listo ? "success" : "inherit"}
+                          onClick={() => toggleContrato(p)}
+                        >
+                          {p.contrato_listo ? "Listo" : "Pendiente"}
+                        </Button>
+                      </TableCell>
+                      <TableCell sx={cellSx}>
+                        <Button
+                          size="small"
+                          variant={p.pagado ? "contained" : "outlined"}
+                          color={p.pagado ? "success" : "inherit"}
+                          onClick={() => togglePagado(p)}
+                        >
+                          {p.pagado ? "Pagado" : "Marcar pagado"}
+                        </Button>
+                        {p.pagado && p.fecha_pago && (
+                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                            {new Date(p.fecha_pago).toLocaleDateString("es-MX")}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
