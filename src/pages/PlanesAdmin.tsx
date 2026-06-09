@@ -42,6 +42,7 @@ const PlanesAdmin = () => {
   // ── Hooks (todos antes de cualquier return condicional) ───────────────────
   const [planes, setPlanes]     = useState<PlanTarifario[]>([]);
   const [claves, setClaves]     = useState<Record<number, string>>({});
+  const [modulos, setModulos]   = useState<Record<number, string>>({});
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -58,6 +59,12 @@ const PlanesAdmin = () => {
           if (u.id != null) mapa[u.id] = u.nombre_englobado ?? "";
         }
         setClaves(mapa);
+        const rm = await axios.get(`${BASE}/registro/modulos`, config);
+        const mapaMod: Record<number, string> = {};
+        for (const m of rm.data) {
+          if (m.id != null) mapaMod[m.id] = m.nombre ?? "";
+        }
+        setModulos(mapaMod);
       } catch {
         // si falla, la columna cae al empleado_id numérico
       }
@@ -101,7 +108,6 @@ const PlanesAdmin = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={headSx}>ID</TableCell>
                   <TableCell sx={headSx}>Fecha</TableCell>
                   <TableCell sx={headSx}>Empleado ID</TableCell>
                   <TableCell sx={headSx}>Módulo ID</TableCell>
@@ -122,21 +128,22 @@ const PlanesAdmin = () => {
               <TableBody>
                 {planes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
+                    <TableCell colSpan={15} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
                       No hay planes registrados
                     </TableCell>
                   </TableRow>
                 ) : (
                   planes.map(p => (
                     <TableRow key={p.id}>
-                      <TableCell sx={cellSx}>{p.id}</TableCell>
                       <TableCell sx={cellSx}>
                         {p.fecha ? new Date(p.fecha).toLocaleDateString("es-MX") : "-"}
                       </TableCell>
                       <TableCell sx={cellSx}>
                         {p.empleado_id != null ? (claves[p.empleado_id] || nil(p.empleado_id)) : "-"}
                       </TableCell>
-                      <TableCell sx={cellSx}>{nil(p.modulo_id)}</TableCell>
+                      <TableCell sx={cellSx}>
+                        {p.modulo_id != null ? (modulos[p.modulo_id] || nil(p.modulo_id)) : "-"}
+                      </TableCell>
                       <TableCell sx={cellSx}>{nil(p.tipo_plan)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.estatus)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.categoria)}</TableCell>
