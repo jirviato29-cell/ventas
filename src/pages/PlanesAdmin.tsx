@@ -52,7 +52,7 @@ const PlanesAdmin = () => {
       const r = await axios.get(`${BASE}/planes-tarifarios`, config);
       setPlanes(r.data);
       try {
-        const ru = await axios.get(`${BASE}/usuarios`, config);
+        const ru = await axios.get(`${BASE}/registro/usuarios`, config);
         const mapa: Record<number, string> = {};
         for (const u of ru.data) {
           if (u.id != null) mapa[u.id] = u.nombre_englobado ?? "";
