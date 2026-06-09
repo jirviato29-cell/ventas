@@ -119,12 +119,12 @@ const PlanesAdmin = () => {
                   <TableCell sx={headSx}>Equipo</TableCell>
                   <TableCell sx={headSx}>IMEI</TableCell>
                   <TableCell sx={headSx}>Precio equipo</TableCell>
-                  <TableCell sx={headSx}>Comisión</TableCell>
                   <TableCell sx={headSx}>Plazo</TableCell>
                   <TableCell sx={headSx}>Línea</TableCell>
                   <TableCell sx={headSx}>Cuenta</TableCell>
                   <TableCell sx={headSx}>Pago inicial</TableCell>
                   <TableCell sx={headSx}>Monto PI</TableCell>
+                  <TableCell sx={headSx}>Comisión</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -153,17 +153,17 @@ const PlanesAdmin = () => {
                       <TableCell sx={cellSx}>{nil(p.equipo)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.imei)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.precio_equipo)}</TableCell>
+                      <TableCell sx={cellSx}>{nil(p.plazo)}</TableCell>
+                      <TableCell sx={cellSx}>{nil(p.linea)}</TableCell>
+                      <TableCell sx={cellSx}>{nil(p.cuenta)}</TableCell>
+                      <TableCell sx={cellSx}>{p.pago_inicial ? "Sí" : "No"}</TableCell>
+                      <TableCell sx={cellSx}>{nil(p.monto_pago_inicial)}</TableCell>
                       <TableCell sx={cellSx}>
                         {(() => {
                           const c = calcularComision(p.categoria, p.clasificacion, p.tipo_plan);
                           return c != null ? `$${c}` : "-";
                         })()}
                       </TableCell>
-                      <TableCell sx={cellSx}>{nil(p.plazo)}</TableCell>
-                      <TableCell sx={cellSx}>{nil(p.linea)}</TableCell>
-                      <TableCell sx={cellSx}>{nil(p.cuenta)}</TableCell>
-                      <TableCell sx={cellSx}>{p.pago_inicial ? "Sí" : "No"}</TableCell>
-                      <TableCell sx={cellSx}>{nil(p.monto_pago_inicial)}</TableCell>
                     </TableRow>
                   ))
                 )}
