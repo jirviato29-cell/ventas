@@ -7,6 +7,7 @@ import {
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
+import { calcularComision } from "../data/comisionesTabulador";
 
 const BASE   = "https://ato-appservidor-nvxt.onrender.com";
 const headSx = { py: "4px", px: "6px", fontSize: 13, fontWeight: 700 };
@@ -118,6 +119,7 @@ const PlanesAdmin = () => {
                   <TableCell sx={headSx}>Equipo</TableCell>
                   <TableCell sx={headSx}>IMEI</TableCell>
                   <TableCell sx={headSx}>Precio equipo</TableCell>
+                  <TableCell sx={headSx}>Comisión</TableCell>
                   <TableCell sx={headSx}>Plazo</TableCell>
                   <TableCell sx={headSx}>Línea</TableCell>
                   <TableCell sx={headSx}>Cuenta</TableCell>
@@ -128,7 +130,7 @@ const PlanesAdmin = () => {
               <TableBody>
                 {planes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
+                    <TableCell colSpan={16} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
                       No hay planes registrados
                     </TableCell>
                   </TableRow>
@@ -151,6 +153,12 @@ const PlanesAdmin = () => {
                       <TableCell sx={cellSx}>{nil(p.equipo)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.imei)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.precio_equipo)}</TableCell>
+                      <TableCell sx={cellSx}>
+                        {(() => {
+                          const c = calcularComision(p.categoria, p.clasificacion, p.tipo_plan);
+                          return c != null ? `$${c}` : "-";
+                        })()}
+                      </TableCell>
                       <TableCell sx={cellSx}>{nil(p.plazo)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.linea)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.cuenta)}</TableCell>
