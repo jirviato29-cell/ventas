@@ -340,9 +340,27 @@ const MiNomina: React.FC = () => {
           iconBg="#eef2ff"
           iconColor="#4f46e5"
           titulo="Sueldo base"
-          subtitulo={horasTxt}
+          subtitulo={
+            fila.sueldo_detalle && fila.sueldo_detalle.length > 1
+              ? `${fila.sueldo_detalle.length} módulos · ${horasTxt}`
+              : horasTxt
+          }
           monto={fmt(fila.sueldo)}
-        />
+        >
+          {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
+            <Box mt={1} ml={6.25}>
+              {fila.sueldo_detalle.map((d) => (
+                <Box key={d.modulo} display="flex" justifyContent="space-between" alignItems="center" py={0.4}>
+                  <Box display="flex" alignItems="center" gap={0.75}>
+                    <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#4f46e5", flexShrink: 0 }} />
+                    <Typography fontSize={12.5} color="#334155">{d.modulo}</Typography>
+                  </Box>
+                  <Typography fontSize={12.5} fontWeight={600} color="#1e293b">{fmt(d.monto)}</Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Tarjeta>
 
         <Tarjeta
           icon="%"
