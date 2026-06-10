@@ -45,8 +45,9 @@ export function imprimirTicket(data: TicketData): void {
   body {
     width: 58mm;
     padding: 2mm 3mm;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
+    font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
     color: #000;
     -webkit-print-color-adjust: exact;
   }
