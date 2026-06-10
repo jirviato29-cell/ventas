@@ -624,6 +624,7 @@ const FormularioVentaMultiple = () => {
       const okEf = resEf.status === 'fulfilled';
       const okTa = resTa.status === 'fulfilled';
       if (okEf && okTa) {
+        const folioVenta = okEf ? (resEf as PromiseFulfilledResult<any>).value?.data?.[0]?.folio : undefined;
         setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
         imprimirTicket({
           productos: carrito.map(p => ({
@@ -635,6 +636,7 @@ const FormularioVentaMultiple = () => {
           metodoPago,
           montoDividido,
           telefono,
+          folio: folioVenta,
           modulo: user?.modulo?.nombre || moduloLocal || '',
           vendedor: localStorage.getItem('usuario') || '',
         });
@@ -652,11 +654,12 @@ const FormularioVentaMultiple = () => {
     }
 
     try {
-      await axios.post(
+      const res = await axios.post(
         `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
         { productos: carrito, telefono_cliente: telefono, metodo_pago: metodoPago },
         config,
       );
+      const folioVenta = res?.data?.[0]?.folio;
       setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
       imprimirTicket({
         productos: carrito.map(p => ({
@@ -668,6 +671,7 @@ const FormularioVentaMultiple = () => {
         metodoPago,
         montoDividido,
         telefono,
+        folio: folioVenta,
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
       });
