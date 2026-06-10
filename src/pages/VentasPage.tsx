@@ -17,6 +17,7 @@ import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
 import { useNavigate } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
+import { imprimirTicket } from '../utils/imprimirTicket';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -624,6 +625,17 @@ const FormularioVentaMultiple = () => {
       const okTa = resTa.status === 'fulfilled';
       if (okEf && okTa) {
         setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
+        imprimirTicket({
+          productos: carrito.map(p => ({
+            nombre: p.nombre,
+            cantidad: p.cantidad,
+            precio_unitario: p.precio_unitario,
+          })),
+          total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
+          metodoPago,
+          montoDividido,
+          telefono,
+        });
         setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
       } else if (okEf && !okTa) {
@@ -644,6 +656,17 @@ const FormularioVentaMultiple = () => {
         config,
       );
       setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
+      imprimirTicket({
+        productos: carrito.map(p => ({
+          nombre: p.nombre,
+          cantidad: p.cantidad,
+          precio_unitario: p.precio_unitario,
+        })),
+        total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
+        metodoPago,
+        montoDividido,
+        telefono,
+      });
       setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
     } catch (err: any) {
