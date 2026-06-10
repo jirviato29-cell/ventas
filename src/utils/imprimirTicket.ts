@@ -69,7 +69,7 @@ export function imprimirTicket(data: TicketData): void {
   .pie { margin-top: 6px; }
 </style>
 </head>
-<body onload="window.focus(); window.print();">
+<body>
   <img src="/logo-ticket.png" class="logo" alt="ATO">
   <div class="center neg">Telcel</div>
   <div class="div"></div>
@@ -88,6 +88,8 @@ export function imprimirTicket(data: TicketData): void {
 </body>
 </html>`;
 
+  console.log('[ticket] imprimirTicket llamado', data);
+
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -102,7 +104,21 @@ export function imprimirTicket(data: TicketData): void {
   doc.write(html);
   doc.close();
 
-  iframe.contentWindow!.onafterprint = () => {
-    document.body.removeChild(iframe);
+  const win = iframe.contentWindow!;
+  const disparar = () => {
+    console.log('[ticket] disparando print');
+    win.focus();
+    win.print();
+    setTimeout(() => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    }, 1000);
   };
+
+  const img = doc.querySelector('img');
+  if (img && !img.complete) {
+    img.onload = disparar;
+    img.onerror = disparar;
+  } else {
+    setTimeout(disparar, 200);
+  }
 }
