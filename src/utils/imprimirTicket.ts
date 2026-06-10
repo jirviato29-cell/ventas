@@ -11,6 +11,8 @@ interface TicketData {
   montoDividido?: { efectivo: string; tarjeta: string };
   telefono?: string;
   folio?: string | number;
+  modulo?: string;
+  vendedor?: string;
 }
 
 const fmt = (n: number) =>
@@ -32,15 +34,6 @@ export function imprimirTicket(data: TicketData): void {
     pagoTxt = data.metodoPago.charAt(0).toUpperCase() + data.metodoPago.slice(1);
   }
 
-  const filas = data.productos.map((p) => `
-    <div class="item">
-      <div class="item-nombre">${p.nombre}</div>
-      <div class="item-linea">
-        <span>${p.cantidad} x ${fmt(p.precio_unitario)}</span>
-        <span>${fmt(p.cantidad * p.precio_unitario)}</span>
-      </div>
-    </div>`).join('');
-
   const html = `
 <!DOCTYPE html>
 <html>
@@ -58,32 +51,39 @@ export function imprimirTicket(data: TicketData): void {
     -webkit-print-color-adjust: exact;
   }
   .center { text-align: center; }
-  .logo { width: 42mm; display: block; margin: 0 auto 4px; }
-  .neg { font-weight: bold; }
+  .logo { width: 42mm; display: block; margin: 0 auto 3px; }
+  .eslogan { font-size: 9px; text-align: center; line-height: 1.2; }
+  .empresa { font-size: 12px; font-weight: bold; text-align: center; margin-top: 4px; }
   .div { border-top: 1px dashed #000; margin: 5px 0; }
   .row { display: flex; justify-content: space-between; }
-  .item { margin: 3px 0; }
-  .item-nombre { font-weight: bold; }
-  .item-linea { display: flex; justify-content: space-between; }
+  .item-nombre { font-weight: bold; margin-top: 4px; }
+  .item-precio { font-weight: bold; font-size: 13px; }
   .total { font-size: 15px; font-weight: bold; }
-  .pie { margin-top: 6px; }
+  .pie { margin-top: 6px; text-align: center; }
 </style>
 </head>
 <body>
   <img src="/logo-ticket.png" class="logo" alt="ATO">
-  <div class="center neg">Telcel</div>
+  <div class="eslogan">TODO LO QUE NECESITAS PARA COMUNICARTE<br>Accesorios · Equipos · Gadgets</div>
+  <div class="empresa">Comercializadora Axcel</div>
   <div class="div"></div>
   <div class="row"><span>Fecha:</span><span>${fecha}</span></div>
+  ${data.modulo ? `<div class="row"><span>Modulo:</span><span>${data.modulo}</span></div>` : ''}
+  ${data.vendedor ? `<div class="row"><span>Vendedor:</span><span>${data.vendedor}</span></div>` : ''}
   ${data.folio ? `<div class="row"><span>Folio:</span><span>${data.folio}</span></div>` : ''}
   <div class="div"></div>
-  ${filas}
+  ${data.productos.map((p) => `
+    <div class="item-nombre">${p.nombre}</div>
+    <div class="item-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
+    <div style="font-size:9px">${p.cantidad} x ${fmt(p.precio_unitario)}</div>
+  `).join('')}
   <div class="div"></div>
   <div class="row total"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
   <div class="div"></div>
   <div class="row"><span>Pago:</span><span style="text-align:right">${pagoTxt}</span></div>
   ${data.telefono ? `<div class="row"><span>Tel:</span><span>${data.telefono}</span></div>` : ''}
   <div class="div"></div>
-  <div class="center pie">¡Gracias por su compra!</div>
+  <div class="pie">¡Gracias por su compra!</div>
   <div style="height:12mm"></div>
 </body>
 </html>`;

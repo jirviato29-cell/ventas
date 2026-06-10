@@ -635,6 +635,8 @@ const FormularioVentaMultiple = () => {
           metodoPago,
           montoDividido,
           telefono,
+          modulo: user?.modulo?.nombre || moduloLocal || '',
+          vendedor: localStorage.getItem('usuario') || '',
         });
         setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
@@ -666,6 +668,8 @@ const FormularioVentaMultiple = () => {
         metodoPago,
         montoDividido,
         telefono,
+        modulo: user?.modulo?.nombre || moduloLocal || '',
+        vendedor: localStorage.getItem('usuario') || '',
       });
       setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
