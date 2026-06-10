@@ -51,40 +51,45 @@ export function imprimirTicket(data: TicketData): void {
     color: #000;
     -webkit-print-color-adjust: exact;
   }
-  .center { text-align: center; }
-  .logo { width: 42mm; display: block; margin: 0 auto 3px; }
-  .eslogan { font-size: 9px; text-align: center; line-height: 1.2; }
-  .empresa { font-size: 12px; font-weight: bold; text-align: center; margin-top: 4px; }
+  .logo { width: 42mm; display: block; margin: 0 auto; }
+  .sep-logo { height: 7px; }
+  .eslogan { font-size: 9px; text-align: center; line-height: 1.3; }
+  .empresa { font-size: 13px; text-align: center; margin-top: 4px; }
   .div { border-top: 1px dashed #000; margin: 5px 0; }
-  .row { display: flex; justify-content: space-between; }
-  .item-nombre { font-weight: bold; margin-top: 4px; }
-  .item-precio { font-weight: bold; font-size: 13px; }
-  .total { font-size: 15px; font-weight: bold; }
+  .info { word-break: break-word; margin: 2px 0; }
+  .prod-nombre { margin-top: 2px; word-break: break-word; }
+  .prod-detalle { font-size: 10px; }
+  .prod-precio { font-size: 14px; }
+  .total-row { display: flex; justify-content: space-between; font-size: 15px; }
+  .pago { word-break: break-word; margin: 2px 0; }
   .pie { margin-top: 6px; text-align: center; }
+  .promo { margin-top: 6px; text-align: center; font-size: 10px; line-height: 1.3; }
 </style>
 </head>
 <body>
   <img src="/logo-ticket.png" class="logo" alt="ATO">
+  <div class="sep-logo"></div>
   <div class="eslogan">TODO LO QUE NECESITAS PARA COMUNICARTE<br>Accesorios · Equipos · Gadgets</div>
   <div class="empresa">Comercializadora Axcel</div>
   <div class="div"></div>
-  <div class="row"><span>Fecha:</span><span>${fecha}</span></div>
-  ${data.modulo ? `<div class="row"><span>Modulo:</span><span>${data.modulo}</span></div>` : ''}
-  ${data.vendedor ? `<div class="row"><span>Vendedor:</span><span>${data.vendedor}</span></div>` : ''}
-  ${data.folio ? `<div class="row"><span>Folio:</span><span>${data.folio}</span></div>` : ''}
+  <div class="info">Fecha: ${fecha}</div>
+  ${data.modulo ? `<div class="info">Modulo: ${data.modulo}</div>` : ''}
+  ${data.vendedor ? `<div class="info">Vendedor: ${data.vendedor}</div>` : ''}
+  ${data.folio ? `<div class="info">Folio: ${data.folio}</div>` : ''}
   <div class="div"></div>
   ${data.productos.map((p) => `
-    <div class="item-nombre">${p.nombre}</div>
-    <div class="item-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
-    <div style="font-size:9px">${p.cantidad} x ${fmt(p.precio_unitario)}</div>
-  `).join('')}
+    <div class="prod-nombre">${p.nombre}</div>
+    <div class="prod-detalle">${p.cantidad} x ${fmt(p.precio_unitario)}</div>
+    <div class="prod-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
+  `).join('<div style="height:5px"></div>')}
   <div class="div"></div>
-  <div class="row total"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
+  <div class="total-row"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
   <div class="div"></div>
-  <div class="row"><span>Pago:</span><span style="text-align:right">${pagoTxt}</span></div>
-  ${data.telefono ? `<div class="row"><span>Tel:</span><span>${data.telefono}</span></div>` : ''}
+  <div class="pago">Pago: ${pagoTxt}</div>
+  ${data.telefono ? `<div class="info">Tel: ${data.telefono}</div>` : ''}
   <div class="div"></div>
-  <div class="pie">¡Gracias por su compra!</div>
+  <div class="pie">¡Gracias por tu compra!</div>
+  <div class="promo">Presenta este ticket en tu siguiente compra y recibe 10% de descuento en: protectores, micas de hidrogel, cargadores, bocinas, power bank y manos libres.</div>
   <div style="height:12mm"></div>
 </body>
 </html>`;

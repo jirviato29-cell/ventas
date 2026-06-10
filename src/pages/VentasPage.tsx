@@ -627,7 +627,7 @@ const FormularioVentaMultiple = () => {
         setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
         imprimirTicket({
           productos: carrito.map(p => ({
-            nombre: p.nombre,
+            nombre: (p as any).producto || p.nombre,
             cantidad: p.cantidad,
             precio_unitario: p.precio_unitario,
           })),
@@ -660,7 +660,7 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
       imprimirTicket({
         productos: carrito.map(p => ({
-          nombre: p.nombre,
+          nombre: (p as any).producto || p.nombre,
           cantidad: p.cantidad,
           precio_unitario: p.precio_unitario,
         })),
