@@ -238,7 +238,11 @@ const MiNomina: React.FC = () => {
     Number(fila.incubadora || 0) +
     Number(fila.planes || 0) +
     Number(fila.pendientes || 0);
-  const numConMonto = conceptosCom.filter((c) => Number(c.value || 0) > 0).length;
+  const esCadena = fila.seccion === "cadena";
+  const conceptosComVisibles = esCadena
+    ? conceptosCom.filter((c) => c.label !== "Teléfonos" && c.label !== "Accesorios")
+    : conceptosCom;
+  const numConMonto = conceptosComVisibles.filter((c) => Number(c.value || 0) > 0).length;
 
   const horasTxt =
     fila.horas_extra != null
@@ -255,6 +259,12 @@ const MiNomina: React.FC = () => {
   const subtituloSueldo = tieneDetalle
     ? `${fila.sueldo_detalle!.length} módulos${periodoSueldoTxt ? ` · ${periodoSueldoTxt}` : ""} · ${horasTxt}`
     : horasTxt;
+
+  const periodoCadenasTxt =
+    esCadena && periodos.cadenas
+      ? `${fmtFechaCorta(periodos.cadenas.inicio)} - ${fmtFechaCorta(periodos.cadenas.fin)}`
+      : "";
+  const subtituloComisiones = `${numConMonto} de ${conceptosComVisibles.length} conceptos con monto${periodoCadenasTxt ? ` · ${periodoCadenasTxt}` : ""}`;
 
   return (
     <Box maxWidth={560} mx="auto" py={3} px={2}>
@@ -375,7 +385,7 @@ const MiNomina: React.FC = () => {
           iconBg="#ecfdf5"
           iconColor={GREEN}
           titulo="Comisiones"
-          subtitulo={`${numConMonto} de ${conceptosCom.length} conceptos con monto`}
+          subtitulo={subtituloComisiones}
           monto={fmt(totalComisiones)}
           montoColor={GREEN}
         >
@@ -388,7 +398,7 @@ const MiNomina: React.FC = () => {
               columnGap: 2.5,
             }}
           >
-            {conceptosCom.map((c) => (
+            {conceptosComVisibles.map((c) => (
               <ComItem key={c.label} label={c.label} value={c.value} />
             ))}
           </Box>
