@@ -53,6 +53,7 @@ interface FilaRecibo {
   sanciones?: number;
   deposito?: number;
   sueldo_detalle?: SueldoDetalle[];
+  sueldo_periodo?: { inicio: string; fin: string };
   [key: string]: unknown;
 }
 
@@ -244,6 +245,17 @@ const MiNomina: React.FC = () => {
       ? `${Number(fila.horas_extra).toFixed(1)} hrs extra`
       : "Semana completa";
 
+  const fmtFechaCorta = (iso: string) =>
+    new Date(iso + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+
+  const tieneDetalle = fila.sueldo_detalle && fila.sueldo_detalle.length > 1;
+  const periodoSueldoTxt = fila.sueldo_periodo
+    ? `${fmtFechaCorta(fila.sueldo_periodo.inicio)} - ${fmtFechaCorta(fila.sueldo_periodo.fin)}`
+    : "";
+  const subtituloSueldo = tieneDetalle
+    ? `${fila.sueldo_detalle!.length} módulos${periodoSueldoTxt ? ` · ${periodoSueldoTxt}` : ""} · ${horasTxt}`
+    : horasTxt;
+
   return (
     <Box maxWidth={560} mx="auto" py={3} px={2}>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} flexWrap="wrap" gap={1}>
@@ -340,11 +352,7 @@ const MiNomina: React.FC = () => {
           iconBg="#eef2ff"
           iconColor="#4f46e5"
           titulo="Sueldo base"
-          subtitulo={
-            fila.sueldo_detalle && fila.sueldo_detalle.length > 1
-              ? `${fila.sueldo_detalle.length} módulos · ${horasTxt}`
-              : horasTxt
-          }
+          subtitulo={subtituloSueldo}
           monto={fmt(fila.sueldo)}
         >
           {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
