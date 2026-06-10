@@ -797,6 +797,19 @@ const FormularioVentaMultiple = () => {
       const okTa = resTa.status === 'fulfilled';
       if (okEf && okTa) {
         setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
+        imprimirTicket({
+          productos: [{
+            nombre: productoBase.producto,
+            cantidad: 1,
+            precio_unitario: p,
+          }],
+          total: p,
+          metodoPago,
+          montoDividido,
+          telefono,
+          modulo: user?.modulo?.nombre || moduloLocal || '',
+          vendedor: localStorage.getItem('usuario') || '',
+        });
         resetTel();
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
       } else if (okEf && !okTa) {
@@ -817,6 +830,19 @@ const FormularioVentaMultiple = () => {
         config,
       );
       setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
+      imprimirTicket({
+        productos: [{
+          nombre: productoBase.producto,
+          cantidad: 1,
+          precio_unitario: p,
+        }],
+        total: p,
+        metodoPago,
+        montoDividido,
+        telefono,
+        modulo: user?.modulo?.nombre || moduloLocal || '',
+        vendedor: localStorage.getItem('usuario') || '',
+      });
       resetTel();
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
     } catch (err: any) {
