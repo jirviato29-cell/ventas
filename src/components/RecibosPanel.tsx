@@ -284,7 +284,6 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                 const primer = recibo.items[0];
                 const abierto = expandido === recibo.folio;
                 const cancelado = recibo.items.every((i) => i.cancelada === true);
-                console.log('[recibo]', recibo.folio, 'cancelado=', cancelado, 'items=', recibo.items.map(i => ({ id: i.id, cancelada: i.cancelada, tipo: typeof i.cancelada })));
 
                 return (
                   <React.Fragment key={recibo.folio}>
