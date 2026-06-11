@@ -18,6 +18,7 @@ import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '.
 import { useNavigate } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
 import { imprimirTicket } from '../utils/imprimirTicket';
+import RecibosPanel from '../components/RecibosPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -1541,6 +1542,10 @@ const FormularioVentaMultiple = () => {
               sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
             />
           )}
+          <Tab
+            label="RECIBOS"
+            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          />
         </Tabs>
 
         {/* ── Tab TICKET ── */}
@@ -2390,6 +2395,13 @@ const FormularioVentaMultiple = () => {
           <Typography fontSize={13} fontWeight={700}>Total: ${totalTelefonos.toFixed(2)}</Typography>
         </Box>
       </Paper>
+
+        {/* ── Tab RECIBOS (asesor) TICKET=0 MIS VENTAS=1 COMISIONES=2 MI SEMANA=3(cadenas) RECIBOS=3 o 4 ── */}
+        {tabAsesor === (esCadenas ? 4 : 3) && (
+          <Box sx={{ mt: 2 }}>
+            <RecibosPanel />
+          </Box>
+        )}
     </Box>
   );
 
@@ -2438,6 +2450,10 @@ const FormularioVentaMultiple = () => {
           iconPosition="start"
           label="CORTE"
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' }, color: '#f97316' }}
+        />
+        <Tab
+          label="RECIBOS"
+          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
       </Tabs>
 
@@ -2688,6 +2704,13 @@ const FormularioVentaMultiple = () => {
             </Typography>
           </Box>
         </Paper>
+      </Box>
+    )}
+
+    {/* ── Tab RECIBOS (encargado) ── */}
+    {tabAsesor === 4 && (
+      <Box sx={{ mt: 2 }}>
+        <RecibosPanel />
       </Box>
     )}
 
