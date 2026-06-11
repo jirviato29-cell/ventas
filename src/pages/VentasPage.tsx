@@ -637,6 +637,7 @@ const FormularioVentaMultiple = () => {
           montoDividido,
           telefono,
           folio: folioVenta,
+          clasificacion: 'Accesorios',
           modulo: user?.modulo?.nombre || moduloLocal || '',
           vendedor: localStorage.getItem('usuario') || '',
         });
@@ -672,6 +673,7 @@ const FormularioVentaMultiple = () => {
         montoDividido,
         telefono,
         folio: folioVenta,
+        clasificacion: 'Accesorios',
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
       });

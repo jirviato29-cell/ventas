@@ -13,6 +13,7 @@ interface TicketData {
   folio?: string | number;
   modulo?: string;
   vendedor?: string;
+  clasificacion?: string;
 }
 
 const fmt = (n: number) =>
@@ -59,6 +60,7 @@ export function imprimirTicket(data: TicketData): void {
   .info { word-break: break-word; margin: 2px 0; }
   .prod-nombre { margin-top: 2px; word-break: break-word; }
   .prod-detalle { font-size: 10px; }
+  .clasif { font-size: 11px; text-transform: uppercase; margin-bottom: 3px; }
   .prod-precio { font-size: 14px; }
   .total-row { display: flex; justify-content: space-between; font-size: 15px; }
   .pago { word-break: break-word; margin: 2px 0; }
@@ -77,9 +79,9 @@ export function imprimirTicket(data: TicketData): void {
   ${data.vendedor ? `<div class="info">Vendedor: ${data.vendedor}</div>` : ''}
   ${data.folio ? `<div class="info">Folio: ${data.folio}</div>` : ''}
   <div class="div"></div>
+  ${data.clasificacion ? `<div class="clasif">${data.clasificacion}</div>` : ''}
   ${data.productos.map((p) => `
     <div class="prod-nombre">${p.nombre}</div>
-    <div class="prod-detalle">${p.cantidad} x ${fmt(p.precio_unitario)}</div>
     <div class="prod-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
   `).join('<div style="height:5px"></div>')}
   <div class="div"></div>
