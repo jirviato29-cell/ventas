@@ -185,7 +185,9 @@ const Navbar = () => {
                     open={Boolean(anchorInventario)}
                     onClose={() => closeMenu(setAnchorInventario)}
                   >
+                    {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
                     <MenuItem component={Link} to="/inventario">Inventario</MenuItem>
+                    */}
                     <MenuItem component={Link} to="/entrada-mercancia">Entrada de Mercancia</MenuItem>
                     <MenuItem component={Link} to="/traspasos/admin">Traspasos</MenuItem>
                     <MenuItem component={Link} to="/kardex">Kardex</MenuItem>
@@ -239,7 +241,9 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/comisiones">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/traspasos/admin">Traspasos</Button>
                   <Button sx={navBtnSx} component={Link} to="/usuarios">Usuarios</Button>
+                  {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
                   <Button sx={navBtnSx} component={Link} to="/inventario">Inventario</Button>
+                  */}
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
                 </>
               )}
@@ -388,10 +392,12 @@ const Navbar = () => {
               </ListItemButton>
               <Collapse in={inventarioOpen} timeout="auto" unmountOnExit>
                 <List disablePadding>
+                  {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                     <ListItemText primary="Inventario" />
                   </ListItemButton>
+                  */}
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/entrada-mercancia")}>
                     <ListItemIcon sx={drawerIconSx}><MoveToInboxIcon /></ListItemIcon>
                     <ListItemText primary="Entrada de Mercancía" />
@@ -493,10 +499,12 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><PeopleIcon /></ListItemIcon>
                 <ListItemText primary="Usuarios" />
               </ListItemButton>
+              {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                 <ListItemText primary="Inventario" />
               </ListItemButton>
+              */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                 <ListItemText primary="Chips" />
