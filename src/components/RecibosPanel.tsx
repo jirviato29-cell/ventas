@@ -3,6 +3,7 @@ import axios from 'axios';
 import {
   Box,
   Button,
+  Chip,
   CircularProgress,
   Collapse,
   IconButton,
@@ -37,6 +38,7 @@ interface VentaRecibo {
   folio?: string | null;
   fecha?: string;
   hora?: string;
+  cancelada?: boolean;
   modulo?: { id: number; nombre: string } | null;
   empleado?: { username: string } | null;
 }
@@ -74,6 +76,11 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const puedeCancelar = rol === 'encargado' || rol === 'admin';
 
   const cancelarRecibo = async (recibo: Recibo) => {
+    if (recibo.items.every((i) => i.cancelada)) {
+      alert('Este recibo ya está cancelado.');
+      return;
+    }
+
     const confirmado = window.confirm(
       '¿Cancelar este recibo? Se cancelarán todos sus productos y el inventario regresará. Esta acción no se puede deshacer.'
     );
@@ -276,19 +283,24 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
               {recibos.map((recibo) => {
                 const primer = recibo.items[0];
                 const abierto = expandido === recibo.folio;
+                const cancelado = recibo.items.every((i) => i.cancelada === true);
+                console.log('[recibo]', recibo.folio, 'cancelado=', cancelado, 'items=', recibo.items.map(i => ({ id: i.id, cancelada: i.cancelada, tipo: typeof i.cancelada })));
 
                 return (
                   <React.Fragment key={recibo.folio}>
                     {/* ── Fila resumen ── */}
                     <TableRow
                       hover
-                      sx={{ '& > *': { borderBottom: abierto ? 'unset' : undefined } }}
+                      sx={{ '& > *': { borderBottom: abierto ? 'unset' : undefined }, opacity: cancelado ? 0.6 : 1 }}
                     >
                       <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
                         {primer.hora ? primer.hora.slice(0, 5) : '—'}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
                         {folioDisplay(recibo.folio)}
+                        {cancelado && (
+                          <Chip label="CANCELADO" size="small" color="error" sx={{ ml: 1, height: 18, fontSize: 10 }} />
+                        )}
                       </TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
                         {primer.modulo?.nombre ?? '—'}
@@ -318,7 +330,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                           <IconButton
                             size="small"
                             color="error"
-                            disabled={cancelando === recibo.folio}
+                            disabled={cancelando === recibo.folio || cancelado}
                             onClick={() => cancelarRecibo(recibo)}
                           >
                             <DeleteIcon fontSize="small" />
