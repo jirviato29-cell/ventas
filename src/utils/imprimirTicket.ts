@@ -65,7 +65,9 @@ export function imprimirTicket(data: TicketData): void {
   .total-row { display: flex; justify-content: space-between; font-size: 15px; }
   .pago { word-break: break-word; margin: 2px 0; }
   .pie { margin-top: 6px; text-align: center; }
-  .promo { margin-top: 6px; text-align: center; font-size: 10px; line-height: 1.3; }
+  .garantia-titulo { font-size: 11px; text-align: center; margin-top: 6px; margin-bottom: 4px; }
+  .garantia-item { text-align: justify; margin-bottom: 4px; font-size: 10px; line-height: 1.3; }
+  .promo { text-align: justify; font-size: 10px; line-height: 1.3; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -91,6 +93,15 @@ export function imprimirTicket(data: TicketData): void {
   ${data.telefono ? `<div class="info">Tel: ${data.telefono}</div>` : ''}
   <div class="div"></div>
   <div class="pie">¡Gracias por tu compra!</div>
+  <div class="div"></div>
+  <div class="garantia-titulo">CONDICIONES DE GARANTIA</div>
+  <div class="garantia-item">• 1 mes de garantia presentando ticket y empaque completo.</div>
+  <div class="garantia-item">• No aplica en micas, fundas ni protectores.</div>
+  <div class="garantia-item">• No aplica en equipos mojados.</div>
+  <div class="garantia-item">• No aplica en articulos en malas condiciones.</div>
+  <div class="garantia-item">• La garantia no es inmediata.</div>
+  <div class="garantia-item">• No hay cambios ni devolucion de efectivo.</div>
+  <div class="div"></div>
   <div class="promo">Presenta este ticket en tu siguiente compra y recibe 10% de descuento en: protectores, micas de hidrogel, cargadores, bocinas, power bank y manos libres.</div>
   <div style="height:12mm"></div>
 </body>
