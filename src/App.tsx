@@ -40,6 +40,7 @@ import GestionModulos from './pages/GestionModulos';
 import ProductosPage from './pages/ProductosPage';
 import ReportesDirector from './pages/ReportesDirector';
 import PlanesAdmin from './pages/PlanesAdmin';
+import RecibosPage from './pages/RecibosPage';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -88,6 +89,7 @@ const App: React.FC = () => {
     { path: '/admin/planes', element: <RutaProtegida><PlanesAdmin /></RutaProtegida> },
     { path: '/inventario/productos', element: <RutaProtegida><ProductosPage /></RutaProtegida> },
     { path: '/reportes-director', element: <RutaProtegida><ReportesDirector /></RutaProtegida> },
+    { path: '/recibos', element: <RutaProtegida><RecibosPage /></RutaProtegida> },
   ]);
 
   return routes;
