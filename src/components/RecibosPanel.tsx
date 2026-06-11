@@ -4,6 +4,8 @@ import {
   Box,
   Button,
   CircularProgress,
+  Collapse,
+  IconButton,
   MenuItem,
   Paper,
   Select,
@@ -17,6 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { imprimirTicket } from '../utils/imprimirTicket';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
@@ -63,6 +66,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const [recibos, setRecibos] = useState<Recibo[]>([]);
   const [cargando, setCargando] = useState(false);
   const [busquedaFolio, setBusquedaFolio] = useState('');
+  const [expandido, setExpandido] = useState<string | null>(null);
 
   const cargar = async (folio?: string) => {
     setCargando(true);
@@ -82,7 +86,6 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
 
       const ventas = res.data;
 
-      // Agrupar por folio; los sin folio agrupan por id individual
       const mapa: Record<string, VentaRecibo[]> = {};
       for (const v of ventas) {
         const clave = v.folio || `sin-folio-${v.id}`;
@@ -99,7 +102,6 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
         ),
       }));
 
-      // Ordenar: los que tienen folio real primero, luego sin folio
       grupos.sort((a, b) => {
         const aReal = a.folio.startsWith('sin-folio') ? 1 : 0;
         const bReal = b.folio.startsWith('sin-folio') ? 1 : 0;
@@ -116,13 +118,11 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
     }
   };
 
-  // Carga inicial: hoy
   useEffect(() => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Recarga al cambiar fecha o módulo (solo si no hay búsqueda por folio activa)
   useEffect(() => {
     if (!busquedaFolio) cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +164,9 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
 
   const folioDisplay = (folio: string) =>
     folio.startsWith('sin-folio') ? 'Sin folio' : folio;
+
+  const toggleExpandido = (folio: string) =>
+    setExpandido((prev) => (prev === folio ? null : folio));
 
   return (
     <Box>
@@ -232,97 +235,108 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
           No hay recibos para mostrar.
         </Typography>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {recibos.map((recibo) => {
-            const primer = recibo.items[0];
-            return (
-              <Paper key={recibo.folio} sx={{ p: 2 }}>
-                {/* Cabecera del recibo */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {folioDisplay(recibo.folio)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {primer.fecha} {primer.hora ? primer.hora.slice(0, 5) : ''}
-                      {primer.empleado?.username
-                        ? ` · ${primer.empleado.username}`
-                        : ''}
-                      {esAdmin && primer.modulo?.nombre
-                        ? ` · ${primer.modulo.nombre}`
-                        : ''}
-                    </Typography>
-                  </Box>
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Hora</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Folio</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Módulo</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">Productos</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Total</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {recibos.map((recibo) => {
+                const primer = recibo.items[0];
+                const abierto = expandido === recibo.folio;
 
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<PrintIcon />}
-                    onClick={() => reimprimir(recibo)}
-                    sx={{ whiteSpace: 'nowrap' }}
-                  >
-                    Reimprimir
-                  </Button>
-                </Box>
+                return (
+                  <React.Fragment key={recibo.folio}>
+                    {/* ── Fila resumen ── */}
+                    <TableRow
+                      hover
+                      sx={{ '& > *': { borderBottom: abierto ? 'unset' : undefined } }}
+                    >
+                      <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
+                        {primer.hora ? primer.hora.slice(0, 5) : '—'}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {folioDisplay(recibo.folio)}
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
+                        {primer.modulo?.nombre ?? '—'}
+                      </TableCell>
+                      <TableCell align="center" sx={{ color: 'text.secondary', fontSize: 13 }}>
+                        {recibo.items.length}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>
+                        {fmt(recibo.total)}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => toggleExpandido(recibo.folio)}
+                          sx={{ color: abierto ? '#f97316' : 'text.secondary' }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => reimprimir(recibo)}
+                          sx={{ color: 'text.secondary' }}
+                        >
+                          <PrintIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
 
-                {/* Tabla de productos */}
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Producto</TableCell>
-                        <TableCell align="center">Cant.</TableCell>
-                        <TableCell align="right">Precio u.</TableCell>
-                        <TableCell align="right">Subtotal</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {recibo.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.producto}</TableCell>
-                          <TableCell align="center">{item.cantidad}</TableCell>
-                          <TableCell align="right">
-                            {fmt(item.precio_unitario)}
-                          </TableCell>
-                          <TableCell align="right">
-                            {fmt(item.precio_unitario * item.cantidad)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell colSpan={3} align="right">
-                          <strong>Total</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>{fmt(recibo.total)}</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                {/* Pago */}
-                {primer.metodo_pago && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Pago: {primer.metodo_pago}
-                    {primer.telefono_cliente
-                      ? ` · Tel: ${primer.telefono_cliente}`
-                      : ''}
-                  </Typography>
-                )}
-              </Paper>
-            );
-          })}
-        </Box>
+                    {/* ── Fila detalle expandible ── */}
+                    <TableRow>
+                      <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
+                        <Collapse in={abierto} timeout="auto" unmountOnExit>
+                          <Box sx={{ px: 3, py: 1.5, bgcolor: '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Producto</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="center">Cant.</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="right">Precio u.</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="right">Subtotal</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {recibo.items.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell sx={{ fontSize: 12 }}>{item.producto}</TableCell>
+                                    <TableCell sx={{ fontSize: 12 }} align="center">{item.cantidad}</TableCell>
+                                    <TableCell sx={{ fontSize: 12 }} align="right">{fmt(item.precio_unitario)}</TableCell>
+                                    <TableCell sx={{ fontSize: 12 }} align="right">
+                                      {fmt(item.precio_unitario * item.cantidad)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                                {primer.metodo_pago && (
+                                  <TableRow>
+                                    <TableCell colSpan={4} sx={{ fontSize: 11, color: 'text.secondary', pt: 1 }}>
+                                      Pago: {primer.metodo_pago}
+                                      {primer.telefono_cliente ? ` · Tel: ${primer.telefono_cliente}` : ''}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );
