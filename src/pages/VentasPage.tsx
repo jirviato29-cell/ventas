@@ -802,6 +802,7 @@ const FormularioVentaMultiple = () => {
       const okEf = resEf.status === 'fulfilled';
       const okTa = resTa.status === 'fulfilled';
       if (okEf && okTa) {
+        const folioVenta = (resEf as PromiseFulfilledResult<any>).value?.data?.[0]?.folio;
         setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
         imprimirTicket({
           productos: [{
@@ -815,6 +816,8 @@ const FormularioVentaMultiple = () => {
           telefono,
           modulo: user?.modulo?.nombre || moduloLocal || '',
           vendedor: localStorage.getItem('usuario') || '',
+          folio: folioVenta,
+          clasificacion: 'Telefono',
         });
         resetTel();
         if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
@@ -830,11 +833,12 @@ const FormularioVentaMultiple = () => {
     }
 
     try {
-      await axios.post(
+      const res = await axios.post(
         `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
         { productos: [{ ...productoBase, precio_unitario: p }], metodo_pago: metodoPago, telefono_cliente: telefono?.trim() || '' },
         config,
       );
+      const folioVenta = res?.data?.[0]?.folio;
       setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
       imprimirTicket({
         productos: [{
@@ -848,6 +852,8 @@ const FormularioVentaMultiple = () => {
         telefono,
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
+        folio: folioVenta,
+        clasificacion: 'Telefono',
       });
       resetTel();
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
