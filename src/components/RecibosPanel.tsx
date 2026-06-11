@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { imprimirTicket } from '../utils/imprimirTicket';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
@@ -67,6 +68,30 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const [cargando, setCargando] = useState(false);
   const [busquedaFolio, setBusquedaFolio] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<string | null>(null);
+
+  const rol = localStorage.getItem('rol');
+  const puedeCancelar = rol === 'encargado' || rol === 'admin';
+
+  const cancelarRecibo = async (recibo: Recibo) => {
+    const confirmado = window.confirm(
+      '¿Cancelar este recibo? Se cancelarán todos sus productos y el inventario regresará. Esta acción no se puede deshacer.'
+    );
+    if (!confirmado) return;
+
+    setCancelando(recibo.folio);
+    for (const item of recibo.items) {
+      try {
+        await axios.put(`${API}/ventas/ventas/${item.id}/cancelar`, {}, config);
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail;
+        alert(`Error al cancelar producto "${item.producto}": ${typeof detail === 'string' ? detail : 'Error desconocido'}`);
+      }
+    }
+    setCancelando(null);
+    alert('Recibo cancelado');
+    cargar(busquedaFolio || undefined);
+  };
 
   const cargar = async (folio?: string) => {
     setCargando(true);
@@ -289,6 +314,16 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                         >
                           <PrintIcon fontSize="small" />
                         </IconButton>
+                        {puedeCancelar && (
+                          <IconButton
+                            size="small"
+                            color="error"
+                            disabled={cancelando === recibo.folio}
+                            onClick={() => cancelarRecibo(recibo)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
 
