@@ -859,19 +859,21 @@ const confirmarImportacion = async () => {
 
       {moduloSeleccionado && (
         <>
+          {/* OCULTO - forma vieja de agregar producto (desincronizaba inventario). Usar "Entrada de Mercancia" en su lugar.
           <Box display="flex" gap={2} mb={3} flexWrap="wrap">
         <Select value={tipo} onChange={(e) => setTipo(e.target.value as 'producto' | 'telefono')}>
           <MenuItem value="producto">Producto</MenuItem>
           <MenuItem value="telefono">Teléfono</MenuItem>
         </Select>
-            
+
                 <TextField label="Producto" value={nuevo.producto} onChange={(e) => setNuevo({ ...nuevo, producto: e.target.value })} />
                 <TextField label="Clave" value={nuevo.clave} onChange={(e) => setNuevo({ ...nuevo, clave: e.target.value })} />
-                  
+
             <TextField label="Cantidad" type="number" value={nuevo.cantidad} onChange={(e) => setNuevo({ ...nuevo, cantidad: e.target.value })} />
             <TextField label="Precio" type="number" value={nuevo.precio} onChange={(e) => setNuevo({ ...nuevo, precio: e.target.value })} />
             <Button variant="contained" onClick={agregarProducto}>Agregar</Button>
       </Box>
+          */}
 
 
           <TableContainer component={Paper}>

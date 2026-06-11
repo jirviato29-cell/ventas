@@ -320,7 +320,7 @@ const confirmarImportacion = async () => {
       )}
     </Paper>
 
-    {/* AGREGAR PRODUCTO */}
+    {/* OCULTO - forma vieja de agregar producto (desincronizaba inventario). Usar "Catalogo de Productos" en su lugar.
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         Agregar producto
@@ -376,6 +376,7 @@ const confirmarImportacion = async () => {
         </Button>
       </Box>
     </Paper>
+    */}
 
 
       {filtro.trim() !== "" && (
