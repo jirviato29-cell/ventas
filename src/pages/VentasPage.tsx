@@ -618,39 +618,49 @@ const FormularioVentaMultiple = () => {
           tipo_producto: item.tipo_producto,
           skip_comision: skip,
         }));
-      const [resEf, resTa] = await Promise.allSettled([
-        axios.post(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`, { productos: makeItems(pctEf, false), telefono_cliente: telefono, metodo_pago: 'efectivo' }, config),
-        axios.post(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`, { productos: makeItems(pctTa, true),  telefono_cliente: telefono, metodo_pago: 'tarjeta'  }, config),
-      ]);
-      const okEf = resEf.status === 'fulfilled';
-      const okTa = resTa.status === 'fulfilled';
-      if (okEf && okTa) {
-        const folioVenta = okEf ? (resEf as PromiseFulfilledResult<any>).value?.data?.[0]?.folio : undefined;
-        setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
-        imprimirTicket({
-          productos: carrito.map(p => ({
-            nombre: (p as any).producto || p.nombre,
-            cantidad: p.cantidad,
-            precio_unitario: p.precio_unitario,
-          })),
-          total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
-          metodoPago,
-          montoDividido,
-          telefono,
-          folio: folioVenta,
-          clasificacion: 'Accesorios',
-          modulo: user?.modulo?.nombre || moduloLocal || '',
-          vendedor: localStorage.getItem('usuario') || '',
-        });
-        setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
-        if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-      } else if (okEf && !okTa) {
-        setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
-      } else if (!okEf && okTa) {
-        setMensaje({ tipo: 'error', texto: 'Se guardó la parte en tarjeta pero falló la parte en efectivo. Verifica antes de continuar.' });
-      } else {
-        const detail = (resEf as PromiseRejectedResult).reason?.response?.data?.detail;
-        setMensaje({ tipo: 'error', texto: typeof detail === 'string' ? detail : 'Error al registrar la venta en ambos métodos.' });
+      try {
+        const resEf = await axios.post(
+          `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
+          { productos: makeItems(pctEf, false), telefono_cliente: telefono, metodo_pago: 'efectivo' },
+          config,
+        );
+        const folioCompartido = resEf?.data?.[0]?.folio;
+
+        let okTa = true;
+        try {
+          await axios.post(
+            `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
+            { productos: makeItems(pctTa, true), telefono_cliente: telefono, metodo_pago: 'tarjeta', folio: folioCompartido },
+            config,
+          );
+        } catch {
+          okTa = false;
+          setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
+        }
+
+        if (okTa) {
+          setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
+          imprimirTicket({
+            productos: carrito.map(p => ({
+              nombre: (p as any).producto || p.nombre,
+              cantidad: p.cantidad,
+              precio_unitario: p.precio_unitario,
+            })),
+            total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
+            metodoPago,
+            montoDividido,
+            telefono,
+            folio: folioCompartido,
+            clasificacion: 'Accesorios',
+            modulo: user?.modulo?.nombre || moduloLocal || '',
+            vendedor: localStorage.getItem('usuario') || '',
+          });
+          setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+          if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
+        }
+      } catch (errEf: any) {
+        const detail = errEf?.response?.data?.detail;
+        setMensaje({ tipo: 'error', texto: typeof detail === 'string' ? detail : 'Error al registrar la venta.' });
       }
       return;
     }
