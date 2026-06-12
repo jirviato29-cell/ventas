@@ -254,7 +254,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                   { label: 'Total',    align: 'right'  as const },
                   { label: 'Estado',   align: 'center' as const },
                   { label: 'Acciones', align: 'center' as const },
-                ].map((h) => (
+                ].map((h, i, arr) => (
                   <th key={h.label} style={{
                     padding: '9px 14px',
                     fontSize: 10,
@@ -264,6 +264,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                     textAlign: h.align,
                     letterSpacing: '0.4px',
                     whiteSpace: 'nowrap',
+                    borderRight: i < arr.length - 1 ? '1px solid #eef2f7' : 'none',
                   }}>
                     {h.label}
                   </th>
@@ -282,6 +283,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                   padding: '9px 14px',
                   fontSize: 12.5,
                   borderBottom: '1px solid #f1f5f9',
+                  borderRight: '1px solid #eef2f7',
                   verticalAlign: 'middle',
                   background: cancelado ? '#fffafa' : '#fff',
                 };
@@ -325,9 +327,8 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {recibo.items.map((item) => (
                           <div key={item.id} style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr auto',
-                            gap: '0 14px',
+                            display: 'flex',
+                            gap: 8,
                             alignItems: 'baseline',
                           }}>
                             <span style={{
@@ -384,7 +385,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                     </td>
 
                     {/* Acciones */}
-                    <td style={{ ...tdBase, textAlign: 'center' }}>
+                    <td style={{ ...tdBase, textAlign: 'center', borderRight: 'none' }}>
                       <Box sx={{ display: 'flex', gap: '6px', justifyContent: 'center', opacity: cancelado ? 0.4 : 1 }}>
                         <IconButton
                           size="small"
