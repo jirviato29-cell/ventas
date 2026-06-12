@@ -20,6 +20,7 @@ import { PLANES_CASCADA } from '../data/planesCascada';
 import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
+import RankingModulos from '../components/RankingModulos';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -1427,6 +1428,11 @@ const FormularioVentaMultiple = () => {
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
           <Grid container spacing={2}>
+            {!esCadenas && (
+              <Grid item xs={12}>
+                <RankingModulos />
+              </Grid>
+            )}
             {/* Columna izquierda: formulario (oculto para admin) */}
             {(rol as string) !== 'admin' && (
               <Grid item xs={12} md={6}>
