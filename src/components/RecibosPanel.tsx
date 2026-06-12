@@ -210,7 +210,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
 
   const tablaRecibos = (lista: Recibo[], bgHead: string) => (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
-      <Table size="small">
+      <Table size="small" sx={{ '& th': { borderRight: '1px solid #e5e7eb' }, '& td': { borderRight: '1px solid #e5e7eb' }, '& th:last-child': { borderRight: 'none' }, '& td:last-child': { borderRight: 'none' } }}>
         <TableHead>
           <TableRow sx={{ bgcolor: bgHead }}>
             <TableCell sx={{ fontWeight: 700 }}>Folio</TableCell>
@@ -233,9 +233,10 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                   <TableRow
                     key={item.id}
                     sx={{
-                      opacity: cancelado ? 0.6 : 1,
+                      bgcolor: cancelado ? '#fef2f2' : 'inherit',
                       '& > td': {
                         borderBottom: 'none',
+                        color: cancelado ? '#b91c1c' : 'inherit',
                         ...(idx === 0 ? { borderTop: '2px solid #e2e8f0' } : {}),
                       },
                     }}
