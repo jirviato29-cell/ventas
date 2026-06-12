@@ -5,7 +5,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Collapse,
   IconButton,
   MenuItem,
   Paper,
@@ -20,7 +19,6 @@ import {
   Typography,
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { imprimirTicket } from '../utils/imprimirTicket';
 
@@ -197,8 +195,109 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const folioDisplay = (folio: string) =>
     folio.startsWith('sin-folio') ? 'Sin folio' : folio;
 
-  const toggleExpandido = (folio: string) =>
-    setExpandido((prev) => (prev === folio ? null : folio));
+  // suppress unused-state warning — expandido reserved for future use
+  void expandido; void setExpandido;
+
+  const recibosAccesorios = recibos.filter(
+    (r) => (r.items[0]?.tipo_producto ?? '').toLowerCase() === 'accesorios'
+  );
+  const recibosTelefonos = recibos.filter((r) => {
+    const tp = (r.items[0]?.tipo_producto ?? '').toLowerCase();
+    return tp.includes('telefono') || tp.includes('teléfono');
+  });
+  const totalAccesorios = recibosAccesorios.reduce((s, r) => s + r.total, 0);
+  const totalTelefonos = recibosTelefonos.reduce((s, r) => s + r.total, 0);
+
+  const tablaRecibos = (lista: Recibo[], bgHead: string) => (
+    <TableContainer component={Paper} sx={{ mb: 3 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ bgcolor: bgHead }}>
+            <TableCell sx={{ fontWeight: 700 }}>Folio</TableCell>
+            <TableCell sx={{ fontWeight: 700 }}>Vendedor</TableCell>
+            <TableCell sx={{ fontWeight: 700 }}>Producto</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">Cant.</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="right">Precio</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="right">Total</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">Estado</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {lista.map((recibo) => {
+            const cancelado = recibo.items.every((i) => i.cancelada === true);
+            const primer = recibo.items[0];
+            return (
+              <React.Fragment key={recibo.folio}>
+                {recibo.items.map((item, idx) => (
+                  <TableRow
+                    key={item.id}
+                    sx={{
+                      opacity: cancelado ? 0.6 : 1,
+                      ...(idx === 0 ? { '& > td': { borderTop: '2px solid #e2e8f0' } } : {}),
+                    }}
+                  >
+                    {idx === 0 ? (
+                      <>
+                        <TableCell sx={{ fontWeight: 600, fontSize: 13 }}>
+                          {folioDisplay(recibo.folio)}
+                          {cancelado && (
+                            <Chip label="CANCELADO" size="small" color="error" sx={{ ml: 1, height: 18, fontSize: 10 }} />
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>
+                          {primer.empleado?.username ?? '—'}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell />
+                        <TableCell />
+                      </>
+                    )}
+                    <TableCell sx={{ fontSize: 13 }}>{item.producto}</TableCell>
+                    <TableCell sx={{ fontSize: 13 }} align="center">{item.cantidad}</TableCell>
+                    <TableCell sx={{ fontSize: 13 }} align="right">{fmt(item.precio_unitario)}</TableCell>
+                    {idx === 0 ? (
+                      <>
+                        <TableCell sx={{ fontWeight: 600, fontSize: 13 }} align="right">{fmt(recibo.total)}</TableCell>
+                        <TableCell align="center">
+                          <Typography sx={{ color: cancelado ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
+                            {cancelado ? 'Cancelada' : 'Activa'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" onClick={() => reimprimir(recibo)} sx={{ color: 'text.secondary' }}>
+                            <PrintIcon fontSize="small" />
+                          </IconButton>
+                          {puedeCancelar && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              disabled={cancelando === recibo.folio || cancelado}
+                              onClick={() => cancelarRecibo(recibo)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell />
+                        <TableCell />
+                        <TableCell />
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
 
   return (
     <Box>
@@ -257,132 +356,53 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
         )}
       </Paper>
 
-      {/* ── Contenido ── */}
-      {cargando ? (
+      {/* ── Spinner ── */}
+      {cargando && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
           <CircularProgress />
         </Box>
-      ) : recibos.length === 0 ? (
-        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 6 }}>
-          No hay recibos para mostrar.
-        </Typography>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Hora</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Folio</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Módulo</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Productos</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Total</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {recibos.map((recibo) => {
-                const primer = recibo.items[0];
-                const abierto = expandido === recibo.folio;
-                const cancelado = recibo.items.every((i) => i.cancelada === true);
+      )}
 
-                return (
-                  <React.Fragment key={recibo.folio}>
-                    {/* ── Fila resumen ── */}
-                    <TableRow
-                      hover
-                      sx={{ '& > *': { borderBottom: abierto ? 'unset' : undefined }, opacity: cancelado ? 0.6 : 1 }}
-                    >
-                      <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
-                        {primer.hora ? primer.hora.slice(0, 5) : '—'}
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>
-                        {folioDisplay(recibo.folio)}
-                        {cancelado && (
-                          <Chip label="CANCELADO" size="small" color="error" sx={{ ml: 1, height: 18, fontSize: 10 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>
-                        {primer.modulo?.nombre ?? '—'}
-                      </TableCell>
-                      <TableCell align="center" sx={{ color: 'text.secondary', fontSize: 13 }}>
-                        {recibo.items.length}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        {fmt(recibo.total)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => toggleExpandido(recibo.folio)}
-                          sx={{ color: abierto ? '#f97316' : 'text.secondary' }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => reimprimir(recibo)}
-                          sx={{ color: 'text.secondary' }}
-                        >
-                          <PrintIcon fontSize="small" />
-                        </IconButton>
-                        {puedeCancelar && (
-                          <IconButton
-                            size="small"
-                            color="error"
-                            disabled={cancelando === recibo.folio || cancelado}
-                            onClick={() => cancelarRecibo(recibo)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
+      {/* ── Contador ── */}
+      {!cargando && recibos.length > 0 && (
+        <Paper sx={{ p: 1.5, mb: 2, display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="body2">
+            Accesorios: <strong>{fmt(totalAccesorios)}</strong>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">|</Typography>
+          <Typography variant="body2">
+            Teléfonos: <strong>{fmt(totalTelefonos)}</strong>
+          </Typography>
+        </Paper>
+      )}
 
-                    {/* ── Fila detalle expandible ── */}
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
-                        <Collapse in={abierto} timeout="auto" unmountOnExit>
-                          <Box sx={{ px: 3, py: 1.5, bgcolor: '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Producto</TableCell>
-                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="center">Cant.</TableCell>
-                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="right">Precio u.</TableCell>
-                                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }} align="right">Subtotal</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {recibo.items.map((item) => (
-                                  <TableRow key={item.id}>
-                                    <TableCell sx={{ fontSize: 12 }}>{item.producto}</TableCell>
-                                    <TableCell sx={{ fontSize: 12 }} align="center">{item.cantidad}</TableCell>
-                                    <TableCell sx={{ fontSize: 12 }} align="right">{fmt(item.precio_unitario)}</TableCell>
-                                    <TableCell sx={{ fontSize: 12 }} align="right">
-                                      {fmt(item.precio_unitario * item.cantidad)}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                                {primer.metodo_pago && (
-                                  <TableRow>
-                                    <TableCell colSpan={4} sx={{ fontSize: 11, color: 'text.secondary', pt: 1 }}>
-                                      Pago: {primer.metodo_pago}
-                                      {primer.telefono_cliente ? ` · Tel: ${primer.telefono_cliente}` : ''}
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {/* ── Tablas ── */}
+      {!cargando && (
+        <>
+          {/* ACCESORIOS */}
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#f97316', letterSpacing: 1 }}>
+            ACCESORIOS
+          </Typography>
+          {recibosAccesorios.length === 0 ? (
+            <Typography color="text.secondary" sx={{ mb: 3, fontSize: 13 }}>
+              Sin ventas de accesorios.
+            </Typography>
+          ) : (
+            tablaRecibos(recibosAccesorios, '#fff7ed')
+          )}
+
+          {/* TELÉFONOS */}
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#0d1e3a', letterSpacing: 1 }}>
+            TELÉFONOS
+          </Typography>
+          {recibosTelefonos.length === 0 ? (
+            <Typography color="text.secondary" sx={{ mb: 3, fontSize: 13 }}>
+              Sin ventas de teléfonos.
+            </Typography>
+          ) : (
+            tablaRecibos(recibosTelefonos, '#eff6ff')
+          )}
+        </>
       )}
     </Box>
   );
