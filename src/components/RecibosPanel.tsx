@@ -14,6 +14,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import { imprimirTicket } from '../utils/imprimirTicket';
+import { calcComision } from '../utils/calcComision';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
@@ -30,6 +31,7 @@ interface VentaRecibo {
   fecha?: string;
   hora?: string;
   cancelada?: boolean;
+  tipo_venta?: string;
   modulo?: { id: number; nombre: string } | null;
   empleado?: { username: string } | null;
 }
@@ -68,6 +70,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const [busquedaFolio, setBusquedaFolio] = useState('');
   const [expandido, setExpandido] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState<string | null>(null);
+  const [catalogoComisiones, setCatalogoComisiones] = useState<{ producto: string; cantidad: number }[]>([]);
 
   const rol = localStorage.getItem('rol');
   const puedeCancelar = rol === 'encargado' || rol === 'admin';
@@ -142,6 +145,14 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
     if (!busquedaFolio) cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fecha, moduloId]);
+
+  useEffect(() => {
+    axios.get<{ producto: string; cantidad: number }[]>(
+      `${API}/comisiones/comisiones`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then((res) => setCatalogoComisiones(res.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleBuscarFolio = () => {
     const folio = folioInput.trim();
@@ -249,7 +260,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                 {[
                   { label: 'Folio',    align: 'left'   as const },
                   { label: 'Vendedor', align: 'left'   as const },
-                  { label: 'Producto', align: 'left'   as const },
+                  { label: 'Producto · Precio · Comisión', align: 'left' as const },
                   { label: 'Cant.',    align: 'center' as const },
                   { label: 'Total',    align: 'right'  as const },
                   { label: 'Estado',   align: 'center' as const },
@@ -322,40 +333,56 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                       </Box>
                     </td>
 
-                    {/* Producto: nombre + precio alineados en grid 1fr auto */}
+                    {/* Producto: nombre | precio | comisión */}
                     <td style={tdBase}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 420 }}>
-                        {recibo.items.map((item) => (
-                          <div key={item.id} style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 90px',
-                            alignItems: 'baseline',
-                          }}>
-                            <span style={{
-                              fontSize: 12.5,
-                              color: cancelado ? '#c4757c' : '#334155',
-                              textDecoration: cancelado ? 'line-through' : undefined,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 480 }}>
+                        {recibo.items.map((item) => {
+                          const comision = calcComision(item, catalogoComisiones);
+                          return (
+                            <div key={item.id} style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 90px 76px',
+                              alignItems: 'baseline',
                             }}>
-                              {item.producto}
-                            </span>
-                            <span style={{
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              fontVariantNumeric: 'tabular-nums',
-                              whiteSpace: 'nowrap',
-                              textAlign: 'right',
-                              color: cancelado ? '#c4757c' : (item.precio_unitario === 0 ? '#cbd5e1' : '#FF6600'),
-                              textDecoration: cancelado ? 'line-through' : undefined,
-                              borderLeft: '1px solid #e5e7eb',
-                              paddingLeft: 10,
-                            }}>
-                              {fmt(item.precio_unitario)}
-                            </span>
-                          </div>
-                        ))}
+                              <span style={{
+                                fontSize: 12.5,
+                                color: cancelado ? '#c4757c' : '#334155',
+                                textDecoration: cancelado ? 'line-through' : undefined,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {item.producto}
+                              </span>
+                              <span style={{
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
+                                textAlign: 'right',
+                                color: cancelado ? '#c4757c' : (item.precio_unitario === 0 ? '#cbd5e1' : '#FF6600'),
+                                textDecoration: cancelado ? 'line-through' : undefined,
+                                borderLeft: '1px solid #e5e7eb',
+                                paddingLeft: 10,
+                              }}>
+                                {fmt(item.precio_unitario)}
+                              </span>
+                              <span style={{
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
+                                textAlign: 'right',
+                                color: cancelado ? '#c4757c' : (comision === 0 ? '#cbd5e1' : '#047857'),
+                                textDecoration: cancelado ? 'line-through' : undefined,
+                                borderLeft: '1px solid #e5e7eb',
+                                paddingLeft: 10,
+                              }}>
+                                {fmt(comision)}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </td>
 
