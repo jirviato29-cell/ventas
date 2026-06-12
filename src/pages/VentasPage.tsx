@@ -558,7 +558,7 @@ const FormularioVentaMultiple = () => {
   }, [fecha, moduloId, user]);
 
   useEffect(() => {
-    if ((rol === 'asesor' || rol === 'encargado') && tabAsesor === 1) {
+    if ((rol === 'asesor' || rol === 'encargado') && tabAsesor === 2) {
       if (esCadenas) {
         fetchMisActivaciones(misVentasFecha);
       } else {
@@ -569,11 +569,11 @@ const FormularioVentaMultiple = () => {
   }, [tabAsesor, misVentasFecha, rol]);
 
   useEffect(() => {
-    if ((rol === 'asesor' || rol === 'encargado') && tabAsesor === 2) fetchCatalogoComisiones();
+    if ((rol === 'asesor' || rol === 'encargado') && tabAsesor === 3) fetchCatalogoComisiones();
   }, [tabAsesor, rol]);
 
   useEffect(() => {
-    if (rol === 'asesor' && esCadenas && tabAsesor === 3) {
+    if (rol === 'asesor' && esCadenas && tabAsesor === 4) {
       const ciclos = getCiclos();
       const c = ciclos[nominaCicloIdx] ?? ciclos[0];
       fetchNominaChips(
@@ -1545,6 +1545,10 @@ const FormularioVentaMultiple = () => {
             sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           <Tab
+            label="RECIBOS"
+            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          />
+          <Tab
             label={esCadenas ? 'MIS ACTIVACIONES' : 'MIS VENTAS'}
             sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
@@ -1562,10 +1566,6 @@ const FormularioVentaMultiple = () => {
               sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
             />
           )}
-          <Tab
-            label="RECIBOS"
-            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-          />
         </Tabs>
 
         {/* ── Tab TICKET ── */}
@@ -1743,7 +1743,7 @@ const FormularioVentaMultiple = () => {
         )}
 
         {/* ── Tab MIS VENTAS / MIS ACTIVACIONES ── */}
-        {tabAsesor === 1 && (
+        {tabAsesor === 2 && (
           <Box>
             <Box sx={{ mb: 2 }}>
               <TextField
@@ -1882,7 +1882,7 @@ const FormularioVentaMultiple = () => {
         )}
 
         {/* ── Tab COMISIONES ── */}
-        {tabAsesor === 2 && (
+        {tabAsesor === 3 && (
           <Box sx={{ maxWidth: { xs: '100%', sm: 680 } }}>
             {esCadenas ? (() => {
               const cadenaActual = sessionStorage.getItem('cadena_seleccionada') || '';
@@ -1975,7 +1975,7 @@ const FormularioVentaMultiple = () => {
         )}
 
         {/* ── Tab NÓMINA (solo Cadenas C.) ── */}
-        {tabAsesor === 3 && esCadenas && (() => {
+        {tabAsesor === 4 && esCadenas && (() => {
           const ciclos = getCiclos();
           const cicloActual = ciclos[nominaCicloIdx] ?? ciclos[0];
           const activaciones = nominaChips.filter((c) => !c.es_incubadora);
@@ -2416,8 +2416,8 @@ const FormularioVentaMultiple = () => {
         </Box>
       </Paper>
 
-        {/* ── Tab RECIBOS (asesor) TICKET=0 MIS VENTAS=1 COMISIONES=2 MI SEMANA=3(cadenas) RECIBOS=3 o 4 ── */}
-        {tabAsesor === (esCadenas ? 4 : 3) && (
+        {/* ── Tab RECIBOS (asesor) TICKET=0 RECIBOS=1 MIS VENTAS=2 COMISIONES=3 MI SEMANA=4(cadenas) ── */}
+        {tabAsesor === 1 && (
           <Box sx={{ mt: 2 }}>
             <RecibosPanel />
           </Box>
@@ -2456,13 +2456,11 @@ const FormularioVentaMultiple = () => {
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
-          label="MIS VENTAS"
+          label="RECIBOS"
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
-          icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
-          iconPosition="start"
-          label="COMISIONES"
+          label="MIS VENTAS"
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
@@ -2472,7 +2470,9 @@ const FormularioVentaMultiple = () => {
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' }, color: '#f97316' }}
         />
         <Tab
-          label="RECIBOS"
+          icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
+          iconPosition="start"
+          label="COMISIONES"
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
       </Tabs>
@@ -2603,7 +2603,7 @@ const FormularioVentaMultiple = () => {
     )} {/* fin Tab TICKET */}
 
     {/* ── Tab MIS VENTAS (encargado) ── */}
-    {tabAsesor === 1 && (
+    {tabAsesor === 2 && (
       <Box>
         <Box sx={{ mb: 2 }}>
           <TextField
@@ -2681,7 +2681,7 @@ const FormularioVentaMultiple = () => {
     )}
 
     {/* ── Tab COMISIONES (encargado) ── */}
-    {tabAsesor === 2 && (
+    {tabAsesor === 4 && (
       <Box sx={{ maxWidth: { xs: '100%', sm: 680 } }}>
         <Paper sx={{ overflow: 'hidden' }}>
           <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid #e2e8f0' }}>
@@ -2728,7 +2728,7 @@ const FormularioVentaMultiple = () => {
     )}
 
     {/* ── Tab RECIBOS (encargado) ── */}
-    {tabAsesor === 4 && (
+    {tabAsesor === 1 && (
       <Box sx={{ mt: 2 }}>
         <RecibosPanel />
       </Box>
