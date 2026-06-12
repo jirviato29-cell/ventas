@@ -232,7 +232,7 @@ const FormularioVentaMultiple = () => {
   const [catalogoComisiones, setCatalogoComisiones] = useState<{ producto: string; cantidad: number }[]>([]);
   const [nominaCicloIdx, setNominaCicloIdx] = useState(0);
   const [nominaChips, setNominaChips] = useState<VentaChip[]>([]);
-  const [tabPanel, setTabPanel] = useState(0);
+
   const [editPrecioOpen, setEditPrecioOpen] = useState(false);
   const [editPrecioVenta, setEditPrecioVenta] = useState<Venta | null>(null);
   const [editPrecioValor, setEditPrecioValor] = useState('');
@@ -2331,6 +2331,14 @@ const FormularioVentaMultiple = () => {
           label="COMISIONES"
           sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
+        <Tab
+          label="RESUMEN DEL DÍA"
+          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+        />
+        <Tab
+          label="HISTORIAL"
+          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+        />
       </Tabs>
 
     {/* ── Tab TICKET ── */}
@@ -2433,31 +2441,6 @@ const FormularioVentaMultiple = () => {
         </Grid>
       )}
 
-      {/* ── Columna derecha: Panel de ventas del día ── */}
-      <Grid item xs={12} md={(rol as string) === 'admin' ? 12 : 6}>
-        <Paper sx={{ borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          {/* Sub-pestañas */}
-          <Tabs
-            value={tabPanel}
-            onChange={(_, v) => setTabPanel(v)}
-            sx={{
-              borderBottom: '1px solid #e2e8f0',
-              '& .MuiTab-root': { fontWeight: 600, fontSize: 13, textTransform: 'none', minHeight: 44 },
-              '& .MuiTabs-indicator': { bgcolor: '#f97316', height: 3 },
-              '& .Mui-selected': { color: '#f97316 !important' },
-            }}
-          >
-            <Tab label="Resumen del Día" />
-            <Tab label="Historial" />
-          </Tabs>
-
-          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-            {tabPanel === 0 && <PanelDerechoResumen />}
-            {tabPanel === 1 && <PanelDerechoHistorial />}
-          </Box>
-        </Paper>
-
-      </Grid>
     </Grid>
     )} {/* fin Tab TICKET */}
 
@@ -2465,6 +2448,20 @@ const FormularioVentaMultiple = () => {
     {tabAsesor === 1 && (
       <Box sx={{ mt: 2 }}>
         <RecibosPanel />
+      </Box>
+    )}
+
+    {/* ── Tab RESUMEN DEL DÍA (encargado) ── */}
+    {tabAsesor === 5 && (
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <PanelDerechoResumen />
+      </Box>
+    )}
+
+    {/* ── Tab HISTORIAL (encargado) ── */}
+    {tabAsesor === 6 && (
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <PanelDerechoHistorial />
       </Box>
     )}
 
