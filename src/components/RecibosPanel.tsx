@@ -349,6 +349,8 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                               whiteSpace: 'nowrap',
                               color: cancelado ? '#c4757c' : (item.precio_unitario === 0 ? '#cbd5e1' : '#FF6600'),
                               textDecoration: cancelado ? 'line-through' : undefined,
+                              borderLeft: '1px solid #e5e7eb',
+                              paddingLeft: 10,
                             }}>
                               {fmt(item.precio_unitario)}
                             </span>
