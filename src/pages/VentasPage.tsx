@@ -1656,6 +1656,7 @@ const FormularioVentaMultiple = () => {
                         <th style={thStyle}>Tipo</th>
                         <th style={thStyle}>Descripción</th>
                         <th style={thStyle}>Precio</th>
+                        <th style={thStyle}>Cant.</th>
                         <th style={thStyle}>Comisión</th>
                         <th style={thStyle}></th>
                       </tr>
@@ -1666,6 +1667,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
@@ -1679,6 +1681,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
@@ -1689,7 +1692,7 @@ const FormularioVentaMultiple = () => {
                       ))}
                       {ventasHoyAcc.length === 0 && ventasHoyTel.length === 0 && (
                         <tr>
-                          <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
+                          <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
                             Sin ventas registradas hoy
                           </td>
                         </tr>
@@ -1822,6 +1825,7 @@ const FormularioVentaMultiple = () => {
                         <th style={thStyle}>Tipo</th>
                         <th style={thStyle}>Descripción</th>
                         <th style={thStyle}>Precio</th>
+                        <th style={thStyle}>Cant.</th>
                         <th style={thStyle}>Comisión</th>
                         <th style={thStyle}>Estado</th>
                       </tr>
@@ -1832,6 +1836,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
@@ -1845,6 +1850,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
@@ -1855,7 +1861,7 @@ const FormularioVentaMultiple = () => {
                       ))}
                       {misVentasAcc.length === 0 && misVentasTel.length === 0 && (
                         <tr>
-                          <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
+                          <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
                             Sin ventas para esta fecha
                           </td>
                         </tr>
@@ -2498,6 +2504,7 @@ const FormularioVentaMultiple = () => {
                         <th style={thStyle}>Tipo</th>
                         <th style={thStyle}>Descripción</th>
                         <th style={thStyle}>Precio</th>
+                        <th style={thStyle}>Cant.</th>
                         <th style={thStyle}>Comisión</th>
                         <th style={thStyle}></th>
                       </tr>
@@ -2508,6 +2515,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
@@ -2521,6 +2529,7 @@ const FormularioVentaMultiple = () => {
                           <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                           <td style={tdStyle}>{v.producto}</td>
                           <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                          <td style={tdStyle}>{v.cantidad ?? 1}</td>
                           <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                           <td style={tdStyle}>
                             <IconButton size="small" color="error" disabled={v.cancelada} onClick={() => cancelarVenta(v.id)}>
@@ -2531,7 +2540,7 @@ const FormularioVentaMultiple = () => {
                       ))}
                       {ventasHoyAcc.length === 0 && ventasHoyTel.length === 0 && (
                         <tr>
-                          <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
+                          <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
                             Sin ventas registradas hoy
                           </td>
                         </tr>
@@ -2622,6 +2631,7 @@ const FormularioVentaMultiple = () => {
                   <th style={thStyle}>Tipo</th>
                   <th style={thStyle}>Descripción</th>
                   <th style={thStyle}>Precio</th>
+                  <th style={thStyle}>Cant.</th>
                   <th style={thStyle}>Comisión</th>
                   <th style={thStyle}>Estado</th>
                 </tr>
@@ -2632,6 +2642,7 @@ const FormularioVentaMultiple = () => {
                     <td style={tdStyle}><Chip label="Acc" size="small" sx={{ bgcolor: '#fff7ed', color: '#f97316', fontWeight: 700, fontSize: 11 }} /></td>
                     <td style={tdStyle}>{v.producto}</td>
                     <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                    <td style={tdStyle}>{v.cantidad ?? 1}</td>
                     <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                     <td style={tdStyle}>
                       <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
@@ -2645,6 +2656,7 @@ const FormularioVentaMultiple = () => {
                     <td style={tdStyle}><Chip label="Tel" size="small" sx={{ bgcolor: '#eff6ff', color: '#0d1e3a', fontWeight: 700, fontSize: 11 }} /></td>
                     <td style={tdStyle}>{v.producto}</td>
                     <td style={tdStyle}>${typeof v.precio_unitario === 'number' ? v.precio_unitario.toFixed(2) : '0.00'}</td>
+                    <td style={tdStyle}>{v.cantidad ?? 1}</td>
                     <td style={tdStyle}>${fmt(calcComision(v, catalogoComisiones))}</td>
                     <td style={tdStyle}>
                       <span style={{ color: v.cancelada ? '#ef4444' : '#22c55e', fontWeight: 600, fontSize: 12 }}>
@@ -2655,7 +2667,7 @@ const FormularioVentaMultiple = () => {
                 ))}
                 {misVentasAccEnc.length === 0 && misVentasTelEnc.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
+                    <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#94a3b8', padding: 20 }}>
                       Sin ventas para esta fecha
                     </td>
                   </tr>
