@@ -328,8 +328,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                         {recibo.items.map((item) => (
                           <div key={item.id} style={{
                             display: 'grid',
-                            gridTemplateColumns: '1fr auto',
-                            gap: '0 14px',
+                            gridTemplateColumns: '1fr 90px',
                             alignItems: 'baseline',
                           }}>
                             <span style={{
@@ -347,6 +346,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                               fontWeight: 600,
                               fontVariantNumeric: 'tabular-nums',
                               whiteSpace: 'nowrap',
+                              textAlign: 'right',
                               color: cancelado ? '#c4757c' : (item.precio_unitario === 0 ? '#cbd5e1' : '#FF6600'),
                               textDecoration: cancelado ? 'line-through' : undefined,
                               borderLeft: '1px solid #e5e7eb',
