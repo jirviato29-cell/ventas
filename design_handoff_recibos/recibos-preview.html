@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Recibos — Preview</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #eef1f5; font-family: 'Inter', system-ui, sans-serif; color: #0f172a; }
+
+  /* ── App chrome (contexto, no se toca) ── */
+  .topbar {
+    background: #16213e; color: #cbd5e1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 14px; }
+  .topbar .logo {
+    background: #0f172a; color: #fff; font-weight: 900; font-size: 18px;
+    padding: 5px 12px; border-radius: 8px; letter-spacing: 0.5px; border: 2px solid #FF6600;
+  }
+  .topbar .who { font-size: 12px; color: #94a3b8; }
+  .topbar nav { display: flex; align-items: center; gap: 16px; font-size: 12px; font-weight: 600; }
+  .topbar nav a { color: #cbd5e1; text-decoration: none; }
+  .topbar nav a.active { color: #fff; }
+  .topbar nav a.active::after { content: ''; display: block; height: 2px; background: #FF6600; margin-top: 4px; border-radius: 2px; }
+  .topbar .logout { border: 1px solid #334155; border-radius: 8px; padding: 6px 12px; color: #fff; font-size: 11.5px; }
+  .alertbar { background: #FF6600; color: #fff; text-align: center; font-size: 12px; font-weight: 600; padding: 7px; }
+
+  /* Subnav tabs */
+  .subnav {
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; gap: 26px; padding: 0 24px;
+  }
+  .subnav a {
+    display: flex; align-items: center; gap: 7px;
+    padding: 13px 2px; font-size: 12.5px; font-weight: 700; color: #94a3b8; text-decoration: none;
+    border-bottom: 2px solid transparent; letter-spacing: 0.3px;
+  }
+  .subnav a .gi { font-size: 14px; }
+  .subnav a.active { color: #FF6600; border-bottom-color: #FF6600; }
+
+  /* ── Page ── */
+  .page { max-width: 1240px; margin: 0 auto; padding: 18px 24px 56px; }
+
+  /* Toolbar: filtros + resumen en una sola fila */
+  .toolbar {
+    display: flex; align-items: stretch; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .filters {
+    display: flex; align-items: flex-end; gap: 10px;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; flex: 1 1 auto;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 9.5px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; }
+  .field input {
+    height: 36px; padding: 0 11px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;
+    font-family: 'Inter', sans-serif; font-size: 13px; color: #0f172a; font-weight: 500; outline: none;
+  }
+  .field.folio input { width: 230px; }
+  .field input:focus { border-color: #FF6600; box-shadow: 0 0 0 3px rgba(255,102,0,.15); }
+  .btn-buscar {
+    height: 36px; padding: 0 18px; background: #FF6600; color: #fff; border: none; border-radius: 8px;
+    font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-buscar:hover { background: #ea5c00; }
+
+  /* KPI cards */
+  .kpis { display: flex; gap: 12px; }
+  .kpi {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 12px 18px; display: flex; align-items: center; gap: 13px; min-width: 170px;
+  }
+  .kpi .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; font-weight: 800; flex: 0 0 auto; }
+  .kpi.acc .ico { background: #F3E5F5; color: #6A1B9A; }
+  .kpi.tel .ico { background: #E3F2FD; color: #1565C0; }
+  .kpi .k { font-size: 10px; font-weight: 700; color: #94a3b8; letter-spacing: 0.6px; text-transform: uppercase; }
+  .kpi .v { font-size: 19px; font-weight: 800; color: #0f172a; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 2px; }
+
+  /* Section card */
+  .section { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+  .section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid #eef2f7;
+  }
+  .section-head .title { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: #6A1B9A; }
+  .section-head .title .swatch { width: 9px; height: 9px; border-radius: 3px; background: #6A1B9A; }
+  .section-head .count { font-size: 11.5px; font-weight: 600; color: #64748b; background: #f1f5f9; padding: 3px 10px; border-radius: 999px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 9px 14px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; }
+  th.center, td.center { text-align: center; }
+  tbody td { padding: 9px 14px; font-size: 12.5px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fcfcfd; }
+
+  /* Column widths — apretadas, sin espacio muerto */
+  col.c-folio   { width: 116px; }
+  col.c-vend    { width: 150px; }
+  col.c-prod    { width: 360px; }
+  col.c-cant    { width: 58px;  }
+  col.c-total   { width: 116px; }
+  col.c-estado  { width: 96px;  }
+  col.c-acc     { width: 78px;  }
+
+  /* Folio cell */
+  .folio { font-weight: 800; font-size: 13px; color: #0f172a; font-variant-numeric: tabular-nums; }
+
+  /* Vendedor with avatar */
+  .vend { display: flex; align-items: center; gap: 9px; }
+  .vend .av {
+    width: 28px; height: 28px; border-radius: 8px; flex: 0 0 auto;
+    background: #eef2ff; color: #4338ca; display: grid; place-items: center; font-size: 11px; font-weight: 800;
+  }
+  .vend .vn { font-size: 12px; font-weight: 600; color: #334155; line-height: 1.2; }
+
+  /* Product list (multi-item inside one ticket) */
+  .prod-list { display: flex; flex-direction: column; gap: 4px; }
+  .prod-line { display: grid; grid-template-columns: 1fr auto; gap: 0 14px; align-items: baseline; }
+  .prod-line .nm { font-size: 12.5px; color: #0f172a; font-weight: 500; }
+  .prod-line .pp { font-size: 12px; color: #FF6600; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .prod-line .pp.muted { color: #cbd5e1; font-weight: 500; }
+
+  /* Numbers */
+  td.precio { font-variant-numeric: tabular-nums; color: #475569; font-weight: 500; }
+  td.total  { font-variant-numeric: tabular-nums; color: #0f172a; font-weight: 800; font-size: 13px; }
+  td.cant   { font-variant-numeric: tabular-nums; color: #334155; font-weight: 600; }
+  .muted { color: #cbd5e1 !important; }
+
+  /* Status pill */
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.3px; }
+  .pill .d { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.activa { background: #ecfdf5; color: #047857; } .pill.activa .d { background: #10b981; }
+  .pill.cancel { background: #fef2f2; color: #b91c1c; } .pill.cancel .d { background: #ef4444; }
+
+  /* Actions */
+  .actions { display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .iconbtn {
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff;
+    display: grid; place-items: center; cursor: pointer; font-size: 13px; color: #64748b;
+  }
+  .iconbtn:hover { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+  .iconbtn.del:hover { border-color: #fecaca; background: #fef2f2; color: #dc2626; }
+
+  /* Cancelled row */
+  tr.is-cancel td { background: #fffafa; }
+  tr.is-cancel .folio, tr.is-cancel .prod-line .nm, tr.is-cancel td.total, tr.is-cancel td.precio, tr.is-cancel td.cant, tr.is-cancel .vend .vn { color: #c4757c; text-decoration: line-through; text-decoration-color: rgba(196,117,124,.4); }
+  tr.is-cancel .vend .av { background: #fde8e8; color: #c4757c; }
+
+  /* multi-product ticket grouping: subtle left accent */
+  td.prodcell { position: relative; }
+</style>
+</head>
+<body>
+
+  <!-- App chrome (contexto) -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="logo">CATO</span>
+      <span class="who">A46RO-JUANA · RO · encargado</span>
+    </div>
+    <nav>
+      <a href="#">KARDEX</a>
+      <a href="#" class="active">MI NÓMINA</a>
+      <a href="#">TRASPASOS</a>
+      <a href="#">TICKET</a>
+      <a href="#">COMISIONES</a>
+      <a href="#">INVENTARIO</a>
+      <a href="#">CHIPS</a>
+      <a href="#">CORTE</a>
+      <a href="#">ESTADÍSTICAS</a>
+      <a href="#">ASISTENCIA</a>
+    </nav>
+    <span class="logout">CERRAR SESIÓN</span>
+  </div>
+  <div class="alertbar">📢 ¡No olvides tu CHECK-IN y CHECK-OUT en la app!</div>
+
+  <!-- Subnav -->
+  <div class="subnav">
+    <a href="#"><span class="gi">🎫</span> TICKET</a>
+    <a href="#" class="active"><span class="gi">🧾</span> RECIBOS</a>
+    <a href="#"><span class="gi">🛍️</span> MIS VENTAS</a>
+    <a href="#"><span class="gi">📊</span> CORTE</a>
+    <a href="#"><span class="gi">💲</span> COMISIONES</a>
+  </div>
+
+  <div class="page">
+
+    <!-- Toolbar: filtros + KPIs -->
+    <div class="toolbar">
+      <div class="filters">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" value="2026-06-11" />
+        </div>
+        <div class="field folio">
+          <label>Buscar folio</label>
+          <input type="text" placeholder="ej. V-123" />
+        </div>
+        <button class="btn-buscar">🔍 Buscar</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi acc">
+          <div class="ico">A</div>
+          <div>
+            <div class="k">Accesorios</div>
+            <div class="v">$4,296.10</div>
+          </div>
+        </div>
+        <div class="kpi tel">
+          <div class="ico">T</div>
+          <div>
+            <div class="k">Teléfonos</div>
+            <div class="v">$2,299.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCESORIOS section -->
+    <div class="section">
+      <div class="section-head">
+        <div class="title"><span class="swatch"></span> Accesorios</div>
+        <span class="count">7 recibos</span>
+      </div>
+      <table>
+        <colgroup>
+          <col class="c-folio" /><col class="c-vend" /><col class="c-prod" />
+          <col class="c-cant" /><col class="c-total" />
+          <col class="c-estado" /><col class="c-acc" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Vendedor</th>
+            <th>Producto</th>
+            <th class="center">Cant.</th>
+            <th class="num">Total</th>
+            <th class="center">Estado</th>
+            <th class="center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- V-95: multi-product ticket -->
+          <tr>
+            <td><span class="folio">V-95</span></td>
+            <td>
+              <div class="vend"><span class="av">JU</span><span class="vn">A46RO-JUANA</span></div>
+            </td>
+            <td class="prodcell">
+              <div class="prod-list">
+                <div class="prod-line"><span class="nm">PROTECTOR $299</span><span class="pp">$299.00</span></div>
+                <div class="prod-line"><span class="nm">MICA DE HIDROGEL $299</span><span class="pp">$299.00</span></div>
+                <div class="prod-line"><span class="nm">MICA DE HIDROGEL $199</span><span class="pp">$0.05</span></div>
+              </div>
+            </td>
+            <td class="cant center">3</td>
+            <td class="total num">$598.05</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <tr>
+            <td><span class="folio">V-208</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">MICA DE HIDROGEL $199</span><span class="pp">$199.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$199.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <tr>
+            <td><span class="folio">V-206</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">PROTECTOR $299</span><span class="pp">$299.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$299.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <!-- Cancelled -->
+          <tr class="is-cancel">
+            <td><span class="folio">V-205</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">MICA DE HIDROGEL $199</span><span class="pp">$199.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$199.00</td>
+            <td class="center"><span class="pill cancel"><span class="d"></span> Cancelada</span></td>
+            <td><div class="actions"><button class="iconbtn" style="opacity:.4">🖨</button><button class="iconbtn" style="opacity:.4">🗑</button></div></td>
+          </tr>
+
+          <tr>
+            <td><span class="folio">V-192</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">CHIP DE ATO</span><span class="pp">$1.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$1.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <tr>
+            <td><span class="folio">V-185</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">PROTECTOR $249</span><span class="pp">$249.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$249.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <!-- V-178 multi -->
+          <tr>
+            <td><span class="folio">V-178</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td>
+              <div class="prod-list">
+                <div class="prod-line"><span class="nm">MICA DE HIDROGEL $199</span><span class="pp">$150.00</span></div>
+                <div class="prod-line"><span class="nm">MICA $149</span><span class="pp muted">$0.00</span></div>
+              </div>
+            </td>
+            <td class="cant center">2</td>
+            <td class="total num">$150.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+
+          <tr>
+            <td><span class="folio">V-177</span></td>
+            <td><div class="vend"><span class="av">AM</span><span class="vn">A38RO-AMERICA</span></div></td>
+            <td><div class="prod-line"><span class="nm">PROTECTOR $199</span><span class="pp">$199.00</span></div></td>
+            <td class="cant center">1</td>
+            <td class="total num">$199.00</td>
+            <td class="center"><span class="pill activa"><span class="d"></span> Activa</span></td>
+            <td><div class="actions"><button class="iconbtn">🖨</button><button class="iconbtn del">🗑</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>
