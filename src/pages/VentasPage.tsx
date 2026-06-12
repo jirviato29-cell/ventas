@@ -176,7 +176,7 @@ const calcComision = (
   }
   if (v.tipo_producto === 'accesorios') {
     const item = catalogo.find((c) => c.producto.toUpperCase() === nombre);
-    return item ? item.cantidad : 0;
+    return item ? item.cantidad * (v.cantidad ?? 1) : 0;
   }
   return 0;
 };
