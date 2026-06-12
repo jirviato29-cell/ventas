@@ -163,6 +163,7 @@ const calcComision = (
   v: Venta,
   catalogo: { producto: string; cantidad: number }[]
 ): number => {
+  if ((v.precio_unitario ?? 0) < 30) return 0;
   const nombre = (v.producto || '').toUpperCase();
   if (v.tipo_producto === 'telefono') {
     const tipo = (v.tipo_venta || '').toLowerCase();
