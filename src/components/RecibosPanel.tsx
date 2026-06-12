@@ -234,7 +234,10 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                     key={item.id}
                     sx={{
                       opacity: cancelado ? 0.6 : 1,
-                      ...(idx === 0 ? { '& > td': { borderTop: '2px solid #e2e8f0' } } : {}),
+                      '& > td': {
+                        borderBottom: 'none',
+                        ...(idx === 0 ? { borderTop: '2px solid #e2e8f0' } : {}),
+                      },
                     }}
                   >
                     {idx === 0 ? (
