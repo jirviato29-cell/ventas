@@ -324,11 +324,12 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
 
                     {/* Producto: nombre + precio alineados en grid 1fr auto */}
                     <td style={tdBase}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 420 }}>
                         {recibo.items.map((item) => (
                           <div key={item.id} style={{
-                            display: 'flex',
-                            gap: 8,
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: '0 14px',
                             alignItems: 'baseline',
                           }}>
                             <span style={{
@@ -342,8 +343,8 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                               {item.producto}
                             </span>
                             <span style={{
-                              fontSize: 12,
-                              fontWeight: 700,
+                              fontSize: 12.5,
+                              fontWeight: 600,
                               fontVariantNumeric: 'tabular-nums',
                               whiteSpace: 'nowrap',
                               color: cancelado ? '#c4757c' : (item.precio_unitario === 0 ? '#cbd5e1' : '#FF6600'),
