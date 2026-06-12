@@ -806,39 +806,49 @@ const FormularioVentaMultiple = () => {
         setMensaje({ tipo: 'error', texto: 'Los montos divididos deben sumar exactamente el precio del teléfono.' });
         return;
       }
-      const [resEf, resTa] = await Promise.allSettled([
-        axios.post(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas`, { productos: [{ ...productoBase, precio_unitario: ef, skip_comision: false }], metodo_pago: 'efectivo', telefono_cliente: telefono?.trim() || '' }, config),
-        axios.post(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas`, { productos: [{ ...productoBase, precio_unitario: ta, skip_comision: true  }], metodo_pago: 'tarjeta',  telefono_cliente: telefono?.trim() || '' }, config),
-      ]);
-      const okEf = resEf.status === 'fulfilled';
-      const okTa = resTa.status === 'fulfilled';
-      if (okEf && okTa) {
-        const folioVenta = (resEf as PromiseFulfilledResult<any>).value?.data?.[0]?.folio;
-        setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
-        imprimirTicket({
-          productos: [{
-            nombre: productoBase.producto,
-            cantidad: 1,
-            precio_unitario: p,
-          }],
-          total: p,
-          metodoPago,
-          montoDividido,
-          telefono,
-          modulo: user?.modulo?.nombre || moduloLocal || '',
-          vendedor: localStorage.getItem('usuario') || '',
-          folio: folioVenta,
-          clasificacion: 'Telefono',
-        });
-        resetTel();
-        if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
-      } else if (okEf && !okTa) {
-        setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
-      } else if (!okEf && okTa) {
-        setMensaje({ tipo: 'error', texto: 'Se guardó la parte en tarjeta pero falló la parte en efectivo. Verifica antes de continuar.' });
-      } else {
-        const detail = (resEf as PromiseRejectedResult).reason?.response?.data?.detail;
-        setMensaje({ tipo: 'error', texto: typeof detail === 'string' ? detail : 'Error al registrar la venta en ambos métodos.' });
+      try {
+        const resEf = await axios.post(
+          `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
+          { productos: [{ ...productoBase, precio_unitario: ef, skip_comision: false }], metodo_pago: 'efectivo', telefono_cliente: telefono?.trim() || '' },
+          config,
+        );
+        const folioCompartido = resEf?.data?.[0]?.folio;
+
+        let okTa = true;
+        try {
+          await axios.post(
+            `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
+            { productos: [{ ...productoBase, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', telefono_cliente: telefono?.trim() || '', folio: folioCompartido },
+            config,
+          );
+        } catch {
+          okTa = false;
+          setMensaje({ tipo: 'error', texto: 'Se guardó la parte en efectivo pero falló la parte en tarjeta. Verifica antes de continuar.' });
+        }
+
+        if (okTa) {
+          setMensaje({ tipo: 'success', texto: 'Venta de teléfono registrada correctamente' });
+          imprimirTicket({
+            productos: [{
+              nombre: productoBase.producto,
+              cantidad: 1,
+              precio_unitario: p,
+            }],
+            total: p,
+            metodoPago,
+            montoDividido,
+            telefono,
+            modulo: user?.modulo?.nombre || moduloLocal || '',
+            vendedor: localStorage.getItem('usuario') || '',
+            folio: folioCompartido,
+            clasificacion: 'Telefono',
+          });
+          resetTel();
+          if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
+        }
+      } catch (errEf: any) {
+        const detail = errEf?.response?.data?.detail;
+        setMensaje({ tipo: 'error', texto: typeof detail === 'string' ? detail : 'Error al registrar la venta de teléfono.' });
       }
       return;
     }
