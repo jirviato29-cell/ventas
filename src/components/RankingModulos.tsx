@@ -42,6 +42,7 @@ export default function RankingModulos() {
   const [error, setError] = useState(false);
 
   const cargar = useCallback(async () => {
+    console.log('[RANKING] cargar() llamado, token:', !!localStorage.getItem('token'));
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/estadisticas/ranking-modulos-hoy`, {
@@ -49,7 +50,8 @@ export default function RankingModulos() {
       });
       setData(res.data);
       setError(false);
-    } catch {
+    } catch (e) {
+      console.log('[RANKING] error al cargar:', e);
       setError(true);
     }
   }, []);
@@ -60,6 +62,7 @@ export default function RankingModulos() {
     return () => clearInterval(id);
   }, [cargar]);
 
+  console.log('[RANKING] render, data:', data, 'error:', error);
   if (error || !data) return null;
 
   return (
