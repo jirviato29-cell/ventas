@@ -2278,12 +2278,6 @@ const FormularioVentaMultiple = () => {
         </Box>
       </Paper>
 
-        {/* ── Tab RECIBOS (asesor) TICKET=0 RECIBOS=1 MIS VENTAS=2 COMISIONES=3 MI SEMANA=4(cadenas) ── */}
-        {tabAsesor === 1 && (
-          <Box sx={{ mt: 2 }}>
-            <RecibosPanel />
-          </Box>
-        )}
     </Box>
   );
 
@@ -2467,6 +2461,13 @@ const FormularioVentaMultiple = () => {
     </Grid>
     )} {/* fin Tab TICKET */}
 
+    {/* ── Tab RECIBOS (encargado) ── */}
+    {tabAsesor === 1 && (
+      <Box sx={{ mt: 2 }}>
+        <RecibosPanel />
+      </Box>
+    )}
+
     {/* ── Tab MIS VENTAS (encargado) ── */}
     {tabAsesor === 2 && (
       <Box>
@@ -2592,13 +2593,6 @@ const FormularioVentaMultiple = () => {
             </Typography>
           </Box>
         </Paper>
-      </Box>
-    )}
-
-    {/* ── Tab RECIBOS (encargado) ── */}
-    {tabAsesor === 1 && (
-      <Box sx={{ mt: 2 }}>
-        <RecibosPanel />
       </Box>
     )}
 
