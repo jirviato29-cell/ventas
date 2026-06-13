@@ -822,10 +822,10 @@ const FormularioVentaMultiple = () => {
       {!esCadenas && (
         <Grid container spacing={1} sx={{ mb: 2, mt: 0.5 }}>
           {[
-            { v: 'accesorio', label: 'Accesorio',     icon: <HeadphonesIcon /> },
-            { v: 'chip',      label: 'Chip',           icon: <SimCardIcon /> },
-            { v: 'telefono',  label: 'Teléfono',       icon: <SmartphoneIcon /> },
-            { v: 'plan',      label: 'Plan tarifario', icon: <DescriptionIcon /> },
+            { v: 'accesorio', label: 'Accesorio',     icon: <HeadphonesIcon />, color: '#7c3aed' },
+            { v: 'chip',      label: 'Chip',           icon: <SimCardIcon />,    color: '#16a34a' },
+            { v: 'telefono',  label: 'Teléfono',       icon: <SmartphoneIcon />, color: '#0891b2' },
+            { v: 'plan',      label: 'Plan tarifario', icon: <DescriptionIcon />, color: '#d97706' },
           ].map((t) => (
             <Grid item xs={6} key={t.v}>
               <Box
@@ -841,7 +841,8 @@ const FormularioVentaMultiple = () => {
                   '&:hover': { borderColor: '#7c3aed' },
                 }}
               >
-                {t.icon} {t.label}
+                <Box component="span" sx={{ color: t.color, display: 'flex' }}>{t.icon}</Box>
+                {t.label}
               </Box>
             </Grid>
           ))}
