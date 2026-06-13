@@ -158,7 +158,7 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
   return (
     <Box sx={{ mb: 2 }}>
       <Grid container spacing={2}>
-        {solo !== 'telefonos' && (
+        {solo !== 'telefonos' && solo !== 'planes' && (
           <Grid item xs={12} md={solo ? 12 : 6}>
             <Tarjeta
               titulo="Accesorios"
