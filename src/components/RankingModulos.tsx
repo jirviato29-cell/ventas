@@ -165,7 +165,7 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
               filas={data.accesorios}
               miModulo={miModulo}
               color={COLORS.acc}
-              formato={(v) => `$${v.toLocaleString('es-MX')}`}
+              formato={(v) => `$${Math.round(v).toLocaleString('es-MX')}`}
               unidad="vendido"
             />
           </Grid>
