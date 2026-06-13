@@ -1469,22 +1469,29 @@ const FormularioVentaMultiple = () => {
           <Grid container spacing={2}>
             {/* Columna 1: formulario (oculto para admin) */}
             {(rol as string) !== 'admin' && (
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 {formulario}
               </Grid>
             )}
 
             {/* Columna 2: ranking accesorios */}
             {!esCadenas && (
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <RankingModulos solo="accesorios" />
               </Grid>
             )}
 
             {/* Columna 3: ranking telefonos */}
             {!esCadenas && (
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <RankingModulos solo="telefonos" />
+              </Grid>
+            )}
+
+            {/* Columna 4: ranking planes */}
+            {!esCadenas && (
+              <Grid item xs={12} md={3}>
+                <RankingModulos solo="planes" />
               </Grid>
             )}
 
@@ -2400,22 +2407,29 @@ const FormularioVentaMultiple = () => {
     <Grid container spacing={2} sx={{ mt: 0 }}>
       {/* Columna 1: formulario */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           {formulario}
         </Grid>
       )}
 
       {/* Columna 2: ranking accesorios */}
       {!esCadenas && (
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <RankingModulos solo="accesorios" />
         </Grid>
       )}
 
       {/* Columna 3: ranking telefonos */}
       {!esCadenas && (
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <RankingModulos solo="telefonos" />
+        </Grid>
+      )}
+
+      {/* Columna 4: ranking planes */}
+      {!esCadenas && (
+        <Grid item xs={12} md={3}>
+          <RankingModulos solo="planes" />
         </Grid>
       )}
 

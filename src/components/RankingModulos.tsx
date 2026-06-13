@@ -2,16 +2,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { Box, Grid, Paper, Typography, Avatar } from '@mui/material';
 import HeadphonesIcon from '@mui/icons-material/Headphones';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
+import DescriptionIcon from '@mui/icons-material/Description';
 import axios from 'axios';
 
 type Fila = { modulo: string; valor: number };
-type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[] };
+type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[]; planes: Fila[] };
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
 const COLORS = {
   acc: { main: '#7c3aed', light: '#ede9fe', banner: 'linear-gradient(90deg, #fb923c 0%, #f97316 60%, #ea580c 100%)', accent: '#f97316' },
   tel: { main: '#0891b2', light: '#cffafe', banner: 'linear-gradient(90deg, #22d3ee 0%, #06b6d4 60%, #0891b2 100%)', accent: '#0891b2' },
+  pln: { main: '#16a34a', light: '#dcfce7', banner: 'linear-gradient(90deg, #4ade80 0%, #22c55e 60%, #16a34a 100%)', accent: '#16a34a' },
 };
 
 function medalla(pos: number) {
@@ -127,7 +129,7 @@ function Tarjeta({
   );
 }
 
-export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefonos' }) {
+export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefonos' | 'planes' }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const miModulo = (localStorage.getItem('modulo') || '').trim();
@@ -170,7 +172,7 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
             />
           </Grid>
         )}
-        {solo !== 'accesorios' && (
+        {solo !== 'accesorios' && solo !== 'planes' && (
           <Grid item xs={12} md={solo ? 12 : 6}>
             <Tarjeta
               titulo="Teléfonos"
@@ -181,6 +183,20 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
               color={COLORS.tel}
               formato={(v) => `${v}`}
               unidad="equipos"
+            />
+          </Grid>
+        )}
+        {solo === 'planes' && (
+          <Grid item xs={12}>
+            <Tarjeta
+              titulo="Planes"
+              icono={<DescriptionIcon />}
+              sufijo="planes del día"
+              filas={data.planes}
+              miModulo={miModulo}
+              color={COLORS.pln}
+              formato={(v) => `${v}`}
+              unidad="planes"
             />
           </Grid>
         )}
