@@ -820,7 +820,9 @@ const FormularioVentaMultiple = () => {
         </Typography>
       </Box>
 
-      <Box sx={{ px: 2, pb: 2 }}>
+      <Box sx={{ borderTop: '1px solid #eef0f3' }} />
+
+      <Box sx={{ px: 2, pt: 2, pb: 2 }}>
       {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 2 }}>{mensaje.texto}</Alert>}
 
       {!esCadenas && (
