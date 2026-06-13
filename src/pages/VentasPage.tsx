@@ -1428,20 +1428,29 @@ const FormularioVentaMultiple = () => {
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
           <Grid container spacing={2}>
-            {!esCadenas && (
-              <Grid item xs={12}>
-                <RankingModulos />
-              </Grid>
-            )}
-            {/* Columna izquierda: formulario (oculto para admin) */}
+            {/* Columna 1: formulario (oculto para admin) */}
             {(rol as string) !== 'admin' && (
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 {formulario}
               </Grid>
             )}
 
-            {/* Columna derecha: tabla del día + comisiones */}
-            <Grid item xs={12} md={(rol as string) === 'admin' ? 12 : 6}>
+            {/* Columna 2: ranking accesorios */}
+            {!esCadenas && (
+              <Grid item xs={12} md={4}>
+                <RankingModulos solo="accesorios" />
+              </Grid>
+            )}
+
+            {/* Columna 3: ranking telefonos */}
+            {!esCadenas && (
+              <Grid item xs={12} md={4}>
+                <RankingModulos solo="telefonos" />
+              </Grid>
+            )}
+
+            {/* Fila completa: tabla del día */}
+            <Grid item xs={12}>
 
           {esCadenas ? (
             /* ── Activaciones del día (Cadenas C.) ── */
@@ -2350,19 +2359,30 @@ const FormularioVentaMultiple = () => {
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} sx={{ mt: 0 }}>
-      {!esCadenas && (
-        <Grid item xs={12}>
-          <RankingModulos />
+      {/* Columna 1: formulario */}
+      {(rol as string) !== 'admin' && (
+        <Grid item xs={12} md={4}>
+          {formulario}
         </Grid>
       )}
-      {/* ── Columna izquierda: Registrar Venta (sin cambios) ── */}
-      {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={6}>
-          {formulario}
 
-          {/* ── Ventas del día + Comisiones (encargado) ── */}
-          {(rol as string) === 'encargado' && (
-            <>
+      {/* Columna 2: ranking accesorios */}
+      {!esCadenas && (
+        <Grid item xs={12} md={4}>
+          <RankingModulos solo="accesorios" />
+        </Grid>
+      )}
+
+      {/* Columna 3: ranking telefonos */}
+      {!esCadenas && (
+        <Grid item xs={12} md={4}>
+          <RankingModulos solo="telefonos" />
+        </Grid>
+      )}
+
+      {/* Fila completa: ventas del día + comisiones (encargado) */}
+      {(rol as string) === 'encargado' && (
+        <Grid item xs={12}>
               <Paper sx={{ p: 2, mb: 2, mt: 2 }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom>Ventas del día</Typography>
                 <Box sx={{ overflowX: 'auto' }}>
@@ -2447,8 +2467,6 @@ const FormularioVentaMultiple = () => {
                   <Typography variant="h5" fontWeight={800}>${totalComisionHoy.toFixed(2)}</Typography>
                 </Box>
               </Paper>
-            </>
-          )}
         </Grid>
       )}
 

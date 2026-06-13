@@ -127,7 +127,7 @@ function Tarjeta({
   );
 }
 
-export default function RankingModulos() {
+export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefonos' }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const miModulo = (localStorage.getItem('modulo') || '').trim();
@@ -140,8 +140,7 @@ export default function RankingModulos() {
       });
       setData(res.data);
       setError(false);
-    } catch (e) {
-      console.log('[RANKING] error al cargar:', e);
+    } catch {
       setError(true);
     }
   }, []);
@@ -156,35 +155,41 @@ export default function RankingModulos() {
 
   return (
     <Box sx={{ mb: 2 }}>
-      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 1, color: 'text.secondary' }}>
-        <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e' }} />
-        Ranking actualizado {data.actualizado}
-      </Typography>
+      {solo !== 'telefonos' && (
+        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 1, color: 'text.secondary' }}>
+          <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e' }} />
+          Ranking actualizado {data.actualizado}
+        </Typography>
+      )}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <Tarjeta
-            titulo="Accesorios"
-            icono={<HeadphonesIcon />}
-            sufijo="$ del día"
-            filas={data.accesorios}
-            miModulo={miModulo}
-            color={COLORS.acc}
-            formato={(v) => `$${v.toLocaleString('es-MX')}`}
-            unidad="vendido"
-          />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Tarjeta
-            titulo="Teléfonos"
-            icono={<SmartphoneIcon />}
-            sufijo="cantidad del día"
-            filas={data.telefonos}
-            miModulo={miModulo}
-            color={COLORS.tel}
-            formato={(v) => `${v}`}
-            unidad="equipos"
-          />
-        </Grid>
+        {solo !== 'telefonos' && (
+          <Grid item xs={12} md={solo ? 12 : 6}>
+            <Tarjeta
+              titulo="Accesorios"
+              icono={<HeadphonesIcon />}
+              sufijo="$ del día"
+              filas={data.accesorios}
+              miModulo={miModulo}
+              color={COLORS.acc}
+              formato={(v) => `$${v.toLocaleString('es-MX')}`}
+              unidad="vendido"
+            />
+          </Grid>
+        )}
+        {solo !== 'accesorios' && (
+          <Grid item xs={12} md={solo ? 12 : 6}>
+            <Tarjeta
+              titulo="Teléfonos"
+              icono={<SmartphoneIcon />}
+              sufijo="cantidad del día"
+              filas={data.telefonos}
+              miModulo={miModulo}
+              color={COLORS.tel}
+              formato={(v) => `${v}`}
+              unidad="equipos"
+            />
+          </Grid>
+        )}
       </Grid>
     </Box>
   );
