@@ -822,11 +822,11 @@ const FormularioVentaMultiple = () => {
 
       <Box sx={{ borderTop: '1px solid #eef0f3' }} />
 
-      <Box sx={{ px: 2, pt: 2, pb: 2 }}>
-      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 2 }}>{mensaje.texto}</Alert>}
+      <Box sx={{ px: 2, pt: 1.2, pb: 2 }}>
+      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.2 }}>{mensaje.texto}</Alert>}
 
       {!esCadenas && (
-        <Grid container spacing={1} sx={{ mb: 2, mt: 0.5 }}>
+        <Grid container spacing={1} sx={{ mb: 1, mt: 0.5 }}>
           {[
             { v: 'accesorio', label: 'Accesorio',     icon: <HeadphonesIcon />, color: '#7c3aed' },
             { v: 'chip',      label: 'Chip',           icon: <SimCardIcon />,    color: '#16a34a' },
@@ -838,7 +838,7 @@ const FormularioVentaMultiple = () => {
                 onClick={() => { setTipoVenta(t.v as any); setMensaje(null); }}
                 sx={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8,
-                  py: 1.4, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  py: 1, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
                   border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e5e7eb',
                   bgcolor: tipoVenta === t.v ? '#f5f3ff' : '#fff',
                   color: tipoVenta === t.v ? '#7c3aed' : '#374151',
@@ -883,21 +883,21 @@ const FormularioVentaMultiple = () => {
                 setPrecio(null);
               }
             }}
-            renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="normal" />}
+            renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="dense" />}
           />
-          <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} fullWidth margin="normal" />
-          <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} fullWidth margin="normal" />
+          <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} fullWidth margin="dense" />
+          <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} fullWidth margin="dense" />
           <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
-            sx={{ mt: 1, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 1.3, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
+            sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.9, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
             Agregar al Carrito
           </Button>
-          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth margin="normal" />
-          <Box mt={2}>
+          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth margin="dense" />
+          <Box mt={1}>
             <Typography variant="h6">Carrito</Typography>
             {carrito.length === 0
               ? (
-                <Box sx={{ textAlign: 'center', py: 3, color: '#9ca3af' }}>
-                  <ShoppingBagIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
+                <Box sx={{ textAlign: 'center', py: 1.5, color: '#9ca3af' }}>
+                  <ShoppingBagIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 0.5 }} />
                   <Typography sx={{ fontSize: 14 }}>No hay productos agregados</Typography>
                 </Box>
               )
@@ -907,14 +907,14 @@ const FormularioVentaMultiple = () => {
                   </li>
                 ))}</ul>}
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 1.5, mt: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 1, mt: 0.5 }}>
             <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
             <Typography sx={{ fontWeight: 800, fontSize: 20 }}>${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
           </Box>
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 1 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-            fullWidth margin="normal" required
+            fullWidth margin="dense" required
             error={carrito.length > 0 && !metodoPago}
             helperText={carrito.length > 0 && !metodoPago ? 'Selecciona el método de pago' : ''}>
             <MenuItem value="efectivo">Efectivo 💵</MenuItem>
