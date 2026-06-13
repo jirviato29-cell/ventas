@@ -12,6 +12,10 @@ import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import SimCardIcon from '@mui/icons-material/SimCard';
+import DescriptionIcon from '@mui/icons-material/Description';
+import HeadphonesIcon from '@mui/icons-material/Headphones';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
@@ -816,16 +820,30 @@ const FormularioVentaMultiple = () => {
       {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 2 }}>{mensaje.texto}</Alert>}
 
       {!esCadenas && (
-        <TextField
-          select label="Tipo de venta" value={tipoVenta}
-          onChange={(e) => { setTipoVenta(e.target.value as any); setMensaje(null); }}
-          fullWidth margin="normal"
-        >
-          <MenuItem value="accesorio">Accesorio</MenuItem>
-          <MenuItem value="chip">Chip</MenuItem>
-          <MenuItem value="telefono">Teléfono</MenuItem>
-          <MenuItem value="plan">Plan tarifario</MenuItem>
-        </TextField>
+        <Grid container spacing={1} sx={{ mb: 2, mt: 0.5 }}>
+          {[
+            { v: 'accesorio', label: 'Accesorio',     icon: <HeadphonesIcon /> },
+            { v: 'chip',      label: 'Chip',           icon: <SimCardIcon /> },
+            { v: 'telefono',  label: 'Teléfono',       icon: <SmartphoneIcon /> },
+            { v: 'plan',      label: 'Plan tarifario', icon: <DescriptionIcon /> },
+          ].map((t) => (
+            <Grid item xs={6} key={t.v}>
+              <Box
+                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); }}
+                sx={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+                  py: 1.2, borderRadius: 2, cursor: 'pointer', fontWeight: 600,
+                  border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e0e0e0',
+                  bgcolor: tipoVenta === t.v ? '#ede9fe' : '#fff',
+                  color: tipoVenta === t.v ? '#7c3aed' : 'text.primary',
+                  userSelect: 'none',
+                }}
+              >
+                {t.icon} {t.label}
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
       )}
 
       {/* ── Accesorio ── */}
