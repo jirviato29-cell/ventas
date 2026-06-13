@@ -880,7 +880,10 @@ const FormularioVentaMultiple = () => {
           />
           <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} fullWidth margin="normal" />
           <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} fullWidth margin="normal" />
-          <Button variant="outlined" fullWidth onClick={agregarAlCarrito} sx={{ mt: 1 }} disabled={!producto || precio === null || cantidad <= 0}>Agregar al Carrito</Button>
+          <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
+            sx={{ mt: 1, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 1.3, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
+            Agregar al Carrito
+          </Button>
           <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth margin="normal" />
           <Box mt={2}>
             <Typography variant="h6">Carrito</Typography>
@@ -953,8 +956,8 @@ const FormularioVentaMultiple = () => {
               </Box>
             );
           })()}
-          <Button variant="contained" fullWidth onClick={enviarCarrito} sx={{ mt: 2 }}
-            disabled={carrito.length === 0 || !metodoPago}>
+          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago}
+            sx={{ mt: 2, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 1.5, fontSize: 16, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
             Registrar Venta
           </Button>
         </>
