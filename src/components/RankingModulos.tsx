@@ -11,7 +11,7 @@ const API = 'https://ato-appservidor-nvxt.onrender.com';
 
 const COLORS = {
   acc: { main: '#7c3aed', light: '#ede9fe', banner: 'linear-gradient(90deg, #fb923c 0%, #f97316 60%, #ea580c 100%)', accent: '#f97316' },
-  tel: { main: '#0891b2', light: '#cffafe', banner: 'linear-gradient(90deg, #22d3ee 0%, #06b6d4 60%, #0891b2 100%)', accent: '#06b6d4' },
+  tel: { main: '#0891b2', light: '#cffafe', banner: 'linear-gradient(90deg, #22d3ee 0%, #06b6d4 60%, #0891b2 100%)', accent: '#0891b2' },
 };
 
 function medalla(pos: number) {
