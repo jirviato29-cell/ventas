@@ -16,6 +16,7 @@ import SimCardIcon from '@mui/icons-material/SimCard';
 import DescriptionIcon from '@mui/icons-material/Description';
 import HeadphonesIcon from '@mui/icons-material/Headphones';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
@@ -889,14 +890,22 @@ const FormularioVentaMultiple = () => {
           <Box mt={2}>
             <Typography variant="h6">Carrito</Typography>
             {carrito.length === 0
-              ? <Typography color="text.secondary">No hay productos agregados</Typography>
+              ? (
+                <Box sx={{ textAlign: 'center', py: 3, color: '#9ca3af' }}>
+                  <ShoppingBagIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
+                  <Typography sx={{ fontSize: 14 }}>No hay productos agregados</Typography>
+                </Box>
+              )
               : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => (
                   <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
                     {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
                   </li>
                 ))}</ul>}
           </Box>
-          <Typography variant="h6" mt={1}>Total: ${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 1.5, mt: 1 }}>
+            <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 20 }}>${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
+          </Box>
           <Divider sx={{ my: 2 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
