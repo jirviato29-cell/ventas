@@ -831,12 +831,14 @@ const FormularioVentaMultiple = () => {
               <Box
                 onClick={() => { setTipoVenta(t.v as any); setMensaje(null); }}
                 sx={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
-                  py: 1.2, borderRadius: 2, cursor: 'pointer', fontWeight: 600,
-                  border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e0e0e0',
-                  bgcolor: tipoVenta === t.v ? '#ede9fe' : '#fff',
-                  color: tipoVenta === t.v ? '#7c3aed' : 'text.primary',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8,
+                  py: 1.4, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                  bgcolor: tipoVenta === t.v ? '#f5f3ff' : '#fff',
+                  color: tipoVenta === t.v ? '#7c3aed' : '#374151',
+                  transition: 'all .15s',
                   userSelect: 'none',
+                  '&:hover': { borderColor: '#7c3aed' },
                 }}
               >
                 {t.icon} {t.label}
