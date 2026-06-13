@@ -10,8 +10,8 @@ type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[] };
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
 const COLORS = {
-  acc: { main: '#7c3aed', light: '#ede9fe', banner: '#f97316' },
-  tel: { main: '#0891b2', light: '#cffafe', banner: '#f97316' },
+  acc: { main: '#7c3aed', light: '#ede9fe', banner: 'linear-gradient(90deg, #fb923c 0%, #f97316 60%, #ea580c 100%)', accent: '#f97316' },
+  tel: { main: '#0891b2', light: '#cffafe', banner: 'linear-gradient(90deg, #22d3ee 0%, #06b6d4 60%, #0891b2 100%)', accent: '#06b6d4' },
 };
 
 function medalla(pos: number) {
@@ -29,7 +29,7 @@ function Tarjeta({
   sufijo: string;
   filas: Fila[];
   miModulo: string;
-  color: { main: string; light: string; banner: string };
+  color: { main: string; light: string; banner: string; accent: string };
   formato: (v: number) => string;
 }) {
   const max = Math.max(1, ...filas.map((f) => f.valor));
@@ -79,7 +79,7 @@ function Tarjeta({
                 display: 'flex', alignItems: 'center', gap: 1.2, py: 0.6, px: esMio ? 1 : 0,
                 position: 'relative',
                 borderRadius: 1.5,
-                border: esMio ? `2px solid ${color.banner}` : '2px solid transparent',
+                border: esMio ? `2px solid ${color.accent}` : '2px solid transparent',
                 mb: 0.3,
               }}
             >
@@ -99,7 +99,7 @@ function Tarjeta({
 
               {/* Barra */}
               <Box sx={{ flex: 1, height: 9, borderRadius: 5, bgcolor: '#eef0f3', overflow: 'hidden' }}>
-                <Box sx={{ width: `${(f.valor / max) * 100}%`, height: '100%', borderRadius: 5, background: esMio ? color.banner : color.main }} />
+                <Box sx={{ width: `${(f.valor / max) * 100}%`, height: '100%', borderRadius: 5, background: esMio ? color.accent : color.main }} />
               </Box>
 
               {/* Valor */}
@@ -109,7 +109,7 @@ function Tarjeta({
 
               {/* Etiqueta TÚ */}
               {esMio && (
-                <Box sx={{ position: 'absolute', top: -8, right: 6, background: color.banner, color: '#fff', fontSize: 9, fontWeight: 800, px: 0.8, py: 0.1, borderRadius: 1 }}>
+                <Box sx={{ position: 'absolute', top: -8, right: 6, background: color.accent, color: '#fff', fontSize: 9, fontWeight: 800, px: 0.8, py: 0.1, borderRadius: 1 }}>
                   TÚ
                 </Box>
               )}
