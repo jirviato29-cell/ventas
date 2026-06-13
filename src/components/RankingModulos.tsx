@@ -155,12 +155,6 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
 
   return (
     <Box sx={{ mb: 2 }}>
-      {solo !== 'telefonos' && (
-        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 1, color: 'text.secondary' }}>
-          <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e' }} />
-          Ranking actualizado {data.actualizado}
-        </Typography>
-      )}
       <Grid container spacing={2}>
         {solo !== 'telefonos' && (
           <Grid item xs={12} md={solo ? 12 : 6}>
