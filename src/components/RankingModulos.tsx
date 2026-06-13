@@ -191,7 +191,7 @@ export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefo
             <Tarjeta
               titulo="Planes"
               icono={<DescriptionIcon />}
-              sufijo="planes del día"
+              sufijo="planes del mes"
               filas={data.planes}
               miModulo={miModulo}
               color={COLORS.pln}
