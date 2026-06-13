@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Grid, Paper, Typography, LinearProgress } from '@mui/material';
+import { Box, Grid, Paper, Typography, Avatar } from '@mui/material';
+import HeadphonesIcon from '@mui/icons-material/Headphones';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import axios from 'axios';
 
 type Fila = { modulo: string; valor: number };
@@ -7,32 +9,114 @@ type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[] };
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
-function ListaRanking({
-  titulo, filas, formato,
-}: { titulo: string; filas: Fila[]; formato: (v: number) => string }) {
+const COLORS = {
+  acc: { main: '#7c3aed', light: '#ede9fe', banner: '#f97316' },
+  tel: { main: '#0891b2', light: '#cffafe', banner: '#f97316' },
+};
+
+function medalla(pos: number) {
+  if (pos === 1) return '#f59e0b';
+  if (pos === 2) return '#9ca3af';
+  if (pos === 3) return '#d97706';
+  return null;
+}
+
+function Tarjeta({
+  titulo, icono, sufijo, filas, miModulo, color, formato,
+}: {
+  titulo: string;
+  icono: React.ReactNode;
+  sufijo: string;
+  filas: Fila[];
+  miModulo: string;
+  color: { main: string; light: string; banner: string };
+  formato: (v: number) => string;
+}) {
   const max = Math.max(1, ...filas.map((f) => f.valor));
+  const miIndex = filas.findIndex((f) => f.modulo === miModulo);
+  const miFila = miIndex >= 0 ? filas[miIndex] : null;
+
   return (
-    <Paper sx={{ p: 2, height: '100%' }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-        {titulo}
-      </Typography>
-      {filas.map((f, i) => (
-        <Box key={f.modulo} sx={{ mb: 1.2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {i + 1}. {f.modulo}
-            </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {formato(f.valor)}
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={(f.valor / max) * 100}
-            sx={{ height: 8, borderRadius: 4 }}
-          />
+    <Paper sx={{ p: 0, overflow: 'hidden', borderRadius: 2 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ color: color.main, display: 'flex' }}>{icono}</Box>
+          <Typography sx={{ fontWeight: 700 }}>{titulo}</Typography>
         </Box>
-      ))}
+        <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          {sufijo}
+        </Typography>
+      </Box>
+
+      {/* Banner "Vas en el lugar X de N" */}
+      {miFila && (
+        <Box sx={{ mx: 2, mb: 1.5, borderRadius: 2, px: 2, py: 1.2, background: color.banner, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: 22 }}>#{miIndex + 1}</Typography>
+            <Box>
+              <Typography variant="caption" sx={{ opacity: 0.9, display: 'block', textTransform: 'uppercase', fontWeight: 700, fontSize: 10 }}>
+                Tu sucursal · {miModulo}
+              </Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: 15 }}>
+                Vas en el lugar {miIndex + 1} de {filas.length}
+              </Typography>
+            </Box>
+          </Box>
+          <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{formato(miFila.valor)}</Typography>
+        </Box>
+      )}
+
+      {/* Filas del ranking */}
+      <Box sx={{ px: 2, pb: 2 }}>
+        {filas.map((f, i) => {
+          const esMio = f.modulo === miModulo;
+          const colorMedalla = medalla(i + 1);
+          return (
+            <Box
+              key={f.modulo}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 1.2, py: 0.6, px: esMio ? 1 : 0,
+                position: 'relative',
+                borderRadius: 1.5,
+                border: esMio ? `2px solid ${color.banner}` : '2px solid transparent',
+                mb: 0.3,
+              }}
+            >
+              {/* Posición / medalla */}
+              {colorMedalla ? (
+                <Avatar sx={{ width: 22, height: 22, fontSize: 12, fontWeight: 700, bgcolor: colorMedalla, color: '#fff' }}>
+                  {i + 1}
+                </Avatar>
+              ) : (
+                <Typography sx={{ width: 22, textAlign: 'center', fontWeight: 600, color: 'text.secondary', fontSize: 13 }}>
+                  {i + 1}
+                </Typography>
+              )}
+
+              {/* Nombre */}
+              <Typography sx={{ width: 36, fontWeight: 700, fontSize: 13 }}>{f.modulo}</Typography>
+
+              {/* Barra */}
+              <Box sx={{ flex: 1, height: 9, borderRadius: 5, bgcolor: '#eef0f3', overflow: 'hidden' }}>
+                <Box sx={{ width: `${(f.valor / max) * 100}%`, height: '100%', borderRadius: 5, background: esMio ? color.banner : color.main }} />
+              </Box>
+
+              {/* Valor */}
+              <Typography sx={{ minWidth: 56, textAlign: 'right', fontWeight: 700, fontSize: 13, color: f.valor === 0 ? 'text.disabled' : 'text.primary' }}>
+                {formato(f.valor)}
+              </Typography>
+
+              {/* Etiqueta TÚ */}
+              {esMio && (
+                <Box sx={{ position: 'absolute', top: -8, right: 6, background: color.banner, color: '#fff', fontSize: 9, fontWeight: 800, px: 0.8, py: 0.1, borderRadius: 1 }}>
+                  TÚ
+                </Box>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
     </Paper>
   );
 }
@@ -40,9 +124,9 @@ function ListaRanking({
 export default function RankingModulos() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
+  const miModulo = (localStorage.getItem('modulo') || '').trim();
 
   const cargar = useCallback(async () => {
-    console.log('[RANKING] cargar() llamado, token:', !!localStorage.getItem('token'));
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/estadisticas/ranking-modulos-hoy`, {
@@ -58,30 +142,38 @@ export default function RankingModulos() {
 
   useEffect(() => {
     cargar();
-    const id = setInterval(cargar, 60 * 60 * 1000); // refresco cada hora
+    const id = setInterval(cargar, 60 * 60 * 1000);
     return () => clearInterval(id);
   }, [cargar]);
 
-  console.log('[RANKING] render, data:', data, 'error:', error);
   if (error || !data) return null;
 
   return (
     <Box sx={{ mb: 2 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        Ranking del día · actualizado {data.actualizado}
+      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 1, color: 'text.secondary' }}>
+        <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e' }} />
+        Ranking actualizado {data.actualizado}
       </Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} md={6}>
-          <ListaRanking
-            titulo="Accesorios ($ del día)"
+          <Tarjeta
+            titulo="Accesorios"
+            icono={<HeadphonesIcon />}
+            sufijo="$ del día"
             filas={data.accesorios}
+            miModulo={miModulo}
+            color={COLORS.acc}
             formato={(v) => `$${v.toLocaleString('es-MX')}`}
           />
         </Grid>
         <Grid item xs={12} md={6}>
-          <ListaRanking
-            titulo="Teléfonos (cantidad del día)"
+          <Tarjeta
+            titulo="Teléfonos"
+            icono={<SmartphoneIcon />}
+            sufijo="cantidad del día"
             filas={data.telefonos}
+            miModulo={miModulo}
+            color={COLORS.tel}
             formato={(v) => `${v}`}
           />
         </Grid>
