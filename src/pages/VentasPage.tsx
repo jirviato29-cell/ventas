@@ -2350,6 +2350,11 @@ const FormularioVentaMultiple = () => {
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} sx={{ mt: 0 }}>
+      {!esCadenas && (
+        <Grid item xs={12}>
+          <RankingModulos />
+        </Grid>
+      )}
       {/* ── Columna izquierda: Registrar Venta (sin cambios) ── */}
       {(rol as string) !== 'admin' && (
         <Grid item xs={12} md={6}>
