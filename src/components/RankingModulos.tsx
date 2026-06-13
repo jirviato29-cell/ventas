@@ -22,7 +22,7 @@ function medalla(pos: number) {
 }
 
 function Tarjeta({
-  titulo, icono, sufijo, filas, miModulo, color, formato,
+  titulo, icono, sufijo, filas, miModulo, color, formato, unidad,
 }: {
   titulo: string;
   icono: React.ReactNode;
@@ -31,6 +31,7 @@ function Tarjeta({
   miModulo: string;
   color: { main: string; light: string; banner: string; accent: string };
   formato: (v: number) => string;
+  unidad: string;
 }) {
   const max = Math.max(1, ...filas.map((f) => f.valor));
   const miIndex = filas.findIndex((f) => f.modulo === miModulo);
@@ -63,9 +64,14 @@ function Tarjeta({
               </Typography>
             </Box>
           </Box>
-          <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{formato(miFila.valor)}</Typography>
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{formato(miFila.valor)}</Typography>
+            <Typography sx={{ fontSize: 10, opacity: 0.9, fontWeight: 600, mt: -0.3 }}>{unidad}</Typography>
+          </Box>
         </Box>
       )}
+
+      <Box sx={{ borderTop: '1px solid #eef0f3', mx: 2, mb: 1 }} />
 
       {/* Filas del ranking */}
       <Box sx={{ px: 2, pb: 2 }}>
@@ -164,6 +170,7 @@ export default function RankingModulos() {
             miModulo={miModulo}
             color={COLORS.acc}
             formato={(v) => `$${v.toLocaleString('es-MX')}`}
+            unidad="vendido"
           />
         </Grid>
         <Grid item xs={12} md={6}>
@@ -175,6 +182,7 @@ export default function RankingModulos() {
             miModulo={miModulo}
             color={COLORS.tel}
             formato={(v) => `${v}`}
+            unidad="equipos"
           />
         </Grid>
       </Grid>
