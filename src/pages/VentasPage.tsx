@@ -1559,6 +1559,7 @@ const FormularioVentaMultiple = () => {
               )}
             </Paper>
           ) : (
+          false && (
             <>
               {/* ── Ventas del día ── */}
               <Paper sx={{ p: 2, mb: 2 }}>
@@ -1656,6 +1657,7 @@ const FormularioVentaMultiple = () => {
                 </Box>
               </Paper>
             </>
+          )
           )}
 
           </Grid>
