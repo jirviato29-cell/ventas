@@ -180,8 +180,8 @@ const PlanesAdmin = () => {
             <CircularProgress size={28} />
           </Box>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ width: "100%", overflowX: "auto" }}>
+            <Table size="small" sx={{ width: "100%", minWidth: 1400 }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={headSx}>Fecha</TableCell>
