@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert, Box, Button, CircularProgress, Container,
-  Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Typography,
+  Dialog, DialogActions, DialogContent, DialogTitle,
+  IconButton, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, TextField, Tooltip, Typography,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
@@ -33,6 +36,7 @@ interface PlanTarifario {
   pagado: boolean | null;
   fecha_pago: string | null;
   contrato_listo: boolean | null;
+  venta_pi_id: number | null;
 }
 
 const nil = (v: string | number | null | undefined): string =>
@@ -43,12 +47,14 @@ const PlanesAdmin = () => {
   const token  = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
-  // ── Hooks (todos antes de cualquier return condicional) ───────────────────
   const [planes, setPlanes]     = useState<PlanTarifario[]>([]);
   const [claves, setClaves]     = useState<Record<number, string>>({});
   const [modulos, setModulos]   = useState<Record<number, string>>({});
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [editPlan, setEditPlan] = useState<PlanTarifario | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   const cargar = async () => {
     setCargando(true);
@@ -105,9 +111,47 @@ const PlanesAdmin = () => {
     }
   };
 
+  const guardarEdicion = async () => {
+    if (!editPlan) return;
+    setGuardando(true);
+    try {
+      const payload = {
+        fecha: editPlan.fecha,
+        tipo_plan: editPlan.tipo_plan,
+        estatus: editPlan.estatus,
+        categoria: editPlan.categoria,
+        clasificacion: editPlan.clasificacion,
+        imei: editPlan.imei,
+        precio_equipo: editPlan.precio_equipo,
+        plazo: editPlan.plazo,
+        linea: editPlan.linea,
+        cuenta: editPlan.cuenta,
+      };
+      const r = await axios.put(`${BASE}/planes-tarifarios/${editPlan.id}`, payload, config);
+      setPlanes(prev => prev.map(x => (x.id === editPlan.id ? r.data : x)));
+      setEditPlan(null);
+    } catch {
+      setErrorMsg("No se pudo guardar la edición.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const eliminarPlan = async (plan: PlanTarifario) => {
+    const ok = window.confirm(
+      `¿Eliminar este plan?\n\nSe regresará el teléfono al inventario y se revertirá el pago inicial del corte. Esta acción no se puede deshacer.`
+    );
+    if (!ok) return;
+    try {
+      await axios.delete(`${BASE}/planes-tarifarios/${plan.id}`, config);
+      setPlanes(prev => prev.filter(x => x.id !== plan.id));
+    } catch {
+      setErrorMsg("No se pudo eliminar el plan.");
+    }
+  };
+
   useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Protección por rol (después de todos los hooks) ───────────────────────
   if (rol !== "admin") return <Navigate to="/" replace />;
 
   return (
@@ -156,12 +200,13 @@ const PlanesAdmin = () => {
                   <TableCell sx={headSx}>Comisión</TableCell>
                   <TableCell sx={headSx}>Contrato</TableCell>
                   <TableCell sx={headSx}>Pagado</TableCell>
+                  <TableCell sx={headSx}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {planes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={18} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
+                    <TableCell colSpan={19} sx={{ ...cellSx, textAlign: "center", color: "#94a3b8" }}>
                       No hay planes registrados
                     </TableCell>
                   </TableRow>
@@ -220,6 +265,20 @@ const PlanesAdmin = () => {
                           </div>
                         )}
                       </TableCell>
+                      <TableCell sx={cellSx}>
+                        <Box sx={{ display: "flex", gap: 0.5 }}>
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="primary" onClick={() => setEditPlan(p)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error" onClick={() => eliminarPlan(p)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -228,6 +287,42 @@ const PlanesAdmin = () => {
           </TableContainer>
         )}
       </Paper>
+
+      <Dialog open={editPlan !== null} onClose={() => setEditPlan(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar plan</DialogTitle>
+        <DialogContent>
+          {editPlan && (
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mt: 1 }}>
+              <TextField label="Equipo (no editable)" value={editPlan.equipo ?? ""} disabled size="small" />
+              <TextField label="Monto PI (no editable)" value={editPlan.monto_pago_inicial ?? ""} disabled size="small" />
+              <TextField label="Tipo plan" value={editPlan.tipo_plan ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, tipo_plan: e.target.value })} />
+              <TextField label="Estatus" value={editPlan.estatus ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, estatus: e.target.value })} />
+              <TextField label="Categoría" value={editPlan.categoria ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, categoria: e.target.value })} />
+              <TextField label="Clasificación" value={editPlan.clasificacion ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, clasificacion: e.target.value })} />
+              <TextField label="IMEI" value={editPlan.imei ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, imei: e.target.value })} />
+              <TextField label="Precio equipo" type="number" value={editPlan.precio_equipo ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, precio_equipo: e.target.value === "" ? null : Number(e.target.value) })} />
+              <TextField label="Plazo" type="number" value={editPlan.plazo ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, plazo: e.target.value === "" ? null : Number(e.target.value) })} />
+              <TextField label="Línea" value={editPlan.linea ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, linea: e.target.value })} />
+              <TextField label="Cuenta" value={editPlan.cuenta ?? ""} size="small"
+                onChange={e => setEditPlan({ ...editPlan, cuenta: e.target.value })} />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditPlan(null)}>Cancelar</Button>
+          <Button variant="contained" onClick={guardarEdicion} disabled={guardando}>
+            {guardando ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
