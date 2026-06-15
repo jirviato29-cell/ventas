@@ -15,6 +15,8 @@ import { calcularComision } from "../data/comisionesTabulador";
 const BASE   = "https://ato-appservidor-nvxt.onrender.com";
 const headSx = { py: "4px", px: "6px", fontSize: 13, fontWeight: 700 };
 const cellSx = { py: "2px", px: "6px", fontSize: 13 };
+const stickyHeadSx = { ...headSx, position: "sticky" as const, right: 0, background: "#fff", zIndex: 3, boxShadow: "-4px 0 6px -4px rgba(0,0,0,0.15)" };
+const stickyCellSx = { ...cellSx, position: "sticky" as const, right: 0, background: "#fff", zIndex: 2, boxShadow: "-4px 0 6px -4px rgba(0,0,0,0.15)" };
 
 interface PlanTarifario {
   id: number;
@@ -155,7 +157,7 @@ const PlanesAdmin = () => {
   if (rol !== "admin") return <Navigate to="/" replace />;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth={false} sx={{ py: 3, px: 2 }}>
       <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 3 }}>
         Planes Tarifarios
       </Typography>
@@ -200,7 +202,7 @@ const PlanesAdmin = () => {
                   <TableCell sx={headSx}>Comisión</TableCell>
                   <TableCell sx={headSx}>Contrato</TableCell>
                   <TableCell sx={headSx}>Pagado</TableCell>
-                  <TableCell sx={headSx}>Acciones</TableCell>
+                  <TableCell sx={stickyHeadSx}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -265,7 +267,7 @@ const PlanesAdmin = () => {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell sx={cellSx}>
+                      <TableCell sx={stickyCellSx}>
                         <Box sx={{ display: "flex", gap: 0.5 }}>
                           <Tooltip title="Editar">
                             <IconButton size="small" color="primary" onClick={() => setEditPlan(p)}>
