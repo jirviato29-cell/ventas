@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Alert, Box, Button, CircularProgress, Container,
   Dialog, DialogActions, DialogContent, DialogTitle,
@@ -78,7 +78,7 @@ const PlanesAdmin = () => {
         }
         setModulos(mapaMod);
       } catch {
-        // si falla, la columna cae al empleado_id numérico
+        // si falla, la columna cae al empleado_id numÃ©rico
       }
     } catch {
       setErrorMsg("No se pudieron cargar los planes tarifarios.");
@@ -133,7 +133,7 @@ const PlanesAdmin = () => {
       setPlanes(prev => prev.map(x => (x.id === editPlan.id ? r.data : x)));
       setEditPlan(null);
     } catch {
-      setErrorMsg("No se pudo guardar la edición.");
+      setErrorMsg("No se pudo guardar la ediciÃ³n.");
     } finally {
       setGuardando(false);
     }
@@ -141,7 +141,7 @@ const PlanesAdmin = () => {
 
   const eliminarPlan = async (plan: PlanTarifario) => {
     const ok = window.confirm(
-      `¿Eliminar este plan?\n\nSe regresará el teléfono al inventario y se revertirá el pago inicial del corte. Esta acción no se puede deshacer.`
+      `Â¿Eliminar este plan?\n\nSe regresarÃ¡ el telÃ©fono al inventario y se revertirÃ¡ el pago inicial del corte. Esta acciÃ³n no se puede deshacer.`
     );
     if (!ok) return;
     try {
@@ -168,7 +168,7 @@ const PlanesAdmin = () => {
         </Alert>
       )}
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, overflow: "hidden" }}>
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, flexGrow: 1 }}>
             Registros ({planes.length})
@@ -181,25 +181,25 @@ const PlanesAdmin = () => {
           </Box>
         ) : (
           <TableContainer sx={{ width: "100%", overflowX: "auto" }}>
-            <Table size="small" sx={{ width: "100%", minWidth: 1400 }}>
+            <Table size="small" sx={{ minWidth: 1700 }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={headSx}>Fecha</TableCell>
                   <TableCell sx={headSx}>Empleado ID</TableCell>
-                  <TableCell sx={headSx}>Módulo ID</TableCell>
+                  <TableCell sx={headSx}>MÃ³dulo ID</TableCell>
                   <TableCell sx={headSx}>Tipo plan</TableCell>
                   <TableCell sx={headSx}>Estatus</TableCell>
-                  <TableCell sx={headSx}>Categoría</TableCell>
-                  <TableCell sx={headSx}>Clasificación</TableCell>
+                  <TableCell sx={headSx}>CategorÃ­a</TableCell>
+                  <TableCell sx={headSx}>ClasificaciÃ³n</TableCell>
                   <TableCell sx={headSx}>Equipo</TableCell>
                   <TableCell sx={headSx}>IMEI</TableCell>
                   <TableCell sx={headSx}>Precio equipo</TableCell>
                   <TableCell sx={headSx}>Plazo</TableCell>
-                  <TableCell sx={headSx}>Línea</TableCell>
+                  <TableCell sx={headSx}>LÃ­nea</TableCell>
                   <TableCell sx={headSx}>Cuenta</TableCell>
                   <TableCell sx={headSx}>Pago inicial</TableCell>
                   <TableCell sx={headSx}>Monto PI</TableCell>
-                  <TableCell sx={headSx}>Comisión</TableCell>
+                  <TableCell sx={headSx}>ComisiÃ³n</TableCell>
                   <TableCell sx={headSx}>Contrato</TableCell>
                   <TableCell sx={headSx}>Pagado</TableCell>
                   <TableCell sx={stickyHeadSx}>Acciones</TableCell>
@@ -234,7 +234,7 @@ const PlanesAdmin = () => {
                       <TableCell sx={cellSx}>{nil(p.plazo)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.linea)}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.cuenta)}</TableCell>
-                      <TableCell sx={cellSx}>{p.pago_inicial ? "Sí" : "No"}</TableCell>
+                      <TableCell sx={cellSx}>{p.pago_inicial ? "SÃ­" : "No"}</TableCell>
                       <TableCell sx={cellSx}>{nil(p.monto_pago_inicial)}</TableCell>
                       <TableCell sx={cellSx}>
                         {(() => {
@@ -301,9 +301,9 @@ const PlanesAdmin = () => {
                 onChange={e => setEditPlan({ ...editPlan, tipo_plan: e.target.value })} />
               <TextField label="Estatus" value={editPlan.estatus ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, estatus: e.target.value })} />
-              <TextField label="Categoría" value={editPlan.categoria ?? ""} size="small"
+              <TextField label="CategorÃ­a" value={editPlan.categoria ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, categoria: e.target.value })} />
-              <TextField label="Clasificación" value={editPlan.clasificacion ?? ""} size="small"
+              <TextField label="ClasificaciÃ³n" value={editPlan.clasificacion ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, clasificacion: e.target.value })} />
               <TextField label="IMEI" value={editPlan.imei ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, imei: e.target.value })} />
@@ -311,7 +311,7 @@ const PlanesAdmin = () => {
                 onChange={e => setEditPlan({ ...editPlan, precio_equipo: e.target.value === "" ? null : Number(e.target.value) })} />
               <TextField label="Plazo" type="number" value={editPlan.plazo ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, plazo: e.target.value === "" ? null : Number(e.target.value) })} />
-              <TextField label="Línea" value={editPlan.linea ?? ""} size="small"
+              <TextField label="LÃ­nea" value={editPlan.linea ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, linea: e.target.value })} />
               <TextField label="Cuenta" value={editPlan.cuenta ?? ""} size="small"
                 onChange={e => setEditPlan({ ...editPlan, cuenta: e.target.value })} />
