@@ -1662,6 +1662,13 @@ const FormularioVentaMultiple = () => {
           </Grid>
         )}
 
+        {/* ── Tab RECIBOS (asesor) ── */}
+        {tabAsesor === 1 && (
+          <Box sx={{ mt: 2 }}>
+            <RecibosPanel />
+          </Box>
+        )}
+
         {/* ── Tab MIS VENTAS / MIS ACTIVACIONES ── */}
         {tabAsesor === 2 && (
           <Box>
