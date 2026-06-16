@@ -269,10 +269,10 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones/usuario">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
-                  {modulo !== "Cadenas Comerciales" && (
+                  {!modulo.toLowerCase().includes("cadena") && (
                     <Button sx={navBtnSx} component={Link} to="/corte" startIcon={<ContentCutIcon />}>Corte</Button>
                   )}
-                  {modulo !== "Cadenas Comerciales" && (
+                  {!modulo.toLowerCase().includes("cadena") && (
                     <Button sx={navBtnSx} component={Link} to="/ranking">ESTADÍSTICAS</Button>
                   )}
                 </>
@@ -574,13 +574,13 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                 <ListItemText primary="Chips" />
               </ListItemButton>
-              {modulo !== "Cadenas Comerciales" && (
+              {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                   <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                   <ListItemText primary="Corte" />
                 </ListItemButton>
               )}
-              {modulo !== "Cadenas Comerciales" && (
+              {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
                   <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                   <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
