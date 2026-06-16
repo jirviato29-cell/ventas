@@ -1435,20 +1435,26 @@ const FormularioVentaMultiple = () => {
           TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
         >
           <Tab
+            value={0}
             icon={<ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
             iconPosition="start"
             label="TICKET"
             sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
+          {!esCadenas && (
+            <Tab
+              value={1}
+              label="RECIBOS"
+              sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+            />
+          )}
           <Tab
-            label="RECIBOS"
-            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-          />
-          <Tab
+            value={2}
             label={esCadenas ? 'MIS ACTIVACIONES' : 'MIS VENTAS'}
             sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           <Tab
+            value={3}
             icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
             iconPosition="start"
             label={esCadenas ? 'LISTA DE COMISIONES' : 'COMISIONES'}
@@ -1456,6 +1462,7 @@ const FormularioVentaMultiple = () => {
           />
           {esCadenas && (
             <Tab
+              value={4}
               icon={<AccountBalanceWalletIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
               iconPosition="start"
               label="MI SEMANA"
