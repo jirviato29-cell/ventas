@@ -129,10 +129,10 @@ function Tarjeta({
   );
 }
 
-export default function RankingModulos({ solo }: { solo?: 'accesorios' | 'telefonos' | 'planes' }) {
+export default function RankingModulos({ solo, moduloOverride }: { solo?: 'accesorios' | 'telefonos' | 'planes'; moduloOverride?: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
-  const miModulo = (localStorage.getItem('modulo') || '').trim();
+  const miModulo = (moduloOverride ?? localStorage.getItem('modulo') ?? '').trim();
 
   const cargar = useCallback(async () => {
     try {
