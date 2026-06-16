@@ -1,6 +1,5 @@
 import React from 'react';
 import { useRoutes, Navigate } from 'react-router-dom';
-import CampusPage from './pages/CampusPage';
 import LoginPage from './pages/LoginPages';
 import VentasPage from './pages/VentasPage';
 import ComisionesPage from './pages/ComisionesPage';
@@ -51,9 +50,7 @@ const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children })
 
 const App: React.FC = () => {
   const routes = useRoutes([
-    { path: '/', element: <Navigate to="/campus" replace /> },
-    { path: '/campus', element: <CampusPage /> },
-    { path: '/login', element: <LoginPage /> },
+    { path: '/', element: <LoginPage /> },
     { path: '/ventas', element: <RutaProtegida><VentasPage /></RutaProtegida> },
     { path: '/comisiones', element: <RutaProtegida><ComisionesPage /></RutaProtegida> },
     { path: '/comisiones/usuario', element: <RutaProtegida><ComisionesUser /></RutaProtegida> },
