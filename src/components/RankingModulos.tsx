@@ -6,7 +6,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import axios from 'axios';
 
 type Fila = { modulo: string; valor: number };
-type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[]; planes: Fila[] };
+type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[]; planes: Fila[]; accesorios_mes?: Fila[]; telefonos_mes?: Fila[] };
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
@@ -129,7 +129,7 @@ function Tarjeta({
   );
 }
 
-export default function RankingModulos({ solo, moduloOverride }: { solo?: 'accesorios' | 'telefonos' | 'planes'; moduloOverride?: string }) {
+export default function RankingModulos({ solo, moduloOverride, fecha }: { solo?: 'accesorios' | 'telefonos' | 'planes' | 'accesorios_mes' | 'telefonos_mes'; moduloOverride?: string; fecha?: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const miModulo = (moduloOverride ?? localStorage.getItem('modulo') ?? '').trim();
@@ -139,13 +139,14 @@ export default function RankingModulos({ solo, moduloOverride }: { solo?: 'acces
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/estadisticas/ranking-modulos-hoy`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: fecha ? { fecha } : {},
       });
       setData(res.data);
       setError(false);
     } catch {
       setError(true);
     }
-  }, []);
+  }, [fecha]);
 
   useEffect(() => {
     cargar();
@@ -158,7 +159,7 @@ export default function RankingModulos({ solo, moduloOverride }: { solo?: 'acces
   return (
     <Box sx={{ mb: 2 }}>
       <Grid container spacing={2}>
-        {solo !== 'telefonos' && solo !== 'planes' && (
+        {solo !== 'telefonos' && solo !== 'planes' && solo !== 'accesorios_mes' && solo !== 'telefonos_mes' && (
           <Grid item xs={12} md={solo ? 12 : 6}>
             <Tarjeta
               titulo="Accesorios"
@@ -172,7 +173,7 @@ export default function RankingModulos({ solo, moduloOverride }: { solo?: 'acces
             />
           </Grid>
         )}
-        {solo !== 'accesorios' && solo !== 'planes' && (
+        {solo !== 'accesorios' && solo !== 'planes' && solo !== 'accesorios_mes' && solo !== 'telefonos_mes' && (
           <Grid item xs={12} md={solo ? 12 : 6}>
             <Tarjeta
               titulo="Teléfonos"
@@ -197,6 +198,34 @@ export default function RankingModulos({ solo, moduloOverride }: { solo?: 'acces
               color={COLORS.pln}
               formato={(v) => `${v}`}
               unidad="planes"
+            />
+          </Grid>
+        )}
+        {solo === 'accesorios_mes' && (
+          <Grid item xs={12}>
+            <Tarjeta
+              titulo="Accesorios"
+              icono={<HeadphonesIcon />}
+              sufijo="$ del mes"
+              filas={data.accesorios_mes || []}
+              miModulo={miModulo}
+              color={COLORS.acc}
+              formato={(v) => `$${Math.round(v).toLocaleString('es-MX')}`}
+              unidad="vendido"
+            />
+          </Grid>
+        )}
+        {solo === 'telefonos_mes' && (
+          <Grid item xs={12}>
+            <Tarjeta
+              titulo="Teléfonos"
+              icono={<SmartphoneIcon />}
+              sufijo="cantidad del mes"
+              filas={data.telefonos_mes || []}
+              miModulo={miModulo}
+              color={COLORS.tel}
+              formato={(v) => `${v}`}
+              unidad="equipos"
             />
           </Grid>
         )}
