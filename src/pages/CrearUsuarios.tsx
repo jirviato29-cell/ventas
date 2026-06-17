@@ -134,6 +134,7 @@ const CrearUsuario = () => {
           <MenuItem value="encargado">Encargado</MenuItem>
           <MenuItem value="asesor">Asesor</MenuItem>
           <MenuItem value="contador">Contador</MenuItem>
+          <MenuItem value="check">Check</MenuItem>
         </TextField>
 
         {rol !== "admin" && (

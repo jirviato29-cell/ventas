@@ -10,7 +10,7 @@ import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
 
-const roles = ["admin", "encargado", "asesor", "contador"];
+const roles = ["admin", "encargado", "asesor", "contador", "check"];
 
 interface FormEdicion {
   nombre_completo: string;
