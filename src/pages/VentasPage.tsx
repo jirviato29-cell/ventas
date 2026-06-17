@@ -26,6 +26,7 @@ import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
+import MiCheckinSemana from '../components/MiCheckinSemana';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -1478,6 +1479,12 @@ const FormularioVentaMultiple = () => {
             {(rol as string) !== 'admin' && (
               <Grid item xs={12} md={3}>
                 {formulario}
+              </Grid>
+            )}
+
+            {esCadenas && (
+              <Grid item xs={12} md={4}>
+                <MiCheckinSemana />
               </Grid>
             )}
 
