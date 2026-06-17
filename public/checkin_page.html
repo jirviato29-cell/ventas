@@ -143,7 +143,7 @@ tr:hover td{background:#F5F8FC;}
   <div class="tab"        onclick="setTab('semana',this)">Semana</div>
   <div class="tab"        onclick="setTab('bono',this)">Bono</div>
   <div class="tab"        onclick="setTab('resumen',this)">Resumen</div>
-  <div class="tab"        onclick="setTab('promotores',this)">Promotores</div>
+  <div class="tab"        onclick="setTab('promotores',this)" style="display:none;">Promotores</div>
 </div>
 
 <div id="tab-checkin" class="panel active">
@@ -352,7 +352,7 @@ function filtrarP(modo){
   const fCI=document.getElementById('fecha-ci').value||HOY;
   const rF=R[fCO]||{};
   const rCI=R[fCI]||{};
-  const lista=modo==='co'?P.filter((_,i)=>rF[i]&&!rF[i].salida):P.filter((_,i)=>!rCI[i]);
+  const lista=modo==='co'?P.filter(p=>rF[p.nombre]&&!rF[p.nombre].salida):P.filter(p=>!rCI[p.nombre]);
   const fil=q?lista.filter(p=>p.nombre.toLowerCase().includes(q)):lista;
   drop.innerHTML=fil.length?fil.map(p=>{const i=P.indexOf(p);const pts=p.nombre.split('-');
     return`<div class="di" onclick="selP('${modo}',${i})"><span class="cod">${pts[0]}</span>${pts.slice(1).join('-')}<span class="tel">${p.tel||'Sin tel'}</span></div>`;}).join('')
@@ -441,7 +441,7 @@ async function marcarCI(){
   const fechaP=pFecha;
   const urlWA=waUrl;
   waUrl='';
-  await fetch(API_CHECK+'/checkin',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:pIdx,hora:pHora,fecha:pFecha})});
+  await fetch(API_CHECK+'/checkin',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:P[pIdx].nombre,hora:pHora,fecha:pFecha})});
   limpiarCI();
   pIdx=null;pHora=null;pFecha=null;
   await cargarTodo();
@@ -469,14 +469,14 @@ async function regCO(){
   const fCO=document.getElementById('fecha-co').value;
   if(!hSal||!fCO)return;
   const p=P[idxCO];
-  const rF=(R[fCO]||{})[idxCO];
+  const rF=(R[fCO]||{})[P[idxCO].nombre];
   if(!rF){alert('Sin Check In en esa fecha');return;}
   const mins=dMin(rF.entrada,hSal);
   const cumple=mins>=360;
   const hh=Math.floor(Math.max(0,mins)/60);
   const mm=Math.abs(mins%60);
   const tStr=`${hh}h ${mm}min`;
-  await fetch(API_CHECK+'/checkout',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:idxCO,fecha:fCO,salida:hSal,horas:(mins/60).toFixed(2),cumple})});
+  await fetch(API_CHECK+'/checkout',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:P[idxCO].nombre,fecha:fCO,salida:hSal,horas:(mins/60).toFixed(2),cumple})});
   const div=document.getElementById('co-result');
   div.className=`co-result ${cumple?'co-ok':'co-no'}`;
   div.innerHTML=cumple
@@ -546,13 +546,13 @@ function renderHoy(){
   let html='';
   P.forEach((p,i)=>{
     if(fHoyQ&&!p.nombre.toLowerCase().includes(fHoyQ))return;
-    const r=reg[i];
+    const r=reg[p.nombre];
     if(r){
       const coI=r.salida?`<span class="pill pill-co">${r.salida}(${r.horas}h)</span>`:`<span class="pill pill-warn">Sin CO</span>`;
       html+=`<div class="item"><div class="dot dot-g"></div><span class="nm">${p.nombre}</span>
         <span class="pill pill-ci">${r.entrada}</span>${coI}
-        <button class="btn-edit" onclick="abrirModal(${i},'${f}')">Editar</button>
-        <button class="btn-del" onclick="borrarCI(${i},'${f}')">Borrar</button></div>`;
+        <button class="btn-edit" onclick="abrirModal('${p.nombre}','${f}')">Editar</button>
+        <button class="btn-del" onclick="borrarCI('${p.nombre}','${f}')">Borrar</button></div>`;
     }else{
       html+=`<div class="item"><div class="dot dot-gr"></div><span class="nm" style="color:#aaa">${p.nombre}</span><span class="pill pill-pend">Sin Check In</span></div>`;
     }
@@ -589,14 +589,14 @@ const msgR=(nombre)=>`Hola ${nombre},\n\nTe recordamos que aún no hemos recibid
 function renderFalt(){
   const f=document.getElementById('fecha-falt').value||HOY;
   const reg=R[f]||{};
-  const fCI=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
-  const fCO=P.map((p,i)=>({p,i})).filter(({i})=>reg[i]&&!reg[i].salida);
+  const fCI=P.filter(p=>!reg[p.nombre]);
+  const fCO=P.filter(p=>reg[p.nombre]&&!reg[p.nombre].salida);
   document.getElementById('ft-ci').textContent=`Sin Check In — ${fF(f)} (${fCI.length})`;
   document.getElementById('fs-ci2').textContent=`${fCI.length} promotor${fCI.length!==1?'es':''}`;
   document.getElementById('fb-ci').className=fCI.length?'falt-box':'falt-box ok';
   document.getElementById('ft-ci').style.color=fCI.length?'#7D6608':'#1A5C2A';
   document.getElementById('btn-todos').style.display=fCI.length?'block':'none';
-  document.getElementById('fl-ci').innerHTML=fCI.length?fCI.map(({p})=>{
+  document.getElementById('fl-ci').innerHTML=fCI.length?fCI.map(p=>{
     const tel=p.tel?'52'+p.tel.replace(/\D/g,'').replace(/^52/,''):'';
     const url=tel?`whatsapp://send?phone=${tel}&text=${encodeURIComponent(msgR(p.nombre))}`:`whatsapp://send?text=${encodeURIComponent(msgR(p.nombre))}`;
     return`<div class="item" style="background:#fff;border-radius:7px;margin-bottom:3px;padding:7px 9px;"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span style="font-size:10px;color:#aaa;margin-right:6px;">${p.tel||''}</span><a href="${url}" target="_blank" class="wa-btn">WA</a></div>`;
@@ -605,7 +605,7 @@ function renderFalt(){
   document.getElementById('fs-co2').textContent=`${fCO.length} con Check In pero sin salida`;
   document.getElementById('fb-co').className=fCO.length?'falt-box':'falt-box ok';
   document.getElementById('ft-co').style.color=fCO.length?'#7D6608':'#1A5C2A';
-  document.getElementById('fl-co').innerHTML=fCO.length?fCO.map(({p,i})=>`<div class="item" style="background:#fff;border-radius:7px;margin-bottom:3px;padding:7px 9px;"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[i]||{}).entrada||''}</span></div>`).join(''):'<div style="padding:8px;text-align:center;color:#aaa;font-size:12px;">Todos tienen Check Out ✅</div>';
+  document.getElementById('fl-co').innerHTML=fCO.length?fCO.map(p=>`<div class="item" style="background:#fff;border-radius:7px;margin-bottom:3px;padding:7px 9px;"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[p.nombre]||{}).entrada||''}</span></div>`).join(''):'<div style="padding:8px;text-align:center;color:#aaa;font-size:12px;">Todos tienen Check Out ✅</div>';
   document.getElementById('badge-falt').textContent=fCI.length;
   document.getElementById('badge-falt').style.display=fCI.length>0?'inline':'none';
 }
@@ -613,27 +613,27 @@ function renderFalt(){
 function renderFaltCO(){
   const f=document.getElementById('fs-co').value||HOY;
   const reg=R[f]||{};
-  const fCI=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
-  const fCO=P.map((p,i)=>({p,i})).filter(({i})=>reg[i]&&!reg[i].salida);
+  const fCI=P.filter(p=>!reg[p.nombre]);
+  const fCO=P.filter(p=>reg[p.nombre]&&!reg[p.nombre].salida);
   document.getElementById('fci-tit').textContent=`Sin Check In (${fCI.length})`;
   document.getElementById('fci-sub').textContent=`${fCI.length} sin registrar`;
   document.getElementById('fci-box').className=fCI.length?'falt-box':'falt-box ok';
-  document.getElementById('fci-lista').innerHTML=fCI.map(({p})=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
+  document.getElementById('fci-lista').innerHTML=fCI.map(p=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
   document.getElementById('fco-tit').textContent=`Sin Check Out (${fCO.length})`;
   document.getElementById('fco-sub').textContent=`${fCO.length} con entrada sin salida`;
   document.getElementById('fco-box').className=fCO.length?'falt-box':'falt-box ok';
-  document.getElementById('fco-lista').innerHTML=fCO.map(({p,i})=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[i]||{}).entrada||''}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
+  document.getElementById('fco-lista').innerHTML=fCO.map(p=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[p.nombre]||{}).entrada||''}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
 }
 
 function abrirTodosWA(){
   const f=document.getElementById('fecha-falt').value||HOY;
   const reg=R[f]||{};
-  const faltantes=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
+  const faltantes=P.filter(p=>!reg[p.nombre]);
   if(!faltantes.length){alert('Todos ya tienen Check In hoy.');return;}
   let n=0;
   function siguiente(){
     if(n>=faltantes.length)return;
-    const {p}=faltantes[n];
+    const p=faltantes[n];
     const tel=p.tel?'52'+p.tel.replace(/\D/g,'').replace(/^52/,''):'';
     const url=tel?`whatsapp://send?phone=${tel}&text=${encodeURIComponent(msgR(p.nombre))}`:`whatsapp://send?text=${encodeURIComponent(msgR(p.nombre))}`;
     window.open(url,'wa_recordatorio');
@@ -656,7 +656,7 @@ function cargarSem(){
   P.forEach((p,pi)=>{
     let ok=0;
     const celdas=dias.map(f=>{
-      const r=(R[f]||{})[pi];
+      const r=(R[f]||{})[p.nombre];
       if(r&&r.cumple===true){ok++;
         const co=r.salida?` <span style="font-size:9px;color:#E74C3C;">▶${r.salida}</span>`:'';
 const hOk=r.cumple===true;
@@ -687,7 +687,7 @@ function calcDatos(semVal){
   return P.map((p,pi)=>{
     let ok=0;
     dias.forEach(f=>{
-      const r=(R[f]||{})[pi];
+      const r=(R[f]||{})[p.nombre];
       if(r&&r.salida&&r.cumple===true)ok++;
     });
     return{nombre:p.nombre,dias:ok,gana:ok>=6};
