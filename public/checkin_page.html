@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Check In</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;}
+body{background:#EEF2F7;color:#1A1A1A;}
+.topbar{background:#0D2B6B;color:#fff;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar h1{font-size:15px;font-weight:700;}
+.sub{font-size:11px;opacity:.7;margin-top:2px;}
+.tabs{display:flex;background:#fff;border-bottom:3px solid #0D2B6B;padding:0 12px;overflow-x:auto;}
+.tab{padding:11px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#666;border-bottom:3px solid transparent;margin-bottom:-3px;white-space:nowrap;}
+.tab.active{color:#0D2B6B;border-bottom-color:#0D2B6B;}
+.tab:hover{color:#0D2B6B;}
+.panel{display:none;padding:14px;max-width:980px;margin:0 auto;}
+.panel.active{display:block;}
+.card{background:#fff;border:1px solid #D8E2F0;border-radius:10px;padding:16px;margin-bottom:14px;}
+.card h2{font-size:14px;font-weight:700;color:#0D2B6B;margin-bottom:12px;}
+.row3{display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:12px;align-items:end;}
+label{display:block;font-size:11px;color:#555;margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+input[type=time],input[type=text],input[type=tel],input[type=date],select{width:100%;padding:8px 11px;border:1.5px solid #D0D9E8;border-radius:7px;font-size:13px;background:#fff;}
+input:focus,select:focus{outline:none;border-color:#0D2B6B;}
+.bw{position:relative;}
+.bi{width:100%;padding:8px 11px;border:1.5px solid #D0D9E8;border-radius:7px;font-size:13px;}
+.bi:focus{outline:none;border-color:#0D2B6B;}
+.dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #0D2B6B;border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:999;display:none;box-shadow:0 6px 16px rgba(0,0,0,.12);}
+.dd.show{display:block;}
+.di{padding:9px 13px;cursor:pointer;font-size:13px;border-bottom:1px solid #F0F4F9;}
+.di:hover{background:#E8EEF8;}
+.di .cod{font-weight:700;color:#0D2B6B;margin-right:5px;}
+.di .tel{font-size:11px;color:#aaa;float:right;}
+.di.nor{color:#aaa;cursor:default;}
+.sbadge{display:inline-flex;align-items:center;gap:7px;background:#E8EEF8;border:1.5px solid #A3BBDF;border-radius:99px;padding:4px 12px;font-size:13px;font-weight:700;color:#0D2B6B;margin-bottom:7px;}
+.sbadge button{background:none;border:none;cursor:pointer;color:#0D2B6B;font-size:15px;}
+.btn{width:100%;padding:10px;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:opacity .15s;}
+.btn:hover{opacity:.88;}
+.btn-azul{background:#0D2B6B;color:#fff;}
+.btn-wa{background:#25D366;color:#fff;}
+.btn-wa:disabled,.btn-azul:disabled{background:#C5D0E0;cursor:not-allowed;opacity:1;}
+.btn-naranja{background:#E67E22;color:#fff;}
+.btn-gris{background:#EEF2F7;color:#444;border:1px solid #D0D9E8;}
+.btn-sm{width:auto;padding:5px 12px;font-size:12px;}
+.btn-edit{background:#FEF9E7;border:1px solid #F39C12;color:#7D6608;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:700;}
+.btn-del{background:#FADBD8;border:1px solid #E74C3C;color:#7B241C;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:700;}
+.preview{background:#E8F5E9;border:1.5px solid #81C784;border-radius:8px;padding:12px;font-size:13px;color:#1B5E20;white-space:pre-line;line-height:1.6;margin:10px 0;display:none;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat{background:#fff;border:1px solid #D8E2F0;border-radius:8px;padding:10px;text-align:center;}
+.stat-n{font-size:22px;font-weight:700;}
+.stat-l{font-size:11px;color:#888;margin-top:2px;}
+.lista{max-height:300px;overflow-y:auto;}
+.item{display:flex;align-items:center;gap:7px;padding:8px 6px;border-bottom:1px solid #F0F4F9;font-size:13px;}
+.item:last-child{border-bottom:none;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.dot-g{background:#27AE60;}.dot-r{background:#E74C3C;}.dot-y{background:#F39C12;}.dot-gr{background:#BDC3C7;}
+.nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pill{font-size:11px;padding:2px 7px;border-radius:99px;font-weight:600;white-space:nowrap;}
+.pill-ci{background:#D5F5E3;color:#1A5C2A;}
+.pill-co{background:#FADBD8;color:#7B241C;}
+.pill-pend{background:#F0F4F9;color:#666;}
+.pill-warn{background:#FEF9E7;color:#7D6608;}
+.pill-ok{background:#D5F5E3;color:#1A5C2A;}
+.pill-no{background:#FADBD8;color:#7B241C;}
+.falt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.falt-box{background:#FEF9E7;border:1.5px solid #F39C12;border-radius:10px;padding:12px;}
+.falt-box.ok{background:#D5F5E3;border-color:#27AE60;}
+.falt-box h3{font-size:13px;font-weight:700;margin-bottom:3px;}
+.falt-box .sub2{font-size:12px;margin-bottom:8px;}
+.co-result{border-radius:10px;padding:14px;margin-top:12px;display:none;text-align:center;}
+.co-ok{background:#D5F5E3;border:1.5px solid #27AE60;color:#1A5C2A;}
+.co-no{background:#FADBD8;border:1.5px solid #E74C3C;color:#7B241C;}
+.co-result .big{font-size:26px;font-weight:700;margin:5px 0;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:#0D2B6B;color:#fff;padding:8px 5px;text-align:center;}
+th:first-child{text-align:left;padding-left:10px;}
+td{padding:6px 5px;text-align:center;border-bottom:1px solid #F0F4F9;}
+td:first-child{text-align:left;padding-left:10px;font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+tr:hover td{background:#F5F8FC;}
+.tci{background:#D5F5E3;color:#1A5C2A;border-radius:4px;padding:2px 5px;}
+.tco{background:#FADBD8;color:#7B241C;border-radius:4px;padding:2px 5px;}
+.cell-hoy{background:#FEF9E7;color:#7D6608;border-radius:4px;padding:2px 5px;}
+.cell-falta{background:#F0F4F9;color:#aaa;border-radius:4px;padding:2px 5px;font-size:10px;}
+.bono-si{background:#D5F5E3;color:#1A5C2A;border-radius:4px;padding:2px 7px;font-weight:700;}
+.bono-no{background:#FADBD8;color:#7B241C;border-radius:4px;padding:2px 7px;}
+.bono-card{border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+.bono-card.si{background:#D5F5E3;border:1.5px solid #27AE60;}
+.bono-card.no{background:#FADBD8;border:1.5px solid #E74C3C;}
+.bono-rank{font-size:20px;font-weight:700;min-width:30px;text-align:center;}
+.bono-info{flex:1;}
+.bono-nombre{font-size:13px;font-weight:700;}
+.bono-dias{font-size:11px;margin-top:2px;}
+.bono-badge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;white-space:nowrap;}
+.badge-si{background:#27AE60;color:#fff;}
+.badge-no{background:#E74C3C;color:#fff;}
+.bono-barra-wrap{background:#fff;border-radius:99px;height:6px;margin-top:5px;overflow:hidden;}
+.bono-barra{height:6px;border-radius:99px;}
+.bono-div{font-size:12px;font-weight:700;color:#0D2B6B;padding:8px 0 4px;border-bottom:1.5px solid #D0D9E8;margin-bottom:8px;}
+.res-ciclo{background:#fff;border:1.5px solid #D8E2F0;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .2s;}
+.res-ciclo:hover{border-color:#0D2B6B;}
+.res-ciclo.activo{border-color:#0D2B6B;box-shadow:0 0 0 3px rgba(13,43,107,.1);}
+.res-ciclo-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
+.res-ciclo-tit{font-size:14px;font-weight:700;color:#0D2B6B;}
+.res-ciclo-body{margin-top:10px;display:none;}
+.res-ciclo.activo .res-ciclo-body{display:block;}
+.res-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.res-mini-card{border-radius:8px;padding:10px;text-align:center;}
+.res-mini-n{font-size:20px;font-weight:700;}
+.res-mini-l{font-size:11px;margin-top:2px;}
+.sem-sel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sem-sel select{width:auto;min-width:190px;}
+.prow{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+.prow input{flex:1;}
+.prow button{background:none;border:1px solid #D0D9E8;border-radius:6px;padding:5px 8px;cursor:pointer;color:#888;font-size:12px;}
+.conf{font-size:13px;font-weight:700;color:#27AE60;text-align:center;padding:5px 0;display:none;}
+.badge-live{background:#E74C3C;color:#fff;font-size:10px;padding:2px 7px;border-radius:99px;margin-left:5px;}
+.wa-btn{display:inline-block;padding:3px 9px;background:#25D366;color:#fff;border-radius:6px;text-decoration:none;font-size:11px;font-weight:700;white-space:nowrap;}
+.search{width:100%;padding:7px 11px;border:1.5px solid #D0D9E8;border-radius:7px;font-size:13px;margin-bottom:10px;}
+.fecha-sel{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.fecha-sel label{margin:0;font-size:12px;color:#555;}
+.fecha-sel input{width:auto;padding:5px 10px;font-size:12px;}
+.modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:12px;padding:20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.modal h3{font-size:14px;font-weight:700;color:#0D2B6B;margin-bottom:14px;}
+.mrow{margin-bottom:10px;}
+.mbtns{display:flex;gap:8px;margin-top:14px;}
+@media(max-width:600px){
+  .row3,.stats,.falt-grid,.res-mini{grid-template-columns:1fr 1fr;}
+  .row3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div><h1>SISTEMA CHECK IN — WHATSAPP</h1><div class="sub" id="estado-top">Conectado</div></div>
+  <div style="font-size:12px;text-align:right;" id="fecha-top"></div>
+</div>
+<div class="tabs">
+  <div class="tab active" onclick="setTab('checkin',this)">Check In</div>
+  <div class="tab"        onclick="setTab('checkout',this)">Check Out</div>
+  <div class="tab"        onclick="setTab('faltantes',this)">Faltantes <span id="badge-falt" class="badge-live" style="display:none">0</span></div>
+  <div class="tab"        onclick="setTab('semana',this)">Semana</div>
+  <div class="tab"        onclick="setTab('bono',this)">Bono</div>
+  <div class="tab"        onclick="setTab('resumen',this)">Resumen</div>
+  <div class="tab"        onclick="setTab('promotores',this)">Promotores</div>
+</div>
+
+<div id="tab-checkin" class="panel active">
+  <div class="card">
+    <h2>Registrar Check In</h2>
+    <div class="row3">
+      <div>
+        <label>Promotor</label>
+        <div id="badge-ci" style="display:none;"><div class="sbadge"><span id="nom-ci"></span><button onclick="limpiarCI()">✕</button></div></div>
+        <div class="bw" id="wrap-ci">
+          <input type="text" class="bi" id="busca-ci" placeholder="Escribe código o nombre..." oninput="filtrarP('ci')" onfocus="mostrarD('ci')" autocomplete="off"/>
+          <div class="dd" id="drop-ci"></div>
+        </div>
+      </div>
+      <div><label>Fecha</label><input type="date" id="fecha-ci" onchange="onFCI()"/></div>
+      <div><label>Hora entrada</label><input type="time" id="hora-ci" onchange="actuPreviewCI()"/></div>
+    </div>
+    <div class="preview" id="prev-ci"></div>
+    <button class="btn btn-wa" id="btn-ci" style="display:none;margin-top:10px;" onclick="marcarCI()">Registrar Check In</button>
+    <div class="conf" id="conf-ci"></div>
+  </div>
+  <div class="fecha-sel">
+    <label>Resumen del día:</label>
+    <input type="date" id="fs-ci" onchange="actStats();renderHoy()"/>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="s-ci" style="color:#27AE60">0</div><div class="stat-l">Check In</div></div>
+    <div class="stat"><div class="stat-n" id="s-co" style="color:#E74C3C">0</div><div class="stat-l">Check Out</div></div>
+    <div class="stat"><div class="stat-n" id="s-pend" style="color:#F39C12">0</div><div class="stat-l">Sin Check In</div></div>
+    <div class="stat"><div class="stat-n" id="s-tot" style="color:#0D2B6B">0</div><div class="stat-l">Total</div></div>
+  </div>
+  <div class="card">
+    <h2>Registro del día <span id="lbl-f-reg" style="font-weight:400;font-size:12px;color:#888;"></span></h2>
+    <input type="text" class="search" placeholder="Buscar promotor..." oninput="filtrarHoy(this.value)">
+    <div class="lista" id="lista-hoy"></div>
+  </div>
+</div>
+
+<div id="tab-checkout" class="panel">
+  <div class="card">
+    <h2>Registrar Check Out</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">Solo registra la salida y verifica si cumplió 6 horas. No se manda mensaje.</p>
+    <div class="row3">
+      <div>
+        <label>Promotor (con Check In)</label>
+        <div id="badge-co" style="display:none;"><div class="sbadge"><span id="nom-co"></span><button onclick="limpiarCO()">✕</button></div></div>
+        <div class="bw" id="wrap-co">
+          <input type="text" class="bi" id="busca-co" placeholder="Escribe código o nombre..." oninput="filtrarP('co')" onfocus="mostrarD('co')" autocomplete="off"/>
+          <div class="dd" id="drop-co"></div>
+        </div>
+      </div>
+      <div><label>Fecha</label><input type="date" id="fecha-co" onchange="onFCO()"/></div>
+      <div><label>Hora salida</label><input type="time" id="hora-co"/></div>
+    </div>
+    <button class="btn btn-azul" id="btn-co" onclick="regCO()" disabled>Registrar Check Out</button>
+    <div class="co-result" id="co-result"></div>
+    <div class="conf" id="conf-co"></div>
+  </div>
+  <div class="fecha-sel">
+    <label>Resumen del día:</label>
+    <input type="date" id="fs-co" onchange="actStatsCO();renderFaltCO()"/>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="co-ci" style="color:#27AE60">0</div><div class="stat-l">Con Check In</div></div>
+    <div class="stat"><div class="stat-n" id="co-co" style="color:#E74C3C">0</div><div class="stat-l">Con Check Out</div></div>
+    <div class="stat"><div class="stat-n" id="co-pco" style="color:#F39C12">0</div><div class="stat-l">Sin Check Out</div></div>
+    <div class="stat"><div class="stat-n" id="co-cum" style="color:#27AE60">0</div><div class="stat-l">Cumplieron 6h</div></div>
+  </div>
+  <div class="falt-grid">
+    <div class="falt-box" id="fci-box"><h3 id="fci-tit">Sin Check In</h3><div class="sub2" id="fci-sub"></div><div class="lista" id="fci-lista" style="max-height:180px;"></div></div>
+    <div class="falt-box" id="fco-box"><h3 id="fco-tit">Sin Check Out</h3><div class="sub2" id="fco-sub"></div><div class="lista" id="fco-lista" style="max-height:180px;"></div></div>
+  </div>
+  <div class="card"><h2>Check Out registrados</h2><div class="lista" id="lista-co"></div></div>
+</div>
+
+<div id="tab-faltantes" class="panel">
+  <div class="fecha-sel"><label>Ver día:</label><input type="date" id="fecha-falt" onchange="renderFalt()"/></div>
+  <div class="falt-grid">
+    <div class="falt-box" id="fb-ci">
+      <h3 id="ft-ci" style="color:#7D6608;">Sin Check In</h3>
+      <div class="sub2" id="fs-ci2"></div>
+      <button class="btn btn-naranja" id="btn-todos" onclick="abrirTodosWA()" style="margin-bottom:8px;font-size:12px;padding:7px;">Recordatorio a TODOS por WhatsApp</button>
+      <div class="lista" id="fl-ci" style="max-height:260px;"></div>
+    </div>
+    <div class="falt-box" id="fb-co">
+      <h3 id="ft-co" style="color:#7D6608;">Sin Check Out</h3>
+      <div class="sub2" id="fs-co2"></div>
+      <div class="lista" id="fl-co" style="max-height:300px;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-semana" class="panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <h2 style="margin:0;">Acumulado semanal</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="sem-sel"><label style="margin:0;">Ciclo:</label><select id="sel-sem" onchange="cargarSem()"></select></div>
+        <button class="btn btn-gris btn-sm" onclick="resetSem()">Nueva semana</button>
+      </div>
+    </div>
+    <div id="sem-rango" style="font-size:12px;color:#888;margin-bottom:12px;"></div>
+    <div style="overflow-x:auto;"><table id="tbl-sem"></table></div>
+  </div>
+</div>
+
+<div id="tab-bono" class="panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <h2 style="margin:0;">Ranking de bono</h2>
+      <div class="sem-sel"><label style="margin:0;">Ciclo:</label><select id="sel-bono" onchange="cargarBono()"></select></div>
+    </div>
+    <div id="bono-rango" style="font-size:12px;color:#888;margin-bottom:12px;"></div>
+    <div id="bono-res" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"></div>
+    <div id="bono-lista"></div>
+  </div>
+</div>
+
+<div id="tab-resumen" class="panel">
+  <div class="card">
+    <h2>Historial de ciclos</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:14px;">Haz clic en un ciclo para ver el detalle completo.</p>
+    <div id="resumen-lista"></div>
+  </div>
+</div>
+
+<div id="tab-promotores" class="panel">
+  <div class="card">
+    <h2>Lista de promotores</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">Teléfono: 10 dígitos sin espacios (ej: 4491234567)</p>
+    <div id="prom-lista"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <input type="text" id="new-nom" placeholder="Nombre del promotor" style="flex:2;min-width:150px;">
+      <input type="tel"  id="new-tel" placeholder="4491234567" style="flex:1;min-width:130px;">
+      <button class="btn btn-azul" style="width:auto;padding:8px 16px;" onclick="addProm()">Agregar</button>
+    </div>
+    <button class="btn btn-wa" style="margin-top:10px;" onclick="guardarProms()">Guardar cambios</button>
+    <div class="conf" id="conf-prom"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3>Editar registro</h3>
+    <input type="hidden" id="ei"/><input type="hidden" id="efo"/>
+    <div class="mrow"><label>Fecha</label><input type="date" id="ef"/></div>
+    <div class="mrow"><label>Hora entrada</label><input type="time" id="ee"/></div>
+    <div class="mrow"><label>Hora salida (si tiene Check Out)</label><input type="time" id="es"/></div>
+    <div class="mbtns">
+      <button class="btn btn-azul" onclick="guardarEdit()">Guardar</button>
+      <button class="btn btn-gris" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_CHECK = "https://ato-appservidor-nvxt.onrender.com/checkin";
+const TOKEN_CHECK = localStorage.getItem("token") || "";
+const HDRS_CHECK = { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN_CHECK };
+const DS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+let P=[],R={},idxCI=null,idxCO=null,pIdx=null,pHora=null,pFecha=null,fHoyQ='',waUrl='';
+
+const H=()=>new Date().toISOString().slice(0,10);
+const sumar=(h,m)=>{const[hh,mm]=h.split(':').map(Number);const d=new Date(2000,0,1,hh,mm+m);return d.toTimeString().slice(0,5);};
+const dMin=(h1,h2)=>{const[a,b]=h1.split(':').map(Number);const[c,d]=h2.split(':').map(Number);return(c*60+d)-(a*60+b);};
+const fF=(iso)=>new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+const semsD=(reg)=>{
+  const s=new Set();
+  Object.keys(reg).forEach(f=>{const d=new Date(f+'T12:00:00');const dom=new Date(d);dom.setDate(d.getDate()-d.getDay());s.add(dom.toISOString().slice(0,10));});
+  const d=new Date(),dom=new Date(d);dom.setDate(d.getDate()-d.getDay());s.add(dom.toISOString().slice(0,10));
+  return[...s].sort().reverse();
+};
+const dSem=(iso)=>{const dom=new Date(iso+'T12:00:00');return Array.from({length:7},(_,i)=>{const x=new Date(dom);x.setDate(dom.getDate()+i);return x.toISOString().slice(0,10);});};
+
+
+const HOY=H();
+['fecha-ci','fecha-co','fs-ci','fs-co','fecha-falt'].forEach(id=>{
+  const el=document.getElementById(id); el.value=HOY; el.max=HOY;
+});
+document.getElementById('hora-ci').value=new Date().toTimeString().slice(0,5);
+document.getElementById('hora-co').value=new Date().toTimeString().slice(0,5);
+document.getElementById('fecha-top').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+function setTab(t,el){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='semana'){llenarSel('sel-sem');cargarSem();}
+  if(t==='bono'){llenarSel('sel-bono');cargarBono();}
+  if(t==='resumen')renderResumen();
+  if(t==='checkout'){renderListaCO();renderFaltCO();}
+  if(t==='faltantes')renderFalt();
+}
+function llenarSel(id){
+  const sel=document.getElementById(id);
+  const sems=semsD(R);
+  sel.innerHTML='';
+  sems.forEach((s,i)=>{const dias=dSem(s);sel.innerHTML+=`<option value="${s}">${fF(dias[0])} — ${fF(dias[6])}${i===0?' (actual)':''}</option>`;});
+}
+
+function filtrarP(modo){
+  const q=document.getElementById('busca-'+modo).value.toLowerCase().trim();
+  const drop=document.getElementById('drop-'+modo);
+  const fCO=document.getElementById('fecha-co').value||HOY;
+  const fCI=document.getElementById('fecha-ci').value||HOY;
+  const rF=R[fCO]||{};
+  const rCI=R[fCI]||{};
+  const lista=modo==='co'?P.filter((_,i)=>rF[i]&&!rF[i].salida):P.filter((_,i)=>!rCI[i]);
+  const fil=q?lista.filter(p=>p.nombre.toLowerCase().includes(q)):lista;
+  drop.innerHTML=fil.length?fil.map(p=>{const i=P.indexOf(p);const pts=p.nombre.split('-');
+    return`<div class="di" onclick="selP('${modo}',${i})"><span class="cod">${pts[0]}</span>${pts.slice(1).join('-')}<span class="tel">${p.tel||'Sin tel'}</span></div>`;}).join('')
+    :'<div class="di nor">Sin resultados</div>';
+  drop.classList.add('show');
+}
+function mostrarD(modo){filtrarP(modo);}
+document.addEventListener('click',e=>{if(!e.target.closest('.bw'))document.querySelectorAll('.dd').forEach(d=>d.classList.remove('show'));});
+function selP(modo,idx){
+  const p=P[idx];
+  if(modo==='ci'){
+    waUrl='';pIdx=null;pHora=null;pFecha=null;
+    const btnCI=document.getElementById('btn-ci');
+    if(btnCI){btnCI.style.display='none';btnCI.disabled=true;}
+    document.getElementById('prev-ci').style.display='none';
+    idxCI=idx;
+    document.getElementById('nom-ci').textContent=p.nombre;
+    document.getElementById('badge-ci').style.display='block';
+    document.getElementById('wrap-ci').style.display='none';
+    actuPreviewCI();
+  }else{
+    idxCO=idx;
+    document.getElementById('nom-co').textContent=p.nombre;
+    document.getElementById('badge-co').style.display='block';
+    document.getElementById('wrap-co').style.display='none';
+    document.getElementById('btn-co').disabled=false;
+  }
+  document.getElementById('drop-'+modo).classList.remove('show');
+}
+function limpiarCI(){
+  idxCI=null;waUrl='';
+  const bc=document.getElementById('badge-ci');if(bc)bc.style.display='none';
+  const wc=document.getElementById('wrap-ci');if(wc)wc.style.display='block';
+  const bci=document.getElementById('busca-ci');if(bci)bci.value='';
+  const pc=document.getElementById('prev-ci');if(pc)pc.style.display='none';
+  const btnci=document.getElementById('btn-ci');if(btnci){btnci.style.display='none';btnci.disabled=true;}
+}
+function limpiarCO(){
+  idxCO=null;
+  document.getElementById('badge-co').style.display='none';
+  document.getElementById('wrap-co').style.display='block';
+  document.getElementById('busca-co').value='';
+  document.getElementById('btn-co').disabled=true;
+  document.getElementById('co-result').style.display='none';
+}
+
+function onFCI(){
+  actuPreviewCI();
+  document.getElementById('fs-ci').value=document.getElementById('fecha-ci').value;
+  actStats();
+  renderHoy();
+}
+
+function actuPreviewCI(){
+  if(idxCI===null)return;
+  const hora=document.getElementById('hora-ci').value;
+  const fecha=document.getElementById('fecha-ci').value;
+  if(!hora||!fecha)return;
+  const p=P[idxCI];
+  const sal=sumar(hora,363);
+  const msg=`Hola ${p.nombre},\n\nTu Check In quedó registrado a las ${hora}.\n\nTu hora de Check Out es a partir de las: *${sal} hrs*\n\nRecuerda que tu jornada debe checarse en el sistema de 6 horas con 5 minutos mínimo durante 6 días para que cuente en tu bono semanal.\n\n¡Mucho éxito!`;
+  document.getElementById('prev-ci').style.display='block';
+  document.getElementById('prev-ci').textContent=msg;
+  const tel=p.tel?'52'+p.tel.replace(/\D/g,'').replace(/^52/,''):'';
+  const url=tel
+    ?`whatsapp://send?phone=${tel}&text=${encodeURIComponent(msg)}`
+    :`whatsapp://send?text=${encodeURIComponent(msg)}`;
+  waUrl=url;
+  const btnCI=document.getElementById('btn-ci');
+  if(btnCI){
+    btnCI.style.display='block';
+    btnCI.disabled=false;
+    btnCI.textContent=fecha===HOY?'Registrar Check In':'Guardar Check In';
+  }
+  pIdx=idxCI;
+  pHora=hora;
+  pFecha=fecha;
+}
+
+async function marcarCI(){
+  if(pIdx===null)return;
+  const btnCI=document.getElementById('btn-ci');
+  if(btnCI){btnCI.disabled=true;btnCI.textContent='Registrando...';}
+  const nombreP=P[pIdx].nombre;
+  const salidaP=sumar(pHora,363);
+  const fechaP=pFecha;
+  const urlWA=waUrl;
+  waUrl='';
+  await fetch(API_CHECK+'/checkin',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:pIdx,hora:pHora,fecha:pFecha})});
+  limpiarCI();
+  pIdx=null;pHora=null;pFecha=null;
+  await cargarTodo();
+  const conf=document.getElementById('conf-ci');
+  conf.style.display='block';
+  if(urlWA && fechaP===HOY){
+    location.href=urlWA;
+    conf.innerHTML=`<span style="color:#27AE60;">✅ ${nombreP} registrado · Salida: ${salidaP} — Mensaje enviado</span>`;
+  }else{
+    conf.innerHTML=`<span style="color:#27AE60;">✅ ${nombreP} registrado — ${fechaP}</span>`;
+  }
+  setTimeout(()=>{conf.style.display='none';conf.innerHTML='';},8000);
+}
+
+function onFCO(){
+  limpiarCO();
+  document.getElementById('fs-co').value=document.getElementById('fecha-co').value;
+  actStatsCO();
+  renderFaltCO();
+}
+
+async function regCO(){
+  if(idxCO===null)return;
+  const hSal=document.getElementById('hora-co').value;
+  const fCO=document.getElementById('fecha-co').value;
+  if(!hSal||!fCO)return;
+  const p=P[idxCO];
+  const rF=(R[fCO]||{})[idxCO];
+  if(!rF){alert('Sin Check In en esa fecha');return;}
+  const mins=dMin(rF.entrada,hSal);
+  const cumple=mins>=360;
+  const hh=Math.floor(Math.max(0,mins)/60);
+  const mm=Math.abs(mins%60);
+  const tStr=`${hh}h ${mm}min`;
+  await fetch(API_CHECK+'/checkout',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:idxCO,fecha:fCO,salida:hSal,horas:(mins/60).toFixed(2),cumple})});
+  const div=document.getElementById('co-result');
+  div.className=`co-result ${cumple?'co-ok':'co-no'}`;
+  div.innerHTML=cumple
+    ?`<div>✅ CUMPLIÓ LAS 6 HORAS</div><div class="big">${tStr}</div><div>${rF.entrada} → ${hSal}</div>`
+    :`<div>❌ NO CUMPLIÓ</div><div class="big">${tStr}</div><div>${rF.entrada} → ${hSal} — Faltaron ${Math.max(0,360-mins)} min</div>`;
+  div.style.display='block';
+  mostrarConf('conf-co',`Check Out: ${p.nombre} — ${tStr}`);
+  limpiarCO();
+  await cargarTodo();
+  renderListaCO();
+  renderFaltCO();
+}
+
+function renderListaCO(){
+  const f=document.getElementById('fecha-co').value||HOY;
+  const reg=R[f]||{};
+  let html='';
+  P.forEach((p,i)=>{
+    const r=reg[i];if(!r||!r.salida)return;
+    html+=`<div class="item"><div class="dot ${r.cumple?'dot-g':'dot-r'}"></div><span class="nm">${p.nombre}</span>
+      <span class="pill pill-ci">${r.entrada}</span>
+      <span class="pill pill-co">${r.salida}</span>
+      <span class="pill ${r.cumple?'pill-ok':'pill-no'}">${r.horas}h</span></div>`;
+  });
+  document.getElementById('lista-co').innerHTML=html||'<div style="padding:1rem;text-align:center;color:#aaa;font-size:13px;">Sin Check Out registrados</div>';
+}
+
+function actStats(){
+  const fEl=document.getElementById('fs-ci');
+  const f=fEl?fEl.value||HOY:HOY;
+  const reg=R[f]||{};
+  const ci=Object.keys(reg).length;
+  const co=Object.values(reg).filter(r=>r&&r.salida).length;
+  const tot=P.length;
+  const pend=Math.max(0,tot-ci);
+  const el_ci=document.getElementById('s-ci');
+  const el_co=document.getElementById('s-co');
+  const el_pend=document.getElementById('s-pend');
+  const el_tot=document.getElementById('s-tot');
+  if(el_ci)el_ci.textContent=ci;
+  if(el_co)el_co.textContent=co;
+  if(el_pend)el_pend.textContent=pend;
+  if(el_tot)el_tot.textContent=tot;
+  const lbl=document.getElementById('lbl-f-reg');
+  if(lbl)lbl.textContent=fF(f);
+  const badge=document.getElementById('badge-falt');
+  if(badge){badge.textContent=pend;badge.style.display=pend>0?'inline':'none';}
+}
+
+function actStatsCO(){
+  const fEl=document.getElementById('fs-co');
+  const f=fEl?fEl.value||HOY:HOY;
+  const reg=R[f]||{};
+  const ci=Object.keys(reg).length;
+  const co=Object.values(reg).filter(r=>r&&r.salida).length;
+  const cum=Object.values(reg).filter(r=>r&&r.cumple===true).length;
+  document.getElementById('co-ci').textContent=ci;
+  document.getElementById('co-co').textContent=co;
+  document.getElementById('co-pco').textContent=Math.max(0,ci-co);
+  document.getElementById('co-cum').textContent=cum;
+}
+
+function filtrarHoy(q){fHoyQ=q.toLowerCase();renderHoy();}
+function renderHoy(){
+  const f=document.getElementById('fs-ci').value||HOY;
+  const reg=R[f]||{};
+  let html='';
+  P.forEach((p,i)=>{
+    if(fHoyQ&&!p.nombre.toLowerCase().includes(fHoyQ))return;
+    const r=reg[i];
+    if(r){
+      const coI=r.salida?`<span class="pill pill-co">${r.salida}(${r.horas}h)</span>`:`<span class="pill pill-warn">Sin CO</span>`;
+      html+=`<div class="item"><div class="dot dot-g"></div><span class="nm">${p.nombre}</span>
+        <span class="pill pill-ci">${r.entrada}</span>${coI}
+        <button class="btn-edit" onclick="abrirModal(${i},'${f}')">Editar</button>
+        <button class="btn-del" onclick="borrarCI(${i},'${f}')">Borrar</button></div>`;
+    }else{
+      html+=`<div class="item"><div class="dot dot-gr"></div><span class="nm" style="color:#aaa">${p.nombre}</span><span class="pill pill-pend">Sin Check In</span></div>`;
+    }
+  });
+  document.getElementById('lista-hoy').innerHTML=html||'<div style="padding:1rem;text-align:center;color:#aaa;font-size:13px;">Sin resultados</div>';
+}
+
+async function borrarCI(idx,fecha){
+  if(!confirm('¿Borrar el Check In?'))return;
+  await fetch(API_CHECK+'/checkin/'+idx+'?fecha='+fecha,{method:'DELETE',headers:{Authorization:'Bearer '+TOKEN_CHECK}});
+  await cargarTodo();
+}
+
+function abrirModal(idx,fecha){
+  const r=(R[fecha]||{})[idx];if(!r)return;
+  document.getElementById('ei').value=idx;
+  document.getElementById('efo').value=fecha;
+  document.getElementById('ef').value=fecha;
+  document.getElementById('ef').max=HOY;
+  document.getElementById('ee').value=r.entrada||'';
+  document.getElementById('es').value=r.salida||'';
+  document.getElementById('modal-bg').classList.add('show');
+}
+function cerrarModal(){document.getElementById('modal-bg').classList.remove('show');}
+async function guardarEdit(){
+  await fetch(API_CHECK+'/editar',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify({idx:document.getElementById('ei').value,fecha_orig:document.getElementById('efo').value,fecha_nueva:document.getElementById('ef').value,entrada:document.getElementById('ee').value,salida:document.getElementById('es').value})});
+  cerrarModal();
+  mostrarConf('conf-ci','Registro actualizado');
+  await cargarTodo();
+}
+
+const msgR=(nombre)=>`Hola ${nombre},\n\nTe recordamos que aún no hemos recibido tu Check In de hoy ${new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'})}.\n\nPor favor regístralo a la brevedad. Recuerda que tu jornada debe checarse en el sistema de 6 horas con 5 minutos mínimo durante 6 días para que cuente en tu bono semanal.\n\n¡Gracias!`;
+
+function renderFalt(){
+  const f=document.getElementById('fecha-falt').value||HOY;
+  const reg=R[f]||{};
+  const fCI=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
+  const fCO=P.map((p,i)=>({p,i})).filter(({i})=>reg[i]&&!reg[i].salida);
+  document.getElementById('ft-ci').textContent=`Sin Check In — ${fF(f)} (${fCI.length})`;
+  document.getElementById('fs-ci2').textContent=`${fCI.length} promotor${fCI.length!==1?'es':''}`;
+  document.getElementById('fb-ci').className=fCI.length?'falt-box':'falt-box ok';
+  document.getElementById('ft-ci').style.color=fCI.length?'#7D6608':'#1A5C2A';
+  document.getElementById('btn-todos').style.display=fCI.length?'block':'none';
+  document.getElementById('fl-ci').innerHTML=fCI.length?fCI.map(({p})=>{
+    const tel=p.tel?'52'+p.tel.replace(/\D/g,'').replace(/^52/,''):'';
+    const url=tel?`whatsapp://send?phone=${tel}&text=${encodeURIComponent(msgR(p.nombre))}`:`whatsapp://send?text=${encodeURIComponent(msgR(p.nombre))}`;
+    return`<div class="item" style="background:#fff;border-radius:7px;margin-bottom:3px;padding:7px 9px;"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span style="font-size:10px;color:#aaa;margin-right:6px;">${p.tel||''}</span><a href="${url}" target="_blank" class="wa-btn">WA</a></div>`;
+  }).join(''):'<div style="padding:8px;text-align:center;color:#aaa;font-size:12px;">Todos tienen Check In ✅</div>';
+  document.getElementById('ft-co').textContent=`Sin Check Out — ${fF(f)} (${fCO.length})`;
+  document.getElementById('fs-co2').textContent=`${fCO.length} con Check In pero sin salida`;
+  document.getElementById('fb-co').className=fCO.length?'falt-box':'falt-box ok';
+  document.getElementById('ft-co').style.color=fCO.length?'#7D6608':'#1A5C2A';
+  document.getElementById('fl-co').innerHTML=fCO.length?fCO.map(({p,i})=>`<div class="item" style="background:#fff;border-radius:7px;margin-bottom:3px;padding:7px 9px;"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[i]||{}).entrada||''}</span></div>`).join(''):'<div style="padding:8px;text-align:center;color:#aaa;font-size:12px;">Todos tienen Check Out ✅</div>';
+  document.getElementById('badge-falt').textContent=fCI.length;
+  document.getElementById('badge-falt').style.display=fCI.length>0?'inline':'none';
+}
+
+function renderFaltCO(){
+  const f=document.getElementById('fs-co').value||HOY;
+  const reg=R[f]||{};
+  const fCI=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
+  const fCO=P.map((p,i)=>({p,i})).filter(({i})=>reg[i]&&!reg[i].salida);
+  document.getElementById('fci-tit').textContent=`Sin Check In (${fCI.length})`;
+  document.getElementById('fci-sub').textContent=`${fCI.length} sin registrar`;
+  document.getElementById('fci-box').className=fCI.length?'falt-box':'falt-box ok';
+  document.getElementById('fci-lista').innerHTML=fCI.map(({p})=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
+  document.getElementById('fco-tit').textContent=`Sin Check Out (${fCO.length})`;
+  document.getElementById('fco-sub').textContent=`${fCO.length} con entrada sin salida`;
+  document.getElementById('fco-box').className=fCO.length?'falt-box':'falt-box ok';
+  document.getElementById('fco-lista').innerHTML=fCO.map(({p,i})=>`<div class="item"><div class="dot dot-y"></div><span class="nm">${p.nombre}</span><span class="pill pill-ci" style="font-size:10px;">${(reg[i]||{}).entrada||''}</span></div>`).join('')||'<div style="padding:6px;text-align:center;color:#aaa;font-size:12px;">Todos ✅</div>';
+}
+
+function abrirTodosWA(){
+  const f=document.getElementById('fecha-falt').value||HOY;
+  const reg=R[f]||{};
+  const faltantes=P.map((p,i)=>({p,i})).filter(({i})=>!reg[i]);
+  if(!faltantes.length){alert('Todos ya tienen Check In hoy.');return;}
+  let n=0;
+  function siguiente(){
+    if(n>=faltantes.length)return;
+    const {p}=faltantes[n];
+    const tel=p.tel?'52'+p.tel.replace(/\D/g,'').replace(/^52/,''):'';
+    const url=tel?`whatsapp://send?phone=${tel}&text=${encodeURIComponent(msgR(p.nombre))}`:`whatsapp://send?text=${encodeURIComponent(msgR(p.nombre))}`;
+    window.open(url,'wa_recordatorio');
+    n++;
+    if(n<faltantes.length){
+      if(confirm(`Mensaje enviado a ${p.nombre}. ¿Continuar con el siguiente (${n+1}/${faltantes.length})?`)){siguiente();}
+    }else{alert('Recordatorios enviados a todos.');}
+  }
+  siguiente();
+}
+
+function cargarSem(){
+  const sel=document.getElementById('sel-sem');if(!sel.value)return;
+  const dias=dSem(sel.value);
+  const h=H();
+  document.getElementById('sem-rango').textContent=`${fF(dias[0])} al ${fF(dias[6])}  ·  Verde=Check In  Rojo=Check Out  6 días = $100 bono`;
+  let html=`<thead><tr><th style="text-align:left;">Promotor</th>`;
+  dias.forEach((_,i)=>html+=`<th>${DS[i]}<br><small style="font-weight:400">${dias[i].slice(5)}</small></th>`);
+  html+=`<th>Días</th><th>Bono</th></tr></thead><tbody>`;
+  P.forEach((p,pi)=>{
+    let ok=0;
+    const celdas=dias.map(f=>{
+      const r=(R[f]||{})[pi];
+      if(r&&r.cumple===true){ok++;
+        const co=r.salida?` <span style="font-size:9px;color:#E74C3C;">▶${r.salida}</span>`:'';
+const hOk=r.cumple===true;
+const hLabel=r.horas?` <span style="font-size:9px;font-weight:700;color:${hOk?'#27AE60':'#E74C3C'};">(${r.horas}h${hOk?'✅':'❌'})</span>`:'';
+return`<td><span class="tci">${r.entrada}</span>${co}${hLabel}</td>`;
+      }
+      if(f<h){
+  if(r){
+    const hOk=r.cumple===true;
+    const hLabel=r.horas?`<br><span style="font-size:9px;font-weight:700;color:${hOk?'#27AE60':'#E74C3C'};">(${r.horas}h${hOk?'✅':'❌'})</span>`:'';
+    return`<td><span class="cell-falta">Falta</span>${hLabel}</td>`;
+  }
+  return`<td><span class="cell-falta">Falta</span><br><span style="font-size:9px;color:#aaa;">No asistió</span></td>`;
+}
+      if(f===h)return`<td><span class="cell-hoy">Hoy</span></td>`;
+      return`<td style="color:#ddd;">—</td>`;
+    }).join('');
+    const bono=ok>=6?`<td><span class="bono-si">✅ $100</span></td>`:`<td><span class="bono-no">${ok}/6</span></td>`;
+    html+=`<tr><td title="${p.nombre}">${p.nombre}</td>${celdas}<td style="font-weight:700;text-align:center;">${ok}</td>${bono}</tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('tbl-sem').innerHTML=html;
+}
+async function resetSem(){if(!confirm('¿Nueva semana?'))return;await fetch(API_CHECK+'/semana/reset',{method:'POST',headers:HDRS_CHECK});await cargarTodo();}
+
+function calcDatos(semVal){
+  const dias=dSem(semVal);
+  return P.map((p,pi)=>{
+    let ok=0;
+    dias.forEach(f=>{
+      const r=(R[f]||{})[pi];
+      if(r&&r.salida&&r.cumple===true)ok++;
+    });
+    return{nombre:p.nombre,dias:ok,gana:ok>=6};
+  }).sort((a,b)=>b.dias-a.dias);
+}
+
+function renderBonoLista(datos,contId,listaId){
+  const ganan=datos.filter(d=>d.gana);
+  const noGanan=datos.filter(d=>!d.gana);
+  if(contId)document.getElementById(contId).innerHTML=`
+    <div class="stat" style="border-color:#27AE60;"><div class="stat-n" style="color:#27AE60;">${ganan.length}</div><div class="stat-l">Ganan $100</div></div>
+    <div class="stat" style="border-color:#E74C3C;"><div class="stat-n" style="color:#E74C3C;">${noGanan.length}</div><div class="stat-l">No ganan</div></div>`;
+  let html='';
+  if(ganan.length){
+    html+=`<div class="bono-div">✅ SI GANARON — ${ganan.length} promotor${ganan.length!==1?'es':''}</div>`;
+    ganan.forEach((d,i)=>{const pct=Math.round((d.dias/7)*100);html+=`<div class="bono-card si"><div class="bono-rank" style="color:#27AE60;">#${i+1}</div><div class="bono-info"><div class="bono-nombre">${d.nombre}</div><div class="bono-dias">${d.dias} días cumplidos</div><div class="bono-barra-wrap"><div class="bono-barra" style="width:${pct}%;background:#27AE60;"></div></div></div><div class="bono-badge badge-si">$100</div></div>`;});
+  }
+  if(noGanan.length){
+    html+=`<div class="bono-div" style="margin-top:12px;">❌ NO GANARON — ${noGanan.length} promotor${noGanan.length!==1?'es':''}</div>`;
+    noGanan.forEach((d,i)=>{const pct=Math.round((d.dias/7)*100);const fl=6-d.dias;html+=`<div class="bono-card no"><div class="bono-rank" style="color:#E74C3C;">${i+1}</div><div class="bono-info"><div class="bono-nombre">${d.nombre}</div><div class="bono-dias">${d.dias}/6 días — faltaron ${fl} día${fl!==1?'s':''}</div><div class="bono-barra-wrap"><div class="bono-barra" style="width:${pct}%;background:#E74C3C;"></div></div></div><div class="bono-badge badge-no">${d.dias}/6</div></div>`;});
+  }
+  document.getElementById(listaId).innerHTML=html||'<div style="text-align:center;color:#aaa;padding:1rem;">Sin datos para este ciclo</div>';
+}
+
+function cargarBono(){
+  const sel=document.getElementById('sel-bono');if(!sel.value)return;
+  const dias=dSem(sel.value);
+  document.getElementById('bono-rango').textContent=`${fF(dias[0])} al ${fF(dias[6])}  ·  6 días = $100 de bono`;
+  renderBonoLista(calcDatos(sel.value),'bono-res','bono-lista');
+}
+
+function renderResumen(){
+  const sems=semsD(R);
+  let html='';
+  sems.forEach((s,idx)=>{
+    const dias=dSem(s);
+    const datos=calcDatos(s);
+    const ganan=datos.filter(d=>d.gana).length;
+    const noGanan=datos.filter(d=>!d.gana).length;
+    const totalCI=dias.reduce((acc,f)=>acc+Object.keys(R[f]||{}).length,0);
+    const esActual=idx===0;
+    html+=`<div class="res-ciclo" id="rc-${idx}" onclick="toggleCiclo(${idx},'${s}')">
+      <div class="res-ciclo-head">
+        <div>
+          <div class="res-ciclo-tit">${fF(dias[0])} — ${fF(dias[6])} ${esActual?'<span style="background:#0D2B6B;color:#fff;font-size:10px;padding:2px 8px;border-radius:99px;margin-left:6px;">Actual</span>':''}</div>
+          <div style="font-size:12px;color:#888;margin-top:3px;">${totalCI} check ins registrados en el ciclo</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="background:#D5F5E3;color:#1A5C2A;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;">${ganan} con bono</span>
+          <span style="background:#FADBD8;color:#7B241C;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;">${noGanan} sin bono</span>
+          <span style="font-size:18px;color:#0D2B6B;" id="rc-arr-${idx}">▼</span>
+        </div>
+      </div>
+      <div class="res-ciclo-body" id="rcb-${idx}">
+        <div class="res-mini" style="margin-top:12px;">
+          <div class="res-mini-card" style="background:#D5F5E3;"><div class="res-mini-n" style="color:#1A5C2A;">${ganan}</div><div class="res-mini-l" style="color:#1A5C2A;">Ganaron $100</div></div>
+          <div class="res-mini-card" style="background:#FADBD8;"><div class="res-mini-n" style="color:#7B241C;">${noGanan}</div><div class="res-mini-l" style="color:#7B241C;">No ganaron</div></div>
+          <div class="res-mini-card" style="background:#E8EEF8;"><div class="res-mini-n" style="color:#0D2B6B;">${totalCI}</div><div class="res-mini-l" style="color:#0D2B6B;">Check Ins totales</div></div>
+        </div>
+        <div id="rbd-${idx}"></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('resumen-lista').innerHTML=html||'<div style="text-align:center;color:#aaa;padding:2rem;">Sin ciclos registrados aún</div>';
+}
+
+function toggleCiclo(idx,semVal){
+  const card=document.getElementById(`rc-${idx}`);
+  const body=document.getElementById(`rcb-${idx}`);
+  const arr=document.getElementById(`rc-arr-${idx}`);
+  const detail=document.getElementById(`rbd-${idx}`);
+  const isOpen=card.classList.contains('activo');
+  document.querySelectorAll('.res-ciclo').forEach(c=>c.classList.remove('activo'));
+  document.querySelectorAll('[id^=rcb-]').forEach(b=>b.style.display='none');
+  document.querySelectorAll('[id^=rc-arr-]').forEach(a=>a.textContent='▼');
+  if(!isOpen){
+    card.classList.add('activo');
+    body.style.display='block';
+    arr.textContent='▲';
+    if(!detail.innerHTML){
+      renderBonoListaInline(calcDatos(semVal),detail);
+    }
+  }
+}
+
+function renderBonoListaInline(datos,div){
+  const ganan=datos.filter(d=>d.gana);
+  const noGanan=datos.filter(d=>!d.gana);
+  let html='';
+  if(ganan.length){
+    html+=`<div class="bono-div">✅ SI GANARON</div>`;
+    ganan.forEach((d,i)=>{const pct=Math.round((d.dias/7)*100);html+=`<div class="bono-card si" style="padding:9px;margin-bottom:6px;"><div class="bono-rank" style="color:#27AE60;font-size:16px;">#${i+1}</div><div class="bono-info"><div class="bono-nombre">${d.nombre}</div><div class="bono-dias">${d.dias} días</div><div class="bono-barra-wrap"><div class="bono-barra" style="width:${pct}%;background:#27AE60;"></div></div></div><div class="bono-badge badge-si">$100</div></div>`;});
+  }
+  if(noGanan.length){
+    html+=`<div class="bono-div" style="margin-top:10px;">❌ NO GANARON</div>`;
+    noGanan.forEach((d,i)=>{const pct=Math.round((d.dias/7)*100);const fl=6-d.dias;html+=`<div class="bono-card no" style="padding:9px;margin-bottom:6px;"><div class="bono-rank" style="color:#E74C3C;font-size:16px;">${i+1}</div><div class="bono-info"><div class="bono-nombre">${d.nombre}</div><div class="bono-dias">${d.dias}/6 — faltaron ${fl}</div><div class="bono-barra-wrap"><div class="bono-barra" style="width:${pct}%;background:#E74C3C;"></div></div></div><div class="bono-badge badge-no">${d.dias}/6</div></div>`;});
+  }
+  div.innerHTML=html;
+}
+
+function renderProms(){
+  const div=document.getElementById('prom-lista');div.innerHTML='';
+  P.forEach((p,i)=>{div.innerHTML+=`<div class="prow"><input type="text" value="${p.nombre}" placeholder="Nombre" oninput="P[${i}].nombre=this.value"/><input type="tel" value="${p.tel||''}" placeholder="4491234567" style="max-width:155px;" oninput="P[${i}].tel=this.value"/><button onclick="P.splice(${i},1);renderProms()">x</button></div>`;});
+}
+function addProm(){
+  const n=document.getElementById('new-nom').value.trim();
+  if(!n)return;
+  P.push({nombre:n,tel:document.getElementById('new-tel').value.trim()});
+  document.getElementById('new-nom').value='';
+  document.getElementById('new-tel').value='';
+  renderProms();
+}
+async function guardarProms(){
+  await fetch(API_CHECK+'/promotores',{method:'POST',headers:HDRS_CHECK,body:JSON.stringify(P)});
+  alert('Guardado');
+  await cargarProms();
+  await cargarTodo();
+}
+
+async function cargarProms(){
+  const r=await fetch(API_CHECK+'/promotores',{headers:{Authorization:'Bearer '+TOKEN_CHECK}});
+  P=await r.json();
+  renderProms();
+}
+
+async function cargarTodo(){
+  const r=await fetch(API_CHECK+'/registros/todos',{headers:{Authorization:'Bearer '+TOKEN_CHECK}});
+  R=await r.json();
+  actStats();
+  actStatsCO();
+  renderHoy();
+  renderFalt();
+  renderFaltCO();
+  renderListaCO();
+  filtrarP('ci');
+  filtrarP('co');
+}
+
+function mostrarConf(id,msg){
+  const c=document.getElementById(id);
+  c.textContent=msg;
+  c.style.display='block';
+  setTimeout(()=>c.style.display='none',4000);
+}
+
+(async()=>{await cargarProms();await cargarTodo();})();
+</script>
+</body>
+</html>

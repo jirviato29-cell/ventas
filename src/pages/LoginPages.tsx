@@ -36,6 +36,8 @@ const LoginPage: React.FC = () => {
 
       if (rol === "direccion") {
         navegacion("/direccion");
+      } else if (rol === "check") {
+        navegacion("/checkin");
       } else {
         const esCadenasAsesor =
           modulo?.toLowerCase().includes("cadena") &&
