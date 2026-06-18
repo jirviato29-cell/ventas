@@ -48,6 +48,12 @@ export default function MiCheckinSemana() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const diasCumplidos = data ? data.dias.reduce((acc, dia) => {
+    const reg = (data.registros[dia] || {})[usuario];
+    return acc + (reg?.cumple === true ? 1 : 0);
+  }, 0) : 0;
+  const faltan = Math.max(0, 6 - diasCumplidos);
+
   const celdaSx = {
     py: "8px", px: "10px", fontSize: 13, border: "1px solid #e2e8f0",
   };
@@ -59,6 +65,17 @@ export default function MiCheckinSemana() {
           MI CHECK IN — SEMANA
         </Typography>
       </Box>
+
+      {!cargando && data && (
+        <Box sx={{ px: "16px", py: "10px", borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between", bgcolor: diasCumplidos >= 6 ? "#ecfdf5" : "#fffbeb" }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 800, color: diasCumplidos >= 6 ? "#047857" : "#92400e" }}>
+            Llevas {diasCumplidos} de 6
+          </Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 700, color: diasCumplidos >= 6 ? "#047857" : "#b45309" }}>
+            {diasCumplidos >= 6 ? "¡Bono asegurado! 🎉" : `Te ${faltan === 1 ? "falta" : "faltan"} ${faltan}`}
+          </Typography>
+        </Box>
+      )}
 
       {cargando ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
