@@ -49,7 +49,7 @@ export default function MiCheckinSemana() {
   }, []);
 
   const celdaSx = {
-    py: "8px", px: "10px", fontSize: 13, borderBottom: "1px solid #f1f5f9",
+    py: "8px", px: "10px", fontSize: 13, border: "1px solid #e2e8f0",
   };
 
   return (
@@ -74,7 +74,7 @@ export default function MiCheckinSemana() {
             <thead>
               <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
                 {["Día", "Entrada", "Salida", "Horas"].map((h) => (
-                  <th key={h} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#64748b", textAlign: "left" }}>
+                  <th key={h} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#64748b", textAlign: "left", border: "1px solid #e2e8f0" }}>
                     {h}
                   </th>
                 ))}
@@ -106,6 +106,21 @@ export default function MiCheckinSemana() {
           </table>
         </Box>
       )}
+
+      <Box sx={{ px: "16px", py: "12px", borderTop: "1px solid #eef2f7", fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+          <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: "#ecfdf5", border: "1px solid #047857" }} />
+          <span><b>Verde:</b> cumplió 6 horas o más</span>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: "#fef2f2", border: "1px solid #b91c1c" }} />
+          <span><b>Rojo:</b> no cumplió las 6 horas</span>
+        </Box>
+        <Box sx={{ pt: 1, borderTop: "1px dashed #e2e8f0" }}>
+          <div><b>Bono $100:</b> se gana cumpliendo los 6 días (cada uno con 6 horas o más).</div>
+          <div style={{ color: "#b91c1c", marginTop: 4 }}><b>Multa $458</b> por cada día no cumplido (por falta o por no completar las 6 horas).</div>
+        </Box>
+      </Box>
     </Box>
   );
 }
