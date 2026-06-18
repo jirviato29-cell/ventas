@@ -27,6 +27,7 @@ import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
 import MiCheckinSemana from '../components/MiCheckinSemana';
+import MiSemanaPasada from '../components/MiSemanaPasada';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -1484,7 +1485,10 @@ const FormularioVentaMultiple = () => {
 
             {esCadenas && (
               <Grid item xs={12} md={4}>
-                <MiCheckinSemana />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <MiCheckinSemana />
+                  <MiSemanaPasada />
+                </Box>
               </Grid>
             )}
 
