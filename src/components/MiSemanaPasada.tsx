@@ -68,14 +68,10 @@ export default function MiSemanaPasada() {
       </Box>
 
       <Box sx={{ p: "16px" }}>
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <Box sx={{ flex: 1, textAlign: "center", py: 1.5, borderRadius: "10px", bgcolor: "#f8fafc" }}>
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ textAlign: "center", py: 1.5, borderRadius: "10px", bgcolor: "#f8fafc" }}>
             <Typography sx={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>{data.dias_cumplidos}/6</Typography>
             <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Días cumplidos</Typography>
-          </Box>
-          <Box sx={{ flex: 1, textAlign: "center", py: 1.5, borderRadius: "10px", bgcolor: data.multa > 0 ? "#fef2f2" : "#f8fafc" }}>
-            <Typography sx={{ fontSize: 24, fontWeight: 800, color: data.multa > 0 ? "#b91c1c" : "#0f172a" }}>${data.multa}</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Multa</Typography>
           </Box>
         </Box>
 
