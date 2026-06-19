@@ -1485,10 +1485,12 @@ const FormularioVentaMultiple = () => {
 
             {esCadenas && (
               <Grid item xs={12} md={4}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <MiCheckinSemana />
-                  <MiSemanaPasada />
-                </Box>
+                <MiCheckinSemana />
+              </Grid>
+            )}
+            {esCadenas && (
+              <Grid item xs={12} md={4}>
+                <MiSemanaPasada />
               </Grid>
             )}
 
