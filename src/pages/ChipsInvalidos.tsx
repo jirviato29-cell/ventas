@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Usuario, VentaChip } from "../Types";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, TextField, Checkbox, Box, IconButton } from "@mui/material";
@@ -144,25 +144,22 @@ const eliminarChip = async (id: number) => {
               {rolToken === "admin" && (
   <>
     <TableCell sx={cellSx}>
-      {chip.tipo_chip === "Activacion" ? (
-        <TextField
-          size="small"
-          type="number"
-          value={chip.comision_manual ?? ""}
-          onChange={(e) =>
-            setRechazados(prev =>
-              prev.map(c =>
-                c.id === chip.id
-                  ? { ...c, comision_manual: Number(e.target.value) }
-                  : c
-              )
+      <TextField
+        size="small"
+        type="number"
+        placeholder="$"
+        value={chip.comision_manual ?? ""}
+        onChange={(e) =>
+          setRechazados(prev =>
+            prev.map(c =>
+              c.id === chip.id
+                ? { ...c, comision_manual: Number(e.target.value) }
+                : c
             )
-          }
-          sx={{ width: 80 }}
-        />
-      ) : (
-        "$" + (chip.comision ?? 0)
-      )}
+          )
+        }
+        sx={{ width: 80 }}
+      />
     </TableCell>
 
     <TableCell sx={cellSx}>
@@ -171,7 +168,7 @@ const eliminarChip = async (id: number) => {
         disabled={chip.validado}
         onChange={() => {
           if (chip.validado) return;
-          if (chip.tipo_chip === "Activacion" && !chip.comision_manual) {
+          if (!chip.comision_manual || chip.comision_manual <= 0) {
             alert("Debes capturar la comisión");
             return;
           }
