@@ -11,11 +11,21 @@ interface SemanaPasada {
   dias_cumplidos: number;
   bono: boolean;
   multa: number;
+  dias_detalle?: { fecha: string; cumple: boolean }[];
 }
 
 const fmtFecha = (iso: string) => {
-  const [y, m, d] = iso.split("-").map(Number);
+  const [, m, d] = iso.split("-").map(Number);
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+};
+
+const DIAS_NOMBRE = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+// Parseo manual (split por "-") para evitar bugs de zona horaria con new Date(string).
+const nombreDiaCorto = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return `${DIAS_NOMBRE[dt.getDay()]} ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 };
 
 export default function MiSemanaPasada() {
@@ -74,6 +84,28 @@ export default function MiSemanaPasada() {
             <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Días cumplidos</Typography>
           </Box>
         </Box>
+
+        {data.dias_detalle && data.dias_detalle.length > 0 && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+            {data.dias_detalle.map((d) => (
+              <Box
+                key={d.fecha}
+                sx={{
+                  px: 1.5,
+                  py: 1,
+                  borderRadius: "8px",
+                  textAlign: "center",
+                  minWidth: 64,
+                  bgcolor: d.cumple ? "#ecfdf5" : "#fef2f2",
+                  border: `1px solid ${d.cumple ? "#047857" : "#b91c1c"}`,
+                  color: d.cumple ? "#047857" : "#b91c1c",
+                }}
+              >
+                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{nombreDiaCorto(d.fecha)}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
 
         {gano ? (
           <Box sx={{ p: 2, borderRadius: "10px", bgcolor: "#ecfdf5", border: "1px solid #047857" }}>
