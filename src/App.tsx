@@ -43,6 +43,7 @@ import PlanesAdmin from './pages/PlanesAdmin';
 import PresionAdmin from './pages/PresionAdmin';
 import RecibosPage from './pages/RecibosPage';
 import CheckinPage from './pages/CheckinPage';
+import GastosPage from './pages/GastosPage';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -94,6 +95,7 @@ const App: React.FC = () => {
     { path: '/reportes-director', element: <RutaProtegida><ReportesDirector /></RutaProtegida> },
     { path: '/recibos', element: <RutaProtegida><RecibosPage /></RutaProtegida> },
     { path: '/checkin', element: <RutaProtegida><CheckinPage /></RutaProtegida> },
+    { path: '/gastos', element: <RutaProtegida><GastosPage /></RutaProtegida> },
   ]);
 
   return routes;
