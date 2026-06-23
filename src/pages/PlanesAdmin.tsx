@@ -7,8 +7,10 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { obtenerRolDesdeToken } from "../components/Token";
 import { calcularComision } from "../data/comisionesTabulador";
 
@@ -152,6 +154,34 @@ const PlanesAdmin = () => {
     }
   };
 
+  const exportarExcel = () => {
+    const filas = planes.map(p => ({
+      "Fecha": p.fecha ?? "",
+      "Empleado": (p.empleado_id != null ? claves[p.empleado_id] : undefined) ?? (p.empleado_id ?? ""),
+      "Módulo": (p.modulo_id != null ? modulos[p.modulo_id] : undefined) ?? (p.modulo_id ?? ""),
+      "Tipo plan": p.tipo_plan ?? "",
+      "Estatus": p.estatus ?? "",
+      "Categoría": p.categoria ?? "",
+      "Clasificación": p.clasificacion ?? "",
+      "Equipo": p.equipo ?? "",
+      "IMEI": p.imei ?? "",
+      "Precio equipo": p.precio_equipo ?? "",
+      "Plazo": p.plazo ?? "",
+      "Línea": p.linea ?? "",
+      "Cuenta": p.cuenta ?? "",
+      "Pago inicial": p.pago_inicial ? "Sí" : "No",
+      "Monto PI": p.monto_pago_inicial ?? 0,
+      "Comisión": calcularComision(p.categoria, p.clasificacion, p.tipo_plan) ?? "",
+      "Contrato": p.contrato_listo ? "LISTO" : "PENDIENTE",
+      "Pagado": p.pagado ? "PAGADO" : "PENDIENTE",
+      "Fecha pago": p.fecha_pago ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Planes");
+    XLSX.writeFile(wb, `planes_tarifarios_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
   useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (rol !== "admin") return <Navigate to="/" replace />;
@@ -173,6 +203,14 @@ const PlanesAdmin = () => {
           <Typography variant="h6" sx={{ fontWeight: 700, flexGrow: 1 }}>
             Registros ({planes.length})
           </Typography>
+          <Button
+            variant="contained"
+            startIcon={<FileDownloadIcon />}
+            onClick={exportarExcel}
+            disabled={planes.length === 0}
+          >
+            Descargar Excel
+          </Button>
         </Box>
 
         {cargando ? (
