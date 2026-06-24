@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -17,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
+import AddIcon from "@mui/icons-material/Add";
 import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
@@ -54,6 +56,24 @@ interface NominaResponse {
   datos: Record<string, unknown>[];
 }
 
+interface ChipDetalle {
+  chip_id: number;
+  tipo_chip: string;
+  numero_telefono: string;
+  comision: number;
+  fecha_venta: string;
+}
+
+interface GrupoIncubadora {
+  empleado: string;
+  nombre_completo: string;
+  usuario_ids: number[];
+  chips_count: number;
+  total_chips_incubadora: number;
+  pago_total: number;
+  detalle: ChipDetalle[];
+}
+
 interface Props {
   nominaId: number | null;
   onClose: () => void;
@@ -89,6 +109,13 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
   const [etiqueta, setEtiqueta] = useState("");
   const [filas, setFilas] = useState<FilaEditada[]>([]);
 
+  // Incubadora: agregar chips pendientes a una nómina ya guardada
+  const [subModalInc, setSubModalInc] = useState(false);
+  const [gruposIncPendientes, setGruposIncPendientes] = useState<GrupoIncubadora[]>([]);
+  const [cargandoChips, setCargandoChips] = useState(false);
+  const [chipsSelIds, setChipsSelIds] = useState<Set<number>>(new Set());
+  const [incubadoraBase, setIncubadoraBase] = useState<Record<string, number>>({});
+
   useEffect(() => {
     if (!nominaId) return;
     setCargando(true);
@@ -97,7 +124,12 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
       .get<NominaResponse>(`${API}/admin/nominas/${nominaId}`, { headers: authH() })
       .then(({ data }) => {
         setEtiqueta(data.etiqueta);
-        setFilas(data.datos.map(toFila));
+        const fs = data.datos.map(toFila);
+        setFilas(fs);
+        const base: Record<string, number> = {};
+        for (const f of fs) base[f.empleado] = f.incubadora;
+        setIncubadoraBase(base);
+        setChipsSelIds(new Set());
       })
       .catch(() => setError("Error al cargar la nómina"))
       .finally(() => setCargando(false));
@@ -105,6 +137,54 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
 
   const setField = (idx: number, campo: keyof FilaEditada, valor: number) =>
     setFilas((prev) => prev.map((f, i) => i === idx ? { ...f, [campo]: valor } : f));
+
+  const abrirSelectorInc = async () => {
+    setSubModalInc(true);
+    if (gruposIncPendientes.length > 0 || cargandoChips) return;
+    setCargandoChips(true);
+    try {
+      const { data } = await axios.get<GrupoIncubadora[]>(
+        `${API}/admin/chips-incubadora-pendientes`, { headers: authH() },
+      );
+      setGruposIncPendientes(data);
+    } catch {
+      setGruposIncPendientes([]);
+    } finally {
+      setCargandoChips(false);
+    }
+  };
+
+  const toggleGrupoInc = (g: GrupoIncubadora) => {
+    setChipsSelIds((prev) => {
+      const next = new Set(prev);
+      const allSel = g.detalle.length > 0 && g.detalle.every((c) => prev.has(c.chip_id));
+      g.detalle.forEach((c) => (allSel ? next.delete(c.chip_id) : next.add(c.chip_id)));
+      return next;
+    });
+  };
+
+  // Suma (sobre la base original) los chips seleccionados a la columna incubadora
+  // de cada empleado. Idempotente: re-aplicar no duplica montos.
+  const aplicarIncubadora = () => {
+    setFilas((prev) => prev.map((f) => {
+      let extra = 0;
+      for (const g of gruposIncPendientes) {
+        const match =
+          g.empleado === f.empleado ||
+          (g.usuario_ids?.some((id) => f.usuario_ids.includes(id)) ?? false);
+        if (!match) continue;
+        extra += g.detalle.reduce((s, c) => (chipsSelIds.has(c.chip_id) ? s + c.comision : s), 0);
+      }
+      const base = incubadoraBase[f.empleado] ?? f.incubadora;
+      return { ...f, incubadora: base + extra };
+    }));
+    setSubModalInc(false);
+  };
+
+  const totalIncubadoraSel = gruposIncPendientes.reduce(
+    (s, g) => s + g.detalle.reduce((ss, c) => (chipsSelIds.has(c.chip_id) ? ss + c.comision : ss), 0),
+    0,
+  );
 
   const inputSx = {
     "& input": { textAlign: "right" as const, fontSize: 10, padding: "2px 4px" },
@@ -142,8 +222,12 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
         };
       });
       await axios.put(
-        `${API}/admin/nominas/${nominaId}/editar`,
-        { etiqueta: etiqueta.trim(), datos },
+        `${API}/admin/nominas/${nominaId}/recalcular`,
+        {
+          etiqueta: etiqueta.trim(),
+          datos,
+          chip_ids_incubadora: chipsSelIds.size > 0 ? Array.from(chipsSelIds) : undefined,
+        },
         { headers: authH() },
       );
       onGuardado();
@@ -160,6 +244,7 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
   }, 0);
 
   return (
+    <>
     <Dialog open={!!nominaId} onClose={onClose} maxWidth="xl" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>Editar Nómina</DialogTitle>
       <DialogContent dividers>
@@ -177,6 +262,25 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
               onChange={(e) => setEtiqueta(e.target.value)}
               fullWidth size="small" sx={{ mb: 2 }}
             />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={abrirSelectorInc}
+                disabled={cargandoChips}
+                startIcon={cargandoChips ? <CircularProgress size={14} color="inherit" /> : <AddIcon />}
+                sx={{ borderColor: PURPLE, color: PURPLE, "&:hover": { borderColor: "#7c3aed", bgcolor: "#faf5ff" } }}
+              >
+                {cargandoChips ? "Cargando chips…" : "Agregar Incubadora"}
+              </Button>
+              {chipsSelIds.size > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  {chipsSelIds.size} chip{chipsSelIds.size !== 1 ? "s" : ""} seleccionado{chipsSelIds.size !== 1 ? "s" : ""} · Total:{" "}
+                  <strong style={{ color: PURPLE }}>{fmtMXN(totalIncubadoraSel)}</strong>
+                </Typography>
+              )}
+            </Box>
 
             {filas.length === 0 ? (
               <Typography color="text.secondary" textAlign="center" py={4}>
@@ -290,6 +394,73 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
         </Button>
       </DialogActions>
     </Dialog>
+
+    <Dialog open={subModalInc} onClose={() => setSubModalInc(false)} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700, color: PURPLE }}>Chips de Incubadora Pendientes</DialogTitle>
+      <DialogContent dividers>
+        {cargandoChips ? (
+          <Box textAlign="center" py={4}><CircularProgress sx={{ color: PURPLE }} /></Box>
+        ) : gruposIncPendientes.length === 0 ? (
+          <Alert severity="info">No hay chips de incubadora pendientes de pago.</Alert>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#f5f3ff" }}>
+                <TableCell padding="checkbox" sx={{ bgcolor: "#f5f3ff" }} />
+                {["Empleado", "Nombre completo", "# Chips", "Total"].map((h) => (
+                  <TableCell key={h} sx={{ fontWeight: 700, color: PURPLE, fontSize: 11 }}>{h}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {gruposIncPendientes.map((g, i) => {
+                const checked = g.detalle.length > 0 && g.detalle.every((c) => chipsSelIds.has(c.chip_id));
+                const some = g.detalle.some((c) => chipsSelIds.has(c.chip_id));
+                return (
+                  <TableRow
+                    key={i}
+                    hover
+                    onClick={() => toggleGrupoInc(g)}
+                    sx={{ cursor: "pointer", bgcolor: some ? "#ede9fe" : i % 2 === 0 ? "#fff" : "#faf5ff" }}
+                  >
+                    <TableCell padding="checkbox" onClick={(ev) => ev.stopPropagation()}>
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        indeterminate={some && !checked}
+                        onChange={() => toggleGrupoInc(g)}
+                        sx={{ color: PURPLE, "&.Mui-checked": { color: PURPLE }, "&.MuiCheckbox-indeterminate": { color: PURPLE } }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 12, fontWeight: 600 }}>{g.empleado}</TableCell>
+                    <TableCell sx={{ fontSize: 12 }}>{g.nombre_completo}</TableCell>
+                    <TableCell sx={{ fontSize: 12 }}>{g.chips_count}</TableCell>
+                    <TableCell sx={{ fontSize: 12, fontWeight: 700, color: GREEN }}>{fmtMXN(g.pago_total)}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Box sx={{ flex: 1, minWidth: 160 }}>
+          <Typography variant="body2" sx={{ color: PURPLE, fontWeight: 600 }}>
+            {chipsSelIds.size} chip{chipsSelIds.size !== 1 ? "s" : ""} · {fmtMXN(totalIncubadoraSel)}
+          </Typography>
+        </Box>
+        <Button onClick={() => setSubModalInc(false)} color="inherit">Cancelar</Button>
+        <Button
+          variant="contained"
+          onClick={aplicarIncubadora}
+          disabled={chipsSelIds.size === 0}
+          sx={{ bgcolor: PURPLE, "&:hover": { bgcolor: "#6d28d9" } }}
+        >
+          Agregar a la nómina
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 };
 
