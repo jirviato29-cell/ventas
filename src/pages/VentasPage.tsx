@@ -1485,6 +1485,7 @@ const FormularioVentaMultiple = () => {
                 <MiCheckinSemana />
                 <MiSemanaPasada />
               </Box>
+              {false && (
               <Box sx={{ mt: 2 }}>
             {/* ── Activaciones del día (Cadenas C.) ── */}
             <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
@@ -1546,6 +1547,7 @@ const FormularioVentaMultiple = () => {
               )}
             </Paper>
               </Box>
+              )}
               <Box sx={{ mt: 2 }}>
                 <TiraAsistenciaSemana />
               </Box>
