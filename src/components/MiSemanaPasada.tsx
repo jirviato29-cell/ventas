@@ -109,19 +109,19 @@ export default function MiSemanaPasada() {
       <Box sx={{ px: "16px", pt: "16px", pb: "10px" }}>
         <Box
           sx={{
-            width: 96,
-            height: 96,
+            width: 132,
+            height: 132,
             borderRadius: "50%",
             mx: "auto",
             display: "grid",
             placeItems: "center",
-            background: `conic-gradient(#16213e 0deg ${anguloVerde}deg, #ffe8d6 ${anguloVerde}deg 360deg)`,
+            background: `conic-gradient(#FF6600 0deg ${anguloVerde}deg, #16213e ${anguloVerde}deg 360deg)`,
           }}
         >
           <Box
             sx={{
-              width: 76,
-              height: 76,
+              width: 104,
+              height: 104,
               borderRadius: "50%",
               bgcolor: "#fff",
               display: "flex",
@@ -130,8 +130,8 @@ export default function MiSemanaPasada() {
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontFamily: FONT, fontSize: 26, fontWeight: 900, lineHeight: 1, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
-              {data.dias_cumplidos}/6
+            <Typography sx={{ fontFamily: FONT, fontSize: 32, fontWeight: 800, lineHeight: 1, color: "#16213e", fontVariantNumeric: "tabular-nums" }}>
+              {data.dias_cumplidos}<Box component="span" sx={{ color: "#cbd5e1" }}>/</Box>6
             </Typography>
             <Typography sx={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", textTransform: "uppercase", mt: "1px" }}>
               Días cumplidos
