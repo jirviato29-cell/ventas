@@ -114,8 +114,8 @@ export default function MiCheckinSemana() {
           {/* ── Barra de avance hacia el bono ── */}
           <Box
             sx={{
-              m: "14px 16px",
-              p: "14px 16px",
+              m: "10px 16px",
+              p: "11px 14px",
               borderRadius: "12px",
               background: "linear-gradient(135deg, #1e2a4a, #16213e)",
               color: "#fff",
@@ -188,13 +188,13 @@ export default function MiCheckinSemana() {
                     gridTemplateColumns: "26px 1fr auto auto auto",
                     alignItems: "center",
                     gap: "10px",
-                    p: "9px 10px",
+                    p: "5px 10px",
                     borderRadius: "10px",
                     border: "1px solid",
                     bgcolor: rowBg,
                     borderColor: rowBorder,
                     boxShadow: estado === "today" ? "inset 0 0 0 1px #fdba74" : "none",
-                    mt: "4px",
+                    mt: "3px",
                   }}
                 >
                   {/* check */}
@@ -255,7 +255,7 @@ export default function MiCheckinSemana() {
           </Box>
 
           {/* ── Reglas bono / multa ── */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", p: "8px 16px 16px" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "6px", p: "6px 16px 12px" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: "11px", p: "10px 12px", borderRadius: "11px", border: "1px solid #bbf7d0", bgcolor: "#f0fdf6" }}>
               <Box sx={{ width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#dcfce7", flex: "0 0 auto" }}>
                 <EmojiEventsIcon sx={{ fontSize: 16, color: "#15803d" }} />
