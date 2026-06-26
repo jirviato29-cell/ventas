@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
+
+const FONT = "Inter, system-ui, sans-serif";
 
 interface Registro {
   entrada: string | null;
@@ -48,96 +56,242 @@ export default function MiCheckinSemana() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Constantes de presentación (solo nombran números antes hardcodeados en texto).
+  const BONO = 100;
+  const MULTA = 458;
+  const META = 6;
+
   const diasCumplidos = data ? data.dias.reduce((acc, dia) => {
     const reg = (data.registros[dia] || {})[usuario];
     return acc + (reg?.cumple === true ? 1 : 0);
   }, 0) : 0;
   const faltan = Math.max(0, 6 - diasCumplidos);
+  const avancePct = Math.min(100, (diasCumplidos / META) * 100);
 
-  const celdaSx = {
-    py: "8px", px: "10px", fontSize: 13, border: "1px solid #e2e8f0",
-  };
+  // Solo fecha "DD/MM" reutilizando el helper existente (parte tras el espacio).
+  const soloFecha = (iso: string) => nombreDia(iso).split(" ")[1];
+  const rango =
+    data && data.dias.length > 0
+      ? `${soloFecha(data.dias[0])} – ${soloFecha(data.dias[data.dias.length - 1])}`
+      : "";
 
   return (
-    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", bgcolor: "#fff" }}>
-      <Box sx={{ px: "16px", py: "12px", borderBottom: "1px solid #eef2f7", bgcolor: "#0D2B6B" }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "0.4px" }}>
-          MI CHECK IN — SEMANA
-        </Typography>
-      </Box>
-
-      {!cargando && data && (
-        <Box sx={{ px: "16px", py: "10px", borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between", bgcolor: diasCumplidos >= 6 ? "#ecfdf5" : "#fffbeb" }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 800, color: diasCumplidos >= 6 ? "#047857" : "#92400e" }}>
-            Llevas {diasCumplidos} de 6
-          </Typography>
-          <Typography sx={{ fontSize: 13, fontWeight: 700, color: diasCumplidos >= 6 ? "#047857" : "#b45309" }}>
-            {diasCumplidos >= 6 ? "¡Bono asegurado! 🎉" : `Te ${faltan === 1 ? "falta" : "faltan"} ${faltan}`}
+    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", bgcolor: "#fff", fontFamily: FONT }}>
+      {/* ── Header ── */}
+      <Box
+        sx={{
+          px: "16px",
+          py: "13px",
+          borderBottom: "1px solid #eef2f7",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <AccessTimeIcon sx={{ fontSize: 18, color: "#64748b" }} />
+          <Typography sx={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 800, color: "#0f172a" }}>
+            Mi check-in
           </Typography>
         </Box>
-      )}
+        {rango && (
+          <Typography sx={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>
+            {rango}
+          </Typography>
+        )}
+      </Box>
 
       {cargando ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
           <CircularProgress size={24} />
         </Box>
       ) : !data ? (
-        <Box sx={{ py: 4, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+        <Box sx={{ py: 4, textAlign: "center", color: "#94a3b8", fontSize: 13, fontFamily: FONT }}>
           No se pudo cargar.
         </Box>
       ) : (
-        <Box sx={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
-                {["Día", "Entrada", "Salida", "Horas"].map((h) => (
-                  <th key={h} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#64748b", textAlign: "left", border: "1px solid #e2e8f0" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.dias.map((dia) => {
-                const reg = (data.registros[dia] || {})[usuario] || null;
-                const cumple = reg?.cumple === true;
-                const tieneSalida = reg?.salida != null;
-                const esHoy = dia === data.hoy;
-                let bg = "#fff";
-                if (tieneSalida) bg = cumple ? "#ecfdf5" : "#fef2f2";
-                const color = tieneSalida ? (cumple ? "#047857" : "#b91c1c") : "#334155";
-                return (
-                  <tr key={dia} style={{ background: bg }}>
-                    <td style={{ ...celdaSx, fontWeight: 700, color }}>
-                      {nombreDia(dia)}{esHoy ? " ·hoy" : ""}
-                    </td>
-                    <td style={{ ...celdaSx, color }}>{reg?.entrada || "—"}</td>
-                    <td style={{ ...celdaSx, color }}>{reg?.salida || "—"}</td>
-                    <td style={{ ...celdaSx, fontWeight: 700, color }}>
-                      {reg?.horas != null ? `${reg.horas.toFixed(2)} h` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Box>
-      )}
+        <>
+          {/* ── Barra de avance hacia el bono ── */}
+          <Box
+            sx={{
+              m: "14px 16px",
+              p: "14px 16px",
+              borderRadius: "12px",
+              background: "linear-gradient(135deg, #1e2a4a, #16213e)",
+              color: "#fff",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: "9px" }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: "#FFB27A", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Avance hacia el bono
+              </Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: "#cbd5e1", whiteSpace: "nowrap" }}>
+                <Box component="b" sx={{ fontSize: 20, fontWeight: 900, color: "#fff", fontVariantNumeric: "tabular-nums" }}>
+                  {diasCumplidos}
+                </Box>{" "}
+                / {META} días
+              </Typography>
+            </Box>
 
-      <Box sx={{ px: "16px", py: "12px", borderTop: "1px solid #eef2f7", fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-          <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: "#ecfdf5", border: "1px solid #047857" }} />
-          <span><b>Verde:</b> cumplió 6 horas o más</span>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <Box sx={{ width: 12, height: 12, borderRadius: "3px", bgcolor: "#fef2f2", border: "1px solid #b91c1c" }} />
-          <span><b>Rojo:</b> no cumplió las 6 horas</span>
-        </Box>
-        <Box sx={{ pt: 1, borderTop: "1px dashed #e2e8f0" }}>
-          <div><b>Bono $100:</b> se gana cumpliendo los 6 días (cada uno con 6 horas o más).</div>
-          <div style={{ color: "#b91c1c", marginTop: 4 }}><b>Multa $458</b> por cada día no cumplido (por falta o por no completar las 6 horas).</div>
-        </Box>
-      </Box>
+            <Box sx={{ height: 10, borderRadius: "999px", background: "rgba(255,255,255,.14)", overflow: "hidden" }}>
+              <Box sx={{ height: "100%", borderRadius: "999px", width: `${avancePct}%`, background: "linear-gradient(90deg,#34D399,#10B981)" }} />
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: "9px", fontSize: 11.5 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: "#cbd5e1" }}>
+                Te {faltan === 1 ? "falta" : "faltan"}{" "}
+                <Box component="b" sx={{ color: "#fff", fontWeight: 800 }}>
+                  {faltan} {faltan === 1 ? "día" : "días"}
+                </Box>{" "}
+                con 6 hrs+
+              </Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 800, color: "#34D399", fontVariantNumeric: "tabular-nums" }}>
+                Bono ${BONO}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* ── Lista de días ── */}
+          <Box sx={{ p: "4px 16px 8px" }}>
+            {data.dias.map((dia) => {
+              const reg = (data.registros[dia] || {})[usuario] || null;
+              const esHoy = dia === data.hoy;
+              const esFuturo = dia > data.hoy;
+              const cumple = reg?.cumple === true;
+              const tieneSalida = reg?.salida != null;
+              // HOY manda sobre todo.
+              const estado: "today" | "pending" | "ok" | "bad" = esHoy
+                ? "today"
+                : esFuturo
+                ? "pending"
+                : cumple
+                ? "ok"
+                : tieneSalida
+                ? "bad"
+                : "pending";
+
+              const rowBg =
+                estado === "ok" ? "#f0fdf6" : estado === "bad" ? "#fef5f5" : estado === "today" ? "#fff7ed" : "transparent";
+              const rowBorder =
+                estado === "ok" ? "#bbf7d0" : estado === "bad" ? "#fecaca" : estado === "today" ? "#fed7aa" : "transparent";
+              const ckBg =
+                estado === "ok" ? "#16a34a" : estado === "bad" ? "#dc2626" : estado === "today" ? "#FF6600" : "#e2e8f0";
+              const hrsColor =
+                estado === "ok" ? "#16a34a" : estado === "bad" ? "#dc2626" : estado === "today" ? "#0f172a" : "#cbd5e1";
+              const dnameColor = estado === "pending" ? "#64748b" : "#0f172a";
+
+              return (
+                <Box
+                  key={dia}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "26px 1fr auto auto auto",
+                    alignItems: "center",
+                    gap: "10px",
+                    p: "9px 10px",
+                    borderRadius: "10px",
+                    border: "1px solid",
+                    bgcolor: rowBg,
+                    borderColor: rowBorder,
+                    boxShadow: estado === "today" ? "inset 0 0 0 1px #fdba74" : "none",
+                    mt: "4px",
+                  }}
+                >
+                  {/* check */}
+                  <Box sx={{ width: 22, height: 22, borderRadius: "7px", display: "grid", placeItems: "center", bgcolor: ckBg }}>
+                    {estado === "ok" && <CheckIcon sx={{ fontSize: 14, color: "#fff" }} />}
+                    {estado === "bad" && <CloseIcon sx={{ fontSize: 14, color: "#fff" }} />}
+                    {estado === "today" && <PriorityHighIcon sx={{ fontSize: 14, color: "#fff" }} />}
+                    {estado === "pending" && <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: "#94a3b8" }} />}
+                  </Box>
+
+                  {/* día */}
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography component="span" sx={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 700, color: dnameColor }}>
+                      {nombreDia(dia)}
+                      {estado === "today" && (
+                        <Box
+                          component="span"
+                          sx={{ fontFamily: FONT, fontSize: 8, fontWeight: 900, color: "#fff", bgcolor: "#FF6600", px: "5px", py: "1px", borderRadius: "999px", letterSpacing: "0.5px", ml: "6px", verticalAlign: "middle" }}
+                        >
+                          HOY
+                        </Box>
+                      )}
+                    </Typography>
+                    {estado === "today" && !reg?.entrada && (
+                      <Typography sx={{ fontFamily: FONT, display: "block", fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>
+                        Aún sin registrar
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* entrada */}
+                  <Box sx={{ textAlign: "center", minWidth: 52 }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 700, color: "#b6bfca", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                      Entrada
+                    </Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: "#475569", fontVariantNumeric: "tabular-nums" }}>
+                      {reg?.entrada || "—"}
+                    </Typography>
+                  </Box>
+
+                  {/* salida */}
+                  <Box sx={{ textAlign: "center", minWidth: 52 }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 700, color: "#b6bfca", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                      Salida
+                    </Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: "#475569", fontVariantNumeric: "tabular-nums" }}>
+                      {reg?.salida || "—"}
+                    </Typography>
+                  </Box>
+
+                  {/* horas */}
+                  <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums", minWidth: 46, textAlign: "right", color: hrsColor }}>
+                    {reg?.horas != null ? reg.horas.toFixed(2) : "—"}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* ── Reglas bono / multa ── */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", p: "8px 16px 16px" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "11px", p: "10px 12px", borderRadius: "11px", border: "1px solid #bbf7d0", bgcolor: "#f0fdf6" }}>
+              <Box sx={{ width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#dcfce7", flex: "0 0 auto" }}>
+                <EmojiEventsIcon sx={{ fontSize: 16, color: "#15803d" }} />
+              </Box>
+              <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
+                <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#15803d" }}>
+                  Bono semanal
+                </Typography>
+                <Typography sx={{ fontFamily: FONT, fontSize: 10.5, color: "#94a3b8", lineHeight: 1.2, mt: "1px" }}>
+                  Cumpliendo los {META} días (6 hrs c/u)
+                </Typography>
+              </Box>
+              <Typography sx={{ fontFamily: FONT, fontSize: 18, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap", color: "#16a34a" }}>
+                +${BONO}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: "11px", p: "10px 12px", borderRadius: "11px", border: "1px solid #fecaca", bgcolor: "#fef5f5" }}>
+              <Box sx={{ width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#fee2e2", flex: "0 0 auto" }}>
+                <WarningAmberIcon sx={{ fontSize: 16, color: "#b91c1c" }} />
+              </Box>
+              <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
+                <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#b91c1c" }}>
+                  Multa por día
+                </Typography>
+                <Typography sx={{ fontFamily: FONT, fontSize: 10.5, color: "#94a3b8", lineHeight: 1.2, mt: "1px" }}>
+                  Por falta o menos de 6 hrs
+                </Typography>
+              </Box>
+              <Typography sx={{ fontFamily: FONT, fontSize: 18, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap", color: "#dc2626" }}>
+                −${MULTA}
+              </Typography>
+            </Box>
+          </Box>
+        </>
+      )}
     </Box>
   );
 }

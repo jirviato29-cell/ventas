@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
+
+const FONT = "Inter, system-ui, sans-serif";
 
 interface SemanaPasada {
   username: string;
@@ -60,7 +65,7 @@ export default function MiSemanaPasada() {
 
   if (!data) {
     return (
-      <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", p: 3, textAlign: "center", color: "#94a3b8", fontSize: 13, bgcolor: "#fff" }}>
+      <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", p: 3, textAlign: "center", color: "#94a3b8", fontSize: 13, bgcolor: "#fff", fontFamily: FONT }}>
         Aún no hay semana cerrada.
       </Box>
     );
@@ -69,59 +74,181 @@ export default function MiSemanaPasada() {
   const gano = data.bono;
   const diasFaltantes = Math.max(0, 6 - data.dias_cumplidos);
 
+  // Derivados SOLO de presentación (no recalculan reglas de negocio).
+  const diasMulta = data.dias_detalle
+    ? data.dias_detalle.filter((d) => !d.cumple).length
+    : Math.max(0, 6 - data.dias_cumplidos);
+  const bonoGanado = data.bono ? 100 : 0;
+  const anguloVerde = (data.dias_cumplidos / 6) * 360;
+
   return (
-    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", bgcolor: "#fff" }}>
-      <Box sx={{ px: "16px", py: "12px", borderBottom: "1px solid #eef2f7", bgcolor: "#475569" }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "0.4px" }}>
-          SEMANA PASADA · {fmtFecha(data.semana_inicio)} al {fmtFecha(data.semana_fin)}
+    <Box sx={{ border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", bgcolor: "#fff", fontFamily: FONT }}>
+      {/* ── Header ── */}
+      <Box
+        sx={{
+          px: "16px",
+          py: "13px",
+          borderBottom: "1px solid #eef2f7",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <CalendarMonthIcon sx={{ fontSize: 18, color: "#64748b" }} />
+          <Typography sx={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 800, color: "#0f172a" }}>
+            Semana pasada
+          </Typography>
+        </Box>
+        <Typography sx={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>
+          {fmtFecha(data.semana_inicio)} – {fmtFecha(data.semana_fin)}
         </Typography>
       </Box>
 
-      <Box sx={{ p: "16px" }}>
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ textAlign: "center", py: 1.5, borderRadius: "10px", bgcolor: "#f8fafc" }}>
-            <Typography sx={{ fontSize: 24, fontWeight: 800, color: "#0f172a" }}>{data.dias_cumplidos}/6</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Días cumplidos</Typography>
+      {/* ── Anillo de progreso ── */}
+      <Box sx={{ px: "16px", pt: "16px", pb: "10px" }}>
+        <Box
+          sx={{
+            width: 96,
+            height: 96,
+            borderRadius: "50%",
+            mx: "auto",
+            display: "grid",
+            placeItems: "center",
+            background: `conic-gradient(#16a34a 0deg ${anguloVerde}deg, #fee2e2 ${anguloVerde}deg 360deg)`,
+          }}
+        >
+          <Box
+            sx={{
+              width: 76,
+              height: 76,
+              borderRadius: "50%",
+              bgcolor: "#fff",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography sx={{ fontFamily: FONT, fontSize: 26, fontWeight: 900, lineHeight: 1, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+              {data.dias_cumplidos}/6
+            </Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", textTransform: "uppercase", mt: "1px" }}>
+              Días cumplidos
+            </Typography>
           </Box>
         </Box>
+      </Box>
 
-        {data.dias_detalle && data.dias_detalle.length > 0 && (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-            {data.dias_detalle.map((d) => (
+      {/* ── Chips de días ── */}
+      {data.dias_detalle && data.dias_detalle.length > 0 && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "center", px: "16px", pb: "14px" }}>
+          {data.dias_detalle.map((d) => {
+            const [dia, fecha] = nombreDiaCorto(d.fecha).split(" ");
+            return (
               <Box
                 key={d.fecha}
                 sx={{
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: "8px",
-                  textAlign: "center",
-                  minWidth: 64,
-                  bgcolor: d.cumple ? "#ecfdf5" : "#fef2f2",
-                  border: `1px solid ${d.cumple ? "#047857" : "#b91c1c"}`,
-                  color: d.cumple ? "#047857" : "#b91c1c",
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "2px",
+                  py: "7px",
+                  width: 56,
+                  borderRadius: "10px",
+                  border: "1px solid",
+                  bgcolor: d.cumple ? "#f0fdf6" : "#fef5f5",
+                  borderColor: d.cumple ? "#bbf7d0" : "#fecaca",
+                  color: d.cumple ? "#16a34a" : "#dc2626",
                 }}
               >
-                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{nombreDiaCorto(d.fecha)}</Typography>
+                <Typography sx={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.3px", textTransform: "uppercase", color: "inherit" }}>
+                  {dia}
+                </Typography>
+                <Typography sx={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: "inherit" }}>
+                  {fecha}
+                </Typography>
               </Box>
-            ))}
-          </Box>
-        )}
+            );
+          })}
+        </Box>
+      )}
 
+      {/* ── Alerta de resultado ── */}
+      <Box sx={{ mx: "16px", mb: "16px" }}>
         {gano ? (
-          <Box sx={{ p: 2, borderRadius: "10px", bgcolor: "#ecfdf5", border: "1px solid #047857" }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#047857", mb: 0.5 }}>🎉 ¡Felicidades!</Typography>
-            <Typography sx={{ fontSize: 13, color: "#065f46" }}>
-              Cumpliste los 6 días y ganaste el bono de $100. ¡Sigue así!
-            </Typography>
+          <Box
+            sx={{
+              p: "13px 14px",
+              borderRadius: "12px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "11px",
+              bgcolor: "#f0fdf6",
+              border: "1px solid #bbf7d0",
+            }}
+          >
+            <Box sx={{ width: 32, height: 32, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#dcfce7", flex: "0 0 auto" }}>
+              <EmojiEventsIcon sx={{ fontSize: 18, color: "#15803d" }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, lineHeight: 1.2, color: "#15803d" }}>
+                ¡Bono conseguido!
+              </Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: 11.5, lineHeight: 1.35, mt: "3px", color: "#3f7d57" }}>
+                Cumpliste los 6 días y ganaste el bono de $100. ¡Sigue así!
+              </Typography>
+            </Box>
           </Box>
         ) : (
-          <Box sx={{ p: 2, borderRadius: "10px", bgcolor: "#fef2f2", border: "1px solid #b91c1c" }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#b91c1c", mb: 0.5 }}>No alcanzaste el bono</Typography>
-            <Typography sx={{ fontSize: 13, color: "#7f1d1d" }}>
-              Te {diasFaltantes === 1 ? "faltó" : "faltaron"} {diasFaltantes} {diasFaltantes === 1 ? "día" : "días"} para el bono. ¡Esta semana recupérate y consíguelo!
-            </Typography>
+          <Box
+            sx={{
+              p: "13px 14px",
+              borderRadius: "12px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "11px",
+              bgcolor: "#fef5f5",
+              border: "1px solid #fecaca",
+            }}
+          >
+            <Box sx={{ width: 32, height: 32, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#fee2e2", flex: "0 0 auto" }}>
+              <WarningAmberIcon sx={{ fontSize: 18, color: "#b91c1c" }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, lineHeight: 1.2, color: "#b91c1c" }}>
+                No alcanzaste el bono
+              </Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: 11.5, lineHeight: 1.35, mt: "3px", color: "#9f5b60" }}>
+                Te {diasFaltantes === 1 ? "faltó" : "faltaron"}{" "}
+                <Box component="b" sx={{ fontWeight: 800 }}>
+                  {diasFaltantes} {diasFaltantes === 1 ? "día" : "días"}
+                </Box>{" "}
+                para el bono. ¡Esta semana recupérate y consíguelo!
+              </Typography>
+            </Box>
           </Box>
         )}
+      </Box>
+
+      {/* ── Bono ganado / Multa ── */}
+      <Box sx={{ mx: "16px", mb: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        <Box sx={{ border: "1px solid #eef2f7", borderRadius: "11px", p: "10px 12px" }}>
+          <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+            Bono ganado
+          </Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: 16, fontWeight: 900, fontVariantNumeric: "tabular-nums", mt: "2px", color: bonoGanado > 0 ? "#16a34a" : "#94a3b8" }}>
+            ${bonoGanado}
+          </Typography>
+        </Box>
+        <Box sx={{ border: "1px solid #eef2f7", borderRadius: "11px", p: "10px 12px" }}>
+          <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+            Multa ({diasMulta} {diasMulta === 1 ? "día" : "días"})
+          </Typography>
+          <Typography sx={{ fontFamily: FONT, fontSize: 16, fontWeight: 900, fontVariantNumeric: "tabular-nums", mt: "2px", color: "#dc2626" }}>
+            −${data.multa}
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

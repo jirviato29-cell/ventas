@@ -28,6 +28,7 @@ import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
 import MiCheckinSemana from '../components/MiCheckinSemana';
 import MiSemanaPasada from '../components/MiSemanaPasada';
+import TiraAsistenciaSemana from '../components/TiraAsistenciaSemana';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const HOY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // "YYYY-MM-DD" zona México
@@ -1475,51 +1476,17 @@ const FormularioVentaMultiple = () => {
 
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
-          <Grid container spacing={2}>
-            {/* Columna 1: formulario (oculto para admin) */}
-            {(rol as string) !== 'admin' && (
-              <Grid item xs={12} md={3}>
-                {formulario}
-              </Grid>
-            )}
-
-            {esCadenas && (
-              <Grid item xs={12} md={4}>
+          esCadenas ? (
+            <>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '380px 1fr 1fr' }, gap: 2, alignItems: 'start' }}>
+                {(rol as string) !== 'admin' && (
+                  <Box>{formulario}</Box>
+                )}
                 <MiCheckinSemana />
-              </Grid>
-            )}
-            {esCadenas && (
-              <Grid item xs={12} md={4}>
                 <MiSemanaPasada />
-              </Grid>
-            )}
-
-            {/* Columna 2: ranking accesorios */}
-            {!esCadenas && (
-              <Grid item xs={12} md={3}>
-                <RankingModulos solo="accesorios" />
-              </Grid>
-            )}
-
-            {/* Columna 3: ranking telefonos */}
-            {!esCadenas && (
-              <Grid item xs={12} md={3}>
-                <RankingModulos solo="telefonos" />
-              </Grid>
-            )}
-
-            {/* Columna 4: ranking planes */}
-            {!esCadenas && (
-              <Grid item xs={12} md={3}>
-                <RankingModulos solo="planes" />
-              </Grid>
-            )}
-
-            {/* Fila completa: tabla del día */}
-            <Grid item xs={12}>
-
-          {esCadenas ? (
-            /* ── Activaciones del día (Cadenas C.) ── */
+              </Box>
+              <Box sx={{ mt: 2 }}>
+            {/* ── Activaciones del día (Cadenas C.) ── */}
             <Paper sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Typography variant="h6" fontWeight={700} gutterBottom>
                 Activaciones del día
@@ -1578,8 +1545,35 @@ const FormularioVentaMultiple = () => {
                 </Box>
               )}
             </Paper>
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <TiraAsistenciaSemana />
+              </Box>
+            </>
           ) : (
-          false && (
+            <Grid container spacing={2}>
+              {(rol as string) !== 'admin' && (
+                <Grid item xs={12} md={3}>
+                  {formulario}
+                </Grid>
+              )}
+              {!esCadenas && (
+                <Grid item xs={12} md={3}>
+                  <RankingModulos solo="accesorios" />
+                </Grid>
+              )}
+              {!esCadenas && (
+                <Grid item xs={12} md={3}>
+                  <RankingModulos solo="telefonos" />
+                </Grid>
+              )}
+              {!esCadenas && (
+                <Grid item xs={12} md={3}>
+                  <RankingModulos solo="planes" />
+                </Grid>
+              )}
+              <Grid item xs={12}>
+                {false && (
             <>
               {/* ── Ventas del día ── */}
               <Paper sx={{ p: 2, mb: 2 }}>
@@ -1677,11 +1671,10 @@ const FormularioVentaMultiple = () => {
                 </Box>
               </Paper>
             </>
+                )}
+              </Grid>
+            </Grid>
           )
-          )}
-
-          </Grid>
-          </Grid>
         )}
 
         {/* ── Tab RECIBOS (asesor) ── */}
