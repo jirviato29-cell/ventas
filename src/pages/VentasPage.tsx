@@ -2460,6 +2460,8 @@ const FormularioVentaMultiple = () => {
       {/* Fila completa: ventas del día + comisiones (encargado) */}
       {(rol as string) === 'encargado' && (
         <Grid item xs={12}>
+              {false && (
+              <>
               <Paper sx={{ p: 2, mb: 2, mt: 2 }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom>Ventas del día</Typography>
                 <Box sx={{ overflowX: 'auto' }}>
@@ -2544,6 +2546,8 @@ const FormularioVentaMultiple = () => {
                   <Typography variant="h5" fontWeight={800}>${totalComisionHoy.toFixed(2)}</Typography>
                 </Box>
               </Paper>
+              </>
+              )}
         </Grid>
       )}
 
