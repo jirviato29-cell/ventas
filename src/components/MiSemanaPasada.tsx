@@ -115,7 +115,7 @@ export default function MiSemanaPasada() {
             mx: "auto",
             display: "grid",
             placeItems: "center",
-            background: `conic-gradient(#16a34a 0deg ${anguloVerde}deg, #fee2e2 ${anguloVerde}deg 360deg)`,
+            background: `conic-gradient(#16213e 0deg ${anguloVerde}deg, #ffe8d6 ${anguloVerde}deg 360deg)`,
           }}
         >
           <Box
@@ -157,9 +157,9 @@ export default function MiSemanaPasada() {
                   width: 56,
                   borderRadius: "10px",
                   border: "1px solid",
-                  bgcolor: d.cumple ? "#f0fdf6" : "#fef5f5",
-                  borderColor: d.cumple ? "#bbf7d0" : "#fecaca",
-                  color: d.cumple ? "#16a34a" : "#dc2626",
+                  bgcolor: d.cumple ? "#eef1f8" : "#fff3ea",
+                  borderColor: d.cumple ? "#c7cfe6" : "#ffd0aa",
+                  color: d.cumple ? "#16213e" : "#FF6600",
                 }}
               >
                 <Typography sx={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: "0.3px", textTransform: "uppercase", color: "inherit" }}>

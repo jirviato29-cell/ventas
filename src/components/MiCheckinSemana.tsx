@@ -152,7 +152,7 @@ export default function MiCheckinSemana() {
           </Box>
 
           {/* ── Lista de días ── */}
-          <Box sx={{ p: "4px 16px 8px" }}>
+          <Box sx={{ p: "2px 16px 10px" }}>
             {data.dias.map((dia) => {
               const reg = (data.registros[dia] || {})[usuario] || null;
               const esHoy = dia === data.hoy;
@@ -188,13 +188,13 @@ export default function MiCheckinSemana() {
                     gridTemplateColumns: "26px 1fr auto auto auto",
                     alignItems: "center",
                     gap: "10px",
-                    p: "5px 10px",
+                    p: "4px 10px",
                     borderRadius: "10px",
                     border: "1px solid",
                     bgcolor: rowBg,
                     borderColor: rowBorder,
                     boxShadow: estado === "today" ? "inset 0 0 0 1px #fdba74" : "none",
-                    mt: "3px",
+                    mt: "2px",
                   }}
                 >
                   {/* check */}
