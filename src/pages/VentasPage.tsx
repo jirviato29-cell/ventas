@@ -1478,7 +1478,7 @@ const FormularioVentaMultiple = () => {
         {tabAsesor === 0 && (
           esCadenas ? (
             <>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '380px 1fr 1fr' }, gap: 2, alignItems: 'start' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '360px 1.4fr 1.6fr' }, gap: 2, alignItems: 'stretch' }}>
                 {(rol as string) !== 'admin' && (
                   <Box>{formulario}</Box>
                 )}
