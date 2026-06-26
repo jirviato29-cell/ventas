@@ -253,43 +253,6 @@ export default function MiCheckinSemana() {
               );
             })}
           </Box>
-
-          {/* ── Reglas bono / multa ── */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "6px", p: "6px 16px 12px" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: "11px", p: "10px 12px", borderRadius: "11px", border: "1px solid #bbf7d0", bgcolor: "#f0fdf6" }}>
-              <Box sx={{ width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#dcfce7", flex: "0 0 auto" }}>
-                <EmojiEventsIcon sx={{ fontSize: 16, color: "#15803d" }} />
-              </Box>
-              <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
-                <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#15803d" }}>
-                  Bono semanal
-                </Typography>
-                <Typography sx={{ fontFamily: FONT, fontSize: 10.5, color: "#94a3b8", lineHeight: 1.2, mt: "1px" }}>
-                  Cumpliendo los {META} días (6 hrs c/u)
-                </Typography>
-              </Box>
-              <Typography sx={{ fontFamily: FONT, fontSize: 18, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap", color: "#16a34a" }}>
-                +${BONO}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: "flex", alignItems: "center", gap: "11px", p: "10px 12px", borderRadius: "11px", border: "1px solid #fecaca", bgcolor: "#fef5f5" }}>
-              <Box sx={{ width: 30, height: 30, borderRadius: "9px", display: "grid", placeItems: "center", bgcolor: "#fee2e2", flex: "0 0 auto" }}>
-                <WarningAmberIcon sx={{ fontSize: 16, color: "#b91c1c" }} />
-              </Box>
-              <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
-                <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", color: "#b91c1c" }}>
-                  Multa por día
-                </Typography>
-                <Typography sx={{ fontFamily: FONT, fontSize: 10.5, color: "#94a3b8", lineHeight: 1.2, mt: "1px" }}>
-                  Por falta o menos de 6 hrs
-                </Typography>
-              </Box>
-              <Typography sx={{ fontFamily: FONT, fontSize: 18, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap", color: "#dc2626" }}>
-                −${MULTA}
-              </Typography>
-            </Box>
-          </Box>
         </>
       )}
     </Box>
