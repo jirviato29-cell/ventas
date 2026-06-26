@@ -75,10 +75,18 @@ export default function TiraAsistenciaSemana() {
           const conDatos = dia.entrada || dia.salida;
           const esFalta = dia.estado === "falta";
 
+          let cardBg = "#fff";
+          let cardBorder = "1px solid #e2e8f0";
+          if (dia.estado === "completo") { cardBg = "#f0fdf6"; cardBorder = "1px solid #16a34a"; }
+          else if (dia.estado === "falta") { cardBg = "#fef2f2"; cardBorder = "1px solid #dc2626"; }
+          else if (dia.estado === "en_turno") { cardBg = "#fff7ed"; cardBorder = "1px solid #FF6600"; }
+          else { cardBg = "#f8fafc"; cardBorder = "1px dashed #cbd5e1"; }
+          if (esHoy) cardBorder = "2px solid #FF6600";
+
           return (
             <div key={dia.fecha} style={{
-              border: esHoy ? "2px solid #FF6600" : "1px solid #e2e8f0",
-              background: conDatos ? "#fff" : "#f8fafc",
+              border: cardBorder,
+              background: cardBg,
               borderRadius: 12, padding: "12px 8px", minHeight: 150,
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
             }}>

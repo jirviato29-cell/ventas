@@ -130,7 +130,7 @@ export default function MiSemanaPasada() {
               justifyContent: "center",
             }}
           >
-            <Typography sx={{ fontFamily: FONT, fontSize: 32, fontWeight: 800, lineHeight: 1, color: "#16213e", fontVariantNumeric: "tabular-nums" }}>
+            <Typography sx={{ fontFamily: FONT, fontSize: 32, fontWeight: 800, lineHeight: 1, color: data.dias_cumplidos >= 6 ? "#16a34a" : "#dc2626", fontVariantNumeric: "tabular-nums" }}>
               {data.dias_cumplidos}<Box component="span" sx={{ color: "#cbd5e1" }}>/</Box>6
             </Typography>
             <Typography sx={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", textTransform: "uppercase", mt: "1px" }}>
