@@ -2457,6 +2457,13 @@ const FormularioVentaMultiple = () => {
         </Grid>
       )}
 
+      {/* Tira de asistencia semanal (todos los de esta vista) */}
+      {!esCadenas && (
+        <Grid item xs={12}>
+          <TiraAsistenciaSemana />
+        </Grid>
+      )}
+
       {/* Fila completa: ventas del día + comisiones (encargado) */}
       {(rol as string) === 'encargado' && (
         <Grid item xs={12}>
