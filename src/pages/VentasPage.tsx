@@ -1574,6 +1574,12 @@ const FormularioVentaMultiple = () => {
                   <RankingModulos solo="planes" />
                 </Grid>
               )}
+              {/* Tira de asistencia semanal (asesor no-Cadenas) */}
+              {!esCadenas && (
+                <Grid item xs={12}>
+                  <TiraAsistenciaSemana />
+                </Grid>
+              )}
               <Grid item xs={12}>
                 {false && (
             <>
