@@ -194,8 +194,6 @@ const Kardex = () => {
               <TableCell>Tipo</TableCell>
               <TableCell>Movimiento</TableCell>
               <TableCell>Cantidad</TableCell>
-              <TableCell>modulo_origen</TableCell>
-              <TableCell>modulo_destino</TableCell>
             </TableRow>
           </TableHead>
 
@@ -203,15 +201,13 @@ const Kardex = () => {
             {data.slice(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina).map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  {new Date(row.fecha).toLocaleString()}
+                  {new Date(row.fecha).toLocaleDateString("es-MX")}
                 </TableCell>
 
                 <TableCell>{row.producto}</TableCell>
                 <TableCell>{row.tipo_producto}</TableCell>
                 <TableCell>{row.tipo_movimiento}</TableCell>
                 <TableCell>{row.cantidad}</TableCell>
-                <TableCell>{row.modulo_origen ?? "-"}</TableCell>
-                <TableCell>{row.modulo_destino ?? "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
