@@ -2,10 +2,12 @@
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography,
-  TextField, Button, Box, MenuItem, FormControl, InputLabel, Select, TablePagination
+  TextField, Button, Box, MenuItem, FormControl, InputLabel, Select, TablePagination,
+  Autocomplete
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { obtenerRolDesdeToken } from "../components/Token";
+import { InventarioGeneral } from "../Types";
 
 interface Kardex {
   id: number;
@@ -31,6 +33,7 @@ const Kardex = () => {
   const [modulos, setModulos] = useState<any[]>([]);
   const [moduloId, setModuloId] = useState("");
   const [tipoMovimiento, setTipoMovimiento] = useState("");
+  const [productosCatalogo, setProductosCatalogo] = useState<InventarioGeneral[]>([]);
 
   // const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
   const rolToken = obtenerRolDesdeToken();
@@ -67,9 +70,18 @@ const Kardex = () => {
   setModulos(res.data);
 };
 
+  const cargarProductosCatalogo = async () => {
+    const res = await axios.get(
+      `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`,
+      config
+    );
+    setProductosCatalogo(res.data);
+  };
+
   useEffect(() => {
     cargarKardex();
     cargarModulos();
+    cargarProductosCatalogo();
   }, []);
 
   return (
@@ -97,11 +109,31 @@ const Kardex = () => {
               ))}
             </TextField>
           )}
-          <TextField
-            label="Producto"
-            value={producto}
-            onChange={(e) => setProducto(e.target.value)}
-            size="small"
+          <Autocomplete<InventarioGeneral>
+            sx={{ minWidth: 240 }}
+            options={[...productosCatalogo].sort((a, b) =>
+              a.producto.localeCompare(b.producto, "es")
+            )}
+            value={productosCatalogo.find((p) => p.producto === producto) ?? null}
+            filterOptions={(opts, { inputValue }) => {
+              const q = inputValue.toLowerCase();
+              return opts.filter(
+                (p) =>
+                  (p.clave ?? "").toLowerCase().includes(q) ||
+                  p.producto.toLowerCase().includes(q)
+              );
+            }}
+            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto}` : p.producto)}
+            onChange={(_, obj) => {
+              if (obj) {
+                setProducto(obj.producto);
+              } else {
+                setProducto("");
+              }
+            }}
+            renderInput={(params) => (
+              <TextField {...params} label="Producto" size="small" />
+            )}
           />
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Movimiento</InputLabel>
