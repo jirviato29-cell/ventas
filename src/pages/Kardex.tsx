@@ -62,6 +62,7 @@ const Kardex = () => {
     if (fechaFin) params.fecha_fin = fechaFin;
     if (moduloId) params.modulo_id = moduloId;
     if (tipoMovimiento) params.tipo_movimiento = tipoMovimiento;
+    if (producto) params.limit = 100000; // histórico completo en modo saldo
 
     const res = await axios.get(
       `https://ato-appservidor-nvxt.onrender.com/kardex/kardex`,
@@ -70,20 +71,25 @@ const Kardex = () => {
 
     setData(res.data);
 
-    // saldo corriente: existencia de HOY del producto en el modulo
-    if (producto && moduloId) {
+    // saldo corriente: existencia de HOY del producto en el modulo.
+    // Encargado no tiene selector de modulo: el backend lo resuelve y lo devuelve.
+    if (producto && (moduloId || rolToken === "encargado")) {
       try {
+        const paramsEx: any = { producto };
+        if (moduloId) paramsEx.modulo_id = moduloId; // admin manda modulo; encargado lo deja al backend
         const resEx = await axios.get(
           `https://ato-appservidor-nvxt.onrender.com/kardex/existencia`,
-          { ...config, params: { producto, modulo_id: moduloId } }
+          { ...config, params: paramsEx }
         );
         setExistenciaActual(resEx.data?.existencia ?? null);
+        // snapshot: usa el modulo REAL que devolvio el backend (sirve para admin y encargado)
+        setModuloCargado(String(resEx.data?.modulo_id ?? ""));
+        setProductoCargado(producto);
       } catch {
         setExistenciaActual(null);
+        setProductoCargado("");
+        setModuloCargado("");
       }
-      // snapshot de la consulta realizada
-      setProductoCargado(producto);
-      setModuloCargado(moduloId);
     } else {
       setExistenciaActual(null);
       setProductoCargado("");
@@ -113,12 +119,11 @@ const Kardex = () => {
     cargarProductosCatalogo();
   }, []);
 
-  // Reconstruye el saldo corriente hacia atras desde la existencia de hoy.
-  // data viene ordenada por fecha DESC (mas reciente arriba):
-  //   saldo_despues[0] = existencia
-  //   saldo_despues[i] = saldo_despues[i-1] - delta(i-1)
-  const saldos = useMemo<(number | null)[]>(() => {
-    if (!modoSaldo || existenciaActual == null) return [];
+  // Vista de saldo (formato Admipaq): orden cronologico ascendente, con
+  // entrada/salida y saldo corriente reconstruido hacia ARRIBA desde la
+  // existencia real de hoy (ultima fila = mas nueva = existenciaActual).
+  const vistaSaldo = useMemo(() => {
+    if (!modoSaldo || existenciaActual == null) return null;
 
     const modSel = Number(moduloCargado);
 
@@ -131,11 +136,35 @@ const Kardex = () => {
       return 0;
     };
 
-    const arr: (number | null)[] = new Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-      arr[i] = i === 0 ? existenciaActual : (arr[i - 1] as number) - deltaDe(data[i - 1]);
+    // data viene DESC del backend; invertimos para orden cronologico ascendente
+    const filas = [...data].reverse();
+    const n = filas.length;
+
+    // saldo DESPUES de cada movimiento, reconstruido de abajo hacia arriba
+    const saldoDespues: number[] = new Array(n);
+    for (let i = n - 1; i >= 0; i--) {
+      saldoDespues[i] =
+        i === n - 1 ? existenciaActual : saldoDespues[i + 1] - deltaDe(filas[i + 1]);
     }
-    return arr;
+
+    // saldo antes del primer movimiento (con cuantos inicias)
+    const saldoInicial = n > 0 ? saldoDespues[0] - deltaDe(filas[0]) : existenciaActual;
+
+    let totalEntradas = 0;
+    let totalSalidas = 0;
+    const rows = filas.map((row, i) => {
+      const d = deltaDe(row);
+      if (d > 0) totalEntradas += d;
+      if (d < 0) totalSalidas += Math.abs(d);
+      return {
+        row,
+        entrada: d > 0 ? d : null,
+        salida: d < 0 ? Math.abs(d) : null,
+        saldo: saldoDespues[i],
+      };
+    });
+
+    return { rows, saldoInicial, totalEntradas, totalSalidas };
   }, [data, existenciaActual, moduloCargado, modoSaldo]);
 
   return (
@@ -243,46 +272,91 @@ const Kardex = () => {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Producto</TableCell>
-              <TableCell>Tipo</TableCell>
-              <TableCell>Movimiento</TableCell>
-              <TableCell>Cantidad</TableCell>
-              {modoSaldo && <TableCell>Existencia</TableCell>}
+              {modoSaldo ? (
+                <>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Producto</TableCell>
+                  <TableCell>Movimiento</TableCell>
+                  <TableCell>Entrada</TableCell>
+                  <TableCell>Salida</TableCell>
+                  <TableCell>Existencia</TableCell>
+                </>
+              ) : (
+                <>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Producto</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Movimiento</TableCell>
+                  <TableCell>Cantidad</TableCell>
+                </>
+              )}
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {data.slice(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina).map((row, idx) => {
-              const globalIdx = pagina * filasPorPagina + idx;
-              return (
-              <TableRow key={row.id}>
-                <TableCell>
-                  {new Date(row.fecha).toLocaleDateString("es-MX")}
-                </TableCell>
+            {modoSaldo && vistaSaldo ? (
+              <>
+                {/* Con cuantos inicias */}
+                <TableRow>
+                  <TableCell>Con cuántos inicias</TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  <TableCell>{vistaSaldo.saldoInicial}</TableCell>
+                </TableRow>
 
-                <TableCell>{row.producto}</TableCell>
-                <TableCell>{row.tipo_producto}</TableCell>
-                <TableCell>{row.tipo_movimiento}</TableCell>
-                <TableCell>{row.cantidad}</TableCell>
-                {modoSaldo && (
-                  <TableCell>{saldos[globalIdx] ?? "-"}</TableCell>
-                )}
-              </TableRow>
-              );
-            })}
+                {vistaSaldo.rows.map(({ row, entrada, salida, saldo }) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      {new Date(row.fecha).toLocaleDateString("es-MX")}
+                    </TableCell>
+                    <TableCell>{row.producto}</TableCell>
+                    <TableCell>{row.tipo_movimiento}</TableCell>
+                    <TableCell>{entrada ?? ""}</TableCell>
+                    <TableCell>{salida ?? ""}</TableCell>
+                    <TableCell>{saldo}</TableCell>
+                  </TableRow>
+                ))}
+
+                {/* Totales */}
+                <TableRow>
+                  <TableCell>Totales</TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell>{vistaSaldo.totalEntradas}</TableCell>
+                  <TableCell>{vistaSaldo.totalSalidas}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </>
+            ) : (
+              data.slice(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina).map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    {new Date(row.fecha).toLocaleDateString("es-MX")}
+                  </TableCell>
+
+                  <TableCell>{row.producto}</TableCell>
+                  <TableCell>{row.tipo_producto}</TableCell>
+                  <TableCell>{row.tipo_movimiento}</TableCell>
+                  <TableCell>{row.cantidad}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
 
       </TableContainer>
-      <TablePagination
-        component="div"
-        count={data.length}
-        page={pagina}
-        onPageChange={(_, p) => setPagina(p)}
-        rowsPerPage={filasPorPagina}
-        rowsPerPageOptions={[filasPorPagina]}
-      />
+      {!modoSaldo && (
+        <TablePagination
+          component="div"
+          count={data.length}
+          page={pagina}
+          onPageChange={(_, p) => setPagina(p)}
+          rowsPerPage={filasPorPagina}
+          rowsPerPageOptions={[filasPorPagina]}
+        />
+      )}
     </>
   );
 };
