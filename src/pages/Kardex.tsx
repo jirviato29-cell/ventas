@@ -27,6 +27,10 @@ const Kardex = () => {
   const [data, setData] = useState<Kardex[]>([]);
   const token = localStorage.getItem('token');
 
+  // Solo etiqueta visual: el valor real sigue siendo CONTEO_FISICO
+  const etiquetaMovimiento = (m: string) =>
+    m === "CONTEO_FISICO" ? "HICIERON INVENTARIO" : m;
+
 
   // filtros
   const [producto, setProducto] = useState("");
@@ -312,7 +316,7 @@ const Kardex = () => {
                       {new Date(row.fecha).toLocaleDateString("es-MX")}
                     </TableCell>
                     <TableCell>{row.producto}</TableCell>
-                    <TableCell>{row.tipo_movimiento}</TableCell>
+                    <TableCell>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
                     <TableCell>{entrada ?? ""}</TableCell>
                     <TableCell>{salida ?? ""}</TableCell>
                     <TableCell>{saldo}</TableCell>
@@ -338,7 +342,7 @@ const Kardex = () => {
 
                   <TableCell>{row.producto}</TableCell>
                   <TableCell>{row.tipo_producto}</TableCell>
-                  <TableCell>{row.tipo_movimiento}</TableCell>
+                  <TableCell>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
                   <TableCell>{row.cantidad}</TableCell>
                 </TableRow>
               ))
