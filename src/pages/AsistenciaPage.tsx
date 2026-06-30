@@ -115,6 +115,25 @@ interface UsuarioBasico {
   modulo: { id: number; nombre: string } | null;
 }
 
+interface AnomaliaItem {
+  usuario_id: number;
+  username: string;
+  nombre_completo: string;
+  modulo_id: number | null;
+  modulo_nombre: string | null;
+  entrada?: string | null;
+  salida?: string | null;
+  horas_trabajadas?: number;
+}
+
+interface AnomaliasResp {
+  fecha: string;
+  sin_movimiento: AnomaliaItem[];
+  falta_checkin: AnomaliaItem[];
+  falta_checkout: AnomaliaItem[];
+  menos_de_una_hora: AnomaliaItem[];
+}
+
 interface CicloSemana {
   inicio: string;
   fin: string;
@@ -749,6 +768,166 @@ const TabRegistros: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+    </Box>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB ANOMALÍAS / "QUIÉN FALTÓ" (admin)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const hoyISOmx = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }); // YYYY-MM-DD
+
+interface ColAnom {
+  head: string;
+  render: (it: AnomaliaItem) => React.ReactNode;
+}
+
+const SeccionAnomalia: React.FC<{
+  titulo: string;
+  items: AnomaliaItem[];
+  columnas: ColAnom[];
+}> = ({ titulo, items, columnas }) => (
+  <Box mb={3}>
+    <Typography variant="h6" fontWeight={700} mb={1}>
+      {titulo} ({items.length})
+    </Typography>
+    {items.length === 0 ? (
+      <Typography sx={{ color: "#94a3b8" }}>Sin casos</Typography>
+    ) : (
+      <TableContainer component={Paper} elevation={1}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: "#f8fafc" }}>
+              {columnas.map((c) => (
+                <TableCell key={c.head} sx={{ fontWeight: 700, color: "#FF6600" }}>
+                  {c.head}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.map((it) => (
+              <TableRow key={it.usuario_id}>
+                {columnas.map((c) => (
+                  <TableCell key={c.head}>{c.render(it)}</TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
+  </Box>
+);
+
+const TabAnomalias: React.FC = () => {
+  const [modulos, setModulos] = useState<ModuloConUbicacion[]>([]);
+  const [fecha, setFecha] = useState<string>(hoyISOmx());
+  const [moduloId, setModuloId] = useState<string>("");
+  const [data, setData] = useState<AnomaliasResp | null>(null);
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    axios.get<ModuloConUbicacion[]>(`${API}/modulos/con-ubicacion`, { headers: authH() })
+      .then(({ data }) => setModulos(data)).catch(() => {});
+  }, []);
+
+  const buscar = async () => {
+    if (!fecha) return;
+    setCargando(true);
+    const params = new URLSearchParams();
+    params.set("fecha", fecha);
+    if (moduloId) params.set("modulo_id", moduloId);
+    try {
+      const { data } = await axios.get<AnomaliasResp>(
+        `${API}/asistencia/anomalias?${params}`,
+        { headers: authH() }
+      );
+      setData(data);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const usuarioCol: ColAnom = {
+    head: "Usuario",
+    render: (it) => it.username || it.nombre_completo,
+  };
+  const moduloCol: ColAnom = {
+    head: "Módulo",
+    render: (it) => it.modulo_nombre ?? "—",
+  };
+  const entradaCol: ColAnom = {
+    head: "Entrada",
+    render: (it) => formatHora(it.entrada ?? null),
+  };
+  const salidaCol: ColAnom = {
+    head: "Salida",
+    render: (it) => formatHora(it.salida ?? null),
+  };
+  const horasCol: ColAnom = {
+    head: "Horas",
+    render: (it) => `${(it.horas_trabajadas ?? 0).toFixed(2)} h`,
+  };
+
+  return (
+    <Box>
+      {/* Filtros */}
+      <Box display="flex" flexWrap="wrap" gap={2} mb={2}>
+        <TextField
+          size="small" type="date" label="Fecha" InputLabelProps={{ shrink: true }}
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+        />
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Módulo</InputLabel>
+          <Select
+            label="Módulo"
+            value={moduloId}
+            onChange={(e) => setModuloId(e.target.value as string)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {modulos.map((m) => <MenuItem key={m.id} value={String(m.id)}>{m.nombre}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <Button variant="contained" onClick={buscar} disabled={cargando}
+          sx={{ bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" } }}>
+          BUSCAR
+        </Button>
+      </Box>
+
+      {cargando ? (
+        <Box textAlign="center" py={4}><CircularProgress /></Box>
+      ) : !data ? (
+        <Typography sx={{ color: "#94a3b8" }}>
+          Elige una fecha y presiona BUSCAR
+        </Typography>
+      ) : (
+        <Box>
+          <SeccionAnomalia
+            titulo="No tuvieron movimiento"
+            items={data.sin_movimiento}
+            columnas={[usuarioCol, moduloCol]}
+          />
+          <SeccionAnomalia
+            titulo="Les faltó check-out"
+            items={data.falta_checkout}
+            columnas={[usuarioCol, moduloCol, entradaCol]}
+          />
+          <SeccionAnomalia
+            titulo="Les faltó check-in"
+            items={data.falta_checkin}
+            columnas={[usuarioCol, moduloCol, salidaCol]}
+          />
+          <SeccionAnomalia
+            titulo="Menos de 1 hora"
+            items={data.menos_de_una_hora}
+            columnas={[usuarioCol, moduloCol, entradaCol, salidaCol, horasCol]}
+          />
+        </Box>
       )}
     </Box>
   );
@@ -1633,6 +1812,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Configurar Promotores" />
         <Tab label="Alertas" />
         <Tab label="Acumulado semanal" />
+        <Tab label="Quién faltó" />
       </Tabs>
 
       {tab === 0 && <TabRegistros />}
@@ -1647,6 +1827,7 @@ const VistaAdmin: React.FC = () => {
       )}
       {tab === 3 && <TabAlertas />}
       {tab === 4 && <TabAcumulado />}
+      {tab === 5 && <TabAnomalias />}
     </Box>
   );
 };
