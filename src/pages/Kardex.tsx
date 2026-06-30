@@ -1,4 +1,5 @@
 ﻿import axios from "axios";
+import * as XLSX from "xlsx";
 import {
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Typography,
@@ -171,6 +172,88 @@ const Kardex = () => {
     return { rows, saldoInicial, totalEntradas, totalSalidas };
   }, [data, existenciaActual, moduloCargado, modoSaldo]);
 
+  // Cuadre del periodo filtrado: suma cantidad por tipo_movimiento respetando el modulo
+  const resumen = useMemo(() => {
+    if (!modoSaldo) return null;
+    const modSel = Number(moduloCargado);
+    const afectaModulo = (row: Kardex) =>
+      row.modulo_origen_id === modSel || row.modulo_destino_id === modSel;
+
+    let entradas = 0, ventas = 0, cancelaciones = 0;
+    let traspasosRecibidos = 0, traspasosEnviados = 0;
+    let ajustesPos = 0, ajustesNeg = 0, conteo = 0;
+
+    for (const row of data) {
+      switch (row.tipo_movimiento) {
+        case "ENTRADA":
+          if (row.modulo_destino_id === modSel) entradas += row.cantidad;
+          break;
+        case "VENTA":
+          if (row.modulo_origen_id === modSel) ventas += row.cantidad;
+          break;
+        case "CANCELACION_VENTA":
+          if (afectaModulo(row)) cancelaciones += row.cantidad;
+          break;
+        case "TRASPASO_ENTRADA":
+          if (row.modulo_destino_id === modSel) traspasosRecibidos += row.cantidad;
+          break;
+        case "TRASPASO_SALIDA":
+          if (row.modulo_origen_id === modSel) traspasosEnviados += row.cantidad;
+          break;
+        case "AJUSTE_POSITIVO":
+          if (afectaModulo(row)) ajustesPos += row.cantidad;
+          break;
+        case "AJUSTE_NEGATIVO":
+          if (afectaModulo(row)) ajustesNeg += row.cantidad;
+          break;
+        case "CONTEO_FISICO":
+          // suma firmada: cantidad ya viene con signo
+          if (row.modulo_origen_id === modSel) conteo += row.cantidad;
+          break;
+      }
+    }
+
+    return {
+      entradas, ventas, cancelaciones, traspasosRecibidos,
+      traspasosEnviados, ajustesPos, ajustesNeg, conteo,
+    };
+  }, [data, moduloCargado, modoSaldo]);
+
+  // Nombre legible del modulo cargado (para titulo del cuadro y del Excel)
+  const nombreModuloCargado = useMemo(
+    () => modulos.find((m) => String(m.id) === String(moduloCargado))?.nombre ?? moduloCargado,
+    [modulos, moduloCargado]
+  );
+
+  // Exporta a .xlsx exactamente lo que se ve en la tabla Admipaq (sin endpoint nuevo)
+  const descargarExcel = () => {
+    if (!vistaSaldo) return;
+    const encabezado = ["Fecha", "Producto", "Movimiento", "Entrada", "Salida", "Existencia"];
+    const filas: (string | number)[][] = [];
+    filas.push(["Con cuántos inicias", "", "", "", "", vistaSaldo.saldoInicial]);
+    for (const { row, entrada, salida, saldo } of vistaSaldo.rows) {
+      filas.push([
+        new Date(row.fecha).toLocaleDateString("es-MX"),
+        row.producto,
+        etiquetaMovimiento(row.tipo_movimiento),
+        entrada ?? "",
+        salida ?? "",
+        saldo,
+      ]);
+    }
+    filas.push(["Totales", "", "", vistaSaldo.totalEntradas, vistaSaldo.totalSalidas, ""]);
+
+    const ws = XLSX.utils.aoa_to_sheet([encabezado, ...filas]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Kardex");
+    const nombre =
+      `Kardex_${productoCargado}_${nombreModuloCargado}_${fechaInicio || "inicio"}_${fechaFin || "fin"}.xlsx`;
+    XLSX.writeFile(wb, nombre);
+  };
+
+  // Lineas divisorias tipo Admipaq (solo modo saldo)
+  const sxBorde = { border: "1px solid #ddd" };
+
   return (
     <>
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -268,6 +351,44 @@ const Kardex = () => {
         </Box>
       </Paper>
 
+      {modoSaldo && resumen && vistaSaldo && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+            <Typography variant="h6">
+              Cuadre del periodo — {productoCargado} / {nombreModuloCargado}
+            </Typography>
+            <Button variant="outlined" onClick={descargarExcel}>
+              Descargar Excel
+            </Button>
+          </Box>
+
+          <Box mt={2} sx={{ maxWidth: 360 }}>
+            {[
+              ["Iniciaste con:", vistaSaldo.saldoInicial],
+              ["Entraron (entradas):", resumen.entradas],
+              ["Vendiste (ventas):", resumen.ventas],
+              ["Cancelaste (cancelaciones):", resumen.cancelaciones],
+              ["Traspasos recibidos:", resumen.traspasosRecibidos],
+              ["Traspasos enviados:", resumen.traspasosEnviados],
+              ["Ajustes (+):", resumen.ajustesPos],
+              ["Ajustes (−):", resumen.ajustesNeg],
+              ["Inventarios (conteo):", resumen.conteo],
+              ["Deberías tener:", existenciaActual],
+            ].map(([etiqueta, valor]) => (
+              <Box
+                key={etiqueta as string}
+                display="flex"
+                justifyContent="space-between"
+                sx={{ py: 0.25 }}
+              >
+                <span>{etiqueta}</span>
+                <strong>{valor as number}</strong>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+
       <TableContainer component={Paper}>
         <Typography variant="h6" sx={{ p: 2 }}>
           Historial Kardex
@@ -278,12 +399,12 @@ const Kardex = () => {
             <TableRow>
               {modoSaldo ? (
                 <>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Producto</TableCell>
-                  <TableCell>Movimiento</TableCell>
-                  <TableCell>Entrada</TableCell>
-                  <TableCell>Salida</TableCell>
-                  <TableCell>Existencia</TableCell>
+                  <TableCell sx={sxBorde}>Fecha</TableCell>
+                  <TableCell sx={sxBorde}>Producto</TableCell>
+                  <TableCell sx={sxBorde}>Movimiento</TableCell>
+                  <TableCell sx={sxBorde}>Entrada</TableCell>
+                  <TableCell sx={sxBorde}>Salida</TableCell>
+                  <TableCell sx={sxBorde}>Existencia</TableCell>
                 </>
               ) : (
                 <>
@@ -302,35 +423,35 @@ const Kardex = () => {
               <>
                 {/* Con cuantos inicias */}
                 <TableRow>
-                  <TableCell>Con cuántos inicias</TableCell>
-                  <TableCell />
-                  <TableCell />
-                  <TableCell />
-                  <TableCell />
-                  <TableCell>{vistaSaldo.saldoInicial}</TableCell>
+                  <TableCell sx={sxBorde}>Con cuántos inicias</TableCell>
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde}>{vistaSaldo.saldoInicial}</TableCell>
                 </TableRow>
 
                 {vistaSaldo.rows.map(({ row, entrada, salida, saldo }) => (
                   <TableRow key={row.id}>
-                    <TableCell>
+                    <TableCell sx={sxBorde}>
                       {new Date(row.fecha).toLocaleDateString("es-MX")}
                     </TableCell>
-                    <TableCell>{row.producto}</TableCell>
-                    <TableCell>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
-                    <TableCell>{entrada ?? ""}</TableCell>
-                    <TableCell>{salida ?? ""}</TableCell>
-                    <TableCell>{saldo}</TableCell>
+                    <TableCell sx={sxBorde}>{row.producto}</TableCell>
+                    <TableCell sx={sxBorde}>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
+                    <TableCell sx={sxBorde}>{entrada ?? ""}</TableCell>
+                    <TableCell sx={sxBorde}>{salida ?? ""}</TableCell>
+                    <TableCell sx={sxBorde}>{saldo}</TableCell>
                   </TableRow>
                 ))}
 
                 {/* Totales */}
                 <TableRow>
-                  <TableCell>Totales</TableCell>
-                  <TableCell />
-                  <TableCell />
-                  <TableCell>{vistaSaldo.totalEntradas}</TableCell>
-                  <TableCell>{vistaSaldo.totalSalidas}</TableCell>
-                  <TableCell />
+                  <TableCell sx={sxBorde}>Totales</TableCell>
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde} />
+                  <TableCell sx={sxBorde}>{vistaSaldo.totalEntradas}</TableCell>
+                  <TableCell sx={sxBorde}>{vistaSaldo.totalSalidas}</TableCell>
+                  <TableCell sx={sxBorde} />
                 </TableRow>
               </>
             ) : (
