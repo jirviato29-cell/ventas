@@ -5,7 +5,7 @@ import {
   TextField, Button, Box, MenuItem, FormControl, InputLabel, Select, TablePagination,
   Autocomplete
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { obtenerRolDesdeToken } from "../components/Token";
 import { InventarioGeneral } from "../Types";
 
@@ -17,6 +17,8 @@ interface Kardex {
   tipo_movimiento: string;
   modulo_origen?: string;
   modulo_destino?: string;
+  modulo_origen_id?: number | null;
+  modulo_destino_id?: number | null;
   fecha: string;
 }
 
@@ -34,6 +36,13 @@ const Kardex = () => {
   const [moduloId, setModuloId] = useState("");
   const [tipoMovimiento, setTipoMovimiento] = useState("");
   const [productosCatalogo, setProductosCatalogo] = useState<InventarioGeneral[]>([]);
+  const [existenciaActual, setExistenciaActual] = useState<number | null>(null);
+  // snapshot del producto/modulo con que se hizo la ultima carga (no los filtros vivos)
+  const [productoCargado, setProductoCargado] = useState("");
+  const [moduloCargado, setModuloCargado] = useState("");
+
+  // modo saldo: derivado del SNAPSHOT de la carga, no de los filtros vivos
+  const modoSaldo = !!(productoCargado && moduloCargado && existenciaActual != null);
 
   // const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
   const rolToken = obtenerRolDesdeToken();
@@ -60,6 +69,26 @@ const Kardex = () => {
     );
 
     setData(res.data);
+
+    // saldo corriente: existencia de HOY del producto en el modulo
+    if (producto && moduloId) {
+      try {
+        const resEx = await axios.get(
+          `https://ato-appservidor-nvxt.onrender.com/kardex/existencia`,
+          { ...config, params: { producto, modulo_id: moduloId } }
+        );
+        setExistenciaActual(resEx.data?.existencia ?? null);
+      } catch {
+        setExistenciaActual(null);
+      }
+      // snapshot de la consulta realizada
+      setProductoCargado(producto);
+      setModuloCargado(moduloId);
+    } else {
+      setExistenciaActual(null);
+      setProductoCargado("");
+      setModuloCargado("");
+    }
   };
 
   const cargarModulos = async () => {
@@ -83,6 +112,31 @@ const Kardex = () => {
     cargarModulos();
     cargarProductosCatalogo();
   }, []);
+
+  // Reconstruye el saldo corriente hacia atras desde la existencia de hoy.
+  // data viene ordenada por fecha DESC (mas reciente arriba):
+  //   saldo_despues[0] = existencia
+  //   saldo_despues[i] = saldo_despues[i-1] - delta(i-1)
+  const saldos = useMemo<(number | null)[]>(() => {
+    if (!modoSaldo || existenciaActual == null) return [];
+
+    const modSel = Number(moduloCargado);
+
+    const deltaDe = (row: Kardex): number => {
+      if (row.tipo_movimiento === "CONTEO_FISICO" && row.modulo_origen_id === modSel) {
+        return row.cantidad; // cantidad ya viene firmada
+      }
+      if (row.modulo_destino_id === modSel) return row.cantidad;
+      if (row.modulo_origen_id === modSel) return -row.cantidad;
+      return 0;
+    };
+
+    const arr: (number | null)[] = new Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      arr[i] = i === 0 ? existenciaActual : (arr[i - 1] as number) - deltaDe(data[i - 1]);
+    }
+    return arr;
+  }, [data, existenciaActual, moduloCargado, modoSaldo]);
 
   return (
     <>
@@ -194,11 +248,14 @@ const Kardex = () => {
               <TableCell>Tipo</TableCell>
               <TableCell>Movimiento</TableCell>
               <TableCell>Cantidad</TableCell>
+              {modoSaldo && <TableCell>Existencia</TableCell>}
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {data.slice(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina).map((row) => (
+            {data.slice(pagina * filasPorPagina, pagina * filasPorPagina + filasPorPagina).map((row, idx) => {
+              const globalIdx = pagina * filasPorPagina + idx;
+              return (
               <TableRow key={row.id}>
                 <TableCell>
                   {new Date(row.fecha).toLocaleDateString("es-MX")}
@@ -208,8 +265,12 @@ const Kardex = () => {
                 <TableCell>{row.tipo_producto}</TableCell>
                 <TableCell>{row.tipo_movimiento}</TableCell>
                 <TableCell>{row.cantidad}</TableCell>
+                {modoSaldo && (
+                  <TableCell>{saldos[globalIdx] ?? "-"}</TableCell>
+                )}
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
 
