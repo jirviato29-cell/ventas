@@ -32,6 +32,24 @@ const Kardex = () => {
   const etiquetaMovimiento = (m: string) =>
     m === "CONTEO_FISICO" ? "HICIERON INVENTARIO" : m;
 
+  // Nombre legible del modulo por id (mismo patron que nombreModulo)
+  const nombrePorId = (id?: number | null) =>
+    modulos.find((m) => String(m.id) === String(id))?.nombre ?? "";
+
+  // Texto del movimiento con anotacion de origen/destino para traspasos
+  const etiquetaMovimientoConModulo = (row: Kardex): string => {
+    const base = etiquetaMovimiento(row.tipo_movimiento);
+    if (row.tipo_movimiento === "TRASPASO_ENTRADA") {
+      const origen = nombrePorId(row.modulo_origen_id);
+      return origen ? `TRASPASO ENTRADA ← ${origen}` : base;
+    }
+    if (row.tipo_movimiento === "TRASPASO_SALIDA") {
+      const destino = nombrePorId(row.modulo_destino_id);
+      return destino ? `TRASPASO SALIDA → ${destino}` : base;
+    }
+    return base;
+  };
+
 
   // filtros
   const [producto, setProducto] = useState("");
@@ -235,7 +253,7 @@ const Kardex = () => {
       filas.push([
         new Date(row.fecha).toLocaleDateString("es-MX"),
         row.producto,
-        etiquetaMovimiento(row.tipo_movimiento),
+        etiquetaMovimientoConModulo(row),
         entrada ?? "",
         salida ?? "",
         saldo,
@@ -437,7 +455,7 @@ const Kardex = () => {
                       {new Date(row.fecha).toLocaleDateString("es-MX")}
                     </TableCell>
                     <TableCell sx={sxBorde}>{row.producto}</TableCell>
-                    <TableCell sx={sxBorde}>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
+                    <TableCell sx={sxBorde}>{etiquetaMovimientoConModulo(row)}</TableCell>
                     <TableCell sx={sxBorde}>{entrada ?? ""}</TableCell>
                     <TableCell sx={sxBorde}>{salida ?? ""}</TableCell>
                     <TableCell sx={sxBorde}>{saldo}</TableCell>
@@ -463,7 +481,7 @@ const Kardex = () => {
 
                   <TableCell>{row.producto}</TableCell>
                   <TableCell>{row.tipo_producto}</TableCell>
-                  <TableCell>{etiquetaMovimiento(row.tipo_movimiento)}</TableCell>
+                  <TableCell>{etiquetaMovimientoConModulo(row)}</TableCell>
                   <TableCell>{row.cantidad}</TableCell>
                 </TableRow>
               ))
