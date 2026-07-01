@@ -132,6 +132,7 @@ interface AnomaliasResp {
   falta_checkin: AnomaliaItem[];
   falta_checkout: AnomaliaItem[];
   menos_de_una_hora: AnomaliaItem[];
+  justificaciones?: Record<number, { estado: string; nota: string | null }>;
 }
 
 interface CicloSemana {
@@ -780,48 +781,14 @@ const TabRegistros: React.FC = () => {
 const hoyISOmx = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }); // YYYY-MM-DD
 
-interface ColAnom {
-  head: string;
-  render: (it: AnomaliaItem) => React.ReactNode;
-}
+type FilaAnom = AnomaliaItem & { tipo: string };
 
-const SeccionAnomalia: React.FC<{
-  titulo: string;
-  items: AnomaliaItem[];
-  columnas: ColAnom[];
-}> = ({ titulo, items, columnas }) => (
-  <Box mb={3}>
-    <Typography variant="h6" fontWeight={700} mb={1}>
-      {titulo} ({items.length})
-    </Typography>
-    {items.length === 0 ? (
-      <Typography sx={{ color: "#94a3b8" }}>Sin casos</Typography>
-    ) : (
-      <TableContainer component={Paper} elevation={1}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: "#f8fafc" }}>
-              {columnas.map((c) => (
-                <TableCell key={c.head} sx={{ fontWeight: 700, color: "#FF6600" }}>
-                  {c.head}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((it) => (
-              <TableRow key={it.usuario_id}>
-                {columnas.map((c) => (
-                  <TableCell key={c.head}>{c.render(it)}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    )}
-  </Box>
-);
+type EstadoJust = "falta" | "justificada" | "vacaciones";
+const ESTADOS: { val: EstadoJust; label: string }[] = [
+  { val: "falta", label: "Falta" },
+  { val: "justificada", label: "Justificada" },
+  { val: "vacaciones", label: "Vacaciones" },
+];
 
 const TabAnomalias: React.FC = () => {
   const [modulos, setModulos] = useState<ModuloConUbicacion[]>([]);
@@ -829,6 +796,9 @@ const TabAnomalias: React.FC = () => {
   const [moduloId, setModuloId] = useState<string>("");
   const [data, setData] = useState<AnomaliasResp | null>(null);
   const [cargando, setCargando] = useState(false);
+  // estado local por usuario: lo del backend + cambios sin recargar todo
+  const [justifs, setJustifs] = useState<Record<number, { estado: string; nota: string }>>({});
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     axios.get<ModuloConUbicacion[]>(`${API}/modulos/con-ubicacion`, { headers: authH() })
@@ -847,30 +817,74 @@ const TabAnomalias: React.FC = () => {
         { headers: authH() }
       );
       setData(data);
+      const init: Record<number, { estado: string; nota: string }> = {};
+      Object.entries(data.justificaciones ?? {}).forEach(([uid, j]) => {
+        init[Number(uid)] = { estado: j.estado ?? "", nota: j.nota ?? "" };
+      });
+      setJustifs(init);
+    } catch {
+      setErrorMsg("No se pudieron cargar las anomalías.");
     } finally {
       setCargando(false);
     }
   };
 
-  const usuarioCol: ColAnom = {
-    head: "Usuario",
-    render: (it) => it.username || it.nombre_completo,
+  // une las 4 listas en un solo arreglo; cada persona aparece una vez
+  const filas: FilaAnom[] = useMemo(() => {
+    if (!data) return [];
+    return [
+      ...data.sin_movimiento.map((it) => ({ ...it, tipo: "Sin movimiento" })),
+      ...data.falta_checkin.map((it) => ({ ...it, tipo: "Falta check-in" })),
+      ...data.falta_checkout.map((it) => ({ ...it, tipo: "Falta check-out" })),
+      ...data.menos_de_una_hora.map((it) => ({ ...it, tipo: "Menos de 1 hora" })),
+    ];
+  }, [data]);
+
+  const setFila = (usuarioId: number, patch: Partial<{ estado: string; nota: string }>) =>
+    setJustifs((prev) => {
+      const base = prev[usuarioId] ?? { estado: "", nota: "" };
+      return { ...prev, [usuarioId]: { ...base, ...patch } };
+    });
+
+  const guardar = async (usuarioId: number, estado: string, nota: string) => {
+    try {
+      await axios.post(
+        `${API}/asistencia/justificacion`,
+        { usuario_id: usuarioId, fecha, estado, nota },
+        { headers: authH() }
+      );
+      setFila(usuarioId, { estado, nota });
+    } catch {
+      setErrorMsg("No se pudo guardar la justificación.");
+    }
   };
-  const moduloCol: ColAnom = {
-    head: "Módulo",
-    render: (it) => it.modulo_nombre ?? "—",
+
+  const borrar = async (usuarioId: number) => {
+    try {
+      await axios.delete(`${API}/asistencia/justificacion`, {
+        headers: authH(),
+        params: { usuario_id: usuarioId, fecha },
+      });
+      setFila(usuarioId, { estado: "", nota: "" });
+    } catch {
+      setErrorMsg("No se pudo quitar la justificación.");
+    }
   };
-  const entradaCol: ColAnom = {
-    head: "Entrada",
-    render: (it) => formatHora(it.entrada ?? null),
+
+  const onEstado = (usuarioId: number, estado: EstadoJust) => {
+    const actual = justifs[usuarioId]?.estado ?? "";
+    const nota = justifs[usuarioId]?.nota ?? "";
+    if (actual === estado) {
+      borrar(usuarioId); // click en el ya activo -> DELETE
+    } else {
+      guardar(usuarioId, estado, nota); // POST con ese estado + la nota actual
+    }
   };
-  const salidaCol: ColAnom = {
-    head: "Salida",
-    render: (it) => formatHora(it.salida ?? null),
-  };
-  const horasCol: ColAnom = {
-    head: "Horas",
-    render: (it) => `${(it.horas_trabajadas ?? 0).toFixed(2)} h`,
+
+  const onNotaBlur = (usuarioId: number) => {
+    const estado = justifs[usuarioId]?.estado ?? "";
+    if (!estado) return; // sin estado puesto, no guardamos solo nota
+    guardar(usuarioId, estado, justifs[usuarioId]?.nota ?? "");
   };
 
   return (
@@ -905,30 +919,79 @@ const TabAnomalias: React.FC = () => {
         <Typography sx={{ color: "#94a3b8" }}>
           Elige una fecha y presiona BUSCAR
         </Typography>
+      ) : filas.length === 0 ? (
+        <Typography sx={{ color: "#94a3b8" }}>Sin anomalías para esta fecha.</Typography>
       ) : (
-        <Box>
-          <SeccionAnomalia
-            titulo="No tuvieron movimiento"
-            items={data.sin_movimiento}
-            columnas={[usuarioCol, moduloCol]}
-          />
-          <SeccionAnomalia
-            titulo="Les faltó check-out"
-            items={data.falta_checkout}
-            columnas={[usuarioCol, moduloCol, entradaCol]}
-          />
-          <SeccionAnomalia
-            titulo="Les faltó check-in"
-            items={data.falta_checkin}
-            columnas={[usuarioCol, moduloCol, salidaCol]}
-          />
-          <SeccionAnomalia
-            titulo="Menos de 1 hora"
-            items={data.menos_de_una_hora}
-            columnas={[usuarioCol, moduloCol, entradaCol, salidaCol, horasCol]}
-          />
-        </Box>
+        <TableContainer component={Paper} elevation={1}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                {["Usuario", "Módulo", "Anomalía", "Check-in", "Check-out", "Estado", "Nota"].map((h) => (
+                  <TableCell key={h} sx={{ fontWeight: 700, color: "#FF6600" }}>{h}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filas.map((it) => {
+                const estadoActual = justifs[it.usuario_id]?.estado ?? "";
+                return (
+                  <TableRow key={it.usuario_id}>
+                    <TableCell>{it.username || it.nombre_completo}</TableCell>
+                    <TableCell>{it.modulo_nombre ?? "—"}</TableCell>
+                    <TableCell>{it.tipo}</TableCell>
+                    <TableCell sx={{ color: it.entrada ? undefined : "#94a3b8" }}>
+                      {formatHora(it.entrada ?? null)}
+                    </TableCell>
+                    <TableCell sx={{ color: it.salida ? undefined : "#94a3b8" }}>
+                      {formatHora(it.salida ?? null)}
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" gap={0.5} flexWrap="wrap">
+                        {ESTADOS.map((e) => {
+                          const activo = estadoActual === e.val;
+                          return (
+                            <Button
+                              key={e.val}
+                              size="small"
+                              variant={activo ? "contained" : "outlined"}
+                              onClick={() => onEstado(it.usuario_id, e.val)}
+                              sx={activo
+                                ? { bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" } }
+                                : { color: "#FF6600", borderColor: "#FF6600" }}
+                            >
+                              {e.label}
+                            </Button>
+                          );
+                        })}
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180 }}>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="Nota…"
+                        value={justifs[it.usuario_id]?.nota ?? ""}
+                        onChange={(ev) => setFila(it.usuario_id, { nota: ev.target.value })}
+                        onBlur={() => onNotaBlur(it.usuario_id)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
+
+      <Snackbar
+        open={!!errorMsg}
+        autoHideDuration={4000}
+        onClose={() => setErrorMsg(null)}
+      >
+        <Alert severity="error" variant="filled" onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
