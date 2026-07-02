@@ -837,11 +837,17 @@ const TabAnomalias: React.FC = () => {
       ...data.falta_checkin.map((it) => ({ ...it, tipo: "Falta check-in" })),
       ...data.falta_checkout.map((it) => ({ ...it, tipo: "Falta check-out" })),
       ...data.menos_de_una_hora.map((it) => ({ ...it, tipo: "Menos de 1 hora" })),
-    ].sort((a, b) => {
-      const mod = (a.modulo_nombre ?? "").localeCompare(b.modulo_nombre ?? "", "es");
-      if (mod !== 0) return mod;
-      return (a.username ?? "").localeCompare(b.username ?? "", "es");
-    });
+    ]
+      .filter((it) => it.modulo_nombre !== "BO") // excluir Bodega
+      .sort((a, b) => {
+        // "Cadenas C." siempre al final
+        const aCad = a.modulo_nombre === "Cadenas C.";
+        const bCad = b.modulo_nombre === "Cadenas C.";
+        if (aCad !== bCad) return aCad ? 1 : -1;
+        const mod = (a.modulo_nombre ?? "").localeCompare(b.modulo_nombre ?? "", "es");
+        if (mod !== 0) return mod;
+        return (a.username ?? "").localeCompare(b.username ?? "", "es");
+      });
   }, [data]);
 
   const setFila = (usuarioId: number, patch: Partial<{ estado: string; nota: string }>) =>
