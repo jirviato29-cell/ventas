@@ -375,8 +375,8 @@ const PlanesAdmin = () => {
         </Box>
       ) : (
         <>
-          {renderTabla("JUNIO", grupos.junio)}
           {renderTabla("JULIO", grupos.julio)}
+          {renderTabla("JUNIO", grupos.junio)}
           {grupos.otros.length > 0 && renderTabla("OTROS", grupos.otros)}
         </>
       )}
