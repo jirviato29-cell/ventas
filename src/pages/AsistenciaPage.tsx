@@ -839,15 +839,7 @@ const TabAnomalias: React.FC = () => {
       ...data.menos_de_una_hora.map((it) => ({ ...it, tipo: "Menos de 1 hora" })),
     ]
       .filter((it) => it.modulo_nombre !== "BO") // excluir Bodega
-      .sort((a, b) => {
-        // "Cadenas C." siempre al final
-        const aCad = a.modulo_nombre === "Cadenas C.";
-        const bCad = b.modulo_nombre === "Cadenas C.";
-        if (aCad !== bCad) return aCad ? 1 : -1;
-        const mod = (a.modulo_nombre ?? "").localeCompare(b.modulo_nombre ?? "", "es");
-        if (mod !== 0) return mod;
-        return (a.username ?? "").localeCompare(b.username ?? "", "es");
-      });
+      .sort((a, b) => (a.username ?? "").localeCompare(b.username ?? "", "es")); // orden por username A-Z
   }, [data]);
 
   const setFila = (usuarioId: number, patch: Partial<{ estado: string; nota: string }>) =>
