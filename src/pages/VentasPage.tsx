@@ -66,18 +66,21 @@ const CHIP_OPCIONES_EKT = [
   { value: 'Chip Cero/Libre',     label: 'Chip Cero / Libre / EKT' },
   { value: 'Chip Preactivado',    label: 'Chip Preactivado / Otras Cadenas' },
   { value: 'Porta Otras cadenas', label: 'Portabilidad / EKT / Otras Cadenas' },
+  { value: 'Boletin 63',          label: 'Boletin 63 / ATO' },
 ];
 
 const CHIP_OPCIONES_COPPEL = [
   { value: 'Activacion',          label: 'Telefono Activado de Cadenas' },
   { value: 'Chip Coppel',         label: 'Chip Express Coppel' },
   { value: 'Portabilidad Coppel', label: 'Portabilidad Coppel' },
+  { value: 'Boletin 63',          label: 'Boletin 63 / ATO' },
 ];
 
 const CHIP_OPCIONES_OTRAS_CADENAS = [
   { value: 'Activacion',          label: 'Telefono Activado de Cadenas' },
   { value: 'Chip Preactivado',    label: 'Chip Preactivado / Otras Cadenas' },
   { value: 'Porta Otras cadenas', label: 'Portabilidad / EKT / Otras Cadenas' },
+  { value: 'Boletin 63',          label: 'Boletin 63 / ATO' },
 ];
 
 const CHIP_OPCIONES_POR_CADENA: Record<string, typeof CHIP_OPCIONES_TODAS> = {
