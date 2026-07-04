@@ -4,7 +4,7 @@ import {
   TableContainer, MenuItem, FormControlLabel, FormControl, FormLabel,
   RadioGroup, Radio, TablePagination, Table, TableHead, TableRow,
   TableCell, TableBody, Divider, Chip, IconButton, Tabs, Tab, useMediaQuery,
-  CircularProgress, InputAdornment,
+  CircularProgress, InputAdornment, Checkbox,
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -58,6 +58,7 @@ const CHIP_OPCIONES_TODAS = [
   { value: 'Portabilidad Coppel', label: 'Portabilidad Coppel' },
   { value: 'Porta Otras cadenas', label: 'Portabilidad / EKT / Otras Cadenas' },
   { value: 'Activacion',          label: 'Telefono Activado de Cadenas' },
+  { value: 'Boletin 63',          label: 'Boletin 63 / ATO' },
 ];
 
 const CHIP_OPCIONES_EKT = [
@@ -192,6 +193,9 @@ const FormularioVentaMultiple = () => {
   const [registrando, setRegistrando] = useState(false);
   const [recarga, setRecarga] = useState('');
   const [tadDevice, setTadDevice] = useState('');
+  const [imei, setImei] = useState('');
+  const [iccid, setIccid] = useState('');
+  const [cambioChip, setCambioChip] = useState(false);
 
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
@@ -629,11 +633,14 @@ const FormularioVentaMultiple = () => {
           monto_recarga: esPayJoy ? 0 : parseFloat(recarga),
           telefono_cliente: telefono || null,
           cvip: esPayJoy ? false : cvip,
+          imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
+          iccid: tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null,
+          cambio_chip: tipoChip === 'Boletin 63' ? cambioChip : false,
         },
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
-      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice('');
+      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
@@ -1013,6 +1020,25 @@ const FormularioVentaMultiple = () => {
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
               />
               <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth margin="normal" />
+                {tipoChip === 'Boletin 63' && (
+                  <>
+                    <TextField
+                      label="IMEI" value={imei} fullWidth margin="normal"
+                      onChange={(e) => setImei(e.target.value)}
+                    />
+                    <FormControlLabel
+                      control={<Checkbox checked={cambioChip} onChange={(e) => { setCambioChip(e.target.checked); if (!e.target.checked) setIccid(''); }} />}
+                      label="¿Se cambió el chip?"
+                      sx={{ mt: 1 }}
+                    />
+                    {cambioChip && (
+                      <TextField
+                        label="ICCID" value={iccid} fullWidth margin="normal"
+                        onChange={(e) => setIccid(e.target.value)}
+                      />
+                    )}
+                  </>
+                )}
               <FormControl sx={{ mt: 1 }}>
                 <FormLabel>Cliente VIP</FormLabel>
                 <RadioGroup row value={cvip} onChange={(e) => setcvip(e.target.value === 'true')}>
@@ -1027,7 +1053,7 @@ const FormularioVentaMultiple = () => {
           )}
           <Button
             variant="contained" fullWidth onClick={handleSubmit}
-            disabled={registrando || !tipoChip || (tipoChip === 'Tarjetas PayJoy' ? !tadDevice : (!numero || !recarga || numeroDuplicado || verificandoNumero))}
+            disabled={registrando || !tipoChip || (tipoChip === 'Tarjetas PayJoy' ? !tadDevice : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei)))}
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
         </>
