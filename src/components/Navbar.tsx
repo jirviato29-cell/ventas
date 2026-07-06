@@ -259,6 +259,7 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones/usuario">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/inventario/modulo">Inventario</Button>
+                  <Button sx={navBtnSx} component={Link} to="/equipos_telcel">Equipos Telcel</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
                   <Button sx={navBtnSx} component={Link} to="/corte" startIcon={<ContentCutIcon />}>Corte</Button>
                   <Button sx={navBtnSx} component={Link} to="/ranking">ESTADÍSTICAS</Button>
@@ -545,6 +546,10 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario/modulo")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                 <ListItemText primary="Inventario" />
+              </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/equipos_telcel")}>
+                <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
+                <ListItemText primary="Equipos Telcel" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
