@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Container, Typography, TextField, Box, Paper, Table, TableHead,
-  TableRow, TableCell, TableBody, TableContainer
+  TableRow, TableCell, TableBody, TableContainer, Chip
 } from '@mui/material';
 import axios from 'axios';
 
@@ -14,8 +14,14 @@ interface ProductoInv {
   tipo_producto: string;
 }
 
+interface ComisionItem {
+  producto: string;
+  cantidad: number;
+}
+
 const ListaPrecios = () => {
   const [productos, setProductos] = useState<ProductoInv[]>([]);
+  const [comisionSet, setComisionSet] = useState<Set<string>>(new Set());
   const [filtro, setFiltro] = useState('');
   const [cargando, setCargando] = useState(true);
   const token = localStorage.getItem('token');
@@ -24,11 +30,15 @@ const ListaPrecios = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const res = await axios.get(
-          'https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general',
-          config
+        const [resInv, resCom] = await Promise.all([
+          axios.get('https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general', config),
+          axios.get('https://ato-appservidor-nvxt.onrender.com/comisiones/comisiones', config),
+        ]);
+        setProductos(resInv.data);
+        const set = new Set<string>(
+          (resCom.data as ComisionItem[]).map((c) => (c.producto || '').trim().toLowerCase())
         );
-        setProductos(res.data);
+        setComisionSet(set);
       } catch (e) {
         console.error('Error al cargar lista de precios', e);
       } finally {
@@ -38,6 +48,9 @@ const ListaPrecios = () => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const tieneComision = (nombre: string) =>
+    comisionSet.has((nombre || '').trim().toLowerCase());
 
   const soloTelefonos = useMemo(
     () => productos.filter((p) => p.tipo_producto === 'telefono'),
@@ -83,7 +96,7 @@ const ListaPrecios = () => {
     }).format(n);
 
   const Columna = ({ titulo, data, color }: { titulo: string; data: ProductoInv[]; color: string }) => (
-    <TableContainer component={Paper} sx={{ flex: 1, minWidth: 300 }}>
+    <TableContainer component={Paper} sx={{ flex: 1, minWidth: 340 }}>
       <Box sx={{ bgcolor: color, color: 'white', px: 2, py: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {titulo} ({data.length})
@@ -94,6 +107,8 @@ const ListaPrecios = () => {
           <TableRow>
             <TableCell sx={{ fontWeight: 700 }}>Equipo</TableCell>
             <TableCell sx={{ fontWeight: 700 }} align="right">Precio</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">Existencia</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">Comisión</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -101,11 +116,35 @@ const ListaPrecios = () => {
             <TableRow key={p.id} hover>
               <TableCell>{limpiarNombre(p.producto)}</TableCell>
               <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
+              <TableCell align="center">
+                <Chip
+                  label={p.cantidad > 0 ? 'Sí hay' : 'No hay'}
+                  size="small"
+                  sx={{
+                    bgcolor: p.cantidad > 0 ? '#2e7d32' : '#c62828',
+                    color: 'white',
+                    fontWeight: 700,
+                  }}
+                />
+              </TableCell>
+              <TableCell align="center">
+                <Chip
+                  label={tieneComision(p.producto) ? 'Sí' : 'No'}
+                  size="small"
+                  variant={tieneComision(p.producto) ? 'filled' : 'outlined'}
+                  sx={{
+                    bgcolor: tieneComision(p.producto) ? '#1565c0' : 'transparent',
+                    color: tieneComision(p.producto) ? 'white' : '#888',
+                    fontWeight: 700,
+                    borderColor: '#bbb',
+                  }}
+                />
+              </TableCell>
             </TableRow>
           ))}
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={2} align="center" sx={{ color: '#888' }}>
+              <TableCell colSpan={4} align="center" sx={{ color: '#888' }}>
                 Sin resultados
               </TableCell>
             </TableRow>
@@ -133,8 +172,8 @@ const ListaPrecios = () => {
         <Typography>Cargando...</Typography>
       ) : (
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <Columna titulo="Libre" data={libres} color="#1565c0" />
-          <Columna titulo="Telcel" data={telcel} color="#e65100" />
+          <Columna titulo="Telcel" data={telcel} color="#0d47a1" />
+          <Columna titulo="Libre" data={libres} color="#2e7d32" />
         </Box>
       )}
     </Container>
