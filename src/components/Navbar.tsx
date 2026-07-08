@@ -175,6 +175,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/ventas"><ConfirmationNumberIcon fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />Ticket</MenuItem>
                     <MenuItem component={Link} to="/ventas/chips">Chips</MenuItem>
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
+                    <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorInventario)}>
@@ -380,6 +381,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/chips")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Chips" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/lista-precios")}>
+                    <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
+                    <ListItemText primary="Lista de Precios" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/corte")}>
                     <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
