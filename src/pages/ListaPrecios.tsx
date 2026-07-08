@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Container, Typography, TextField, Box, Paper, Table, TableHead,
-  TableRow, TableCell, TableBody, TableContainer, Chip
+  TableRow, TableCell, TableBody, TableContainer
 } from '@mui/material';
 import axios from 'axios';
 
@@ -21,7 +21,7 @@ interface ComisionItem {
 
 const ListaPrecios = () => {
   const [productos, setProductos] = useState<ProductoInv[]>([]);
-  const [comisionSet, setComisionSet] = useState<Set<string>>(new Set());
+  const [comisionMap, setComisionMap] = useState<Map<string, number>>(new Map());
   const [filtro, setFiltro] = useState('');
   const [cargando, setCargando] = useState(true);
   const token = localStorage.getItem('token');
@@ -35,10 +35,11 @@ const ListaPrecios = () => {
           axios.get('https://ato-appservidor-nvxt.onrender.com/comisiones/comisiones', config),
         ]);
         setProductos(resInv.data);
-        const set = new Set<string>(
-          (resCom.data as ComisionItem[]).map((c) => (c.producto || '').trim().toLowerCase())
-        );
-        setComisionSet(set);
+        const map = new Map<string, number>();
+        (resCom.data as ComisionItem[]).forEach((c) => {
+          map.set((c.producto || '').trim().toLowerCase(), c.cantidad);
+        });
+        setComisionMap(map);
       } catch (e) {
         console.error('Error al cargar lista de precios', e);
       } finally {
@@ -49,8 +50,10 @@ const ListaPrecios = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tieneComision = (nombre: string) =>
-    comisionSet.has((nombre || '').trim().toLowerCase());
+  const montoComision = (nombre: string): number | null => {
+    const v = comisionMap.get((nombre || '').trim().toLowerCase());
+    return v === undefined ? null : v;
+  };
 
   const soloTelefonos = useMemo(
     () => productos.filter((p) => p.tipo_producto === 'telefono'),
@@ -102,46 +105,34 @@ const ListaPrecios = () => {
           {titulo} ({data.length})
         </Typography>
       </Box>
-      <Table size="small" stickyHeader>
+      <Table size="small" stickyHeader sx={{ '& td, & th': { border: '1px solid #e0e0e0' } }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{ fontWeight: 700 }}>Equipo</TableCell>
             <TableCell sx={{ fontWeight: 700 }} align="right">Precio</TableCell>
             <TableCell sx={{ fontWeight: 700 }} align="center">Existencia</TableCell>
-            <TableCell sx={{ fontWeight: 700 }} align="center">Comisión</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="right">Comisión</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((p) => (
-            <TableRow key={p.id} hover>
-              <TableCell>{limpiarNombre(p.producto)}</TableCell>
-              <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
-              <TableCell align="center">
-                <Chip
-                  label={p.cantidad > 0 ? 'Sí hay' : 'No hay'}
-                  size="small"
-                  sx={{
-                    bgcolor: p.cantidad > 0 ? '#2e7d32' : '#c62828',
-                    color: 'white',
-                    fontWeight: 700,
-                  }}
-                />
-              </TableCell>
-              <TableCell align="center">
-                <Chip
-                  label={tieneComision(p.producto) ? 'Sí' : 'No'}
-                  size="small"
-                  variant={tieneComision(p.producto) ? 'filled' : 'outlined'}
-                  sx={{
-                    bgcolor: tieneComision(p.producto) ? '#1565c0' : 'transparent',
-                    color: tieneComision(p.producto) ? 'white' : '#888',
-                    fontWeight: 700,
-                    borderColor: '#bbb',
-                  }}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+          {data.map((p) => {
+            const com = montoComision(p.producto);
+            return (
+              <TableRow key={p.id} hover>
+                <TableCell>{limpiarNombre(p.producto)}</TableCell>
+                <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
+                <TableCell
+                  align="center"
+                  sx={{ fontWeight: 700, color: p.cantidad > 0 ? '#2e7d32' : '#c62828' }}
+                >
+                  {p.cantidad}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, color: com ? '#1565c0' : '#bbb' }}>
+                  {com ? formatoPrecio(com) : '—'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
           {data.length === 0 && (
             <TableRow>
               <TableCell colSpan={4} align="center" sx={{ color: '#888' }}>
