@@ -67,9 +67,12 @@ const EquiposTelcel = () => {
           },
         }
       );
-      alert(
-        `Carga terminada. Insertados: ${res.data.insertados}. Saltados por repetidos: ${res.data.saltados_repetidos}.`
-      );
+      let msg = `Carga terminada.\nInsertados: ${res.data.insertados}\nSaltados por repetidos: ${res.data.saltados_repetidos}`;
+      if (res.data.rechazados_clave && res.data.rechazados_clave > 0) {
+        msg += `\nRechazados por clave no reconocida: ${res.data.rechazados_clave}`;
+        msg += `\nClaves no reconocidas: ${res.data.claves_no_reconocidas.join(", ")}`;
+      }
+      alert(msg);
       cargarEquipos();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al procesar el archivo Excel");
