@@ -200,6 +200,7 @@ const FormularioVentaMultiple = () => {
   const [iccid, setIccid] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
 
+  const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
   const [telefonoClave, setTelefonoClave] = useState('');
@@ -668,6 +669,7 @@ const FormularioVentaMultiple = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
       setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); settelefono('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
+      setTelefonoOrigen('');
     };
 
     if (metodoPago === 'dividido') {
@@ -848,7 +850,7 @@ const FormularioVentaMultiple = () => {
           ].map((t) => (
             <Grid item xs={6} key={t.v}>
               <Box
-                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); }}
+                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen(''); }}
                 sx={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8,
                   py: 1, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
@@ -1065,6 +1067,24 @@ const FormularioVentaMultiple = () => {
       {/* ── Teléfono ── */}
       {!esCadenas && tipoVenta === 'telefono' && (
         <>
+          <Box sx={{ display: 'flex', gap: 2, mt: 2, mb: 1 }}>
+            <Button
+              variant={telefonoOrigen === 'telcel' ? 'contained' : 'outlined'}
+              onClick={() => setTelefonoOrigen('telcel')}
+              fullWidth
+            >
+              Telcel
+            </Button>
+            <Button
+              variant={telefonoOrigen === 'libre' ? 'contained' : 'outlined'}
+              onClick={() => setTelefonoOrigen('libre')}
+              fullWidth
+            >
+              Libre
+            </Button>
+          </Box>
+          {telefonoOrigen !== '' && (
+          <>
           <Autocomplete<{ clave: string; producto: string }>
             loading={buscando} options={opcionesTelefonos}
             value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
@@ -1149,6 +1169,8 @@ const FormularioVentaMultiple = () => {
             disabled={!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago} sx={{ mt: 2 }}>
             Registrar Venta Teléfono
           </Button>
+          </>
+          )}
         </>
       )}
 
