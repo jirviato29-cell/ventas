@@ -201,6 +201,8 @@ const FormularioVentaMultiple = () => {
   const [cambioChip, setCambioChip] = useState(false);
 
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('');
+  const [telefonoImei, setTelefonoImei] = useState('');
+  const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
   const [telefonoClave, setTelefonoClave] = useState('');
@@ -670,6 +672,8 @@ const FormularioVentaMultiple = () => {
       setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); settelefono('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
       setTelefonoOrigen('');
+      setTelefonoImei('');
+      setTelefonoClasificacion('');
     };
 
     if (metodoPago === 'dividido') {
@@ -1085,6 +1089,15 @@ const FormularioVentaMultiple = () => {
           </Box>
           {telefonoOrigen !== '' && (
           <>
+          {telefonoOrigen === 'telcel' && (
+            <TextField
+              label="IMEI (opcional)"
+              value={telefonoImei}
+              onChange={(e) => setTelefonoImei(e.target.value)}
+              fullWidth
+              margin="normal"
+            />
+          )}
           <Autocomplete<{ clave: string; producto: string }>
             loading={buscando} options={opcionesTelefonos}
             value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
@@ -1123,7 +1136,25 @@ const FormularioVentaMultiple = () => {
             <MenuItem value="Paguitos">Paguitos</MenuItem>
           </TextField>
           <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth margin="normal" />
-          <TextField label="Chip casado" value={Chip_casado} onChange={(e) => setChip_casado(e.target.value)} fullWidth margin="normal" />
+          {telefonoOrigen === 'telcel' && (
+            <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
+              <Button
+                variant={telefonoClasificacion === 'linea_nueva' ? 'contained' : 'outlined'}
+                onClick={() => setTelefonoClasificacion('linea_nueva')}
+                fullWidth
+              >
+                Línea Nueva
+              </Button>
+              <Button
+                variant={telefonoClasificacion === 'boletin_63' ? 'contained' : 'outlined'}
+                onClick={() => setTelefonoClasificacion('boletin_63')}
+                fullWidth
+              >
+                Boletín 63
+              </Button>
+            </Box>
+          )}
+          <TextField label="Número" value={Chip_casado} onChange={(e) => setChip_casado(e.target.value)} fullWidth margin="normal" />
           <Divider sx={{ my: 2 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
