@@ -5,23 +5,17 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 
-interface ProductoInv {
-  id: number;
+interface ProductoCatalogo {
   clave: string;
   producto: string;
-  precio: number;
-  cantidad: number;
+  precio: number | null;
   tipo_producto: string;
-}
-
-interface ComisionItem {
-  producto: string;
-  cantidad: number;
+  comision: number | null;
+  existencia_real: number;
 }
 
 const ListaPrecios = () => {
-  const [productos, setProductos] = useState<ProductoInv[]>([]);
-  const [comisionMap, setComisionMap] = useState<Map<string, number>>(new Map());
+  const [productos, setProductos] = useState<ProductoCatalogo[]>([]);
   const [filtro, setFiltro] = useState('');
   const [cargando, setCargando] = useState(true);
   const token = localStorage.getItem('token');
@@ -30,16 +24,11 @@ const ListaPrecios = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [resInv, resCom] = await Promise.all([
-          axios.get('https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general', config),
-          axios.get('https://ato-appservidor-nvxt.onrender.com/comisiones/comisiones', config),
-        ]);
-        setProductos(resInv.data);
-        const map = new Map<string, number>();
-        (resCom.data as ComisionItem[]).forEach((c) => {
-          map.set((c.producto || '').trim().toLowerCase(), c.cantidad);
-        });
-        setComisionMap(map);
+        const res = await axios.get(
+          'https://ato-appservidor-nvxt.onrender.com/inventario/productos-catalogo',
+          config
+        );
+        setProductos(res.data);
       } catch (e) {
         console.error('Error al cargar lista de precios', e);
       } finally {
@@ -50,17 +39,12 @@ const ListaPrecios = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const montoComision = (nombre: string): number | null => {
-    const v = comisionMap.get((nombre || '').trim().toLowerCase());
-    return v === undefined ? null : v;
-  };
-
   const soloTelefonos = useMemo(
     () => productos.filter((p) => p.tipo_producto === 'telefono'),
     [productos]
   );
 
-  const filtrar = (lista: ProductoInv[]) => {
+  const filtrar = (lista: ProductoCatalogo[]) => {
     const f = filtro.trim().toLowerCase();
     if (!f) return lista;
     return lista.filter(
@@ -91,14 +75,16 @@ const ListaPrecios = () => {
   const limpiarNombre = (nombre: string) =>
     nombre.replace(/^TELEFONO LIBRE /i, '').replace(/^TELEFONO TELCEL /i, '');
 
-  const formatoPrecio = (n: number) =>
-    new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 0,
-    }).format(n);
+  const formatoPrecio = (n: number | null) =>
+    n === null
+      ? '—'
+      : new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+          minimumFractionDigits: 0,
+        }).format(n);
 
-  const Columna = ({ titulo, data, color }: { titulo: string; data: ProductoInv[]; color: string }) => (
+  const Columna = ({ titulo, data, color }: { titulo: string; data: ProductoCatalogo[]; color: string }) => (
     <TableContainer component={Paper} sx={{ flex: 1, minWidth: 340 }}>
       <Box sx={{ bgcolor: color, color: 'white', px: 2, py: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -115,24 +101,21 @@ const ListaPrecios = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((p) => {
-            const com = montoComision(p.producto);
-            return (
-              <TableRow key={p.id} hover>
-                <TableCell>{limpiarNombre(p.producto)}</TableCell>
-                <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
-                <TableCell
-                  align="center"
-                  sx={{ fontWeight: 700, color: p.cantidad > 0 ? '#2e7d32' : '#c62828' }}
-                >
-                  {p.cantidad}
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, color: com ? '#1565c0' : '#bbb' }}>
-                  {com ? formatoPrecio(com) : '—'}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {data.map((p) => (
+            <TableRow key={p.clave} hover>
+              <TableCell>{limpiarNombre(p.producto)}</TableCell>
+              <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
+              <TableCell
+                align="center"
+                sx={{ fontWeight: 700, color: p.existencia_real > 0 ? '#2e7d32' : '#c62828' }}
+              >
+                {p.existencia_real}
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, color: p.comision ? '#1565c0' : '#bbb' }}>
+                {p.comision ? formatoPrecio(p.comision) : '—'}
+              </TableCell>
+            </TableRow>
+          ))}
           {data.length === 0 && (
             <TableRow>
               <TableCell colSpan={4} align="center" sx={{ color: '#888' }}>
