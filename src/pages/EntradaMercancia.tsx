@@ -434,6 +434,22 @@ const EntradaMercancia = () => {
         config
       );
       if (res.data.ok) {
+        // Marcar como surtidos los equipos pistoleados por IMEI
+        const imeisSurtidos = entradaLista
+          .filter((p) => p.imei)
+          .map((p) => p.imei as string);
+        if (imeisSurtidos.length > 0) {
+          try {
+            await axios.post(
+              `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/marcar-surtidos`,
+              { imeis: imeisSurtidos, modulo_id: moduloSeleccionado },
+              config
+            );
+          } catch (errMarcar) {
+            // No bloquea el flujo: la entrada ya se guardó. Solo avisamos.
+            alert("La entrada se guardó, pero hubo un problema al marcar algunos equipos como surtidos. Revisa en Equipos Telcel.");
+          }
+        }
         setFolioGuardado(res.data.folio);
         setEntradaActiva(false);
       } else {
