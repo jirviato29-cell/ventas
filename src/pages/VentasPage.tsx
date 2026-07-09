@@ -666,6 +666,8 @@ const FormularioVentaMultiple = () => {
       producto: `${telefonoMarca} ${telefonoModelo}`,
       cantidad: 1, tipo_producto: 'telefono', tipo_venta: telefonoTipo_venta,
       chip_casado: Chip_casado || null,
+      imei: telefonoOrigen === 'telcel' ? (telefonoImei || null) : null,
+      clasificacion: telefonoOrigen === 'telcel' ? (telefonoClasificacion || null) : null,
     };
     const resetTel = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
