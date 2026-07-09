@@ -173,6 +173,8 @@ const EntradaMercancia = () => {
   const [entradaDetalle, setEntradaDetalle] = useState<EntradaHistorial | null>(null);
   const [modalDetalle, setModalDetalle] = useState(false);
   const [modoImpresionDetalle, setModoImpresionDetalle] = useState(false);
+  const [equiposDetalle, setEquiposDetalle] = useState<{ imei: string; clave: string; producto: string }[]>([]);
+  const [cargandoEquiposDetalle, setCargandoEquiposDetalle] = useState(false);
 
   // ── Usuario actual (para is_admin) ────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -488,6 +490,24 @@ const EntradaMercancia = () => {
         window.onafterprint = null;
       };
     }, 300);
+  };
+
+  // ── Equipos por IMEI del detalle ──────────────────────────────────────────────
+
+  const cargarEquiposDetalle = async (entradaId: number) => {
+    setEquiposDetalle([]);
+    setCargandoEquiposDetalle(true);
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaId}`,
+        config
+      );
+      setEquiposDetalle(res.data.equipos || []);
+    } catch (err) {
+      setEquiposDetalle([]);
+    } finally {
+      setCargandoEquiposDetalle(false);
+    }
   };
 
   // ── Usuario actual ────────────────────────────────────────────────────────────
@@ -881,6 +901,7 @@ const EntradaMercancia = () => {
                         setEntradaDetalle(entrada);
                         setErrorDetalle(null);
                         setModalDetalle(true);
+                        cargarEquiposDetalle(entrada.id);
                       }}
                     >
                       <TableCell sx={{ fontWeight: 700, color: "#f97316" }}>
@@ -905,6 +926,7 @@ const EntradaMercancia = () => {
                             setEntradaDetalle(entrada);
                             setErrorDetalle(null);
                             setModalDetalle(true);
+                            cargarEquiposDetalle(entrada.id);
                           }}
                         >
                           <Visibility fontSize="small" />
@@ -1462,6 +1484,41 @@ const EntradaMercancia = () => {
                   )}
                 </TableBody>
               </Table>
+
+              {cargandoEquiposDetalle && (
+                <Box sx={{ mt: 3, display: "flex", alignItems: "center", gap: 1 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">
+                    Cargando equipos…
+                  </Typography>
+                </Box>
+              )}
+
+              {equiposDetalle.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Equipos por IMEI
+                  </Typography>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>IMEI</TableCell>
+                        <TableCell>Clave</TableCell>
+                        <TableCell>Producto</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {equiposDetalle.map((e, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{e.imei}</TableCell>
+                          <TableCell>{e.clave}</TableCell>
+                          <TableCell>{e.producto}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
 
               {errorDetalle && (
                 <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErrorDetalle(null)}>
