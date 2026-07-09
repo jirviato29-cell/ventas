@@ -321,6 +321,12 @@ const Navbar = () => {
                 </Button>
               )}
 
+              {!modulo.toLowerCase().includes("cadena") && (
+                <Button sx={navBtnSx} component={Link} to="/lista-precios">
+                  LISTA DE PRECIOS
+                </Button>
+              )}
+
               <Button
                 sx={{
                   ...navBtnSx,
@@ -362,6 +368,12 @@ const Navbar = () => {
         <Divider />
 
         <List disablePadding>
+
+          {!modulo.toLowerCase().includes("cadena") && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
+              <ListItemText primary="LISTA DE PRECIOS" />
+            </ListItemButton>
+          )}
 
           {/* ── ADMIN ─────────────────────────────────────────────────────────── */}
           {rolToken === "admin" && (
