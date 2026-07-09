@@ -35,6 +35,7 @@ interface ItemEntrada {
   cantidad: number;
   existencia_actual: number;
   tipo_producto?: string;
+  imei?: string;
 }
 
 interface EncargadoInfo {
@@ -159,6 +160,8 @@ const EntradaMercancia = () => {
   const [entradaLista, setEntradaLista] = useState<ItemEntrada[]>([]);
   const [guardandoEntrada, setGuardandoEntrada] = useState(false);
   const [existenciaActual, setExistenciaActual] = useState<number>(0);
+  const [imeiInput, setImeiInput] = useState("");
+  const [buscandoImei, setBuscandoImei] = useState(false);
 
   // ── Historial ─────────────────────────────────────────────────────────────────
   const [historialFiltroFolio, setHistorialFiltroFolio] = useState("");
@@ -193,6 +196,7 @@ const EntradaMercancia = () => {
 
   const inputCantidadRef = useRef<HTMLInputElement>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
+  const inputImeiRef = useRef<HTMLInputElement>(null);
 
   // ── Efectos ──────────────────────────────────────────────────────────────────
 
@@ -371,6 +375,44 @@ const EntradaMercancia = () => {
     setTimeout(() => {
       inputBusquedaRef.current?.focus();
     }, 100);
+  };
+
+  const agregarPorImei = async () => {
+    if (!moduloSeleccionado) { alert("Selecciona un módulo"); return; }
+    const imei = imeiInput.trim();
+    if (!imei) return;
+    // Evitar duplicado en la lista actual
+    if (entradaLista.some((p) => p.imei === imei)) {
+      alert("Ese IMEI ya está en la lista");
+      setImeiInput("");
+      return;
+    }
+    setBuscandoImei(true);
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/buscar-imei/${imei}`,
+        config
+      );
+      const eq = res.data;
+      const existencia = await obtenerExistenciaModulo(eq.clave);
+      const nuevoItem = {
+        producto_id: eq.producto_id,
+        producto: eq.producto,
+        clave: eq.clave,
+        cantidad: 1,
+        existencia_actual: existencia,
+        imei: eq.imei,
+      };
+      setEntradaLista((prev) => [...prev, nuevoItem]);
+      setImeiInput("");
+      setTimeout(() => { inputImeiRef.current?.focus(); }, 100);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      alert(detail ? String(detail) : "Error al buscar el IMEI");
+      setImeiInput("");
+    } finally {
+      setBuscandoImei(false);
+    }
   };
 
   const guardarEntradaMercancia = async () => {
@@ -1089,6 +1131,26 @@ const EntradaMercancia = () => {
             </Box>
           )}
 
+          {entradaActiva && (
+            <Box mb={3} className="no-print" sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <TextField
+                label="Pistolear IMEI"
+                value={imeiInput}
+                inputRef={inputImeiRef}
+                onChange={(e) => setImeiInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); agregarPorImei(); }
+                }}
+                fullWidth
+                size="small"
+                disabled={buscandoImei}
+              />
+              <Button variant="outlined" onClick={agregarPorImei} disabled={buscandoImei}>
+                {buscandoImei ? "Buscando..." : "Agregar IMEI"}
+              </Button>
+            </Box>
+          )}
+
           {/* Tabla de productos de la entrada activa */}
           {entradaLista.length > 0 && (
             <Paper elevation={0} className="no-print" sx={{ borderRadius: 2, overflow: "hidden", mb: 3 }}>
@@ -1115,6 +1177,7 @@ const EntradaMercancia = () => {
                   <TableRow>
                     <TableCell>Clave</TableCell>
                     <TableCell>Producto</TableCell>
+                    <TableCell>IMEI</TableCell>
                     <TableCell align="right">Cantidad</TableCell>
                     <TableCell align="right">Existencia actual</TableCell>
                     {entradaActiva && (
@@ -1131,6 +1194,7 @@ const EntradaMercancia = () => {
                         {p.clave}
                       </TableCell>
                       <TableCell>{p.producto}</TableCell>
+                      <TableCell>{p.imei ?? "—"}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>
                         {p.cantidad}
                       </TableCell>
