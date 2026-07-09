@@ -176,6 +176,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/ventas/chips">Chips</MenuItem>
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
+                    <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorInventario)}>
@@ -401,6 +402,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/corte")}>
                     <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                     <ListItemText primary="Cortes" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/telefonos")}>
+                    <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
+                    <ListItemText primary="Teléfonos" />
                   </ListItemButton>
                 </List>
               </Collapse>

@@ -46,6 +46,7 @@ import CheckinPage from './pages/CheckinPage';
 import GastosPage from './pages/GastosPage';
 import EquiposTelcel from './pages/EquiposTelcel';
 import ListaPrecios from './pages/ListaPrecios';
+import VentasTelcel from './pages/VentasTelcel';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -66,6 +67,7 @@ const App: React.FC = () => {
     { path: '/inventario/modulo', element: <RutaProtegida><InventarioPorModulo /></RutaProtegida> },
     { path: '/ventas/chips', element: <RutaProtegida><ChipsAdmin /></RutaProtegida> },
     { path: '/lista-precios', element: <RutaProtegida><ListaPrecios /></RutaProtegida> },
+    { path: '/ventas/telefonos', element: <RutaProtegida><VentasTelcel /></RutaProtegida> },
     { path: '/corte', element: <RutaProtegida><CortePage /></RutaProtegida> },
     { path: '/inventario_telefonos', element: <RutaProtegida><InventarioTelefonosGeneral /></RutaProtegida> },
     { path: '/chips_invalidos', element: <RutaProtegida><ChipsRechazados /></RutaProtegida> },
