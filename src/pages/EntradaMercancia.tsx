@@ -442,7 +442,7 @@ const EntradaMercancia = () => {
           try {
             await axios.post(
               `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/marcar-surtidos`,
-              { imeis: imeisSurtidos, modulo_id: moduloSeleccionado },
+              { imeis: imeisSurtidos, modulo_id: moduloSeleccionado, folio: res.data.folio },
               config
             );
           } catch (errMarcar) {
