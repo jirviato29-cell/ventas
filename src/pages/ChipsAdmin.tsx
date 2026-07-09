@@ -46,6 +46,7 @@ const ChipsAdmin = () => {
   const [chips, setChips]                     = useState<VentaChip[]>([]);
   const [usuarios, setUsuarios]               = useState<Usuario[]>([]);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<number | null>(null);
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
   const token = localStorage.getItem("token");
   const rol   = obtenerRolDesdeToken();
   const [chipsAsesor, setChipsAsesor] = useState<VentaChip[]>([]);
@@ -134,6 +135,10 @@ const ChipsAdmin = () => {
     }
   };
 
+  const tiposDisponibles = Array.from(
+    new Set(chips.map((c) => c.tipo_chip).filter(Boolean))
+  ).sort();
+
   return (
     <Box sx={{ mt: 2 }}>
       {rol === "admin" && (
@@ -151,6 +156,19 @@ const ChipsAdmin = () => {
                 <option value="">(Todos)</option>
                 {usuarios.map((u) => (
                   <option key={u.id} value={u.id}>{u.username}</option>
+                ))}
+              </select>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2">Tipo:</Typography>
+              <select
+                value={tipoSeleccionado}
+                onChange={(e) => setTipoSeleccionado(e.target.value)}
+                style={{ fontSize: 14 }}
+              >
+                <option value="">(Todos los tipos)</option>
+                {tiposDisponibles.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </Box>
@@ -177,7 +195,7 @@ const ChipsAdmin = () => {
               </TableHead>
               <TableBody>
                 {(() => {
-                  const filtrados = chips.filter((c) => !c.validado && !c.es_incubadora);
+                  const filtrados = chips.filter((c) => !c.validado && !c.es_incubadora && (tipoSeleccionado === "" || c.tipo_chip === tipoSeleccionado));
                   const dups = getDuplicados(filtrados);
                   return sortConDuplicados(filtrados, dups).map((chip) => {
                     const esDup = dups.has(chip.numero_telefono);
