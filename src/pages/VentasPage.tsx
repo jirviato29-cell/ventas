@@ -819,6 +819,31 @@ const FormularioVentaMultiple = () => {
     finally { setBuscando(false); }
   };
 
+  const buscarEquipoPorImeiVenta = async () => {
+    const imei = telefonoImei.trim();
+    if (!imei) return;
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
+        config
+      );
+      const lista = res.data || [];
+      const eq = lista.find((e: any) => String(e.imei).trim() === imei);
+      if (!eq) {
+        alert("Ese IMEI no está disponible para venta (no está surtido a un módulo).");
+        setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave('');
+        return;
+      }
+      // Llenar marca+modelo y clave desde el equipo
+      const parts = String(eq.producto).split(' ');
+      setTelefonoMarca(parts[0] || '');
+      setTelefonoModelo(parts.slice(1).join(' ') || '');
+      setTelefonoClave(eq.clave || '');
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al buscar el IMEI");
+    }
+  };
+
   // ── Cálculos asesor del día ──────────────────────────────────────────────
   const ventasHoyAcc = ventas.filter((v) => v.tipo_producto === 'accesorios' && v.fecha?.startsWith(HOY)).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
   const ventasHoyTel = ventas.filter((v) => v.tipo_producto === 'telefono' && v.fecha?.startsWith(HOY)).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
@@ -1096,6 +1121,8 @@ const FormularioVentaMultiple = () => {
               label="IMEI (opcional)"
               value={telefonoImei}
               onChange={(e) => setTelefonoImei(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
+              onBlur={() => buscarEquipoPorImeiVenta()}
               fullWidth
               margin="normal"
             />
