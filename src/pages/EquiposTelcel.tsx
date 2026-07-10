@@ -162,7 +162,7 @@ const EquiposTelcel = () => {
         </Box>
 
         <TableContainer component={Paper}>
-          <Table size="small">
+          <Table size="small" sx={{ '& td, & th': { border: '1px solid #e0e0e0' } }}>
             <TableHead>
               <TableRow>
                 <TableCell>IMEI</TableCell>
