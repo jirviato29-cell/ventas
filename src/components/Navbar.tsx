@@ -67,6 +67,7 @@ const Navbar = () => {
   const [anchorInventario, setAnchorInventario] = useState<null | HTMLElement>(null);
   const [anchorAdmin, setAnchorAdmin] = useState<null | HTMLElement>(null);
   const [anchorVentas, setAnchorVentas] = useState<null | HTMLElement>(null);
+  const [anchorTelefonos, setAnchorTelefonos] = useState<null | HTMLElement>(null);
 
   // Mobile drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -177,6 +178,17 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
+                  </Menu>
+
+                  <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorTelefonos)}>
+                    Teléfonos
+                  </Button>
+                  <Menu
+                    anchorEl={anchorTelefonos}
+                    open={Boolean(anchorTelefonos)}
+                    onClose={() => closeMenu(setAnchorTelefonos)}
+                  >
+                    <MenuItem component={Link} to="/telefonos/alta-imeis">Dar de alta IMEIs</MenuItem>
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorInventario)}>
