@@ -168,22 +168,23 @@ const EquiposTelcel = () => {
                 <TableCell>IMEI</TableCell>
                 <TableCell>Clave</TableCell>
                 <TableCell>Producto</TableCell>
-                <TableCell>Fecha compra</TableCell>
-                <TableCell>Estatus</TableCell>
                 <TableCell>Módulo</TableCell>
-                <TableCell>Fecha salida</TableCell>
+                <TableCell>Estatus</TableCell>
+                <TableCell>Fecha almacén</TableCell>
+                <TableCell>Fecha surtido</TableCell>
+                <TableCell>Fecha venta</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equipos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
@@ -193,10 +194,11 @@ const EquiposTelcel = () => {
                     <TableCell>{eq.imei}</TableCell>
                     <TableCell>{eq.clave}</TableCell>
                     <TableCell>{eq.producto}</TableCell>
-                    <TableCell>{eq.fecha_compra}</TableCell>
-                    <TableCell>{eq.estatus}</TableCell>
                     <TableCell>{eq.modulo_nombre || "—"}</TableCell>
+                    <TableCell>{eq.estatus}</TableCell>
+                    <TableCell>{eq.fecha_compra ? String(eq.fecha_compra).split(' ')[0] : "—"}</TableCell>
                     <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
+                    <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
                   </TableRow>
                 ))
               )}
