@@ -23,7 +23,7 @@ const AltaImeis = () => {
   useEffect(() => {
     const cargarModulos = async () => {
       try {
-        const res = await axios.get(`${BASE}/modulos`, config);
+        const res = await axios.get(`${BASE}/registro/modulos`, config);
         setModulos(res.data);
       } catch (err: any) {
         alert(err.response?.data?.detail || "Error al cargar los módulos");
