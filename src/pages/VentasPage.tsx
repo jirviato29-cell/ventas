@@ -1140,7 +1140,7 @@ const FormularioVentaMultiple = () => {
               );
             }}
             getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
-            onInputChange={(_, v) => buscarTelefonos(v)}
+            onInputChange={(_, v, reason) => { if (reason === 'input') buscarTelefonos(v); }}
             onChange={(_, obj) => {
               if (obj) {
                 const parts = obj.producto.split(' ');
