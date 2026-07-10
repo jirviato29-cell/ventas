@@ -195,8 +195,8 @@ const EquiposTelcel = () => {
                     <TableCell>{eq.producto}</TableCell>
                     <TableCell>{eq.fecha_compra}</TableCell>
                     <TableCell>{eq.estatus}</TableCell>
-                    <TableCell>{eq.modulo_id ?? "—"}</TableCell>
-                    <TableCell>{eq.fecha_salida ?? "—"}</TableCell>
+                    <TableCell>{eq.modulo_nombre || "—"}</TableCell>
+                    <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
                   </TableRow>
                 ))
               )}
