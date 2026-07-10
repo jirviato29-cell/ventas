@@ -205,7 +205,7 @@ const FormularioVentaMultiple = () => {
   const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
-  const [telefonoClave, setTelefonoClave] = useState('');
+  const [, setTelefonoClave] = useState('');
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
@@ -836,6 +836,7 @@ const FormularioVentaMultiple = () => {
       }
       // Llenar marca+modelo y clave desde el equipo
       const parts = String(eq.producto).split(' ');
+      setOpcionesTelefonos([{ clave: eq.clave || '', producto: String(eq.producto) }]);
       setTelefonoMarca(parts[0] || '');
       setTelefonoModelo(parts.slice(1).join(' ') || '');
       setTelefonoClave(eq.clave || '');
@@ -1154,11 +1155,6 @@ const FormularioVentaMultiple = () => {
             }}
             renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth margin="normal" />}
           />
-          {telefonoMarca && (
-            <Typography variant="caption" sx={{ ml: 0.5, color: '#64748b' }}>
-              {telefonoClave ? `${telefonoClave} - ` : ''}{telefonoMarca} {telefonoModelo}
-            </Typography>
-          )}
           <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth margin="normal">
             <MenuItem value="Contado">Contado</MenuItem>
             <MenuItem value="Pajoy">Pajoy</MenuItem>
