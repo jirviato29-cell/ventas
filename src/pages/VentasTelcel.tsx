@@ -95,28 +95,25 @@ const VentasTelcel = () => {
             <TableRow>
               <TableCell sx={{ fontWeight: 700 }}>Folio</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Hora</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Vendedor</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Módulo</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Producto</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>IMEI</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Clasificación</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Número</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Método</TableCell>
               <TableCell sx={{ fontWeight: 700 }} align="right">Precio</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {cargando ? (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ color: '#888' }}>
+                <TableCell colSpan={9} align="center" sx={{ color: '#888' }}>
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : visibles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ color: '#888' }}>
+                <TableCell colSpan={9} align="center" sx={{ color: '#888' }}>
                   Sin resultados
                 </TableCell>
               </TableRow>
@@ -125,15 +122,12 @@ const VentasTelcel = () => {
                 <TableRow key={v.id} hover>
                   <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{v.folio ?? '—'}</TableCell>
                   <TableCell>{v.fecha ?? '—'}</TableCell>
-                  <TableCell>{v.hora ?? '—'}</TableCell>
                   <TableCell>{v.vendedor ?? '—'}</TableCell>
                   <TableCell>{v.modulo ?? '—'}</TableCell>
                   <TableCell>{v.producto ?? '—'}</TableCell>
                   <TableCell>{v.imei ?? '—'}</TableCell>
                   <TableCell>{clasifLabel(v.clasificacion)}</TableCell>
                   <TableCell>{v.numero ?? '—'}</TableCell>
-                  <TableCell>{v.tipo_venta ?? '—'}</TableCell>
-                  <TableCell>{v.metodo_pago ?? '—'}</TableCell>
                   <TableCell align="right">
                     {v.precio != null ? `$${Number(v.precio).toLocaleString('es-MX')}` : '—'}
                   </TableCell>
