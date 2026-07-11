@@ -15,6 +15,7 @@ const EquiposTelcel = () => {
   const [fProducto, setFProducto] = useState("");
   const [fInicio, setFInicio] = useState("");
   const [fFin, setFFin] = useState("");
+  const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
   const [cargando, setCargando] = useState(false);
 
   const token = localStorage.getItem("token");
@@ -81,6 +82,23 @@ const EquiposTelcel = () => {
       e.target.value = "";
     }
   };
+
+  const cambiarActivacion = async (eq: any) => {
+    try {
+      const nuevo = !eq.activado;
+      await axios.post(`${BASE}/equipos_telcel/activar/${eq.id}`, { activado: nuevo }, config);
+      // Actualiza en memoria sin recargar todo
+      setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, activado: nuevo } : x));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al cambiar activación");
+    }
+  };
+
+  const equiposVisibles = equipos.filter(eq => {
+    if (fActivacion === "activado") return eq.activado === true;
+    if (fActivacion === "no_activado") return eq.activado === false;
+    return true;
+  });
 
   return (
     <Container sx={{ mt: 4 }}>
@@ -156,6 +174,18 @@ const EquiposTelcel = () => {
             size="small"
           />
 
+          <Select
+            value={fActivacion}
+            onChange={(e) => setFActivacion(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="activado">Activados</MenuItem>
+            <MenuItem value="no_activado">No activados</MenuItem>
+          </Select>
+
           <Button variant="contained" onClick={cargarEquipos}>
             Buscar
           </Button>
@@ -173,23 +203,24 @@ const EquiposTelcel = () => {
                 <TableCell>Fecha almacén</TableCell>
                 <TableCell>Fecha surtido</TableCell>
                 <TableCell>Fecha venta</TableCell>
+                <TableCell>Activación</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
-              ) : equipos.length === 0 ? (
+              ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
               ) : (
-                equipos.map((eq) => (
+                equiposVisibles.map((eq) => (
                   <TableRow key={eq.id}>
                     <TableCell>{eq.imei}</TableCell>
                     <TableCell>{eq.clave}</TableCell>
@@ -199,6 +230,16 @@ const EquiposTelcel = () => {
                     <TableCell>{eq.fecha_compra ? String(eq.fecha_compra).split(' ')[0] : "—"}</TableCell>
                     <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
                     <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => cambiarActivacion(eq)}
+                        sx={{ backgroundColor: eq.activado ? '#2e7d32' : '#9e9e9e', '&:hover': { backgroundColor: eq.activado ? '#1b5e20' : '#757575' } }}
+                      >
+                        {eq.activado ? 'Activado' : 'No activado'}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
