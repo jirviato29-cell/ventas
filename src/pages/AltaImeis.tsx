@@ -42,7 +42,13 @@ const AltaImeis = () => {
         `${BASE}/equipos_telcel/faltantes-imei/${moduloId}`,
         config
       );
-      setFilas(res.data);
+      const ordenadas = [...res.data].sort((a, b) => {
+        const aTelcel = (a.producto || '').toUpperCase().includes('TELCEL') ? 0 : 1;
+        const bTelcel = (b.producto || '').toUpperCase().includes('TELCEL') ? 0 : 1;
+        if (aTelcel !== bTelcel) return aTelcel - bTelcel;
+        return (a.producto || '').localeCompare(b.producto || '');
+      });
+      setFilas(ordenadas);
       setImeis({});
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al cargar los teléfonos faltantes");
