@@ -16,6 +16,7 @@ const AltaImeis = () => {
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState<number | null>(null);
   const [guardandoTodos, setGuardandoTodos] = useState(false);
+  const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -124,6 +125,24 @@ const AltaImeis = () => {
     }
   };
 
+  const cambiarActivacion = async (fila: any, idx: number) => {
+    if (!fila.equipo_id) return;
+    try {
+      const nuevo = !fila.activado;
+      await axios.post(`${BASE}/equipos_telcel/activar/${fila.equipo_id}`, { activado: nuevo }, config);
+      setFilas(prev => prev.map((f, i) => i === idx ? { ...f, activado: nuevo } : f));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al cambiar activación");
+    }
+  };
+
+  const filasVisibles = filas.filter(f => {
+    if (!f.tiene_imei) return true; // las pendientes siempre se ven
+    if (fActivacion === "activado") return f.activado === true;
+    if (fActivacion === "no_activado") return f.activado === false;
+    return true;
+  });
+
   const cellSx = { border: "1px solid #ccc" };
 
   return (
@@ -149,7 +168,12 @@ const AltaImeis = () => {
       </FormControl>
 
       {filas.length > 0 && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+          <Select value={fActivacion} onChange={(e) => setFActivacion(e.target.value)} displayEmpty size="small" sx={{ minWidth: 160 }}>
+            <MenuItem value="">Activación: Todos</MenuItem>
+            <MenuItem value="activado">Activados</MenuItem>
+            <MenuItem value="no_activado">No activados</MenuItem>
+          </Select>
           <Button variant="contained" color="success" onClick={guardarTodos} disabled={guardandoTodos}>
             {guardandoTodos ? 'Guardando...' : 'Guardar todos los cambios'}
           </Button>
@@ -169,10 +193,13 @@ const AltaImeis = () => {
                 <TableCell sx={cellSx}>Clave</TableCell>
                 <TableCell sx={cellSx}>IMEI</TableCell>
                 <TableCell sx={cellSx}>Acción</TableCell>
+                <TableCell sx={cellSx}>Activación</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filas.map((fila, idx) => (
+              {filasVisibles.map((fila) => {
+                const idx = filas.indexOf(fila);
+                return (
                 <TableRow key={idx}>
                   <TableCell sx={cellSx}>{fila.producto}</TableCell>
                   <TableCell sx={cellSx}>{fila.clave}</TableCell>
@@ -209,8 +236,23 @@ const AltaImeis = () => {
                       </Button>
                     )}
                   </TableCell>
+                  <TableCell sx={cellSx}>
+                    {fila.tiene_imei ? (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => cambiarActivacion(fila, idx)}
+                        sx={{ backgroundColor: fila.activado ? '#2e7d32' : '#9e9e9e', '&:hover': { backgroundColor: fila.activado ? '#1b5e20' : '#757575' } }}
+                      >
+                        {fila.activado ? 'Activado' : 'No activado'}
+                      </Button>
+                    ) : (
+                      <span style={{ color: '#999' }}>—</span>
+                    )}
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </Box>
