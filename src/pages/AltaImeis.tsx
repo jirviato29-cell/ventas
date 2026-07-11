@@ -15,6 +15,7 @@ const AltaImeis = () => {
   const [imeis, setImeis] = useState<Record<number, string>>({}); // imei por índice de fila
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState<number | null>(null);
+  const [guardandoTodos, setGuardandoTodos] = useState(false);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -49,7 +50,9 @@ const AltaImeis = () => {
         return (a.producto || '').localeCompare(b.producto || '');
       });
       setFilas(ordenadas);
-      setImeis({});
+      const imeisIniciales: Record<number, string> = {};
+      ordenadas.forEach((f, idx) => { if (f.imei) imeisIniciales[idx] = f.imei; });
+      setImeis(imeisIniciales);
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al cargar los teléfonos faltantes");
     } finally {
@@ -81,12 +84,43 @@ const AltaImeis = () => {
         },
         config
       );
-      // Quitar esa fila de la lista (ya quedó registrada)
-      setFilas((prev) => prev.filter((_, i) => i !== idx));
+      // Recargar la lista para que la fila reaparezca ya con su IMEI y bloqueada
+      await cargarFaltantes();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al dar de alta el IMEI");
     } finally {
       setGuardando(null);
+    }
+  };
+
+  const guardarTodos = async () => {
+    // Reunir filas con IMEI escrito
+    const aGuardar = filas
+      .map((fila, idx) => ({ fila, idx, imei: (imeis[idx] || '').trim() }))
+      .filter(x => x.imei !== '' && !x.fila.tiene_imei);
+    if (aGuardar.length === 0) { alert("No hay IMEIs capturados para guardar"); return; }
+    setGuardandoTodos(true);
+    try {
+      const equipos = aGuardar.map(x => ({
+        imei: x.imei,
+        clave: x.fila.clave,
+        producto: x.fila.producto,
+        modulo_id: x.fila.modulo_id,
+      }));
+      const res = await axios.post(`${BASE}/equipos_telcel/alta-multiple`, { equipos }, config);
+      const guardados = res.data.guardados ?? 0;
+      const errores = res.data.errores ?? [];
+      let msg = `Se guardaron ${guardados} equipos.`;
+      if (errores.length > 0) {
+        msg += `\nNo se guardaron ${errores.length}:\n` + errores.map((e: any) => `${e.imei || '(vacío)'}: ${e.motivo}`).join('\n');
+      }
+      alert(msg);
+      // Recargar la lista de faltantes (los guardados ya no aparecerán)
+      cargarFaltantes();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al guardar los IMEIs");
+    } finally {
+      setGuardandoTodos(false);
     }
   };
 
@@ -114,6 +148,14 @@ const AltaImeis = () => {
         </Select>
       </FormControl>
 
+      {filas.length > 0 && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" color="success" onClick={guardarTodos} disabled={guardandoTodos}>
+            {guardandoTodos ? 'Guardando...' : 'Guardar todos los cambios'}
+          </Button>
+        </Box>
+      )}
+
       {cargando ? (
         <Typography>Cargando...</Typography>
       ) : moduloId && filas.length === 0 ? (
@@ -135,29 +177,37 @@ const AltaImeis = () => {
                   <TableCell sx={cellSx}>{fila.producto}</TableCell>
                   <TableCell sx={cellSx}>{fila.clave}</TableCell>
                   <TableCell sx={cellSx}>
-                    <TextField
-                      size="small"
-                      value={imeis[idx] || ""}
-                      onChange={(e) =>
-                        setImeis((prev) => ({ ...prev, [idx]: e.target.value }))
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          darDeAlta(idx, fila);
+                    {fila.tiene_imei ? (
+                      <span>{fila.imei}</span>
+                    ) : (
+                      <TextField
+                        size="small"
+                        value={imeis[idx] || ""}
+                        onChange={(e) =>
+                          setImeis((prev) => ({ ...prev, [idx]: e.target.value }))
                         }
-                      }}
-                    />
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            darDeAlta(idx, fila);
+                          }
+                        }}
+                      />
+                    )}
                   </TableCell>
                   <TableCell sx={cellSx}>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={guardando === idx}
-                      onClick={() => darDeAlta(idx, fila)}
-                    >
-                      {guardando === idx ? "..." : "Guardar"}
-                    </Button>
+                    {fila.tiene_imei ? (
+                      <span style={{ color: 'green' }}>Registrado</span>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={guardando === idx}
+                        onClick={() => darDeAlta(idx, fila)}
+                      >
+                        {guardando === idx ? "..." : "Guardar"}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
