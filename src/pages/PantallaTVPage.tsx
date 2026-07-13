@@ -35,6 +35,24 @@ interface EstData {
   accesorios_por_dia: { dia: number; promedio: number }[];
 }
 
+interface VentaHoyItem {
+  hora: string;
+  modulo: string;
+  asesor: string;
+  producto: string;
+  tipo: string;
+  cantidad: number;
+  hora_raw: string;
+}
+interface HoyData {
+  fecha_texto: string;
+  resumen_general: { total_ventas_mxn: number; total_telefonos: number; total_chips: number; total_accesorios: number; };
+  accesorios: { monto_total: number };
+  por_modulo: any[];
+  total_planes_hoy: number;
+  ultimas_ventas: VentaHoyItem[];
+}
+
 // ── Paleta / constantes ─────────────────────────────────────────────────────────
 
 const BG = '#0d1526';
@@ -45,7 +63,7 @@ const BLUE = '#3b82f6';
 const TEXT_DIM = '#94a3b8';
 const MONO = '"Roboto Mono","SF Mono",Menlo,Consolas,monospace';
 
-const N_SCREENS = 9;
+const N_SCREENS = 10;
 const ROTATE_MS = 15000;
 const REFRESH_MS = 60000;
 
@@ -195,6 +213,7 @@ const PantallaTVPage: React.FC = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [data, setData] = useState<EstData | null>(null);
+  const [dataHoy, setDataHoy] = useState<HoyData | null>(null);
   const [screen, setScreen] = useState(0);
   const [reloj, setReloj] = useState<Date>(() => new Date());
 
@@ -207,6 +226,15 @@ const PantallaTVPage: React.FC = () => {
       setData(resp);
     } catch {
       /* mantiene los datos previos en pantalla si falla el refresco */
+    }
+    try {
+      const { data: respHoy } = await axios.get<HoyData>(
+        `${API}/direccion/tiempo-real`,
+        { headers: authH() },
+      );
+      setDataHoy(respHoy);
+    } catch {
+      /* idem: conserva lo anterior si el refresco de hoy falla */
     }
   }, []);
 
@@ -229,7 +257,152 @@ const PantallaTVPage: React.FC = () => {
     return () => clearInterval(id);
   }, []);
 
+  // ── Pantalla 0 · VENTAS DE HOY (tiempo real) ──────────────────────────────
+  const renderHoy = () => {
+    if (!dataHoy) {
+      return (
+        <ScreenShell title="🟢 VENTAS DE HOY">
+          <BigStat label="CONECTANDO" value="…" color={TEXT_DIM} />
+        </ScreenShell>
+      );
+    }
+    const rg = dataHoy.resumen_general;
+    const uv = dataHoy.ultimas_ventas ?? [];
+    const metricas: { l: string; v: string; c: string; sub?: string }[] = [
+      { l: 'TELÉFONOS', v: fmtN(rg.total_telefonos), c: ORANGE },
+      { l: 'CHIPS', v: fmtN(rg.total_chips), c: BLUE },
+      { l: 'ACCESORIOS', v: fmt$(dataHoy.accesorios.monto_total), c: '#a855f7' },
+      { l: 'PLANES', v: fmtN(dataHoy.total_planes_hoy), c: GREEN },
+      { l: 'MÓDULOS', v: fmtN(dataHoy.por_modulo?.length ?? 0), c: '#22d3ee', sub: 'vendieron hoy' },
+    ];
+
+    const mins = (() => {
+      if (uv.length === 0 || !uv[0].hora_raw) return null;
+      const p = uv[0].hora_raw.split(':').map(Number);
+      const v = new Date(reloj);
+      v.setHours(p[0] || 0, p[1] || 0, p[2] || 0, 0);
+      const diff = Math.floor((reloj.getTime() - v.getTime()) / 60000);
+      return diff < 0 ? 0 : diff;
+    })();
+    const desdeTxt =
+      mins === null ? 'sin ventas aún'
+      : mins < 60 ? `hace ${mins} min`
+      : `hace ${Math.floor(mins / 60)}h ${mins % 60}m`;
+
+    return (
+      <ScreenShell title={`🟢 VENTAS DE HOY · ${dataHoy.fecha_texto}`}>
+        {/* MÉTRICAS */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.2vw' }}>
+          {metricas.map((m) => (
+            <Box
+              key={m.l}
+              sx={{
+                textAlign: 'center',
+                bgcolor: CARD,
+                border: `2px solid ${m.c}44`,
+                borderRadius: 3,
+                py: '2.2vh',
+                px: '0.3vw',
+                overflow: 'hidden',
+              }}
+            >
+              <Box sx={{ fontSize: 'clamp(12px, 1.4vw, 28px)', color: m.c, fontWeight: 700, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                {m.l}
+              </Box>
+              <Box
+                sx={{
+                  fontFamily: MONO,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontWeight: 800,
+                  color: m.c,
+                  fontSize: 'clamp(30px, 4.3vw, 88px)',
+                  lineHeight: 1.05,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {m.v}
+              </Box>
+              <Box sx={{ fontSize: 'clamp(10px, 1vw, 18px)', color: TEXT_DIM, whiteSpace: 'nowrap' }}>
+                {m.sub ?? ' '}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+
+        {/* EN VIVO + tiempo desde la última venta */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.4vw', mt: '3vh', mb: '2vh', flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.6vw' }}>
+            <Box
+              sx={{
+                width: 'clamp(12px,1.1vw,20px)',
+                height: 'clamp(12px,1.1vw,20px)',
+                borderRadius: '50%',
+                bgcolor: GREEN,
+                boxShadow: `0 0 12px ${GREEN}`,
+                '@keyframes tvpulse2': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.3 } },
+                animation: 'tvpulse2 1.6s ease-in-out infinite',
+              }}
+            />
+            <Box sx={{ fontSize: 'clamp(14px,1.5vw,28px)', fontWeight: 800, color: GREEN, letterSpacing: '0.06em' }}>EN VIVO</Box>
+          </Box>
+          <Box sx={{ fontFamily: MONO, fontWeight: 800, color: '#fff', fontSize: 'clamp(24px, 3.4vw, 68px)', lineHeight: 1 }}>
+            {desdeTxt}
+          </Box>
+          <Box sx={{ fontSize: 'clamp(12px,1.3vw,24px)', color: TEXT_DIM }}>desde la última venta</Box>
+        </Box>
+
+        {/* ÚLTIMAS VENTAS */}
+        <Box>
+          <Box sx={{ fontSize: 'clamp(13px,1.5vw,28px)', color: TEXT_DIM, fontWeight: 700, mb: '1vh', letterSpacing: '0.06em' }}>
+            ÚLTIMAS VENTAS
+          </Box>
+          {uv.length === 0 && (
+            <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(16px,2vw,30px)' }}>Aún no hay ventas hoy</Box>
+          )}
+          {uv.slice(0, 5).map((v, i) => {
+            const esTel = v.tipo === 'telefono';
+            const acc = esTel ? ORANGE : '#a855f7';
+            return (
+              <Box
+                key={i}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.4vw',
+                  bgcolor: CARD,
+                  borderLeft: `7px solid ${acc}`,
+                  borderRadius: 2,
+                  px: '1.4vw',
+                  py: '1vh',
+                  mb: '0.9vh',
+                }}
+              >
+                <Box sx={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: acc, fontWeight: 800, fontSize: 'clamp(16px,1.9vw,36px)', flexShrink: 0 }}>
+                  {v.hora}
+                </Box>
+                <Box sx={{ fontWeight: 800, fontSize: 'clamp(14px,1.6vw,32px)', color: '#fff', flexShrink: 0, minWidth: '7ch' }}>
+                  {v.modulo}
+                </Box>
+                <Box sx={{ flex: 1, fontSize: 'clamp(13px,1.5vw,30px)', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {v.producto}
+                </Box>
+                <Box sx={{ fontSize: 'clamp(12px,1.3vw,26px)', color: TEXT_DIM, flexShrink: 0 }}>
+                  {v.asesor}
+                </Box>
+                <Box sx={{ fontSize: 'clamp(10px,1.1vw,20px)', fontWeight: 800, color: acc, bgcolor: `${acc}22`, borderRadius: 1, px: '0.7vw', py: '0.3vh', flexShrink: 0, textTransform: 'uppercase' }}>
+                  {esTel ? 'Tel' : 'Acc'}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      </ScreenShell>
+    );
+  };
+
   const renderScreen = () => {
+    if (screen === 0) return renderHoy();
+
     if (!data) {
       return (
         <ScreenShell title="Cargando…">
@@ -238,7 +411,7 @@ const PantallaTVPage: React.FC = () => {
       );
     }
 
-    switch (screen) {
+    switch (screen - 1) {
       // 1 · TELÉFONOS
       case 0:
         return (
