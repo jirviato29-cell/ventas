@@ -610,7 +610,7 @@ const PantallaTVPage: React.FC = () => {
                       border: `2px solid ${top ? ORANGE : '#33415555'}`,
                       borderRadius: 3,
                       px: '0.5vw',
-                      py: '0.8vh',
+                      py: '0.6vh',
                       minHeight: 0,
                       overflow: 'hidden',
                       display: 'flex',
@@ -618,17 +618,24 @@ const PantallaTVPage: React.FC = () => {
                       justifyContent: 'center',
                     }}
                   >
+                    <Box sx={{ fontSize: 'clamp(11px, 1.1vw, 20px)', color: top ? ORANGE : TEXT_DIM, fontWeight: 800, lineHeight: 1 }}>
+                      #{i + 1}
+                    </Box>
                     <Box
                       sx={{
-                        fontSize: 'clamp(12px, 1.3vw, 26px)',
-                        color: top ? ORANGE : TEXT_DIM,
+                        fontSize: 'clamp(14px, 1.5vw, 28px)',
+                        color: '#fff',
                         fontWeight: 800,
-                        whiteSpace: 'nowrap',
+                        lineHeight: 1.1,
+                        mt: '0.2vh',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        wordBreak: 'break-word',
                       }}
                     >
-                      #{i + 1} · {m.modulo}
+                      {m.modulo}
                     </Box>
                     <Box
                       sx={{
@@ -636,14 +643,15 @@ const PantallaTVPage: React.FC = () => {
                         fontVariantNumeric: 'tabular-nums',
                         fontWeight: 800,
                         color: top ? ORANGE : '#fff',
-                        fontSize: 'clamp(30px, 4.6vw, 96px)',
+                        fontSize: 'clamp(28px, 4vw, 82px)',
                         lineHeight: 1.05,
+                        mt: '0.3vh',
                       }}
                     >
                       {fmtN(m.telefonos_total)}
                     </Box>
-                    <Box sx={{ fontSize: 'clamp(10px, 1vw, 20px)', color: TEXT_DIM }}>equipos</Box>
-                    <Box sx={{ fontSize: 'clamp(11px, 1.2vw, 24px)', color: GREEN, fontWeight: 700, mt: '0.4vh' }}>
+                    <Box sx={{ fontSize: 'clamp(9px, 0.9vw, 16px)', color: TEXT_DIM, lineHeight: 1 }}>equipos</Box>
+                    <Box sx={{ fontSize: 'clamp(11px, 1.2vw, 22px)', color: GREEN, fontWeight: 700, mt: '0.3vh' }}>
                       {fmtN(m.planes)} planes
                     </Box>
                   </Box>
