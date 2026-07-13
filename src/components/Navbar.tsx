@@ -250,6 +250,9 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/estadisticas">
                     ESTADÍSTICAS
                   </Button>
+                  <Button sx={navBtnSx} component={Link} to="/pantalla-tv">
+                    📺 PANTALLA TV
+                  </Button>
                 </>
               )}
 
@@ -305,6 +308,9 @@ const Navbar = () => {
                   </Button>
                   <Button sx={navBtnSx} component={Link} to="/estadisticas">
                     ESTADÍSTICAS
+                  </Button>
+                  <Button sx={navBtnSx} component={Link} to="/pantalla-tv">
+                    📺 PANTALLA TV
                   </Button>
                   <Button sx={navBtnSx} component={Link} to="/quien-tiene">
                     QUIEN TIENE
@@ -519,6 +525,10 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/pantalla-tv")}>
+                <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
+                <ListItemText primary="📺 PANTALLA TV" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
             </>
           )}
 
@@ -648,6 +658,10 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/estadisticas")}>
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/pantalla-tv")}>
+                <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
+                <ListItemText primary="📺 PANTALLA TV" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/quien-tiene")}>
                 <ListItemIcon sx={drawerIconSx}><ManageSearchIcon /></ListItemIcon>

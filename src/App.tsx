@@ -48,6 +48,7 @@ import EquiposTelcel from './pages/EquiposTelcel';
 import ListaPrecios from './pages/ListaPrecios';
 import VentasTelcel from './pages/VentasTelcel';
 import AltaImeis from './pages/AltaImeis';
+import PantallaTVPage from './pages/PantallaTVPage';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -104,6 +105,7 @@ const App: React.FC = () => {
     { path: '/checkin', element: <RutaProtegida><CheckinPage /></RutaProtegida> },
     { path: '/gastos', element: <RutaProtegida><GastosPage /></RutaProtegida> },
     { path: '/equipos_telcel', element: <RutaProtegida><EquiposTelcel /></RutaProtegida> },
+    { path: '/pantalla-tv', element: <RutaProtegida><PantallaTVPage /></RutaProtegida> },
   ]);
 
   return routes;
