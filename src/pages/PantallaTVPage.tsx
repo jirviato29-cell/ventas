@@ -492,12 +492,14 @@ const PantallaTVPage: React.FC = () => {
       }
 
       // 8 · TELÉFONOS POR DÍA
-      case 7:
+      case 7: {
+        const hoy = new Date().getDate();
+        const serie = (data.telefonos_por_dia ?? []).filter((x) => x.dia <= hoy);
         return (
           <ScreenShell title={SCREEN_TITLES[7]}>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.telefonos_por_dia ?? []} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+                <LineChart data={serie} margin={{ top: 42, right: 30, left: 10, bottom: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="dia" tick={makeDayTick(data.mes)} interval={0} height={50} stroke="#334155" />
                   <YAxis tick={{ fontSize: 15, fill: '#cbd5e1', fontFamily: MONO }} stroke="#334155" allowDecimals={false} />
@@ -509,15 +511,19 @@ const PantallaTVPage: React.FC = () => {
                     dot={{ fill: ORANGE, r: 4 }}
                     activeDot={{ r: 8 }}
                     isAnimationActive={false}
+                    label={{ position: "top", fill: "#fff", fontSize: 20, fontWeight: 800, offset: 16 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </Box>
           </ScreenShell>
         );
+      }
 
       // 9 · ACCESORIOS POR DÍA
-      case 8:
+      case 8: {
+        const hoy = new Date().getDate();
+        const serie = (data.accesorios_por_dia ?? []).filter((x) => x.dia <= hoy);
         return (
           <ScreenShell title={SCREEN_TITLES[8]}>
             <Box sx={{ mb: '1vh', fontSize: 'clamp(14px,1.5vw,26px)', color: TEXT_DIM }}>
@@ -525,7 +531,7 @@ const PantallaTVPage: React.FC = () => {
             </Box>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.accesorios_por_dia ?? []} margin={{ top: 10, right: 30, left: 20, bottom: 30 }}>
+                <LineChart data={serie} margin={{ top: 42, right: 30, left: 20, bottom: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="dia" tick={makeDayTick(data.mes)} interval={0} height={50} stroke="#334155" />
                   <YAxis
@@ -542,12 +548,15 @@ const PantallaTVPage: React.FC = () => {
                     dot={{ fill: '#a855f7', r: 4 }}
                     activeDot={{ r: 8 }}
                     isAnimationActive={false}
+                    label={{ position: "top", fill: "#fff", fontSize: 19, fontWeight: 800, offset: 16,
+                             formatter: (v: any) => `$${(Number(v) / 1000).toFixed(1)}k` }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </Box>
           </ScreenShell>
         );
+      }
 
       default:
         return null;
