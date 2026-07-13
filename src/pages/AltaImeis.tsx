@@ -143,6 +143,11 @@ const AltaImeis = () => {
     return true;
   });
 
+  const EXCLUIDOS = ['cadenas c.', 'bo', 'mi2', 'prueba', 'v2'];
+  const modulosVisibles = modulos.filter(
+    (m) => !EXCLUIDOS.includes((m.nombre || '').trim().toLowerCase())
+  );
+
   const cellSx = { border: "1px solid #ccc" };
 
   return (
@@ -159,7 +164,7 @@ const AltaImeis = () => {
           value={moduloId}
           onChange={(e) => setModuloId(e.target.value)}
         >
-          {modulos.map((m) => (
+          {modulosVisibles.map((m) => (
             <MenuItem key={m.id} value={m.id}>
               {m.nombre}
             </MenuItem>
