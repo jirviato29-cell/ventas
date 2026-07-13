@@ -414,17 +414,19 @@ const PantallaTVPage: React.FC = () => {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${Math.min(Math.max(ranking.length, 1), 4)}, 1fr)`,
-                gap: '1.6vw',
-                alignContent: 'center',
-                height: '100%',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridAutoRows: '1fr',
+                gap: '1vw',
+                flex: 1,
+                minHeight: 0,
+                width: '100%',
                 overflow: 'hidden',
               }}
             >
               {ranking.length === 0 && (
                 <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
               )}
-              {ranking.slice(0, 8).map((m, i) => {
+              {ranking.map((m, i) => {
                 const top = i < 3;
                 return (
                   <Box
@@ -434,11 +436,25 @@ const PantallaTVPage: React.FC = () => {
                       bgcolor: top ? '#2a1c0e' : CARD,
                       border: `2px solid ${top ? ORANGE : '#33415555'}`,
                       borderRadius: 3,
-                      py: '2.4vh',
-                      px: '0.6vw',
+                      px: '0.5vw',
+                      py: '0.8vh',
+                      minHeight: 0,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
                     }}
                   >
-                    <Box sx={{ fontSize: 'clamp(14px, 1.5vw, 28px)', color: top ? ORANGE : TEXT_DIM, fontWeight: 800 }}>
+                    <Box
+                      sx={{
+                        fontSize: 'clamp(12px, 1.3vw, 26px)',
+                        color: top ? ORANGE : TEXT_DIM,
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       #{i + 1} · {m.modulo}
                     </Box>
                     <Box
@@ -447,14 +463,14 @@ const PantallaTVPage: React.FC = () => {
                         fontVariantNumeric: 'tabular-nums',
                         fontWeight: 800,
                         color: top ? ORANGE : '#fff',
-                        fontSize: 'clamp(40px, 6vw, 110px)',
+                        fontSize: 'clamp(30px, 4.6vw, 96px)',
                         lineHeight: 1.05,
                       }}
                     >
                       {fmtN(m.telefonos_total)}
                     </Box>
-                    <Box sx={{ fontSize: 'clamp(12px, 1.2vw, 22px)', color: TEXT_DIM }}>equipos</Box>
-                    <Box sx={{ fontSize: 'clamp(13px, 1.4vw, 26px)', color: GREEN, fontWeight: 700, mt: '0.8vh' }}>
+                    <Box sx={{ fontSize: 'clamp(10px, 1vw, 20px)', color: TEXT_DIM }}>equipos</Box>
+                    <Box sx={{ fontSize: 'clamp(11px, 1.2vw, 24px)', color: GREEN, fontWeight: 700, mt: '0.4vh' }}>
                       {fmtN(m.planes)} planes
                     </Box>
                   </Box>
