@@ -612,7 +612,7 @@ const PantallaTVPage: React.FC = () => {
                       px: '0.5vw',
                       py: '0.6vh',
                       minHeight: 0,
-                      overflow: 'hidden',
+                      overflow: 'visible',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'center',
@@ -623,16 +623,14 @@ const PantallaTVPage: React.FC = () => {
                     </Box>
                     <Box
                       sx={{
-                        fontSize: 'clamp(14px, 1.5vw, 28px)',
+                        fontSize: 'clamp(16px, 1.8vw, 32px)',
                         color: '#fff',
-                        fontWeight: 800,
-                        lineHeight: 1.1,
+                        fontWeight: 900,
+                        lineHeight: 1.15,
                         mt: '0.2vh',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
                         overflow: 'hidden',
-                        wordBreak: 'break-word',
                       }}
                     >
                       {m.modulo}
@@ -643,7 +641,7 @@ const PantallaTVPage: React.FC = () => {
                         fontVariantNumeric: 'tabular-nums',
                         fontWeight: 800,
                         color: top ? ORANGE : '#fff',
-                        fontSize: 'clamp(28px, 4vw, 82px)',
+                        fontSize: 'clamp(24px, 3.4vw, 68px)',
                         lineHeight: 1.05,
                         mt: '0.3vh',
                       }}
