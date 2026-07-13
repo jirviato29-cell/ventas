@@ -28,7 +28,7 @@ interface EstData {
   telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; };
   accesorios: { total_unidades: number; top_5_productos: { producto: string; cantidad: number }[]; };
   chips: { total: number; por_tipo: { tipo_chip: string; cantidad: number }[]; };
-  planes: { total: number; por_plan: { plan: string; cantidad: number }[]; };
+  planes: { total: number; por_plan: { plan: string; cantidad: number }[]; contratos_pendientes: number; contratos_listos: number; };
   por_modulo: { modulo: string; telefonos_total: number; planes: number }[];
   telefonos_top: { modelo: string; cantidad: number }[];
   telefonos_por_dia: { dia: number; cantidad: number }[];
@@ -306,19 +306,22 @@ const PantallaTVPage: React.FC = () => {
           (data.planes.por_plan ?? []).find((p) => p.plan.toLowerCase().includes(kw))?.cantidad ?? 0;
         const libre = find('libre');
         const forzoso = find('forzoso');
+        const pendientes = data.planes.contratos_pendientes ?? 0;
+        const cuadros: { l: string; v: number; c: string; sub?: string }[] = [
+          { l: 'LIBRE', v: libre, c: GREEN },
+          { l: 'FORZOSO', v: forzoso, c: ORANGE },
+          { l: 'CONTRATOS PENDIENTES', v: pendientes, c: '#ff4d4f', sub: 'por enviar' },
+        ];
         return (
           <ScreenShell title={SCREEN_TITLES[2]}>
             <BigStat label="PLANES DEL MES" value={fmtN(data.planes.total)} color={ORANGE} />
-            <Box sx={{ display: 'flex', gap: '3vw', mt: '5vh', justifyContent: 'center' }}>
-              {[
-                { l: 'LIBRE', v: libre, c: GREEN },
-                { l: 'FORZOSO', v: forzoso, c: ORANGE },
-              ].map((s) => (
+            <Box sx={{ display: 'flex', gap: '2vw', mt: '5vh', justifyContent: 'center' }}>
+              {cuadros.map((s) => (
                 <Box
                   key={s.l}
                   sx={{
                     flex: 1,
-                    maxWidth: '38%',
+                    maxWidth: '32%',
                     textAlign: 'center',
                     bgcolor: CARD,
                     border: `2px solid ${s.c}55`,
@@ -326,7 +329,7 @@ const PantallaTVPage: React.FC = () => {
                     py: '4vh',
                   }}
                 >
-                  <Box sx={{ fontSize: 'clamp(18px, 2vw, 36px)', color: s.c, fontWeight: 700, letterSpacing: '0.06em' }}>
+                  <Box sx={{ fontSize: 'clamp(16px, 1.8vw, 34px)', color: s.c, fontWeight: 700, letterSpacing: '0.06em', minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'center', px: '0.5vw' }}>
                     {s.l}
                   </Box>
                   <Box
@@ -341,6 +344,11 @@ const PantallaTVPage: React.FC = () => {
                   >
                     {fmtN(s.v)}
                   </Box>
+                  {s.sub && (
+                    <Box sx={{ fontSize: 'clamp(13px, 1.4vw, 26px)', color: s.c, fontWeight: 600, mt: '1vh' }}>
+                      {s.sub}
+                    </Box>
+                  )}
                 </Box>
               ))}
             </Box>
