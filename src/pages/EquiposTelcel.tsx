@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Container, Typography, TextField, Button, Select, MenuItem,
   Table, TableHead, TableBody, TableRow, TableCell, TableContainer, Paper,
+  Autocomplete,
 } from "@mui/material";
 import axios from "axios";
 
@@ -17,6 +18,13 @@ const EquiposTelcel = () => {
   const [fFin, setFFin] = useState("");
   const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
   const [cargando, setCargando] = useState(false);
+
+  const [aImei, setAImei] = useState("");
+  const [aProducto, setAProducto] = useState<any | null>(null);
+  const [aOpciones, setAOpciones] = useState<any[]>([]);
+  const [aBuscando, setABuscando] = useState(false);
+  const [aFecha, setAFecha] = useState("");
+  const [altaGuardando, setAltaGuardando] = useState(false);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -94,6 +102,39 @@ const EquiposTelcel = () => {
     }
   };
 
+  const buscarProductoAlta = async (texto: string) => {
+    if (!texto || texto.length < 2) { setAOpciones([]); return; }
+    setABuscando(true);
+    try {
+      const res = await axios.get(`${BASE}/inventario/buscar?query=${encodeURIComponent(texto)}`, config);
+      setAOpciones(res.data || []);
+    } catch { setAOpciones([]); }
+    finally { setABuscando(false); }
+  };
+
+  const darDeAltaBodega = async () => {
+    const imei = aImei.trim();
+    if (!imei) { alert("Escribe el IMEI"); return; }
+    if (!aProducto) { alert("Selecciona el producto"); return; }
+    if (!aFecha) { alert("Selecciona la fecha de compra"); return; }
+    setAltaGuardando(true);
+    try {
+      await axios.post(`${BASE}/equipos_telcel/alta-bodega`, {
+        imei,
+        clave: aProducto.clave,
+        producto: aProducto.producto,
+        fecha_compra: aFecha,
+      }, config);
+      alert("Equipo dado de alta en bodega");
+      setAImei(""); setAProducto(null); setAOpciones([]); setAFecha("");
+      cargarEquipos();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al dar de alta el equipo");
+    } finally {
+      setAltaGuardando(false);
+    }
+  };
+
   const equiposVisibles = equipos.filter(eq => {
     if (fActivacion === "activado") return eq.activado === true;
     if (fActivacion === "no_activado") return eq.activado === false;
@@ -121,6 +162,28 @@ const EquiposTelcel = () => {
           variant="outlined"
           sx={{ mb: 3 }}
         />
+
+        {/* ── Alta manual de equipo (bodega) ──────────────────── */}
+        <Box sx={{ mt: 3, mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>Alta manual de equipo (bodega)</Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField label="IMEI" value={aImei} onChange={(e) => setAImei(e.target.value)} size="small" />
+            <Autocomplete
+              sx={{ minWidth: 320 }}
+              options={aOpciones}
+              loading={aBuscando}
+              value={aProducto}
+              getOptionLabel={(p: any) => (p?.clave ? `${p.clave} - ${p.producto}` : (p?.producto || ''))}
+              onInputChange={(_, v, reason) => { if (reason === 'input') buscarProductoAlta(v); }}
+              onChange={(_, obj) => setAProducto(obj)}
+              renderInput={(params) => <TextField {...params} label="Producto (clave o nombre)" size="small" />}
+            />
+            <TextField label="Fecha de compra" type="date" value={aFecha} onChange={(e) => setAFecha(e.target.value)} InputLabelProps={{ shrink: true }} size="small" />
+            <Button variant="contained" onClick={darDeAltaBodega} disabled={altaGuardando}>
+              {altaGuardando ? 'Guardando...' : 'Dar de alta'}
+            </Button>
+          </Box>
+        </Box>
 
         {/* ── Sección de consulta ─────────────────────────────── */}
         <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
