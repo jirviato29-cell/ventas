@@ -3,7 +3,9 @@ import {
   Box, Container, Typography, TextField, Button,
   Select, MenuItem, FormControl, InputLabel,
   Table, TableHead, TableBody, TableRow, TableCell,
+  IconButton,
 } from "@mui/material";
+import EditIcon from '@mui/icons-material/Edit';
 import axios from "axios";
 
 const BASE = "https://ato-appservidor-nvxt.onrender.com";
@@ -17,6 +19,9 @@ const AltaImeis = () => {
   const [guardando, setGuardando] = useState<number | null>(null);
   const [guardandoTodos, setGuardandoTodos] = useState(false);
   const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
+  const [editandoIdx, setEditandoIdx] = useState<number | null>(null);
+  const [imeiEdit, setImeiEdit] = useState("");
+  const [guardandoEdit, setGuardandoEdit] = useState(false);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -136,6 +141,32 @@ const AltaImeis = () => {
     }
   };
 
+  const iniciarEdicion = (idx: number, fila: any) => {
+    setEditandoIdx(idx);
+    setImeiEdit(fila.imei || "");
+  };
+  const cancelarEdicion = () => {
+    setEditandoIdx(null);
+    setImeiEdit("");
+  };
+  const guardarEdicion = async (fila: any) => {
+    const nuevo = imeiEdit.trim();
+    if (!nuevo) { alert("El IMEI no puede estar vacío"); return; }
+    if (!fila.equipo_id) return;
+    setGuardandoEdit(true);
+    try {
+      await axios.post(`${BASE}/equipos_telcel/editar-imei/${fila.equipo_id}`, { imei: nuevo }, config);
+      alert("IMEI actualizado");
+      setEditandoIdx(null);
+      setImeiEdit("");
+      await cargarFaltantes();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al editar el IMEI");
+    } finally {
+      setGuardandoEdit(false);
+    }
+  };
+
   const filasVisibles = filas.filter(f => {
     if (!f.tiene_imei) return true; // las pendientes siempre se ven
     if (fActivacion === "activado") return f.activado === true;
@@ -210,20 +241,34 @@ const AltaImeis = () => {
                   <TableCell sx={cellSx}>{fila.clave}</TableCell>
                   <TableCell sx={cellSx}>
                     {fila.tiene_imei ? (
-                      <span>{fila.imei}</span>
+                      editandoIdx === idx ? (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <TextField
+                            size="small"
+                            value={imeiEdit}
+                            onChange={(e) => setImeiEdit(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarEdicion(fila); } }}
+                            autoFocus
+                          />
+                          <Button size="small" variant="contained" disabled={guardandoEdit} onClick={() => guardarEdicion(fila)}>
+                            {guardandoEdit ? '...' : 'OK'}
+                          </Button>
+                          <Button size="small" onClick={cancelarEdicion}>Cancelar</Button>
+                        </Box>
+                      ) : (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <span>{fila.imei}</span>
+                          <IconButton size="small" onClick={() => iniciarEdicion(idx, fila)} title="Editar IMEI">
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      )
                     ) : (
                       <TextField
                         size="small"
                         value={imeis[idx] || ""}
-                        onChange={(e) =>
-                          setImeis((prev) => ({ ...prev, [idx]: e.target.value }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            darDeAlta(idx, fila);
-                          }
-                        }}
+                        onChange={(e) => setImeis((prev) => ({ ...prev, [idx]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); darDeAlta(idx, fila); } }}
                       />
                     )}
                   </TableCell>
