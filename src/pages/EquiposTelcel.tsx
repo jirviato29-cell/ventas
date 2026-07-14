@@ -171,6 +171,7 @@ const EquiposTelcel = () => {
             <Autocomplete
               sx={{ minWidth: 320 }}
               options={aOpciones}
+              filterOptions={(x) => x}
               loading={aBuscando}
               value={aProducto}
               getOptionLabel={(p: any) => (p?.clave ? `${p.clave} - ${p.producto}` : (p?.producto || ''))}
