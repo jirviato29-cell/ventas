@@ -200,9 +200,9 @@ const FormularioVentaMultiple = () => {
   const [iccid, setIccid] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
 
-  const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('');
+  const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
   const [telefonoImei, setTelefonoImei] = useState('');
-  const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63'>('');
+  const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63' | 'chip_ato'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
   const [, setTelefonoClave] = useState('');
@@ -666,14 +666,14 @@ const FormularioVentaMultiple = () => {
       producto: `${telefonoMarca} ${telefonoModelo}`,
       cantidad: 1, tipo_producto: 'telefono', tipo_venta: telefonoTipo_venta,
       chip_casado: Chip_casado || null,
-      imei: telefonoOrigen === 'telcel' ? (telefonoImei || null) : null,
-      clasificacion: telefonoOrigen === 'telcel' ? (telefonoClasificacion || null) : null,
+      imei: telefonoImei || null,
+      clasificacion: telefonoClasificacion || null,
     };
     const resetTel = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
       setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); settelefono('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
-      setTelefonoOrigen('');
+      setTelefonoOrigen('telcel');
       setTelefonoImei('');
       setTelefonoClasificacion('');
     };
@@ -1099,35 +1099,17 @@ const FormularioVentaMultiple = () => {
       {/* ── Teléfono ── */}
       {!esCadenas && tipoVenta === 'telefono' && (
         <>
-          <Box sx={{ display: 'flex', gap: 2, mt: 2, mb: 1 }}>
-            <Button
-              variant={telefonoOrigen === 'telcel' ? 'contained' : 'outlined'}
-              onClick={() => setTelefonoOrigen('telcel')}
-              fullWidth
-            >
-              Telcel
-            </Button>
-            <Button
-              variant={telefonoOrigen === 'libre' ? 'contained' : 'outlined'}
-              onClick={() => setTelefonoOrigen('libre')}
-              fullWidth
-            >
-              Libre
-            </Button>
-          </Box>
           {telefonoOrigen !== '' && (
           <>
-          {telefonoOrigen === 'telcel' && (
-            <TextField
-              label="IMEI (opcional)"
-              value={telefonoImei}
-              onChange={(e) => setTelefonoImei(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
-              onBlur={() => buscarEquipoPorImeiVenta()}
-              fullWidth
-              margin="normal"
-            />
-          )}
+          <TextField
+            label="IMEI (opcional)"
+            value={telefonoImei}
+            onChange={(e) => setTelefonoImei(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
+            onBlur={() => buscarEquipoPorImeiVenta()}
+            fullWidth
+            margin="normal"
+          />
           <Autocomplete<{ clave: string; producto: string }>
             loading={buscando} options={opcionesTelefonos}
             value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
@@ -1161,24 +1143,29 @@ const FormularioVentaMultiple = () => {
             <MenuItem value="Paguitos">Paguitos</MenuItem>
           </TextField>
           <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth margin="normal" />
-          {telefonoOrigen === 'telcel' && (
-            <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
-              <Button
-                variant={telefonoClasificacion === 'linea_nueva' ? 'contained' : 'outlined'}
-                onClick={() => setTelefonoClasificacion('linea_nueva')}
-                fullWidth
-              >
-                Línea Nueva
-              </Button>
-              <Button
-                variant={telefonoClasificacion === 'boletin_63' ? 'contained' : 'outlined'}
-                onClick={() => setTelefonoClasificacion('boletin_63')}
-                fullWidth
-              >
-                Boletín 63
-              </Button>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
+            <Button
+              variant={telefonoClasificacion === 'linea_nueva' ? 'contained' : 'outlined'}
+              onClick={() => setTelefonoClasificacion('linea_nueva')}
+              fullWidth
+            >
+              Línea Nueva
+            </Button>
+            <Button
+              variant={telefonoClasificacion === 'boletin_63' ? 'contained' : 'outlined'}
+              onClick={() => setTelefonoClasificacion('boletin_63')}
+              fullWidth
+            >
+              Boletín 63
+            </Button>
+            <Button
+              variant={telefonoClasificacion === 'chip_ato' ? 'contained' : 'outlined'}
+              onClick={() => setTelefonoClasificacion('chip_ato')}
+              fullWidth
+            >
+              Chip ATO
+            </Button>
+          </Box>
           <TextField label="Número" value={Chip_casado} onChange={(e) => setChip_casado(e.target.value)} fullWidth margin="normal" />
           <Divider sx={{ my: 2 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
