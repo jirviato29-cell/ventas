@@ -882,7 +882,7 @@ const FormularioVentaMultiple = () => {
           ].map((t) => (
             <Grid item xs={6} key={t.v}>
               <Box
-                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen(''); }}
+                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen('telcel'); }}
                 sx={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8,
                   py: 1, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
