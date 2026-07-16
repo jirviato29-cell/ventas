@@ -345,12 +345,17 @@ const EquiposTelcel = () => {
                     eq.estatus === "vendido" &&
                     !!eq.fecha_estatus_inicial &&
                     ["linea_nueva", "boletin_63", "chip_ato"].includes(eq.clasificacion_venta);
+                  const filaAlertaAzul =
+                    eq.activado === false &&
+                    !!eq.fecha_estatus_inicial &&
+                    eq.estatus !== "vendido";
+                  const bgAlerta = filaAlertaRoja ? '#ffcdd2' : (filaAlertaAzul ? '#bbdefb' : undefined);
                   return (
                     <TableRow
                       key={eq.id}
-                      sx={filaAlertaRoja ? {
-                        backgroundColor: '#ffcdd2',
-                        '& > td': { backgroundColor: '#ffcdd2' },
+                      sx={bgAlerta ? {
+                        backgroundColor: bgAlerta,
+                        '& > td': { backgroundColor: bgAlerta },
                       } : undefined}
                     >
                       <TableCell>{eq.imei}</TableCell>
