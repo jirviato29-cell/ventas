@@ -285,7 +285,6 @@ const EquiposTelcel = () => {
             <TableHead>
               <TableRow>
                 <TableCell>IMEI</TableCell>
-                <TableCell>Clave</TableCell>
                 <TableCell>Producto</TableCell>
                 <TableCell>Tipo</TableCell>
                 <TableCell>Módulo</TableCell>
@@ -300,13 +299,13 @@ const EquiposTelcel = () => {
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={11} align="center">
+                  <TableCell colSpan={10} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} align="center">
+                  <TableCell colSpan={10} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
@@ -314,7 +313,6 @@ const EquiposTelcel = () => {
                 equiposVisibles.map((eq) => (
                   <TableRow key={eq.id}>
                     <TableCell>{eq.imei}</TableCell>
-                    <TableCell>{eq.clave}</TableCell>
                     <TableCell>{eq.producto}</TableCell>
                     <TableCell>
                       <Box
