@@ -369,25 +369,35 @@ const EquiposTelcel = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <TextField
-                          type="date"
-                          size="small"
-                          value={eq.fecha_estatus_inicial || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_estatus_inicial: val || null } : x));
-                          }}
-                          onBlur={(e) => guardarFechaEstatusInicial(eq, e.target.value)}
-                          InputLabelProps={{ shrink: true }}
-                          disabled={bloqueadoEstatusInicial}
-                          sx={bloqueadoEstatusInicial ? {
-                            backgroundColor: '#000',
-                            '& .MuiInputBase-input.Mui-disabled': {
+                        {bloqueadoEstatusInicial ? (
+                          <Box
+                            component="span"
+                            sx={{
+                              display: 'inline-block',
+                              px: 1,
+                              py: '2px',
+                              borderRadius: 1,
+                              fontSize: 12,
+                              fontWeight: 600,
                               color: '#fff',
-                              WebkitTextFillColor: '#fff',
-                            },
-                          } : undefined}
-                        />
+                              backgroundColor: '#2e7d32',
+                            }}
+                          >
+                            IMEI activo
+                          </Box>
+                        ) : (
+                          <TextField
+                            type="date"
+                            size="small"
+                            value={eq.fecha_estatus_inicial || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_estatus_inicial: val || null } : x));
+                            }}
+                            onBlur={(e) => guardarFechaEstatusInicial(eq, e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   );
