@@ -318,69 +318,80 @@ const EquiposTelcel = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                equiposVisibles.map((eq) => (
-                  <TableRow key={eq.id}>
-                    <TableCell>{eq.imei}</TableCell>
-                    <TableCell>{eq.producto}</TableCell>
-                    <TableCell>
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-block',
-                          px: 1,
-                          py: '2px',
-                          borderRadius: 1,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: '#fff',
-                          backgroundColor: tipoEquipo(eq.producto) === 'TELCEL' ? '#FF6600' : '#64748b',
-                        }}
-                      >
-                        {tipoEquipo(eq.producto)}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{eq.modulo_nombre || "—"}</TableCell>
-                    <TableCell>{eq.estatus}</TableCell>
-                    <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
-                    <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => cambiarActivacion(eq)}
-                        sx={{ backgroundColor: eq.activado ? '#2e7d32' : '#9e9e9e', '&:hover': { backgroundColor: eq.activado ? '#1b5e20' : '#757575' } }}
-                      >
-                        {eq.activado ? 'Activado' : 'No activado'}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        type="date"
-                        size="small"
-                        value={eq.fecha_activacion || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_activacion: val || null } : x));
-                        }}
-                        onBlur={(e) => guardarFechaActivacion(eq, e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        type="date"
-                        size="small"
-                        value={eq.fecha_estatus_inicial || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_estatus_inicial: val || null } : x));
-                        }}
-                        onBlur={(e) => guardarFechaEstatusInicial(eq, e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+                equiposVisibles.map((eq) => {
+                  const bloqueadoEstatusInicial = eq.activado === true && !!eq.fecha_activacion;
+                  return (
+                    <TableRow key={eq.id}>
+                      <TableCell>{eq.imei}</TableCell>
+                      <TableCell>{eq.producto}</TableCell>
+                      <TableCell>
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'inline-block',
+                            px: 1,
+                            py: '2px',
+                            borderRadius: 1,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#fff',
+                            backgroundColor: tipoEquipo(eq.producto) === 'TELCEL' ? '#FF6600' : '#64748b',
+                          }}
+                        >
+                          {tipoEquipo(eq.producto)}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{eq.modulo_nombre || "—"}</TableCell>
+                      <TableCell>{eq.estatus}</TableCell>
+                      <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
+                      <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => cambiarActivacion(eq)}
+                          sx={{ backgroundColor: eq.activado ? '#2e7d32' : '#9e9e9e', '&:hover': { backgroundColor: eq.activado ? '#1b5e20' : '#757575' } }}
+                        >
+                          {eq.activado ? 'Activado' : 'No activado'}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          type="date"
+                          size="small"
+                          value={eq.fecha_activacion || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_activacion: val || null } : x));
+                          }}
+                          onBlur={(e) => guardarFechaActivacion(eq, e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          type="date"
+                          size="small"
+                          value={eq.fecha_estatus_inicial || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_estatus_inicial: val || null } : x));
+                          }}
+                          onBlur={(e) => guardarFechaEstatusInicial(eq, e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                          disabled={bloqueadoEstatusInicial}
+                          sx={bloqueadoEstatusInicial ? {
+                            backgroundColor: '#000',
+                            '& .MuiInputBase-input.Mui-disabled': {
+                              color: '#fff',
+                              WebkitTextFillColor: '#fff',
+                            },
+                          } : undefined}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
