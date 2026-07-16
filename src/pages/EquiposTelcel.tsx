@@ -114,6 +114,14 @@ const EquiposTelcel = () => {
     }
   };
 
+  const guardarFechaEstatusInicial = async (eq: any, valor: string) => {
+    try {
+      await axios.post(`${BASE}/equipos_telcel/fecha-estatus-inicial/${eq.id}`, { fecha_estatus_inicial: valor || null }, config);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al guardar la fecha de estatus inicial");
+    }
+  };
+
   const buscarProductoAlta = async (texto: string) => {
     if (!texto || texto.length < 2) { setAOpciones([]); return; }
     setABuscando(true);
@@ -289,11 +297,11 @@ const EquiposTelcel = () => {
                 <TableCell>Tipo</TableCell>
                 <TableCell>Módulo</TableCell>
                 <TableCell>Estatus</TableCell>
-                <TableCell>Fecha almacén</TableCell>
                 <TableCell>Fecha surtido</TableCell>
                 <TableCell>Fecha venta</TableCell>
                 <TableCell>Activación</TableCell>
                 <TableCell>Fecha activación</TableCell>
+                <TableCell>Fecha Estatus inicial</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -333,7 +341,6 @@ const EquiposTelcel = () => {
                     </TableCell>
                     <TableCell>{eq.modulo_nombre || "—"}</TableCell>
                     <TableCell>{eq.estatus}</TableCell>
-                    <TableCell>{eq.fecha_compra ? String(eq.fecha_compra).split(' ')[0] : "—"}</TableCell>
                     <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
                     <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
                     <TableCell>
@@ -356,6 +363,19 @@ const EquiposTelcel = () => {
                           setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_activacion: val || null } : x));
                         }}
                         onBlur={(e) => guardarFechaActivacion(eq, e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="date"
+                        size="small"
+                        value={eq.fecha_estatus_inicial || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_estatus_inicial: val || null } : x));
+                        }}
+                        onBlur={(e) => guardarFechaEstatusInicial(eq, e.target.value)}
                         InputLabelProps={{ shrink: true }}
                       />
                     </TableCell>
