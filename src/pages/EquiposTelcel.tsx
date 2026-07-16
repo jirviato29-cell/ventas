@@ -150,7 +150,7 @@ const EquiposTelcel = () => {
   });
 
   return (
-    <Container sx={{ mt: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4 }}>
       <Box sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom>
           Carga de Equipos Telcel (IMEI)
@@ -263,7 +263,7 @@ const EquiposTelcel = () => {
           </Button>
         </Box>
 
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto' }}>
           <Table size="small" sx={{ '& td, & th': { border: '1px solid #e0e0e0' } }}>
             <TableHead>
               <TableRow>
