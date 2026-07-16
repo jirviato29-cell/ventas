@@ -2,11 +2,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Box, Container, Typography, TextField, Button, Select, MenuItem,
   Table, TableHead, TableBody, TableRow, TableCell, TableContainer, Paper,
-  Autocomplete,
+  Autocomplete, Checkbox,
 } from "@mui/material";
 import axios from "axios";
 
 const BASE = "https://ato-appservidor-nvxt.onrender.com";
+
+const infoClasificacionVenta = (clasificacion: string | null | undefined): { label: string; color: string } | null => {
+  if (clasificacion === "linea_nueva") return { label: "Línea nueva", color: "#1976d2" };
+  if (clasificacion === "boletin_63") return { label: "Boletín 63", color: "#9c27b0" };
+  if (clasificacion === "chip_ato") return { label: "Chip ATO", color: "#ed6c02" };
+  return null;
+};
 
 const EquiposTelcel = () => {
   const [subiendo, setSubiendo] = useState(false);
@@ -119,6 +126,15 @@ const EquiposTelcel = () => {
       await axios.post(`${BASE}/equipos_telcel/fecha-estatus-inicial/${eq.id}`, { fecha_estatus_inicial: valor || null }, config);
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al guardar la fecha de estatus inicial");
+    }
+  };
+
+  const guardarCumpleArl = async (eq: any, nuevo: boolean) => {
+    try {
+      await axios.post(`${BASE}/equipos_telcel/cumple-arl/${eq.id}`, { cumple_arl: nuevo }, config);
+      setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, cumple_arl: nuevo } : x));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al guardar");
     }
   };
 
@@ -302,24 +318,28 @@ const EquiposTelcel = () => {
                 <TableCell>Activación</TableCell>
                 <TableCell>Fecha activación</TableCell>
                 <TableCell>Fecha Estatus inicial</TableCell>
+                <TableCell>Número</TableCell>
+                <TableCell>Qué fue</TableCell>
+                <TableCell>Cumple ARL</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={13} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={13} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
               ) : (
                 equiposVisibles.map((eq) => {
                   const bloqueadoEstatusInicial = eq.activado === true && !!eq.fecha_activacion;
+                  const infoClasif = infoClasificacionVenta(eq.clasificacion_venta);
                   return (
                     <TableRow key={eq.id}>
                       <TableCell>{eq.imei}</TableCell>
@@ -398,6 +418,34 @@ const EquiposTelcel = () => {
                             InputLabelProps={{ shrink: true }}
                           />
                         )}
+                      </TableCell>
+                      <TableCell>{eq.numero_linea || "—"}</TableCell>
+                      <TableCell>
+                        {infoClasif ? (
+                          <Box
+                            component="span"
+                            sx={{
+                              display: 'inline-block',
+                              px: 1,
+                              py: '2px',
+                              borderRadius: 1,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#fff',
+                              backgroundColor: infoClasif.color,
+                            }}
+                          >
+                            {infoClasif.label}
+                          </Box>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Checkbox
+                          checked={eq.cumple_arl === true}
+                          onChange={(e) => guardarCumpleArl(eq, e.target.checked)}
+                        />
                       </TableCell>
                     </TableRow>
                   );
