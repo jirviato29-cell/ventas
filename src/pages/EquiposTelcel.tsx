@@ -340,8 +340,19 @@ const EquiposTelcel = () => {
                 equiposVisibles.map((eq) => {
                   const bloqueadoEstatusInicial = eq.activado === true && !!eq.fecha_activacion;
                   const infoClasif = infoClasificacionVenta(eq.clasificacion_venta);
+                  const filaAlertaRoja =
+                    eq.activado === false &&
+                    eq.estatus === "vendido" &&
+                    !!eq.fecha_estatus_inicial &&
+                    ["linea_nueva", "boletin_63", "chip_ato"].includes(eq.clasificacion_venta);
                   return (
-                    <TableRow key={eq.id}>
+                    <TableRow
+                      key={eq.id}
+                      sx={filaAlertaRoja ? {
+                        backgroundColor: '#ffcdd2',
+                        '& > td': { backgroundColor: '#ffcdd2' },
+                      } : undefined}
+                    >
                       <TableCell>{eq.imei}</TableCell>
                       <TableCell>{eq.producto}</TableCell>
                       <TableCell>
