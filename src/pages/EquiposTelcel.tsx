@@ -102,6 +102,14 @@ const EquiposTelcel = () => {
     }
   };
 
+  const guardarFechaActivacion = async (eq: any, valor: string) => {
+    try {
+      await axios.post(`${BASE}/equipos_telcel/fecha-activacion/${eq.id}`, { fecha_activacion: valor || null }, config);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al guardar la fecha de activación");
+    }
+  };
+
   const buscarProductoAlta = async (texto: string) => {
     if (!texto || texto.length < 2) { setAOpciones([]); return; }
     setABuscando(true);
@@ -268,18 +276,19 @@ const EquiposTelcel = () => {
                 <TableCell>Fecha surtido</TableCell>
                 <TableCell>Fecha venta</TableCell>
                 <TableCell>Activación</TableCell>
+                <TableCell>Fecha activación</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
@@ -303,6 +312,19 @@ const EquiposTelcel = () => {
                       >
                         {eq.activado ? 'Activado' : 'No activado'}
                       </Button>
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        type="date"
+                        size="small"
+                        value={eq.fecha_activacion || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, fecha_activacion: val || null } : x));
+                        }}
+                        onBlur={(e) => guardarFechaActivacion(eq, e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
