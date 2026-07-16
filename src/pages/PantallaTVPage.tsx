@@ -32,7 +32,7 @@ interface EstData {
   por_modulo: { modulo: string; telefonos_total: number; planes: number }[];
   telefonos_top: { modelo: string; cantidad: number }[];
   telefonos_por_dia: { dia: number; cantidad: number }[];
-  accesorios_por_dia: { dia: number; promedio: number }[];
+  accesorios_por_dia: { dia: number; promedio: number; total: number }[];
 }
 
 interface VentaHoyItem {
@@ -86,6 +86,7 @@ const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const fmtN = (n: number) => n.toLocaleString('es-MX');
 const fmt$ = (n: number) =>
   `$${n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+const fmt$k = (n: number) => `$${(n / 1000).toFixed(1)}k`;
 
 const weekdayFor = (mes: string, dia: number) => {
   const [y, m] = mes.split('-').map(Number);
@@ -593,7 +594,7 @@ const PantallaTVPage: React.FC = () => {
                 flex: 1,
                 minHeight: 0,
                 width: '100%',
-                overflow: 'hidden',
+                overflow: 'visible',
               }}
             >
               {ranking.length === 0 && (
@@ -618,22 +619,10 @@ const PantallaTVPage: React.FC = () => {
                       justifyContent: 'center',
                     }}
                   >
-                    <Box sx={{ fontSize: 'clamp(11px, 1.1vw, 20px)', color: top ? ORANGE : TEXT_DIM, fontWeight: 800, lineHeight: 1 }}>
-                      #{i + 1}
-                    </Box>
-                    <Box
-                      sx={{
-                        fontSize: 'clamp(16px, 1.8vw, 32px)',
-                        color: '#fff',
-                        fontWeight: 900,
-                        lineHeight: 1.15,
-                        mt: '0.2vh',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {m.modulo}
+                    <Box sx={{ fontSize: 'clamp(18px, 2vw, 36px)', fontWeight: 900, lineHeight: 1.2 }}>
+                      <span style={{ color: top ? ORANGE : TEXT_DIM }}>#{i + 1}</span>
+                      {' · '}
+                      <span style={{ color: '#FFFFFF' }}>{m.modulo}</span>
                     </Box>
                     <Box
                       sx={{
@@ -698,8 +687,26 @@ const PantallaTVPage: React.FC = () => {
       case 7: {
         const hoy = new Date().getDate();
         const serie = (data.telefonos_por_dia ?? []).filter((x) => x.dia <= hoy);
+        const cantidadHoy = serie.find((x) => x.dia === hoy)?.cantidad ?? 0;
         return (
           <ScreenShell title={SCREEN_TITLES[7]}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0, mb: '1vh' }}>
+              <Box
+                sx={{
+                  fontFamily: MONO,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontWeight: 800,
+                  color: ORANGE,
+                  lineHeight: 1,
+                  fontSize: 'clamp(34px, 5vw, 96px)',
+                }}
+              >
+                {fmtN(cantidadHoy)}
+              </Box>
+              <Box sx={{ fontSize: 'clamp(16px, 1.8vw, 30px)', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.08em' }}>
+                hoy
+              </Box>
+            </Box>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={serie} margin={{ top: 42, right: 30, left: 10, bottom: 30 }}>
@@ -727,10 +734,28 @@ const PantallaTVPage: React.FC = () => {
       case 8: {
         const hoy = new Date().getDate();
         const serie = (data.accesorios_por_dia ?? []).filter((x) => x.dia <= hoy);
+        const totalHoy = serie.find((x) => x.dia === hoy)?.total ?? 0;
         return (
           <ScreenShell title={SCREEN_TITLES[8]}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0 }}>
+              <Box
+                sx={{
+                  fontFamily: MONO,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontWeight: 800,
+                  color: '#a855f7',
+                  lineHeight: 1,
+                  fontSize: 'clamp(34px, 5vw, 96px)',
+                }}
+              >
+                {fmt$k(totalHoy)}
+              </Box>
+              <Box sx={{ fontSize: 'clamp(16px, 1.8vw, 30px)', color: TEXT_DIM, fontWeight: 700, letterSpacing: '0.08em' }}>
+                hoy
+              </Box>
+            </Box>
             <Box sx={{ mb: '1vh', fontSize: 'clamp(14px,1.5vw,26px)', color: TEXT_DIM }}>
-              Promedio $ por módulo
+              Total por día
             </Box>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -745,14 +770,14 @@ const PantallaTVPage: React.FC = () => {
                   />
                   <Line
                     type="monotone"
-                    dataKey="promedio"
+                    dataKey="total"
                     stroke="#a855f7"
                     strokeWidth={4}
                     dot={{ fill: '#a855f7', r: 4 }}
                     activeDot={{ r: 8 }}
                     isAnimationActive={false}
                     label={{ position: "top", fill: "#fff", fontSize: 19, fontWeight: 800, offset: 16,
-                             formatter: (v: any) => `$${(Number(v) / 1000).toFixed(1)}k` }}
+                             formatter: (v: any) => fmt$k(Number(v)) }}
                   />
                 </LineChart>
               </ResponsiveContainer>
