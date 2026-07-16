@@ -17,7 +17,11 @@ const EquiposTelcel = () => {
   const [fInicio, setFInicio] = useState("");
   const [fFin, setFFin] = useState("");
   const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
+  const [fTipo, setFTipo] = useState<string>(""); // "", "TELCEL", "LIBRE"
   const [cargando, setCargando] = useState(false);
+
+  const tipoEquipo = (producto: string): "TELCEL" | "LIBRE" =>
+    (producto || "").toUpperCase().startsWith("TELEFONO LIBRE") ? "LIBRE" : "TELCEL";
 
   const [aImei, setAImei] = useState("");
   const [aProducto, setAProducto] = useState<any | null>(null);
@@ -144,8 +148,9 @@ const EquiposTelcel = () => {
   };
 
   const equiposVisibles = equipos.filter(eq => {
-    if (fActivacion === "activado") return eq.activado === true;
-    if (fActivacion === "no_activado") return eq.activado === false;
+    if (fActivacion === "activado" && eq.activado !== true) return false;
+    if (fActivacion === "no_activado" && eq.activado !== false) return false;
+    if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
     return true;
   });
 
@@ -258,6 +263,18 @@ const EquiposTelcel = () => {
             <MenuItem value="no_activado">No activados</MenuItem>
           </Select>
 
+          <Select
+            value={fTipo}
+            onChange={(e) => setFTipo(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="">Todos (Telcel/Libre)</MenuItem>
+            <MenuItem value="TELCEL">Telcel</MenuItem>
+            <MenuItem value="LIBRE">Libre</MenuItem>
+          </Select>
+
           <Button variant="contained" onClick={cargarEquipos}>
             Buscar
           </Button>
@@ -270,6 +287,7 @@ const EquiposTelcel = () => {
                 <TableCell>IMEI</TableCell>
                 <TableCell>Clave</TableCell>
                 <TableCell>Producto</TableCell>
+                <TableCell>Tipo</TableCell>
                 <TableCell>Módulo</TableCell>
                 <TableCell>Estatus</TableCell>
                 <TableCell>Fecha almacén</TableCell>
@@ -282,13 +300,13 @@ const EquiposTelcel = () => {
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={11} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={11} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
@@ -298,6 +316,23 @@ const EquiposTelcel = () => {
                     <TableCell>{eq.imei}</TableCell>
                     <TableCell>{eq.clave}</TableCell>
                     <TableCell>{eq.producto}</TableCell>
+                    <TableCell>
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-block',
+                          px: 1,
+                          py: '2px',
+                          borderRadius: 1,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#fff',
+                          backgroundColor: tipoEquipo(eq.producto) === 'TELCEL' ? '#FF6600' : '#64748b',
+                        }}
+                      >
+                        {tipoEquipo(eq.producto)}
+                      </Box>
+                    </TableCell>
                     <TableCell>{eq.modulo_nombre || "—"}</TableCell>
                     <TableCell>{eq.estatus}</TableCell>
                     <TableCell>{eq.fecha_compra ? String(eq.fecha_compra).split(' ')[0] : "—"}</TableCell>
