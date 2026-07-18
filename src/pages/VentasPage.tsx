@@ -171,6 +171,7 @@ function getEstadoChip(c: VentaChip): { label: string; color: string } {
 const FormularioVentaMultiple = () => {
   const moduloLocal = localStorage.getItem('modulo') || '';
   const esCadenas = moduloLocal.toLowerCase().includes('cadena');
+  const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al'];
   const isMobile = useMediaQuery('(max-width:767px)');
 
   // ── Estado general ───────────────────────────────────────────────────────
@@ -231,6 +232,8 @@ const FormularioVentaMultiple = () => {
   const [rol, setRol] = useState<Usuario['rol'] | null>(localStorage.getItem('rol') as Usuario['rol'] | null);
   const [modulos, setModulos] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const nombreModuloActual = (user?.modulo?.nombre || moduloLocal || '').trim().toLowerCase();
+  const imeiObligatorio = !user?.is_admin && MODULOS_IMEI_OBLIGATORIO.includes(nombreModuloActual);
   const navigate = useNavigate();
   const [totalAccesorios, setTotalAccesorios] = useState(0);
   const [totalTelefonos, setTotalTelefonos] = useState(0);
@@ -656,6 +659,14 @@ const FormularioVentaMultiple = () => {
   };
 
   const registrarVentaTelefono = async () => {
+    if (imeiObligatorio && !telefonoImei.trim()) {
+      setMensaje({ tipo: 'error', texto: 'El IMEI es obligatorio en este módulo.' });
+      return;
+    }
+    if (imeiObligatorio && (!telefonoMarca || !telefonoModelo)) {
+      setMensaje({ tipo: 'error', texto: 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.' });
+      return;
+    }
     if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) {
       setMensaje({ tipo: 'error', texto: 'Faltan datos del teléfono.' });
       return;
@@ -1102,41 +1113,55 @@ const FormularioVentaMultiple = () => {
           {telefonoOrigen !== '' && (
           <>
           <TextField
-            label="IMEI (opcional)"
+            label={imeiObligatorio ? "IMEI (obligatorio)" : "IMEI (opcional)"}
             value={telefonoImei}
             onChange={(e) => setTelefonoImei(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
             onBlur={() => buscarEquipoPorImeiVenta()}
             fullWidth
             margin="normal"
+            required={imeiObligatorio}
+            error={imeiObligatorio && !telefonoImei.trim()}
+            helperText={imeiObligatorio ? "Captura el IMEI y presiona Enter para cargar el equipo" : ""}
           />
-          <Autocomplete<{ clave: string; producto: string }>
-            loading={buscando} options={opcionesTelefonos}
-            value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
-            filterOptions={(opts, { inputValue }) => {
-              const q = inputValue.toLowerCase();
-              return opts.filter(
-                (p) =>
-                  (p.clave ?? '').toLowerCase().includes(q) ||
-                  (p.producto ?? '').toLowerCase().includes(q),
-              );
-            }}
-            getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
-            onInputChange={(_, v, reason) => { if (reason === 'input') buscarTelefonos(v); }}
-            onChange={(_, obj) => {
-              if (obj) {
-                const parts = obj.producto.split(' ');
-                setTelefonoMarca(parts[0] || '');
-                setTelefonoModelo(parts.slice(1).join(' ') || '');
-                setTelefonoClave(obj.clave ?? '');
-              } else {
-                setTelefonoMarca('');
-                setTelefonoModelo('');
-                setTelefonoClave('');
-              }
-            }}
-            renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth margin="normal" />}
-          />
+          {imeiObligatorio ? (
+            <TextField
+              label="Teléfono (marca + modelo)"
+              value={`${telefonoMarca} ${telefonoModelo}`.trim()}
+              fullWidth
+              margin="normal"
+              InputProps={{ readOnly: true }}
+              placeholder="Se llena automáticamente con el IMEI"
+            />
+          ) : (
+            <Autocomplete<{ clave: string; producto: string }>
+              loading={buscando} options={opcionesTelefonos}
+              value={opcionesTelefonos.find((p) => p.producto === `${telefonoMarca} ${telefonoModelo}`.trim()) ?? null}
+              filterOptions={(opts, { inputValue }) => {
+                const q = inputValue.toLowerCase();
+                return opts.filter(
+                  (p) =>
+                    (p.clave ?? '').toLowerCase().includes(q) ||
+                    (p.producto ?? '').toLowerCase().includes(q),
+                );
+              }}
+              getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
+              onInputChange={(_, v, reason) => { if (reason === 'input') buscarTelefonos(v); }}
+              onChange={(_, obj) => {
+                if (obj) {
+                  const parts = obj.producto.split(' ');
+                  setTelefonoMarca(parts[0] || '');
+                  setTelefonoModelo(parts.slice(1).join(' ') || '');
+                  setTelefonoClave(obj.clave ?? '');
+                } else {
+                  setTelefonoMarca('');
+                  setTelefonoModelo('');
+                  setTelefonoClave('');
+                }
+              }}
+              renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth margin="normal" />}
+            />
+          )}
           <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth margin="normal">
             <MenuItem value="Contado">Contado</MenuItem>
             <MenuItem value="Pajoy">Pajoy</MenuItem>
