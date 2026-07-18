@@ -667,6 +667,14 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'error', texto: 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.' });
       return;
     }
+    if (imeiObligatorio && !telefonoClasificacion) {
+      setMensaje({ tipo: 'error', texto: 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.' });
+      return;
+    }
+    if (imeiObligatorio && !Chip_casado.trim()) {
+      setMensaje({ tipo: 'error', texto: 'El Número es obligatorio en este módulo.' });
+      return;
+    }
     if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) {
       setMensaje({ tipo: 'error', texto: 'Faltan datos del teléfono.' });
       return;
@@ -1168,6 +1176,11 @@ const FormularioVentaMultiple = () => {
             <MenuItem value="Paguitos">Paguitos</MenuItem>
           </TextField>
           <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth margin="normal" />
+          {imeiObligatorio && !telefonoClasificacion && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              Selecciona una clasificación (obligatorio)
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
             <Button
               variant={telefonoClasificacion === 'linea_nueva' ? 'contained' : 'outlined'}
@@ -1191,7 +1204,15 @@ const FormularioVentaMultiple = () => {
               Chip ATO
             </Button>
           </Box>
-          <TextField label="Número" value={Chip_casado} onChange={(e) => setChip_casado(e.target.value)} fullWidth margin="normal" />
+          <TextField
+            label={imeiObligatorio ? "Número (obligatorio)" : "Número"}
+            value={Chip_casado}
+            onChange={(e) => setChip_casado(e.target.value)}
+            fullWidth
+            margin="normal"
+            required={imeiObligatorio}
+            error={imeiObligatorio && !Chip_casado.trim()}
+          />
           <Divider sx={{ my: 2 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
