@@ -253,7 +253,8 @@ const DireccionPage: React.FC = () => {
   const subtotalTel           = ventasTel.reduce((s: number, v: any) => s + getTotal(v), 0);
   const fechaSiguiente        = fecha ? nextDate(fecha) : '';
   const caja_chica            = corte?.caja_chica ?? 0;
-  const total_efectivo_final  = ef_acc + ef_tel + totalAdicional - sal + caja_chica;
+  const devoluciones          = corte?.devoluciones ?? 0;
+  const total_efectivo_final  = ef_acc + ef_tel + totalAdicional - sal - devoluciones + caja_chica;
   const total_tarjeta         = ta_acc + ta_tel;
   const total_general_corte   = total_efectivo_final + total_tarjeta;
   const moduloNombre          = modulos.find((m) => String(m.id) === moduloId)?.nombre ?? '';
@@ -455,17 +456,18 @@ const DireccionPage: React.FC = () => {
           { label: 'Teléfonos',  ef: ef_tel, ta: ta_tel, tot: ef_tel + ta_tel, alt: true  },
           { label: 'Recargas',   ef: totalAdicional, ta: null, tot: totalAdicional, alt: false },
           { label: 'Salidas',    ef: sal > 0 ? -sal : 0, ta: null, tot: sal > 0 ? -sal : 0, alt: true, red: sal > 0 },
+          ...(devoluciones > 0 ? [{ label: 'Devoluciones', ef: -devoluciones, ta: null, tot: -devoluciones, alt: false, red: true }] : []),
         ].map(({ label, ef, ta, tot, alt, red }: { label: string; ef: number; ta: number | null; tot: number; alt: boolean; red?: boolean }) => (
           <TableRow key={label} sx={{ bgcolor: alt ? '#fafbfc' : 'white' }}>
             <TableCell sx={{ fontSize: 11, border: 'none', py: '4px', pl: '12px', color: '#334155', lineHeight: 1.3 }}>{label}</TableCell>
             <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', color: red ? '#b91c1c' : '#0f172a', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>
-              {red ? `-$${sal.toFixed(2)}` : `$${ef.toFixed(2)}`}
+              {red ? `-$${Math.abs(ef).toFixed(2)}` : `$${ef.toFixed(2)}`}
             </TableCell>
             <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', color: ta === null ? '#cbd5e1' : '#0f172a', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>
               {ta === null ? '—' : `$${ta.toFixed(2)}`}
             </TableCell>
             <TableCell align="right" sx={{ fontSize: 11, border: 'none', py: '4px', pr: '12px', color: red ? '#b91c1c' : '#0f172a', lineHeight: 1.3, fontVariantNumeric: 'tabular-nums' }}>
-              {red ? `-$${sal.toFixed(2)}` : `$${tot.toFixed(2)}`}
+              {red ? `-$${Math.abs(tot).toFixed(2)}` : `$${tot.toFixed(2)}`}
             </TableCell>
           </TableRow>
         ))}
