@@ -18,6 +18,8 @@ const TraspasosEncargado = () => {
   const [traspasos, setTraspasos] = useState<Traspaso[]>([]);
   const [productos, setProductos] = useState<string[]>([]);
   const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [productosConTipo, setProductosConTipo] = useState<{ producto: string; tipo_producto: string }[]>([]);
+  const [imei, setImei] = useState("");
 
   const [confirmAprobar, setConfirmAprobar]   = useState<Traspaso | null>(null);
   const [confirmRechazar, setConfirmRechazar] = useState<Traspaso | null>(null);
@@ -25,6 +27,9 @@ const TraspasosEncargado = () => {
   const token        = localStorage.getItem("token");
   const propioModulo = localStorage.getItem("modulo") || "";
   const config       = { headers: { Authorization: `Bearer ${token}` } };
+
+  const esTelefono =
+    productosConTipo.find((p) => p.producto === producto)?.tipo_producto === "telefono";
 
   const cargarModulos = async () => {
     const res = await axios.get(`${BASE}/registro/modulos`, config);
@@ -39,10 +44,12 @@ const TraspasosEncargado = () => {
 
   const cargarProductos = async () => {
     const res = await axios.get(
-      `${BASE}/inventario/inventario/general/productos-nombres`,
+      `${BASE}/inventario/inventario/general/productos-con-tipo`,
       config
     );
-    setProductos(res.data);
+    const lista = res.data || [];
+    setProductosConTipo(lista);
+    setProductos(lista.map((p: any) => p.producto));
   };
 
   const solicitarTraspaso = async () => {
@@ -52,16 +59,19 @@ const TraspasosEncargado = () => {
     if (!cantidad || isNaN(cant) || cant <= 0) { setErrorForm("La cantidad debe ser mayor a 0"); return; }
     if (!destino) { setErrorForm("Selecciona un módulo destino"); return; }
     if (destino === propioModulo) { setErrorForm("El módulo destino debe ser diferente al tuyo"); return; }
+    if (esTelefono && !imei.trim()) { setErrorForm("El IMEI es obligatorio para traspasos de telefono"); return; }
+    if (esTelefono && cant !== 1) { setErrorForm("Los traspasos de telefono deben ser de 1 pieza (uno por IMEI)"); return; }
 
     try {
       await axios.post(
         `${BASE}/traspasos/traspasos`,
-        { producto, cantidad: cant, modulo_destino: destino },
+        { producto, cantidad: cant, modulo_destino: destino, imei: esTelefono ? imei.trim() : null },
         config
       );
       setProducto("");
       setCantidad("");
       setDestino("");
+      setImei("");
       cargarTraspasos();
     } catch (err: any) {
       setErrorForm(err.response?.data?.detail || "Error al solicitar traspaso");
@@ -113,6 +123,16 @@ const TraspasosEncargado = () => {
           renderInput={(params) => <TextField {...params} label="Producto" />}
           sx={{ minWidth: 250 }}
         />
+        {esTelefono && (
+          <TextField
+            label="IMEI (obligatorio)"
+            value={imei}
+            onChange={(e) => setImei(e.target.value)}
+            required
+            error={!imei.trim()}
+            sx={{ minWidth: 220 }}
+          />
+        )}
         <TextField
           label="Cantidad"
           type="number"
@@ -135,7 +155,7 @@ const TraspasosEncargado = () => {
         <Button
           variant="contained"
           onClick={solicitarTraspaso}
-          disabled={!producto || !cantidad || !destino}
+          disabled={!producto || !cantidad || !destino || (esTelefono && !imei.trim())}
         >
           Enviar
         </Button>
