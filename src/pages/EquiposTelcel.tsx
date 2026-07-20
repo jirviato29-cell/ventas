@@ -349,7 +349,13 @@ const EquiposTelcel = () => {
                     eq.activado === false &&
                     !!eq.fecha_estatus_inicial &&
                     eq.estatus !== "vendido";
-                  const bgAlerta = filaAlertaRoja ? '#ffcdd2' : (filaAlertaAzul ? '#bbdefb' : undefined);
+                  const filaOk =
+                    eq.estatus === "vendido" &&
+                    eq.activado === true &&
+                    eq.cumple_arl === true;
+                  const bgAlerta = filaAlertaRoja
+                    ? '#ffcdd2'
+                    : (filaAlertaAzul ? '#bbdefb' : (filaOk ? '#c8e6c9' : undefined));
                   return (
                     <TableRow
                       key={eq.id}
