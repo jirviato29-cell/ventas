@@ -3,7 +3,12 @@ import axios from 'axios';
 import {
   Box,
   Button,
+  Checkbox,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   MenuItem,
   Select,
@@ -13,6 +18,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SearchIcon from '@mui/icons-material/Search';
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcComision } from '../utils/calcComision';
 
@@ -34,6 +40,8 @@ interface VentaRecibo {
   tipo_venta?: string;
   modulo?: { id: number; nombre: string } | null;
   empleado?: { username: string } | null;
+  devuelta?: boolean;
+  monto_devuelto?: number;
 }
 
 interface Recibo {
@@ -71,9 +79,69 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState<string | null>(null);
   const [catalogoComisiones, setCatalogoComisiones] = useState<{ producto: string; cantidad: number }[]>([]);
+  const [dialogDevolucion, setDialogDevolucion] = useState<Recibo | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Record<number, boolean>>({});
+  const [montos, setMontos] = useState<Record<number, string>>({});
+  const [motivoDev, setMotivoDev] = useState('');
+  const [devolviendo, setDevolviendo] = useState(false);
 
   const rol = localStorage.getItem('rol');
   const puedeCancelar = rol === 'encargado' || rol === 'admin';
+
+  const puedeDevolver = rol === 'encargado' || rol === 'admin';
+
+  const dentroDe30Dias = (fecha?: string) => {
+    if (!fecha) return false;
+    const f = new Date(fecha + 'T00:00:00');
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dias = Math.floor((hoy.getTime() - f.getTime()) / 86400000);
+    return dias >= 0 && dias <= 30;
+  };
+
+  const abrirDevolucion = (recibo: Recibo) => {
+    const sel: Record<number, boolean> = {};
+    const mon: Record<number, string> = {};
+    for (const it of recibo.items) {
+      sel[it.id] = false;
+      mon[it.id] = String(it.precio_unitario * it.cantidad);
+    }
+    setSeleccionados(sel);
+    setMontos(mon);
+    setMotivoDev('');
+    setDialogDevolucion(recibo);
+  };
+
+  const confirmarDevolucion = async () => {
+    if (!dialogDevolucion) return;
+    const items = dialogDevolucion.items.filter((i) => seleccionados[i.id]);
+    if (items.length === 0) { alert('Selecciona al menos un articulo'); return; }
+    for (const it of items) {
+      const m = parseFloat(montos[it.id]);
+      const cobrado = it.precio_unitario * it.cantidad;
+      if (isNaN(m) || m <= 0) { alert(`Monto invalido en "${it.producto}"`); return; }
+      if (m > cobrado + 0.01) { alert(`El monto de "${it.producto}" no puede ser mayor a $${cobrado.toFixed(2)}`); return; }
+    }
+    const totalDev = items.reduce((s, i) => s + parseFloat(montos[i.id]), 0);
+    if (!window.confirm(`Se devolveran $${totalDev.toFixed(2)} en ${items.length} articulo(s). El dinero saldra de la caja de hoy. Esta accion no se puede deshacer. Confirmar?`)) return;
+    setDevolviendo(true);
+    for (const it of items) {
+      try {
+        await axios.put(
+          `${API}/ventas/ventas/${it.id}/devolver`,
+          { monto: parseFloat(montos[it.id]), motivo: motivoDev || null },
+          config
+        );
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail;
+        alert(`Error al devolver "${it.producto}": ${typeof detail === 'string' ? detail : 'Error desconocido'}`);
+      }
+    }
+    setDevolviendo(false);
+    setDialogDevolucion(null);
+    alert('Devolucion registrada');
+    cargar(busquedaFolio || undefined);
+  };
 
   const cancelarRecibo = async (recibo: Recibo) => {
     if (recibo.items.every((i) => i.cancelada)) {
@@ -285,6 +353,9 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
             <tbody>
               {lista.map((recibo) => {
                 const cancelado = recibo.items.every((i) => i.cancelada === true);
+                const algunaDevuelta = recibo.items.some((i) => i.devuelta === true);
+                const totalDevuelto = recibo.items.reduce((s, i) => s + (i.devuelta ? (i.monto_devuelto || 0) : 0), 0);
+                const totalNeto = recibo.total - totalDevuelto;
                 const primer    = recibo.items[0];
                 const username  = primer.empleado?.username ?? '';
                 const iniciales = username ? getIniciales(username) : '??';
@@ -296,7 +367,7 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                   borderBottom: '1px solid #f1f5f9',
                   borderRight: '1px solid #eef2f7',
                   verticalAlign: 'middle',
-                  background: cancelado ? '#fffafa' : '#fff',
+                  background: cancelado ? '#fffafa' : (algunaDevuelta ? '#fffbeb' : '#fff'),
                 };
                 const tdText: React.CSSProperties = {
                   ...tdBase,
@@ -393,7 +464,17 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
 
                     {/* Total */}
                     <td style={{ ...tdText, textAlign: 'right', fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: cancelado ? '#c4757c' : '#0f172a' }}>
-                      {fmt(recibo.total)}
+                      {algunaDevuelta ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: 11 }}>
+                            {fmt(recibo.total)}
+                          </span>
+                          <br />
+                          <strong>{fmt(totalNeto)}</strong>
+                        </>
+                      ) : (
+                        <strong>{fmt(recibo.total)}</strong>
+                      )}
                     </td>
 
                     {/* Estado */}
@@ -402,15 +483,15 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                         display: 'inline-flex', alignItems: 'center', gap: '5px',
                         borderRadius: '999px', px: '9px', py: '3px',
                         fontSize: '10.5px', fontWeight: 700,
-                        bgcolor: cancelado ? '#fef2f2' : '#ecfdf5',
-                        color: cancelado ? '#b91c1c' : '#047857',
+                        bgcolor: cancelado ? '#fef2f2' : (algunaDevuelta ? '#fffbeb' : '#ecfdf5'),
+                        color: cancelado ? '#b91c1c' : (algunaDevuelta ? '#b45309' : '#047857'),
                       }}>
                         <Box component="span" sx={{
                           width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                          bgcolor: cancelado ? '#ef4444' : '#10b981',
+                          bgcolor: cancelado ? '#ef4444' : (algunaDevuelta ? '#f59e0b' : '#10b981'),
                           display: 'inline-block',
                         }} />
-                        {cancelado ? 'Cancelada' : 'Activa'}
+                        {cancelado ? 'Cancelada' : (algunaDevuelta ? 'Devolucion' : 'Activa')}
                       </Box>
                     </td>
 
@@ -442,6 +523,21 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
                             }}
                           >
                             <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        )}
+                        {puedeDevolver && !cancelado && dentroDe30Dias(recibo.items[0]?.fecha) && (
+                          <IconButton
+                            size="small"
+                            title="Devolucion"
+                            disabled={devolviendo}
+                            onClick={() => abrirDevolucion(recibo)}
+                            sx={{
+                              width: 28, height: 28, borderRadius: '7px',
+                              border: '1px solid #e2e8f0', color: '#64748b',
+                              '&:hover:not(:disabled)': { borderColor: '#fde68a', bgcolor: '#fffbeb', color: '#b45309' },
+                            }}
+                          >
+                            <AssignmentReturnIcon sx={{ fontSize: 15 }} />
                           </IconButton>
                         )}
                       </Box>
@@ -575,6 +671,59 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
           {seccion(recibosTelefonos,  'Teléfonos',  '#1565C0')}
         </>
       )}
+
+      <Dialog open={!!dialogDevolucion} onClose={() => setDialogDevolucion(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Devolucion - {dialogDevolucion?.folio}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: '#64748b' }}>
+            Selecciona los articulos a devolver y el monto de dinero que se entregara al cliente.
+          </Typography>
+          {dialogDevolucion?.items.map((it) => {
+            const cobrado = it.precio_unitario * it.cantidad;
+            return (
+              <Box key={it.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Checkbox
+                  checked={!!seleccionados[it.id]}
+                  disabled={it.devuelta === true || it.cancelada === true}
+                  onChange={(e) => setSeleccionados({ ...seleccionados, [it.id]: e.target.checked })}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2">
+                    {it.producto} {it.devuelta ? '(ya devuelto)' : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                    Cobrado: ${cobrado.toFixed(2)}
+                  </Typography>
+                </Box>
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Monto"
+                  value={montos[it.id] ?? ''}
+                  disabled={!seleccionados[it.id]}
+                  onChange={(e) => setMontos({ ...montos, [it.id]: e.target.value })}
+                  sx={{ width: 120 }}
+                />
+              </Box>
+            );
+          })}
+          <TextField
+            label="Motivo"
+            value={motivoDev}
+            onChange={(e) => setMotivoDev(e.target.value)}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={2}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogDevolucion(null)}>Cancelar</Button>
+          <Button variant="contained" color="warning" onClick={confirmarDevolucion} disabled={devolviendo}>
+            Confirmar devolucion
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
