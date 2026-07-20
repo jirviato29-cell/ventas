@@ -799,6 +799,14 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'error', texto: 'Completa Tipo, Estatus, Categoría y Clasificación' });
       return;
     }
+    if (imeiObligatorio && planTipo === 'FORZOSO' && !planImei.trim()) {
+      setMensaje({ tipo: 'error', texto: 'El IMEI es obligatorio en este módulo.' });
+      return;
+    }
+    if (imeiObligatorio && planTipo === 'FORZOSO' && !planEquipo) {
+      setMensaje({ tipo: 'error', texto: 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.' });
+      return;
+    }
     try {
       const payload = {
         tipo_plan: planTipo,
@@ -859,6 +867,28 @@ const FormularioVentaMultiple = () => {
       setTelefonoMarca(parts[0] || '');
       setTelefonoModelo(parts.slice(1).join(' ') || '');
       setTelefonoClave(eq.clave || '');
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al buscar el IMEI");
+    }
+  };
+
+  const buscarEquipoPorImeiPlan = async () => {
+    const imei = planImei.trim();
+    if (!imei) return;
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
+        config
+      );
+      const lista = res.data || [];
+      const eq = lista.find((e: any) => String(e.imei).trim() === imei);
+      if (!eq) {
+        alert("Ese IMEI no está disponible para venta (no está surtido a un módulo).");
+        setPlanEquipo('');
+        return;
+      }
+      setOpcionesTelefonos([{ clave: eq.clave || '', producto: String(eq.producto) }]);
+      setPlanEquipo(String(eq.producto));
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al buscar el IMEI");
     }
@@ -1306,27 +1336,47 @@ const FormularioVentaMultiple = () => {
 
           {planTipo === 'FORZOSO' && (
             <>
-              <Autocomplete
-                options={opcionesTelefonos}
-                getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
-                filterOptions={(opts, { inputValue }) => {
-                  const q = inputValue.toLowerCase();
-                  return opts.filter(
-                    (p) =>
-                      (p.clave ?? '').toLowerCase().includes(q) ||
-                      (p.producto ?? '').toLowerCase().includes(q),
-                  );
-                }}
-                loading={buscando}
-                onInputChange={(_, v) => buscarTelefonos(v)}
-                onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
-                )}
+              <TextField
+                label={imeiObligatorio ? "IMEI (obligatorio)" : "IMEI"}
+                value={planImei}
+                onChange={(e) => setPlanImei(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (imeiObligatorio) buscarEquipoPorImeiPlan(); } }}
+                onBlur={() => { if (imeiObligatorio) buscarEquipoPorImeiPlan(); }}
+                fullWidth
+                margin="normal"
+                required={imeiObligatorio}
+                error={imeiObligatorio && !planImei.trim()}
+                helperText={imeiObligatorio ? "Captura el IMEI y presiona Enter para cargar el equipo" : ""}
               />
-
-              <TextField label="IMEI" value={planImei}
-                onChange={(e) => setPlanImei(e.target.value)} fullWidth margin="normal" />
+              {imeiObligatorio ? (
+                <TextField
+                  label="Equipo (del inventario)"
+                  value={planEquipo}
+                  fullWidth
+                  margin="normal"
+                  InputProps={{ readOnly: true }}
+                  placeholder="Se llena automáticamente con el IMEI"
+                />
+              ) : (
+                <Autocomplete
+                  options={opcionesTelefonos}
+                  getOptionLabel={(p) => (p.clave ? `${p.clave} - ${p.producto ?? ''}` : (p.producto ?? ''))}
+                  filterOptions={(opts, { inputValue }) => {
+                    const q = inputValue.toLowerCase();
+                    return opts.filter(
+                      (p) =>
+                        (p.clave ?? '').toLowerCase().includes(q) ||
+                        (p.producto ?? '').toLowerCase().includes(q),
+                    );
+                  }}
+                  loading={buscando}
+                  onInputChange={(_, v) => buscarTelefonos(v)}
+                  onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
+                  )}
+                />
+              )}
 
               <TextField label="Precio equipo" type="number" value={planPrecio}
                 onChange={(e) => setPlanPrecio(e.target.value)} fullWidth margin="normal" />
