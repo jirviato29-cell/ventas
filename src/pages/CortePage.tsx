@@ -414,8 +414,9 @@ const CortePage = () => {
   const sal = parseFloat(salidaEfectivo || '0');
   const total_tarjeta = ta_acc + ta_tel;
   const caja_chica = corteHoy?.caja_chica ?? 0;
+  const devoluciones = corteHoy?.devoluciones ?? 0;
   const subtotal_efectivo = ef_acc + ef_tel + totalAdicional;
-  const total_efectivo_final = subtotal_efectivo - sal + caja_chica;
+  const total_efectivo_final = subtotal_efectivo - sal - devoluciones + caja_chica;
 
   const chipsHoy = chips.filter((c) => {
     const fecha = c.fecha ? String(c.fecha).slice(0, 10) : '';
@@ -1030,6 +1031,15 @@ const CortePage = () => {
               </TableCell>
               <TableCell align="right" sx={{ fontSize: 13, border: 'none', py: 1, pr: 2, color: '#aaa' }}>—</TableCell>
             </TableRow>
+            {devoluciones > 0 && (
+            <TableRow sx={{ bgcolor: '#fafafa' }}>
+              <TableCell sx={{ fontSize: 13, border: 'none', py: 1, pl: 2, color: '#333' }}>Devoluciones</TableCell>
+              <TableCell align="right" sx={{ fontSize: 13, border: 'none', py: 1, color: '#d32f2f' }}>
+                {`-$${devoluciones.toFixed(2)}`}
+              </TableCell>
+              <TableCell align="right" sx={{ fontSize: 13, border: 'none', py: 1, pr: 2, color: '#aaa' }}>—</TableCell>
+            </TableRow>
+            )}
             <TableRow sx={{ bgcolor: 'white' }}>
               <TableCell sx={{ fontSize: 13, border: 'none', py: 1, pl: 2, color: '#333' }}>Caja Chica</TableCell>
               <TableCell align="right" sx={{ fontSize: 13, border: 'none', py: 1, color: caja_chica > 0 ? '#1565c0' : '#aaa' }}>${caja_chica.toFixed(2)}</TableCell>
