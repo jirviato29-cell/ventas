@@ -10,6 +10,8 @@ import Autocomplete from "@mui/material/Autocomplete";
 
 const BASE = "https://ato-appservidor-nvxt.onrender.com";
 
+const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al'];
+
 const TraspasosEncargado = () => {
   const [producto, setProducto]   = useState("");
   const [cantidad, setCantidad]   = useState("");
@@ -28,7 +30,11 @@ const TraspasosEncargado = () => {
   const propioModulo = localStorage.getItem("modulo") || "";
   const config       = { headers: { Authorization: `Bearer ${token}` } };
 
+  const moduloAplicaImei = MODULOS_IMEI_OBLIGATORIO.includes(
+    (propioModulo || '').trim().toLowerCase()
+  );
   const esTelefono =
+    moduloAplicaImei &&
     productosConTipo.find((p) => p.producto === producto)?.tipo_producto === "telefono";
 
   const cargarModulos = async () => {
