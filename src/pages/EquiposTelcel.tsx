@@ -171,12 +171,25 @@ const EquiposTelcel = () => {
     }
   };
 
-  const equiposVisibles = equipos.filter(eq => {
-    if (fActivacion === "activado" && eq.activado !== true) return false;
-    if (fActivacion === "no_activado" && eq.activado !== false) return false;
-    if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
-    return true;
-  });
+  const fechaOrden = (eq: any): number => {
+    const f = eq.fecha_venta || eq.fecha_salida || eq.fecha_compra;
+    if (!f) return 0;
+    const t = new Date(f).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+
+  const equiposVisibles = equipos
+    .filter(eq => {
+      if (fActivacion === "activado" && eq.activado !== true) return false;
+      if (fActivacion === "no_activado" && eq.activado !== false) return false;
+      if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const diff = fechaOrden(b) - fechaOrden(a);
+      if (diff !== 0) return diff;
+      return (b.id || 0) - (a.id || 0);
+    });
 
   return (
     <Container maxWidth={false} sx={{ mt: 4 }}>
