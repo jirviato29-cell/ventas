@@ -26,7 +26,7 @@ interface EstData {
     total_planes: number;
   };
   telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; };
-  accesorios: { total_unidades: number; top_5_productos: { producto: string; cantidad: number }[]; };
+  accesorios: { total_unidades: number; top_5_productos: { producto: string; cantidad: number }[]; top_10_productos: { producto: string; cantidad: number; monto: number }[]; };
   chips: { total: number; por_tipo: { tipo_chip: string; cantidad: number }[]; };
   planes: { total: number; por_plan: { plan: string; cantidad: number }[]; contratos_pendientes: number; contratos_listos: number; };
   por_modulo: { modulo: string; telefonos_total: number; planes: number }[];
@@ -73,7 +73,7 @@ const SCREEN_TITLES = [
   '📋 Planes Telcel',
   '📊 Totales del mes',
   '🏪 Ranking por módulo',
-  '🎧 Accesorios · Top 5',
+  '🎧 Accesorios · Top 10',
   '📱 Teléfonos · Top 10',
   '📈 Teléfonos por día',
   '🎧 Accesorios por día',
@@ -162,13 +162,13 @@ const BigStat: React.FC<{ label: string; value: string; color?: string }> = ({ l
 );
 
 // Barra horizontal (para tops)
-const HBar: React.FC<{ label: string; value: number; max: number; color: string }> = ({ label, value, max, color }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: '1.5vw', mb: '1.4vh' }}>
+const HBar: React.FC<{ label: string; value: number; max: number; color: string; compact?: boolean }> = ({ label, value, max, color, compact = false }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: '1.5vw', mb: compact ? 'clamp(6px, 1vh, 14px)' : '1.4vh' }}>
     <Box
       sx={{
         width: '30%',
         flexShrink: 0,
-        fontSize: 'clamp(15px, 1.7vw, 30px)',
+        fontSize: compact ? 'clamp(13px, 1.4vw, 26px)' : 'clamp(15px, 1.7vw, 30px)',
         fontWeight: 600,
         color: '#e2e8f0',
         whiteSpace: 'nowrap',
@@ -178,7 +178,7 @@ const HBar: React.FC<{ label: string; value: number; max: number; color: string 
     >
       {label}
     </Box>
-    <Box sx={{ flex: 1, height: 'clamp(26px, 3.6vh, 48px)', bgcolor: '#0b1220', borderRadius: 1.5, overflow: 'hidden' }}>
+    <Box sx={{ flex: 1, height: compact ? 'clamp(20px, 2.6vh, 38px)' : 'clamp(26px, 3.6vh, 48px)', bgcolor: '#0b1220', borderRadius: 1.5, overflow: 'hidden' }}>
       <Box
         sx={{
           height: '100%',
@@ -649,18 +649,20 @@ const PantallaTVPage: React.FC = () => {
         );
       }
 
-      // 6 · ACCESORIOS TOP 5
+      // 6 · ACCESORIOS TOP 10
       case 5: {
-        const top = data.accesorios.top_5_productos ?? [];
+        const top = data.accesorios.top_10_productos ?? [];
         const maxA = top.reduce((m, p) => Math.max(m, p.cantidad), 0);
         return (
           <ScreenShell title={SCREEN_TITLES[5]}>
-            {top.length === 0 && (
-              <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
-            )}
-            {top.map((p) => (
-              <HBar key={p.producto} label={p.producto} value={p.cantidad} max={maxA} color="#a855f7" />
-            ))}
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+              {top.length === 0 && (
+                <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
+              )}
+              {top.map((p) => (
+                <HBar key={p.producto} label={p.producto} value={p.cantidad} max={maxA} color="#a855f7" compact />
+              ))}
+            </Box>
           </ScreenShell>
         );
       }
