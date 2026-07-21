@@ -354,7 +354,7 @@ const EntradaMercancia = () => {
     if (isNaN(cantidad) || cantidad <= 0) { alert("Cantidad inválida"); return; }
 
     setEntradaLista((prev) => {
-      const index = prev.findIndex((p) => p.clave === productoEntrada.clave);
+      const index = prev.findIndex((p) => p.clave === productoEntrada.clave && !p.imei);
       const nuevoItem: ItemEntrada = {
         producto_id: productoEntrada.id,
         producto: productoEntrada.producto,
@@ -364,11 +364,11 @@ const EntradaMercancia = () => {
         tipo_producto: productoEntrada.tipo_producto,
       };
       if (index !== -1) {
-        const copy = [...prev];
-        copy[index].cantidad += cantidad;
-        return copy;
+        const existente = { ...prev[index], cantidad: prev[index].cantidad + cantidad };
+        const resto = prev.filter((_, i) => i !== index);
+        return [existente, ...resto];
       }
-      return [...prev, nuevoItem];
+      return [nuevoItem, ...prev];
     });
 
     setProductoEntrada(null);
@@ -405,7 +405,7 @@ const EntradaMercancia = () => {
         existencia_actual: existencia,
         imei: eq.imei,
       };
-      setEntradaLista((prev) => [...prev, nuevoItem]);
+      setEntradaLista((prev) => [nuevoItem, ...prev]);
       setImeiInput("");
       setTimeout(() => { inputImeiRef.current?.focus(); }, 100);
     } catch (err: any) {
@@ -1210,7 +1210,14 @@ const EntradaMercancia = () => {
                 </Typography>
               </Box>
 
-              <Table size="small">
+              <Table
+                size="small"
+                sx={{
+                  '& th, & td': { border: '1px solid #e2e8f0' },
+                  '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 },
+                  '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' },
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     <TableCell>Clave</TableCell>
@@ -1233,8 +1240,26 @@ const EntradaMercancia = () => {
                       </TableCell>
                       <TableCell>{p.producto}</TableCell>
                       <TableCell>{p.imei ?? "—"}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>
-                        {p.cantidad}
+                      <TableCell align="right" sx={{ fontWeight: 700, py: 0.5 }}>
+                        {entradaActiva && !p.imei ? (
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={p.cantidad}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              setEntradaLista((prev) =>
+                                prev.map((it, i) =>
+                                  i === idx ? { ...it, cantidad: isNaN(v) || v < 1 ? 1 : v } : it
+                                )
+                              );
+                            }}
+                            inputProps={{ min: 1, style: { textAlign: 'right', padding: '4px 8px', width: 60 } }}
+                            className="no-print"
+                          />
+                        ) : (
+                          p.cantidad
+                        )}
                       </TableCell>
                       <TableCell align="right" sx={{ color: "#64748b" }}>
                         {p.existencia_actual}
