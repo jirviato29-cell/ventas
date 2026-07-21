@@ -404,6 +404,7 @@ const EntradaMercancia = () => {
         cantidad: 1,
         existencia_actual: existencia,
         imei: eq.imei,
+        tipo_producto: 'telefono',
       };
       setEntradaLista((prev) => [nuevoItem, ...prev]);
       setImeiInput("");
@@ -689,6 +690,11 @@ const EntradaMercancia = () => {
     year: "numeric",
   });
   const mostrarDocumento = entradaActiva || folioGuardado !== null;
+
+  const esTelefonoItem = (p: ItemEntrada) =>
+    !!p.imei || (p.tipo_producto || '').toLowerCase() === 'telefono';
+  const itemsAccesorios = entradaLista.filter((p) => !esTelefonoItem(p));
+  const itemsTelefonos = entradaLista.filter((p) => esTelefonoItem(p));
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -1025,6 +1031,28 @@ const EntradaMercancia = () => {
                   {fechaHoy}
                 </Typography>
               </Box>
+              {entradaActiva && entradaLista.length > 0 && (
+                <Button
+                  variant="contained"
+                  startIcon={
+                    guardandoEntrada ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <Save />
+                    )
+                  }
+                  onClick={guardarEntradaMercancia}
+                  disabled={guardandoEntrada}
+                  sx={{
+                    backgroundColor: "#16a34a",
+                    "&:hover": { backgroundColor: "#15803d" },
+                    fontWeight: 700,
+                    px: 4,
+                  }}
+                >
+                  {guardandoEntrada ? "Guardando…" : "Guardar entrada"}
+                </Button>
+              )}
             </Box>
 
             <Divider sx={{ my: 2 }} />
@@ -1191,123 +1219,125 @@ const EntradaMercancia = () => {
 
           {/* Tabla de productos de la entrada activa */}
           {entradaLista.length > 0 && (
-            <Paper elevation={0} className="no-print" sx={{ borderRadius: 2, overflow: "hidden", mb: 3 }}>
-              <Box
-                sx={{
-                  px: 2.5,
-                  py: 1.5,
-                  borderBottom: "1px solid #e2e8f0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Productos
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {entradaLista.length} artículo{entradaLista.length !== 1 ? "s" : ""}
-                </Typography>
-              </Box>
+            <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start" className="no-print" sx={{ mb: 3 }}>
 
-              <Table
-                size="small"
-                sx={{
-                  '& th, & td': { border: '1px solid #e2e8f0' },
-                  '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 },
-                  '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' },
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Clave</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell>IMEI</TableCell>
-                    <TableCell align="right">Cantidad</TableCell>
-                    <TableCell align="right">Existencia actual</TableCell>
-                    {entradaActiva && (
-                      <TableCell align="center" className="no-print">
-                        Acc.
-                      </TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {entradaLista.map((p, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell sx={{ fontWeight: 600, color: "#f97316" }}>
-                        {p.clave}
-                      </TableCell>
-                      <TableCell>{p.producto}</TableCell>
-                      <TableCell>{p.imei ?? "—"}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, py: 0.5 }}>
-                        {entradaActiva && !p.imei ? (
-                          <TextField
-                            type="number"
-                            size="small"
-                            value={p.cantidad}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setEntradaLista((prev) =>
-                                prev.map((it, i) =>
-                                  i === idx ? { ...it, cantidad: isNaN(v) || v < 1 ? 1 : v } : it
-                                )
-                              );
-                            }}
-                            inputProps={{ min: 1, style: { textAlign: 'right', padding: '4px 8px', width: 60 } }}
-                            className="no-print"
-                          />
-                        ) : (
-                          p.cantidad
-                        )}
-                      </TableCell>
-                      <TableCell align="right" sx={{ color: "#64748b" }}>
-                        {p.existencia_actual}
-                      </TableCell>
-                      {entradaActiva && (
-                        <TableCell align="center" className="no-print">
-                          <IconButton
-                            size="small"
-                            onClick={() =>
-                              setEntradaLista((prev) => prev.filter((_, i) => i !== idx))
-                            }
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      )}
+              {/* ACCESORIOS - izquierda */}
+              <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', flex: '1 1 420px', minWidth: 380 }}>
+                <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="subtitle1" fontWeight={700}>Accesorios</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {itemsAccesorios.length} artículo{itemsAccesorios.length !== 1 ? 's' : ''}
+                  </Typography>
+                </Box>
+                <Table size="small" sx={{ '& th, & td': { border: '1px solid #e2e8f0' }, '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 }, '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' } }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="right">El módulo tiene</TableCell>
+                      <TableCell>Clave</TableCell>
+                      <TableCell>Producto</TableCell>
+                      <TableCell align="right">Cantidad</TableCell>
+                      {entradaActiva && <TableCell align="center" className="no-print">Acc.</TableCell>}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
+                  </TableHead>
+                  <TableBody>
+                    {itemsAccesorios.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={entradaActiva ? 5 : 4} align="center" sx={{ color: '#94a3b8', py: 2 }}>
+                          Sin accesorios capturados
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {itemsAccesorios.map((p) => {
+                      const idx = entradaLista.indexOf(p);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell align="right" sx={{ color: '#64748b' }}>{p.existencia_actual}</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{p.clave}</TableCell>
+                          <TableCell>{p.producto}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700, py: 0.5 }}>
+                            {entradaActiva ? (
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={p.cantidad}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value, 10);
+                                  setEntradaLista((prev) => prev.map((it, i) => i === idx ? { ...it, cantidad: isNaN(v) || v < 1 ? 1 : v } : it));
+                                }}
+                                inputProps={{ min: 1, style: { textAlign: 'right', padding: '4px 8px', width: 60 } }}
+                                className="no-print"
+                              />
+                            ) : p.cantidad}
+                          </TableCell>
+                          {entradaActiva && (
+                            <TableCell align="center" className="no-print">
+                              <IconButton size="small" onClick={() => setEntradaLista((prev) => prev.filter((_, i) => i !== idx))}>
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Paper>
+
+              {/* TELEFONOS - derecha */}
+              <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', flex: '1 1 420px', minWidth: 380 }}>
+                <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="subtitle1" fontWeight={700}>Teléfonos</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {itemsTelefonos.length} equipo{itemsTelefonos.length !== 1 ? 's' : ''}
+                  </Typography>
+                </Box>
+                <Table size="small" sx={{ '& th, & td': { border: '1px solid #e2e8f0' }, '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 }, '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' } }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="right">El módulo tiene</TableCell>
+                      <TableCell>Clave</TableCell>
+                      <TableCell>Producto</TableCell>
+                      <TableCell>IMEI</TableCell>
+                      <TableCell align="right">Cantidad</TableCell>
+                      {entradaActiva && <TableCell align="center" className="no-print">Acc.</TableCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {itemsTelefonos.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={entradaActiva ? 6 : 5} align="center" sx={{ color: '#94a3b8', py: 2 }}>
+                          Sin teléfonos capturados
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {itemsTelefonos.map((p) => {
+                      const idx = entradaLista.indexOf(p);
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell align="right" sx={{ color: '#64748b' }}>{p.existencia_actual}</TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{p.clave}</TableCell>
+                          <TableCell>{p.producto}</TableCell>
+                          <TableCell>{p.imei ?? '—'}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>{p.cantidad}</TableCell>
+                          {entradaActiva && (
+                            <TableCell align="center" className="no-print">
+                              <IconButton size="small" onClick={() => setEntradaLista((prev) => prev.filter((_, i) => i !== idx))}>
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Paper>
+
+            </Box>
           )}
 
           {/* Botones de acción */}
           <Box display="flex" gap={2} flexWrap="wrap" className="no-print">
-            {entradaActiva && entradaLista.length > 0 && (
-              <Button
-                variant="contained"
-                startIcon={
-                  guardandoEntrada ? (
-                    <CircularProgress size={18} color="inherit" />
-                  ) : (
-                    <Save />
-                  )
-                }
-                onClick={guardarEntradaMercancia}
-                disabled={guardandoEntrada}
-                sx={{
-                  backgroundColor: "#16a34a",
-                  "&:hover": { backgroundColor: "#15803d" },
-                  fontWeight: 700,
-                  px: 4,
-                }}
-              >
-                {guardandoEntrada ? "Guardando…" : "Guardar entrada"}
-              </Button>
-            )}
-
             {folioGuardado && (
               <>
                 <Button
