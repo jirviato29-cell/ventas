@@ -696,6 +696,12 @@ const EntradaMercancia = () => {
   const itemsAccesorios = entradaLista.filter((p) => !esTelefonoItem(p));
   const itemsTelefonos = entradaLista.filter((p) => esTelefonoItem(p));
 
+  const colorExistenciaTel = (n: number) => {
+    if (n >= 3) return { bgcolor: '#fee2e2', color: '#b91c1c', fontWeight: 700 };
+    if (n === 2) return { bgcolor: '#ffedd5', color: '#c2410c', fontWeight: 700 };
+    return { color: '#64748b' };
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
@@ -1232,7 +1238,7 @@ const EntradaMercancia = () => {
                 <Table size="small" sx={{ '& th, & td': { border: '1px solid #e2e8f0' }, '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 }, '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell align="right">El módulo tiene</TableCell>
+                      <TableCell align="center">El módulo tiene</TableCell>
                       <TableCell>Clave</TableCell>
                       <TableCell>Producto</TableCell>
                       <TableCell align="right">Cantidad</TableCell>
@@ -1251,7 +1257,7 @@ const EntradaMercancia = () => {
                       const idx = entradaLista.indexOf(p);
                       return (
                         <TableRow key={idx}>
-                          <TableCell align="right" sx={{ color: '#64748b' }}>{p.existencia_actual}</TableCell>
+                          <TableCell align="center" sx={{ color: '#64748b' }}>{p.existencia_actual}</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{p.clave}</TableCell>
                           <TableCell>{p.producto}</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 700, py: 0.5 }}>
@@ -1294,7 +1300,7 @@ const EntradaMercancia = () => {
                 <Table size="small" sx={{ '& th, & td': { border: '1px solid #e2e8f0' }, '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 }, '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell align="right">El módulo tiene</TableCell>
+                      <TableCell align="center">El módulo tiene</TableCell>
                       <TableCell>Clave</TableCell>
                       <TableCell>Producto</TableCell>
                       <TableCell>IMEI</TableCell>
@@ -1314,7 +1320,9 @@ const EntradaMercancia = () => {
                       const idx = entradaLista.indexOf(p);
                       return (
                         <TableRow key={idx}>
-                          <TableCell align="right" sx={{ color: '#64748b' }}>{p.existencia_actual}</TableCell>
+                          <TableCell align="center" sx={colorExistenciaTel(p.existencia_actual)}>
+                            {p.existencia_actual}
+                          </TableCell>
                           <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{p.clave}</TableCell>
                           <TableCell>{p.producto}</TableCell>
                           <TableCell>{p.imei ?? '—'}</TableCell>
