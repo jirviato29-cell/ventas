@@ -15,6 +15,27 @@ const infoClasificacionVenta = (clasificacion: string | null | undefined): { lab
   return null;
 };
 
+const ESTADOS_ACTIVACION = ['no_activado', 'activado', 'libre', 'bloqueado'] as const;
+
+const ESTILO_ESTADO: Record<string, { label: string; bg: string; hover: string; color: string }> = {
+  no_activado: { label: 'No activado', bg: '#9e9e9e', hover: '#757575', color: '#fff' },
+  activado:    { label: 'Activado',    bg: '#2e7d32', hover: '#1b5e20', color: '#fff' },
+  libre:       { label: 'Libre',       bg: '#f9a825', hover: '#f57f17', color: '#000' },
+  bloqueado:   { label: 'Bloqueado',   bg: '#c62828', hover: '#8e0000', color: '#fff' },
+};
+
+// Fallback: si el backend aun no manda estado_activacion, se deriva del booleano
+const obtenerEstado = (eq: any): string => {
+  const e = eq?.estado_activacion;
+  if (typeof e === 'string' && ESTADOS_ACTIVACION.includes(e as any)) return e;
+  return eq?.activado ? 'activado' : 'no_activado';
+};
+
+const siguienteEstado = (actual: string): string => {
+  const i = ESTADOS_ACTIVACION.indexOf(actual as any);
+  return ESTADOS_ACTIVACION[(i + 1) % ESTADOS_ACTIVACION.length];
+};
+
 const EquiposTelcel = () => {
   const [subiendo, setSubiendo] = useState(false);
 
@@ -103,11 +124,21 @@ const EquiposTelcel = () => {
   };
 
   const cambiarActivacion = async (eq: any) => {
+    const actual = obtenerEstado(eq);
+    const nuevo = siguienteEstado(actual);
     try {
-      const nuevo = !eq.activado;
-      await axios.post(`${BASE}/equipos_telcel/activar/${eq.id}`, { activado: nuevo }, config);
-      // Actualiza en memoria sin recargar todo
-      setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, activado: nuevo } : x));
+      await axios.post(
+        `${BASE}/equipos_telcel/activar/${eq.id}`,
+        { estado_activacion: nuevo },
+        config
+      );
+      setEquipos(prev =>
+        prev.map(x =>
+          x.id === eq.id
+            ? { ...x, estado_activacion: nuevo, activado: nuevo === 'activado' }
+            : x
+        )
+      );
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al cambiar activación");
     }
@@ -401,14 +432,25 @@ const EquiposTelcel = () => {
                       <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
                       <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => cambiarActivacion(eq)}
-                          sx={{ backgroundColor: eq.activado ? '#2e7d32' : '#9e9e9e', '&:hover': { backgroundColor: eq.activado ? '#1b5e20' : '#757575' } }}
-                        >
-                          {eq.activado ? 'Activado' : 'No activado'}
-                        </Button>
+                        {(() => {
+                          const est = obtenerEstado(eq);
+                          const st = ESTILO_ESTADO[est];
+                          return (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => cambiarActivacion(eq)}
+                              sx={{
+                                backgroundColor: st.bg,
+                                color: st.color,
+                                minWidth: 110,
+                                '&:hover': { backgroundColor: st.hover },
+                              }}
+                            >
+                              {st.label}
+                            </Button>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <TextField
