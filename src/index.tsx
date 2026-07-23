@@ -12,6 +12,9 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
+import { instalarInterceptor } from './utils/axiosSetup';
+
+instalarInterceptor();
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(

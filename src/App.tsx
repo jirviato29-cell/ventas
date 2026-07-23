@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRoutes, Navigate } from 'react-router-dom';
+import { cerrarSesionForzado, tokenExpirado, msHastaExpiracion } from './utils/sesion';
 import LoginPage from './pages/LoginPages';
 import VentasPage from './pages/VentasPage';
 import ComisionesPage from './pages/ComisionesPage';
@@ -52,7 +53,20 @@ import PantallaTVPage from './pages/PantallaTVPage';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/" replace />;
+
+  useEffect(() => {
+    if (token && tokenExpirado()) {
+      cerrarSesionForzado();
+      return;
+    }
+    const ms = msHastaExpiracion();
+    if (ms === null || ms <= 0) return;
+    const id = setTimeout(() => cerrarSesionForzado(), ms + 1000);
+    return () => clearTimeout(id);
+  }, [token]);
+
+  if (!token || tokenExpirado()) return <Navigate to="/" replace />;
+  return children;
 };
 
 const App: React.FC = () => {
