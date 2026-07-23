@@ -956,7 +956,7 @@ const FormularioVentaMultiple = () => {
         <>
           <Autocomplete<InventarioGeneral>
             options={productos
-              .filter((p) => !p.producto.toLowerCase().includes('telefono') && p.cantidad > 0)
+              .filter((p) => !p.producto.toLowerCase().includes('telefono'))
               .sort((a, b) => a.producto.localeCompare(b.producto, 'es'))}
             value={productos.find((p) => p.producto === producto) ?? null}
             filterOptions={(opts, { inputValue }) => {
