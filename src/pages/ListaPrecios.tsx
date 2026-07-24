@@ -17,6 +17,8 @@ interface ProductoCatalogo {
   tipo_producto: string;
   comision: number | null;
   existencia_real: number;
+  imei_modulos: number;
+  imei_bodega: number;
 }
 
 const ListaPrecios = () => {
@@ -163,7 +165,8 @@ const ListaPrecios = () => {
           <TableRow>
             <TableCell sx={{ fontWeight: 700 }}>Equipo</TableCell>
             <TableCell sx={{ fontWeight: 700 }} align="right">Precio</TableCell>
-            <TableCell sx={{ fontWeight: 700 }} align="center">Existencia</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">En módulos</TableCell>
+            <TableCell sx={{ fontWeight: 700 }} align="center">En bodega</TableCell>
             <TableCell sx={{ fontWeight: 700 }} align="right">Comisión</TableCell>
             {esAdmin && <TableCell sx={{ fontWeight: 700 }} align="center" />}
           </TableRow>
@@ -175,9 +178,15 @@ const ListaPrecios = () => {
               <TableCell align="right">{formatoPrecio(p.precio)}</TableCell>
               <TableCell
                 align="center"
-                sx={{ fontWeight: 700, color: p.existencia_real > 0 ? '#2e7d32' : '#c62828' }}
+                sx={{ fontWeight: 700, color: p.imei_modulos > 0 ? '#2e7d32' : '#c62828' }}
               >
-                {p.existencia_real}
+                {p.imei_modulos}
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ fontWeight: 700, color: p.imei_bodega > 0 ? '#2e7d32' : '#c62828' }}
+              >
+                {p.imei_bodega}
               </TableCell>
               <TableCell align="right" sx={{ fontWeight: 700, color: p.comision ? '#1565c0' : '#bbb' }}>
                 {p.comision ? formatoPrecio(p.comision) : '—'}
@@ -193,7 +202,7 @@ const ListaPrecios = () => {
           ))}
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={esAdmin ? 5 : 4} align="center" sx={{ color: '#888' }}>
+              <TableCell colSpan={esAdmin ? 6 : 5} align="center" sx={{ color: '#888' }}>
                 Sin resultados
               </TableCell>
             </TableRow>
