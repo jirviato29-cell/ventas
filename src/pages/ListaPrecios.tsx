@@ -69,20 +69,36 @@ const ListaPrecios = () => {
     );
   };
 
+  const conExistencia = (p: ProductoCatalogo) =>
+    p.imei_modulos > 0 || p.imei_bodega > 0;
+
+  // Con existencia arriba, sin existencia al fondo; alfabético dentro de cada grupo
+  const ordenar = (lista: ProductoCatalogo[]) =>
+    [...lista].sort((a, b) => {
+      const ea = conExistencia(a);
+      const eb = conExistencia(b);
+      if (ea !== eb) return ea ? -1 : 1;
+      return a.producto.localeCompare(b.producto);
+    });
+
   const libres = useMemo(
     () =>
-      filtrar(
-        soloTelefonos.filter((p) => p.producto.toUpperCase().includes('LIBRE'))
-      ).sort((a, b) => a.producto.localeCompare(b.producto)),
+      ordenar(
+        filtrar(
+          soloTelefonos.filter((p) => p.producto.toUpperCase().includes('LIBRE'))
+        )
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [soloTelefonos, filtro]
   );
 
   const telcel = useMemo(
     () =>
-      filtrar(
-        soloTelefonos.filter((p) => p.producto.toUpperCase().includes('TELCEL'))
-      ).sort((a, b) => a.producto.localeCompare(b.producto)),
+      ordenar(
+        filtrar(
+          soloTelefonos.filter((p) => p.producto.toUpperCase().includes('TELCEL'))
+        )
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [soloTelefonos, filtro]
   );
