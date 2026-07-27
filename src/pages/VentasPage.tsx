@@ -224,6 +224,7 @@ const FormularioVentaMultiple = () => {
   const [planPagoInicial, setPlanPagoInicial] = useState(false);
   const [planMontoPagoInicial, setPlanMontoPagoInicial] = useState('');
   const [planMetodoPagoInicial, setPlanMetodoPagoInicial] = useState('efectivo');
+  const [planMontoDividido, setPlanMontoDividido] = useState({ efectivo: '', tarjeta: '' });
 
   const [fecha, setFecha] = useState(HOY);
   const [opcionesTelefonos, setOpcionesTelefonos] = useState<{ clave: string; producto: string }[]>([]);
@@ -792,6 +793,7 @@ const FormularioVentaMultiple = () => {
     setPlanTipo(''); setPlanEstatus(''); setPlanCategoria(''); setPlanClasificacion('');
     setPlanEquipo(''); setPlanImei(''); setPlanPrecio(''); setPlanPlazo('');
     setPlanLinea(''); setPlanCuenta(''); setPlanPagoInicial(false); setPlanMontoPagoInicial(''); setPlanMetodoPagoInicial('efectivo');
+    setPlanMontoDividido({ efectivo: '', tarjeta: '' });
   };
 
   const registrarPlan = async () => {
@@ -806,6 +808,19 @@ const FormularioVentaMultiple = () => {
     if (imeiObligatorio && planTipo === 'FORZOSO' && !planEquipo) {
       setMensaje({ tipo: 'error', texto: 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.' });
       return;
+    }
+    if (planPagoInicial && planMetodoPagoInicial === 'dividido') {
+      const ef = parseFloat(planMontoDividido.efectivo);
+      const ta = parseFloat(planMontoDividido.tarjeta);
+      const total = parseFloat(planMontoPagoInicial);
+      if (isNaN(ef) || ef <= 0 || isNaN(ta) || ta <= 0) {
+        setMensaje({ tipo: 'error', texto: 'Ambos montos deben ser mayores a $0.' });
+        return;
+      }
+      if (Math.abs((ef + ta) - total) >= 0.01) {
+        setMensaje({ tipo: 'error', texto: 'La suma de efectivo y tarjeta debe ser igual al pago inicial.' });
+        return;
+      }
     }
     try {
       const payload = {
@@ -822,6 +837,8 @@ const FormularioVentaMultiple = () => {
         pago_inicial: planPagoInicial,
         monto_pago_inicial: planPagoInicial && planMontoPagoInicial ? Number(planMontoPagoInicial) : 0,
         metodo_pago_inicial: planPagoInicial ? planMetodoPagoInicial : null,
+        monto_inicial_efectivo: planPagoInicial && planMetodoPagoInicial === 'dividido' ? parseFloat(planMontoDividido.efectivo) : 0,
+        monto_inicial_tarjeta: planPagoInicial && planMetodoPagoInicial === 'dividido' ? parseFloat(planMontoDividido.tarjeta) : 0,
       };
       await axios.post('https://ato-appservidor-nvxt.onrender.com/planes-tarifarios', payload, config);
       setMensaje({ tipo: 'success', texto: 'Plan registrado correctamente' });
@@ -1409,11 +1426,46 @@ const FormularioVentaMultiple = () => {
               <TextField label="Monto pago inicial" type="number" value={planMontoPagoInicial}
                 onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth margin="normal" />
               <TextField select label="¿Cómo paga el pago inicial?" value={planMetodoPagoInicial}
-                onChange={(e) => setPlanMetodoPagoInicial(e.target.value)}
+                onChange={(e) => { setPlanMetodoPagoInicial(e.target.value); setPlanMontoDividido({ efectivo: '', tarjeta: '' }); }}
                 fullWidth margin="normal">
                 <MenuItem value="efectivo">Efectivo</MenuItem>
                 <MenuItem value="tarjeta">Tarjeta</MenuItem>
+                <MenuItem value="dividido">Dividido 💳💵</MenuItem>
               </TextField>
+              {planMetodoPagoInicial === 'dividido' && (() => {
+                const totalPI = parseFloat(planMontoPagoInicial);
+                const total = isNaN(totalPI) ? 0 : totalPI;
+                const efRaw = parseFloat(planMontoDividido.efectivo);
+                const taRaw = parseFloat(planMontoDividido.tarjeta);
+                const ef = isNaN(efRaw) ? 0 : efRaw;
+                const ta = isNaN(taRaw) ? 0 : taRaw;
+                const eitherZero = (planMontoDividido.efectivo !== '' && efRaw <= 0) || (planMontoDividido.tarjeta !== '' && taRaw <= 0);
+                const diff = total - (ef + ta);
+                const sumOk = !eitherZero && Math.abs(diff) < 0.01 && ef > 0 && ta > 0;
+                const captionColor = eitherZero ? 'error.main' : sumOk ? 'success.main' : diff > 0 ? 'warning.main' : 'error.main';
+                const captionText = eitherZero
+                  ? 'Para dividir, ambos montos deben ser mayores a $0. Si solo es uno, usa Efectivo o Tarjeta directamente.'
+                  : sumOk
+                    ? `✓ Asignado: $${(ef + ta).toFixed(2)} / $${total.toFixed(2)}`
+                    : diff > 0
+                      ? `Falta $${diff.toFixed(2)} por asignar (total: $${total.toFixed(2)})`
+                      : `Te excediste por $${Math.abs(diff).toFixed(2)}`;
+                return (
+                  <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 1, p: 1.5, mb: 1 }}>
+                    <Box display="flex" gap={1}>
+                      <TextField label="Efectivo 💵" type="number" value={planMontoDividido.efectivo}
+                        onChange={(e) => setPlanMontoDividido(m => ({ ...m, efectivo: e.target.value }))}
+                        size="small" sx={{ flex: 1 }} />
+                      <TextField label="Tarjeta 💳" type="number" value={planMontoDividido.tarjeta}
+                        onChange={(e) => setPlanMontoDividido(m => ({ ...m, tarjeta: e.target.value }))}
+                        size="small" sx={{ flex: 1 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: captionColor }}>
+                      {captionText}
+                    </Typography>
+                  </Box>
+                );
+              })()}
             </>
           )}
 
