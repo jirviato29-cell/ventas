@@ -382,7 +382,7 @@ const EquiposTelcel = () => {
                 </TableRow>
               ) : (
                 equiposVisibles.map((eq) => {
-                  const bloqueadoEstatusInicial = eq.activado === true && !!eq.fecha_activacion;
+                  const bloqueadoEstatusInicial = !!eq.fecha_activacion;
                   const infoClasif = infoClasificacionVenta(eq.clasificacion_venta);
                   const filaAlertaRoja =
                     eq.activado === false &&
@@ -393,10 +393,7 @@ const EquiposTelcel = () => {
                     eq.activado === false &&
                     !!eq.fecha_estatus_inicial &&
                     eq.estatus !== "vendido";
-                  const filaOk =
-                    eq.estatus === "vendido" &&
-                    eq.activado === true &&
-                    eq.cumple_arl === true;
+                  const filaOk = eq.cumple_arl === true;
                   const bgAlerta = filaAlertaRoja
                     ? '#ffcdd2'
                     : (filaAlertaAzul ? '#bbdefb' : (filaOk ? '#c8e6c9' : undefined));
