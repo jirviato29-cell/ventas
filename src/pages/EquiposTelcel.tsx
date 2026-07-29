@@ -209,6 +209,13 @@ const EquiposTelcel = () => {
     return isNaN(t) ? 0 : t;
   };
 
+  const prioridadEstado = (eq: any): number => {
+    const e = obtenerEstado(eq);
+    if (e === 'no_activado') return 0;
+    if (e === 'activado') return 2;
+    return 1;
+  };
+
   const equiposVisibles = equipos
     .filter(eq => {
       if (fActivacion === "activado" && eq.activado !== true) return false;
@@ -217,6 +224,10 @@ const EquiposTelcel = () => {
       return true;
     })
     .sort((a, b) => {
+      if (fEstatus === "vendido") {
+        const p = prioridadEstado(a) - prioridadEstado(b);
+        if (p !== 0) return p;
+      }
       const diff = fechaOrden(b) - fechaOrden(a);
       if (diff !== 0) return diff;
       return (b.id || 0) - (a.id || 0);
