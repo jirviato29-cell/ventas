@@ -10,7 +10,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 
 const BASE = "https://ato-appservidor-nvxt.onrender.com";
 
-const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al'];
+const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al','m1','vi'];
 
 const TraspasosEncargado = () => {
   const [producto, setProducto]   = useState("");
