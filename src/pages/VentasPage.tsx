@@ -171,7 +171,7 @@ function getEstadoChip(c: VentaChip): { label: string; color: string } {
 const FormularioVentaMultiple = () => {
   const moduloLocal = localStorage.getItem('modulo') || '';
   const esCadenas = moduloLocal.toLowerCase().includes('cadena');
-  const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al','m1','vi'];
+  const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al','m1','vi','m2','mf','ro'];
   const isMobile = useMediaQuery('(max-width:767px)');
 
   // ── Estado general ───────────────────────────────────────────────────────
