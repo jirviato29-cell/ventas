@@ -46,6 +46,8 @@ const EquiposTelcel = () => {
   const [fFin, setFFin] = useState("");
   const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
   const [fTipo, setFTipo] = useState<string>(""); // "", "TELCEL", "LIBRE"
+  const [fModulo, setFModulo] = useState<string>("");
+  const [modulos, setModulos] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
 
   const tipoEquipo = (producto: string): "TELCEL" | "LIBRE" =>
@@ -87,6 +89,19 @@ const EquiposTelcel = () => {
   useEffect(() => {
     cargarEquipos();
   }, [cargarEquipos]);
+
+  useEffect(() => {
+    const cargarModulos = async () => {
+      try {
+        const res = await axios.get(`${BASE}/registro/modulos`, config);
+        setModulos(res.data);
+      } catch (err) {
+        console.error("Error al cargar modulos:", err);
+      }
+    };
+    cargarModulos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
@@ -221,6 +236,7 @@ const EquiposTelcel = () => {
       if (fActivacion === "activado" && eq.activado !== true) return false;
       if (fActivacion === "no_activado" && eq.activado !== false) return false;
       if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
+      if (fModulo && String(eq.modulo_id) !== fModulo) return false;
       return true;
     })
     .sort((a, b) => {
@@ -303,6 +319,19 @@ const EquiposTelcel = () => {
             <MenuItem value="en_bodega">En bodega</MenuItem>
             <MenuItem value="surtido">Surtido</MenuItem>
             <MenuItem value="vendido">Vendido</MenuItem>
+          </Select>
+
+          <Select
+            value={fModulo}
+            onChange={(e) => setFModulo(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="">Todos los módulos</MenuItem>
+            {modulos.map((m: any) => (
+              <MenuItem key={m.id} value={String(m.id)}>{m.nombre}</MenuItem>
+            ))}
           </Select>
 
           <TextField
