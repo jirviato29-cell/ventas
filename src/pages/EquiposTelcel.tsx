@@ -147,10 +147,41 @@ const EquiposTelcel = () => {
         { estado_activacion: nuevo },
         config
       );
+
+      let fechaAuto: string | null = null;
+      if (
+        nuevo === 'libre' &&
+        !eq.fecha_activacion &&
+        !eq.fecha_estatus_inicial &&
+        eq.fecha_salida
+      ) {
+        const candidata = String(eq.fecha_salida).slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(candidata)) {
+          try {
+            await axios.post(
+              `${BASE}/equipos_telcel/fecha-estatus-inicial/${eq.id}`,
+              { fecha_estatus_inicial: candidata },
+              config
+            );
+            fechaAuto = candidata;
+          } catch (e: any) {
+            alert(
+              e.response?.data?.detail ||
+                "No se pudo guardar la fecha de estatus inicial automática"
+            );
+          }
+        }
+      }
+
       setEquipos(prev =>
         prev.map(x =>
           x.id === eq.id
-            ? { ...x, estado_activacion: nuevo, activado: nuevo === 'activado' }
+            ? {
+                ...x,
+                estado_activacion: nuevo,
+                activado: nuevo === 'activado',
+                ...(fechaAuto ? { fecha_estatus_inicial: fechaAuto } : {}),
+              }
             : x
         )
       );
