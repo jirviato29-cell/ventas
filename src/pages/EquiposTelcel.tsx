@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box, Container, Typography, TextField, Button, Select, MenuItem,
   Table, TableHead, TableBody, TableRow, TableCell, TableContainer, Paper,
@@ -102,6 +102,15 @@ const EquiposTelcel = () => {
     cargarModulos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Con el filtro de estatus en "Todos" no se muestran los equipos vendidos:
+  // solo aparecen cuando se selecciona "Vendido" explicitamente.
+  const equiposSinVendidos = useMemo(() => {
+    if (fEstatus) return equipos;
+    return equipos.filter((e: any) =>
+      String(e?.estatus ?? '').toLowerCase() !== 'vendido'
+    );
+  }, [equipos, fEstatus]);
 
   const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
@@ -262,7 +271,7 @@ const EquiposTelcel = () => {
     return 1;
   };
 
-  const equiposVisibles = equipos
+  const equiposVisibles = equiposSinVendidos
     .filter(eq => {
       if (fActivacion === "activado" && eq.activado !== true) return false;
       if (fActivacion === "no_activado" && eq.activado !== false) return false;
