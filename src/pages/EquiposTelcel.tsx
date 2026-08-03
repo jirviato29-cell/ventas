@@ -49,6 +49,7 @@ const EquiposTelcel = () => {
   const [fModulo, setFModulo] = useState<string>("");
   const [modulos, setModulos] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [prioridadInicial, setPrioridadInicial] = useState<Record<number, number>>({});
 
   const tipoEquipo = (producto: string): "TELCEL" | "LIBRE" =>
     (producto || "").toUpperCase().startsWith("TELEFONO LIBRE") ? "LIBRE" : "TELCEL";
@@ -78,6 +79,12 @@ const EquiposTelcel = () => {
         config
       );
       setEquipos(res.data);
+      const snap: Record<number, number> = {};
+      (res.data || []).forEach((eq: any) => {
+        const e = obtenerEstado(eq);
+        snap[eq.id] = e === 'no_activado' ? 0 : e === 'activado' ? 2 : 1;
+      });
+      setPrioridadInicial(snap);
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al cargar equipos");
     } finally {
@@ -281,7 +288,9 @@ const EquiposTelcel = () => {
     })
     .sort((a, b) => {
       if (fEstatus === "vendido") {
-        const p = prioridadEstado(a) - prioridadEstado(b);
+        const pa = prioridadInicial[a.id] ?? prioridadEstado(a);
+        const pb = prioridadInicial[b.id] ?? prioridadEstado(b);
+        const p = pa - pb;
         if (p !== 0) return p;
       }
       const diff = fechaOrden(b) - fechaOrden(a);
