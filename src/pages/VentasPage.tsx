@@ -45,6 +45,21 @@ const thStyle: React.CSSProperties = {
 };
 const tdStyle: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid #e2e8f0' };
 
+const ESTADOS_ACT = ['no_activado', 'activado', 'libre', 'bloqueado'] as const;
+
+const estadoEquipo = (eq: any): string => {
+  const e = eq?.estado_activacion;
+  if (typeof e === 'string' && ESTADOS_ACT.includes(e as any)) return e;
+  return eq?.activado ? 'activado' : 'no_activado';
+};
+
+const estiloEstado = (e: string) => {
+  if (e === 'activado')  return { label: 'ACTIVADO',    bg: '#2e7d32' };
+  if (e === 'libre')     return { label: 'LIBRE',       bg: '#ed6c02' };
+  if (e === 'bloqueado') return { label: 'BLOQUEADO',   bg: '#d32f2f' };
+  return { label: 'NO ACTIVADO', bg: '#9e9e9e' };
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 
 const CHIP_OPCIONES_TODAS = [
@@ -203,6 +218,7 @@ const FormularioVentaMultiple = () => {
 
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
   const [telefonoImei, setTelefonoImei] = useState('');
+  const [telefonoEstadoAct, setTelefonoEstadoAct] = useState<string>('');
   const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63' | 'chip_ato'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
@@ -876,6 +892,7 @@ const FormularioVentaMultiple = () => {
       if (!eq) {
         alert("Ese IMEI no está disponible para venta (no está surtido a un módulo).");
         setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave('');
+        setTelefonoEstadoAct('');
         return;
       }
       // Llenar marca+modelo y clave desde el equipo
@@ -884,6 +901,7 @@ const FormularioVentaMultiple = () => {
       setTelefonoMarca(parts[0] || '');
       setTelefonoModelo(parts.slice(1).join(' ') || '');
       setTelefonoClave(eq.clave || '');
+      setTelefonoEstadoAct(estadoEquipo(eq));
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al buscar el IMEI");
     }
@@ -1170,7 +1188,7 @@ const FormularioVentaMultiple = () => {
           <TextField
             label={imeiObligatorio ? "IMEI (obligatorio)" : "IMEI (opcional)"}
             value={telefonoImei}
-            onChange={(e) => setTelefonoImei(e.target.value)}
+            onChange={(e) => { setTelefonoImei(e.target.value); setTelefonoEstadoAct(''); }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
             onBlur={() => buscarEquipoPorImeiVenta()}
             fullWidth
@@ -1179,6 +1197,23 @@ const FormularioVentaMultiple = () => {
             error={imeiObligatorio && !telefonoImei.trim()}
             helperText={imeiObligatorio ? "Captura el IMEI y presiona Enter para cargar el equipo" : ""}
           />
+          {telefonoEstadoAct && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Estado del equipo:
+              </Typography>
+              <Chip
+                label={estiloEstado(telefonoEstadoAct).label}
+                size="small"
+                sx={{
+                  bgcolor: estiloEstado(telefonoEstadoAct).bg,
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 11,
+                }}
+              />
+            </Box>
+          )}
           {imeiObligatorio ? (
             <TextField
               label="Teléfono (marca + modelo)"
