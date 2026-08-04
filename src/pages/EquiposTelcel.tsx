@@ -44,7 +44,7 @@ const EquiposTelcel = () => {
   const [fProducto, setFProducto] = useState("");
   const [fInicio, setFInicio] = useState("");
   const [fFin, setFFin] = useState("");
-  const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado"
+  const [fActivacion, setFActivacion] = useState<string>(""); // "", "activado", "no_activado", "libre", "bloqueado"
   const [fTipo, setFTipo] = useState<string>(""); // "", "TELCEL", "LIBRE"
   const [fModulo, setFModulo] = useState<string>("");
   const [modulos, setModulos] = useState<any[]>([]);
@@ -280,8 +280,7 @@ const EquiposTelcel = () => {
 
   const equiposVisibles = equiposSinVendidos
     .filter(eq => {
-      if (fActivacion === "activado" && eq.activado !== true) return false;
-      if (fActivacion === "no_activado" && eq.activado !== false) return false;
+      if (fActivacion && obtenerEstado(eq) !== fActivacion) return false;
       if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
       if (fModulo && String(eq.modulo_id) !== fModulo) return false;
       return true;
@@ -418,6 +417,8 @@ const EquiposTelcel = () => {
             <MenuItem value="">Todos</MenuItem>
             <MenuItem value="activado">Activados</MenuItem>
             <MenuItem value="no_activado">No activados</MenuItem>
+            <MenuItem value="libre">Libres</MenuItem>
+            <MenuItem value="bloqueado">Bloqueados</MenuItem>
           </Select>
 
           <Select
