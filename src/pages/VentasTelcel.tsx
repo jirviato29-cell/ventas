@@ -40,7 +40,11 @@ const VentasTelcel = () => {
   }, [cargar]);
 
   const clasifLabel = (c: string) =>
-    c === 'linea_nueva' ? 'Línea Nueva' : c === 'boletin_63' ? 'Boletín 63' : (c || '—');
+    c === 'linea_nueva' ? 'Línea Nueva'
+    : c === 'boletin_63' ? 'Boletín 63'
+    : c === 'chip_ato' ? 'Chip ATO'
+    : c === 'chip_promo' ? 'Chip Promo'
+    : (c || '—');
 
   const visibles = ventas.filter((v) =>
     !fTexto ||

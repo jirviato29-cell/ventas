@@ -12,6 +12,7 @@ const infoClasificacionVenta = (clasificacion: string | null | undefined): { lab
   if (clasificacion === "linea_nueva") return { label: "Línea nueva", color: "#1976d2" };
   if (clasificacion === "boletin_63") return { label: "Boletín 63", color: "#9c27b0" };
   if (clasificacion === "chip_ato") return { label: "Chip ATO", color: "#ed6c02" };
+  if (clasificacion === "chip_promo") return { label: "Chip Promo", color: "#0288d1" };
   return null;
 };
 
@@ -478,7 +479,7 @@ const EquiposTelcel = () => {
                     eq.activado === false &&
                     eq.estatus === "vendido" &&
                     !!eq.fecha_estatus_inicial &&
-                    ["linea_nueva", "boletin_63", "chip_ato"].includes(eq.clasificacion_venta);
+                    ["linea_nueva", "boletin_63", "chip_ato", "chip_promo"].includes(eq.clasificacion_venta);
                   const filaAlertaAzul =
                     eq.activado === false &&
                     !!eq.fecha_estatus_inicial &&

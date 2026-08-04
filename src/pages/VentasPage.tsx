@@ -60,6 +60,22 @@ const estiloEstado = (e: string) => {
   return { label: 'NO ACTIVADO', bg: '#9e9e9e' };
 };
 
+const reglaClasificacion = (estado: string) => {
+  if (estado === 'no_activado') return {
+    permitidas: ['linea_nueva', 'boletin_63'],
+    leyenda: 'Este equipo tienes que activarlo en el portal de Telcel o hacer un Boletín 63',
+  };
+  if (estado === 'activado') return {
+    permitidas: ['chip_ato', 'chip_promo'],
+    leyenda: 'En este equipo tienes que regalar un Chip ATO o un Promo',
+  };
+  if (estado === 'libre') return {
+    permitidas: ['chip_ato'],
+    leyenda: 'En este equipo regala un Chip ATO',
+  };
+  return { permitidas: ['linea_nueva', 'boletin_63', 'chip_ato', 'chip_promo'], leyenda: '' };
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 
 const CHIP_OPCIONES_TODAS = [
@@ -219,7 +235,7 @@ const FormularioVentaMultiple = () => {
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
   const [telefonoImei, setTelefonoImei] = useState('');
   const [telefonoEstadoAct, setTelefonoEstadoAct] = useState<string>('');
-  const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63' | 'chip_ato'>('');
+  const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63' | 'chip_ato' | 'chip_promo'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
   const [, setTelefonoClave] = useState('');
@@ -893,6 +909,7 @@ const FormularioVentaMultiple = () => {
         alert("Ese IMEI no está disponible para venta (no está surtido a un módulo).");
         setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave('');
         setTelefonoEstadoAct('');
+        setTelefonoClasificacion('');
         return;
       }
       // Llenar marca+modelo y clave desde el equipo
@@ -901,7 +918,11 @@ const FormularioVentaMultiple = () => {
       setTelefonoMarca(parts[0] || '');
       setTelefonoModelo(parts.slice(1).join(' ') || '');
       setTelefonoClave(eq.clave || '');
-      setTelefonoEstadoAct(estadoEquipo(eq));
+      const nuevoEstado = estadoEquipo(eq);
+      setTelefonoEstadoAct(nuevoEstado);
+      setTelefonoClasificacion((prev) =>
+        prev && !reglaClasificacion(nuevoEstado).permitidas.includes(prev) ? '' : prev
+      );
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al buscar el IMEI");
     }
@@ -1258,33 +1279,34 @@ const FormularioVentaMultiple = () => {
             <MenuItem value="Paguitos">Paguitos</MenuItem>
           </TextField>
           <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth margin="normal" />
+          {imeiObligatorio && telefonoEstadoAct && reglaClasificacion(telefonoEstadoAct).leyenda && (
+            <Typography variant="body2" sx={{ display: 'block', mt: 1, fontWeight: 600, color: '#1565c0' }}>
+              {reglaClasificacion(telefonoEstadoAct).leyenda}
+            </Typography>
+          )}
           {imeiObligatorio && !telefonoClasificacion && (
             <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
               Selecciona una clasificación (obligatorio)
             </Typography>
           )}
           <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
-            <Button
-              variant={telefonoClasificacion === 'linea_nueva' ? 'contained' : 'outlined'}
-              onClick={() => setTelefonoClasificacion('linea_nueva')}
-              fullWidth
-            >
-              Línea Nueva
-            </Button>
-            <Button
-              variant={telefonoClasificacion === 'boletin_63' ? 'contained' : 'outlined'}
-              onClick={() => setTelefonoClasificacion('boletin_63')}
-              fullWidth
-            >
-              Boletín 63
-            </Button>
-            <Button
-              variant={telefonoClasificacion === 'chip_ato' ? 'contained' : 'outlined'}
-              onClick={() => setTelefonoClasificacion('chip_ato')}
-              fullWidth
-            >
-              Chip ATO
-            </Button>
+            {([
+              { v: 'linea_nueva', t: 'Línea Nueva' },
+              { v: 'boletin_63',  t: 'Boletín 63' },
+              { v: 'chip_ato',    t: 'Chip ATO' },
+              { v: 'chip_promo',  t: 'Chip Promo' },
+            ] as const)
+              .filter((b) => reglaClasificacion(telefonoEstadoAct).permitidas.includes(b.v))
+              .map((b) => (
+                <Button
+                  key={b.v}
+                  variant={telefonoClasificacion === b.v ? 'contained' : 'outlined'}
+                  onClick={() => setTelefonoClasificacion(b.v)}
+                  fullWidth
+                >
+                  {b.t}
+                </Button>
+              ))}
           </Box>
           <TextField
             label={imeiObligatorio ? "Número (obligatorio)" : "Número"}
