@@ -125,7 +125,12 @@ const Navbar = () => {
   return (
     <>
       <AppBar position="static">
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between", minHeight: 56 }}>
+        <Toolbar sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 56 }}>
+
+          {/* LEFT: menú (☰) pegado al logo de ATO */}
+          <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9", p: 0.5 }}>
+            <MenuIcon />
+          </IconButton>
 
           {/* LEFT: Logo + user info */}
           <Box
@@ -158,10 +163,6 @@ const Navbar = () => {
             )}
           </Box>
 
-          {/* RIGHT: menú vertical (hamburguesa que abre el Drawer) en todas las pantallas */}
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9" }}>
-            <MenuIcon />
-          </IconButton>
           {false && (
             <Box display="flex" alignItems="center" gap={0.5}>
 
