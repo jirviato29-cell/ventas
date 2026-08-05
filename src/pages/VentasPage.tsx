@@ -2760,17 +2760,17 @@ const FormularioVentaMultiple = () => {
 
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
-    <Grid container spacing={2} sx={{ mt: 0 }}>
-      {/* Columna 1: formulario */}
+    <Grid container spacing={2} sx={{ mt: 0, height: { md: 'calc(100vh - 84px)' }, overflow: { md: 'hidden' } }}>
+      {/* Columna 1: formulario (scrollea por dentro en desktop) */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} md={5} sx={{ minWidth: 0, height: { md: '100%' }, overflowY: { md: 'auto' } }}>
           {formulario}
         </Grid>
       )}
 
-      {/* Columna 2: un solo panel de ranking con selector (Accesorios/Teléfonos/Planes) */}
+      {/* Columna 2: un solo panel de ranking con selector (scrollea por dentro en desktop) */}
       {!esCadenas && (
-        <Grid item xs={12} md={7} sx={{ minWidth: 0 }}>
+        <Grid item xs={12} md={7} sx={{ minWidth: 0, height: { md: '100%' }, overflowY: { md: 'auto' } }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
