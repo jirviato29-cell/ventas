@@ -42,7 +42,7 @@ function Tarjeta({
   return (
     <Paper sx={{ p: 0, overflow: 'hidden', borderRadius: 2 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 0.6 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ color: color.main, display: 'flex' }}>{icono}</Box>
           <Typography sx={{ fontWeight: 700 }}>{titulo}</Typography>
@@ -54,21 +54,21 @@ function Tarjeta({
 
       {/* Banner "Vas en el lugar X de N" */}
       {miFila && (
-        <Box sx={{ mx: 2, mb: 1.5, borderRadius: 2, px: 2, py: 1.2, background: color.banner, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Typography sx={{ fontWeight: 800, fontSize: 22 }}>#{miIndex + 1}</Typography>
+        <Box sx={{ mx: 1.5, mb: 0.8, borderRadius: 2, px: 1.5, py: 0.6, background: color.banner, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: 18 }}>#{miIndex + 1}</Typography>
             <Box>
-              <Typography variant="caption" sx={{ opacity: 0.9, display: 'block', textTransform: 'uppercase', fontWeight: 700, fontSize: 10 }}>
+              <Typography variant="caption" sx={{ opacity: 0.9, display: 'block', textTransform: 'uppercase', fontWeight: 700, fontSize: 9 }}>
                 Tu sucursal · {miModulo}
               </Typography>
-              <Typography sx={{ fontWeight: 700, fontSize: 15 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
                 Vas en el lugar {miIndex + 1} de {filas.length}
               </Typography>
             </Box>
           </Box>
           <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{formato(miFila.valor)}</Typography>
-            <Typography sx={{ fontSize: 10, opacity: 0.9, fontWeight: 600, mt: -0.3 }}>{unidad}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 15 }}>{formato(miFila.valor)}</Typography>
+            <Typography sx={{ fontSize: 9, opacity: 0.9, fontWeight: 600, mt: -0.3 }}>{unidad}</Typography>
           </Box>
         </Box>
       )}
@@ -76,7 +76,7 @@ function Tarjeta({
       <Box sx={{ borderTop: '1px solid #eef0f3', mx: 2, mb: 1 }} />
 
       {/* Filas del ranking */}
-      <Box sx={{ px: 2, pb: 2 }}>
+      <Box sx={{ px: 1.5, pb: 1 }}>
         {filas.map((f, i) => {
           const esMio = f.modulo === miModulo;
           const colorMedalla = medalla(i + 1);
@@ -84,34 +84,34 @@ function Tarjeta({
             <Box
               key={f.modulo}
               sx={{
-                display: 'flex', alignItems: 'center', gap: 1.2, py: 0.6, px: esMio ? 1 : 0,
+                display: 'flex', alignItems: 'center', gap: 0.8, py: 0.15, px: esMio ? 0.8 : 0,
                 position: 'relative',
                 borderRadius: 1.5,
                 border: esMio ? `2px solid ${color.accent}` : '2px solid transparent',
-                mb: 0.3,
+                mb: 0.1,
               }}
             >
               {/* Posición / medalla */}
               {colorMedalla ? (
-                <Avatar sx={{ width: 22, height: 22, fontSize: 12, fontWeight: 700, bgcolor: colorMedalla, color: '#fff' }}>
+                <Avatar sx={{ width: 17, height: 17, fontSize: 10, fontWeight: 700, bgcolor: colorMedalla, color: '#fff' }}>
                   {i + 1}
                 </Avatar>
               ) : (
-                <Typography sx={{ width: 22, textAlign: 'center', fontWeight: 600, color: 'text.secondary', fontSize: 13 }}>
+                <Typography sx={{ width: 17, textAlign: 'center', fontWeight: 600, color: 'text.secondary', fontSize: 11 }}>
                   {i + 1}
                 </Typography>
               )}
 
               {/* Nombre */}
-              <Typography sx={{ width: 36, fontWeight: 700, fontSize: 13 }}>{f.modulo}</Typography>
+              <Typography sx={{ width: 32, fontWeight: 700, fontSize: 11 }}>{f.modulo}</Typography>
 
               {/* Barra */}
-              <Box sx={{ flex: 1, height: 9, borderRadius: 5, bgcolor: '#eef0f3', overflow: 'hidden' }}>
+              <Box sx={{ flex: 1, height: 6, borderRadius: 5, bgcolor: '#eef0f3', overflow: 'hidden' }}>
                 <Box sx={{ width: `${(f.valor / max) * 100}%`, height: '100%', borderRadius: 5, background: esMio ? color.accent : color.main }} />
               </Box>
 
               {/* Valor */}
-              <Typography sx={{ minWidth: 56, textAlign: 'right', fontWeight: 700, fontSize: 13, color: f.valor === 0 ? 'text.disabled' : 'text.primary' }}>
+              <Typography sx={{ minWidth: 48, textAlign: 'right', fontWeight: 700, fontSize: 11, color: f.valor === 0 ? 'text.disabled' : 'text.primary' }}>
                 {formato(f.valor)}
               </Typography>
 
