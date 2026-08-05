@@ -2737,16 +2737,19 @@ const FormularioVentaMultiple = () => {
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} sx={{ mt: 0 }}>
-      {/* Columna 1: formulario */}
+      {/* Fila 1: formulario (vertical, a lo ancho) */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={5}>
-          {formulario}
+        <Grid item xs={12}>
+          <Box sx={{ maxWidth: 640 }}>
+            {formulario}
+          </Box>
         </Grid>
       )}
 
-      {/* Columna 2: un solo panel de ranking con selector (Accesorios/Teléfonos/Planes) */}
+      {/* Fila 2: un solo panel de ranking con selector (Accesorios/Teléfonos/Planes) */}
       {!esCadenas && (
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12}>
+          <Box sx={{ maxWidth: 760 }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
@@ -2766,6 +2769,7 @@ const FormularioVentaMultiple = () => {
             ))}
           </Box>
           <RankingModulos solo={rankingSel} />
+          </Box>
         </Grid>
       )}
 
