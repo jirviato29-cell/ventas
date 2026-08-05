@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Box, TextField, Button, Typography, Autocomplete, Alert, Paper,
   TableContainer, MenuItem, FormControlLabel, FormControl, FormLabel,
@@ -282,6 +283,9 @@ const FormularioVentaMultiple = () => {
   const [comisionesHoy, setComisionesHoy] = useState<any>(null);
   const [sinCiclo, setSinCiclo] = useState(false);
   const [tabAsesor, setTabAsesor] = useState(0);
+  // Ranura del navbar donde se proyectan las pestañas (Ticket, Recibos, ...)
+  const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setTabsSlot(document.getElementById('navbar-tabs-slot')); }, []);
   const [misVentasFecha, setMisVentasFecha] = useState(HOY);
   const [misVentasData, setMisVentasData] = useState<Venta[]>([]);
   const [comisionesMisVentas, setComisionesMisVentas] = useState<any>(null);
@@ -1721,13 +1725,19 @@ const FormularioVentaMultiple = () => {
     ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
     return (
-      <Box sx={{ mt: { xs: 1, sm: 2 }, px: { xs: 1, sm: 2 } }}>
+      <Box sx={{ mt: { xs: 1, sm: 1.5 }, px: { xs: 1, sm: 2 } }}>
+        {/* Pestañas del asesor proyectadas DENTRO del navbar */}
+        {tabsSlot && createPortal(
         <Tabs
           value={tabAsesor}
           onChange={(_, v) => setTabAsesor(v)}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ mb: 2, borderBottom: '1px solid #e2e8f0', minHeight: 44 }}
+          sx={{
+            minHeight: 44,
+            '& .MuiTab-root': { color: '#cbd5e1', minHeight: 44 },
+            '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },
+          }}
           TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
         >
           <Tab
@@ -1766,6 +1776,7 @@ const FormularioVentaMultiple = () => {
             />
           )}
         </Tabs>
+        , tabsSlot)}
 
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
@@ -2688,21 +2699,17 @@ const FormularioVentaMultiple = () => {
   ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   return (
-    <Box sx={{ mt: { xs: 0.5, sm: 0.75 }, px: { xs: 1, sm: 2 } }}>
-      {/* ── Pestañas superiores (encargado) — en barra azul estilo navbar ── */}
+    <Box sx={{ mt: { xs: 1, sm: 1.5 }, px: { xs: 1, sm: 2 } }}>
+      {/* ── Pestañas del encargado proyectadas DENTRO del navbar ── */}
+      {tabsSlot && createPortal(
       <Tabs
         value={tabAsesor}
         onChange={(_, v) => { if (v === 3) { navigate('/corte'); return; } setTabAsesor(v); }}
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          mb: 1.5,
-          bgcolor: '#0d1e3a',
-          borderRadius: 1,
-          borderBottom: '2px solid #f97316',
-          px: 1,
-          minHeight: 36,
-          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 36 },
+          minHeight: 44,
+          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 44 },
           '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },
         }}
         TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
@@ -2742,6 +2749,7 @@ const FormularioVentaMultiple = () => {
           sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
       </Tabs>
+      , tabsSlot)}
 
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
