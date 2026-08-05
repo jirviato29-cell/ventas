@@ -2739,29 +2739,33 @@ const FormularioVentaMultiple = () => {
     <Grid container spacing={2} sx={{ mt: 0 }}>
       {/* Columna 1: formulario */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={5}>
           {formulario}
         </Grid>
       )}
 
-      {/* Columna 2: ranking accesorios */}
+      {/* Columna 2: un solo panel de ranking con selector (Accesorios/Teléfonos/Planes) */}
       {!esCadenas && (
-        <Grid item xs={12} md={3}>
-          <RankingModulos solo="accesorios" />
-        </Grid>
-      )}
-
-      {/* Columna 3: ranking telefonos */}
-      {!esCadenas && (
-        <Grid item xs={12} md={3}>
-          <RankingModulos solo="telefonos" />
-        </Grid>
-      )}
-
-      {/* Columna 4: ranking planes */}
-      {!esCadenas && (
-        <Grid item xs={12} md={3}>
-          <RankingModulos solo="planes" />
+        <Grid item xs={12} md={7}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            {([
+              { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
+              { v: 'telefonos',  t: 'Teléfonos',  icono: <SmartphoneIcon fontSize="small" /> },
+              { v: 'planes',     t: 'Planes',     icono: <DescriptionIcon fontSize="small" /> },
+            ] as const).map((op) => (
+              <Button
+                key={op.v}
+                size="small"
+                startIcon={op.icono}
+                variant={rankingSel === op.v ? 'contained' : 'outlined'}
+                onClick={() => setRankingSel(op.v)}
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+              >
+                {op.t}
+              </Button>
+            ))}
+          </Box>
+          <RankingModulos solo={rankingSel} />
         </Grid>
       )}
 
