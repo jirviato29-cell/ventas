@@ -1216,7 +1216,6 @@ const FormularioVentaMultiple = () => {
             margin="normal"
             required={imeiObligatorio}
             error={imeiObligatorio && !telefonoImei.trim()}
-            helperText={imeiObligatorio ? "Captura el IMEI y presiona Enter para cargar el equipo" : ""}
           />
           {telefonoEstadoAct && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
@@ -1282,11 +1281,6 @@ const FormularioVentaMultiple = () => {
           {imeiObligatorio && telefonoEstadoAct && reglaClasificacion(telefonoEstadoAct).leyenda && (
             <Typography variant="body2" sx={{ display: 'block', mt: 1, fontWeight: 600, color: '#1565c0' }}>
               {reglaClasificacion(telefonoEstadoAct).leyenda}
-            </Typography>
-          )}
-          {imeiObligatorio && !telefonoClasificacion && (
-            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
-              Selecciona una clasificación (obligatorio)
             </Typography>
           )}
           <Box sx={{ display: 'flex', gap: 2, mt: 1, mb: 1 }}>
@@ -1420,7 +1414,6 @@ const FormularioVentaMultiple = () => {
                 margin="normal"
                 required={imeiObligatorio}
                 error={imeiObligatorio && !planImei.trim()}
-                helperText={imeiObligatorio ? "Captura el IMEI y presiona Enter para cargar el equipo" : ""}
               />
               {imeiObligatorio ? (
                 <TextField
