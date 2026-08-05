@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   AppBar, Toolbar, Typography, Button, Box, MenuItem, Menu,
   IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Collapse, useMediaQuery,
+  Divider, Collapse,
 } from "@mui/material";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -56,7 +56,6 @@ const drawerIconSx = { color: "#64748b", minWidth: 36 };
 const Navbar = () => {
   const navigate = useNavigate();
   const rolToken = obtenerRolDesdeToken();
-  const isMobile = useMediaQuery("(max-width: 900px)");
 
   const [usuario, setUsuario] = useState(localStorage.getItem("usuario") || "");
   const [modulo, setModulo] = useState(localStorage.getItem("modulo") || "");
@@ -159,8 +158,11 @@ const Navbar = () => {
             )}
           </Box>
 
-          {/* RIGHT: Desktop nav OR hamburger */}
-          {!isMobile ? (
+          {/* RIGHT: menú vertical (hamburguesa que abre el Drawer) en todas las pantallas */}
+          <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9" }}>
+            <MenuIcon />
+          </IconButton>
+          {false && (
             <Box display="flex" alignItems="center" gap={0.5}>
 
               {rolToken === "admin" && (
@@ -363,10 +365,6 @@ const Navbar = () => {
                 Cerrar sesión
               </Button>
             </Box>
-          ) : (
-            <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9" }}>
-              <MenuIcon />
-            </IconButton>
           )}
         </Toolbar>
       </AppBar>
