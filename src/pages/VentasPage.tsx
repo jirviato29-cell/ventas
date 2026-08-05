@@ -2689,13 +2689,22 @@ const FormularioVentaMultiple = () => {
 
   return (
     <Box sx={{ mt: { xs: 1, sm: 2 }, px: { xs: 1, sm: 2 } }}>
-      {/* ── Pestañas superiores (encargado) ── */}
+      {/* ── Pestañas superiores (encargado) — en barra azul estilo navbar ── */}
       <Tabs
         value={tabAsesor}
         onChange={(_, v) => { if (v === 3) { navigate('/corte'); return; } setTabAsesor(v); }}
         variant="scrollable"
         scrollButtons="auto"
-        sx={{ mb: 2, borderBottom: '1px solid #e2e8f0', minHeight: 44 }}
+        sx={{
+          mb: 2,
+          bgcolor: '#0d1e3a',
+          borderRadius: 1,
+          borderBottom: '2px solid #f97316',
+          px: 1,
+          minHeight: 40,
+          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 40 },
+          '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },
+        }}
         TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
       >
         <Tab
