@@ -2748,6 +2748,12 @@ const FormularioVentaMultiple = () => {
           label="HISTORIAL"
           sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
+        {!esCadenas && (
+          <Tab
+            label="ASISTENCIA"
+            sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          />
+        )}
       </Tabs>
       , tabsSlot)}
 
@@ -2783,13 +2789,6 @@ const FormularioVentaMultiple = () => {
             ))}
           </Box>
           <RankingModulos solo={rankingSel} />
-        </Grid>
-      )}
-
-      {/* Tira de asistencia semanal (todos los de esta vista) */}
-      {!esCadenas && (
-        <Grid item xs={12}>
-          <TiraAsistenciaSemana />
         </Grid>
       )}
 
@@ -2889,6 +2888,13 @@ const FormularioVentaMultiple = () => {
 
     </Grid>
     )} {/* fin Tab TICKET */}
+
+    {/* ── Tab ASISTENCIA (encargado) ── */}
+    {tabAsesor === 7 && !esCadenas && (
+      <Box sx={{ mt: 2 }}>
+        <TiraAsistenciaSemana />
+      </Box>
+    )}
 
     {/* ── Tab RECIBOS (encargado) ── */}
     {tabAsesor === 1 && (
