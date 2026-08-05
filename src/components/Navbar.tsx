@@ -451,6 +451,14 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><MoveToInboxIcon /></ListItemIcon>
                     <ListItemText primary="Entrada de Mercancía" />
                   </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/equipos_telcel")}>
+                    <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
+                    <ListItemText primary="Equipos Telcel" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/telefonos/alta-imeis")}>
+                    <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
+                    <ListItemText primary="Dar de alta IMEIs" />
+                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/traspasos/admin")}>
                     <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
                     <ListItemText primary="Traspasos" />
@@ -497,6 +505,18 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/modulos")}>
                     <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
                     <ListItemText primary="Gestión de Módulos" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/planes")}>
+                    <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
+                    <ListItemText primary="Planes" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/presion")}>
+                    <ListItemIcon sx={drawerIconSx}><BoltIcon /></ListItemIcon>
+                    <ListItemText primary="Presión" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/recibos")}>
+                    <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
+                    <ListItemText primary="Recibos" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/gastos")}>
                     <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
