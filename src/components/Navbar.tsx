@@ -125,7 +125,7 @@ const Navbar = () => {
   return (
     <>
       <AppBar position="static">
-        <Toolbar sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 56 }}>
+        <Toolbar variant="dense" sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 44 }}>
 
           {/* LEFT: menú (☰) pegado al logo de ATO */}
           <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9", p: 0.5 }}>
@@ -151,7 +151,7 @@ const Navbar = () => {
                 alignItems: "center",
               }}
             >
-              <img src={logo} alt="ATO" style={{ height: 28, display: "block" }} />
+              <img src={logo} alt="ATO" style={{ height: 24, display: "block" }} />
             </Box>
             {usuario && (
               <Typography

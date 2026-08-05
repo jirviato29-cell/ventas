@@ -31,7 +31,7 @@ const Marquesina: React.FC = () => {
     <Box
       sx={{
         bgcolor: '#f97316',
-        height: 32,
+        height: 22,
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
@@ -42,7 +42,7 @@ const Marquesina: React.FC = () => {
         sx={{
           color: '#fff',
           fontWeight: 700,
-          fontSize: 13,
+          fontSize: 12,
           whiteSpace: 'nowrap',
           display: 'inline-block',
           animation: 'marquee 35s linear infinite',
