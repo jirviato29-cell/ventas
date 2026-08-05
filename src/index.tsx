@@ -23,8 +23,8 @@ root.render(
       <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDayjs}></LocalizationProvider>
       <BrowserRouter>
-        <Navbar />
         <Marquesina />
+        <Navbar />
         <App />
       </BrowserRouter>
     </ThemeProvider>
