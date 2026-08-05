@@ -370,9 +370,9 @@ const Navbar = () => {
         </Toolbar>
       </AppBar>
 
-      {/* ── Mobile Drawer ─────────────────────────────────────────────────────── */}
+      {/* ── Menú lateral (abre por la izquierda, del lado del botón ☰) ─────────── */}
       <Drawer
-        anchor="right"
+        anchor="left"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         PaperProps={{ sx: { width: 280 } }}
