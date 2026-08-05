@@ -156,7 +156,7 @@ const Navbar = () => {
             {usuario && (
               <Typography
                 variant="body2"
-                sx={{ color: "#94a3b8", ml: 1.5, display: { xs: "none", sm: "block" } }}
+                sx={{ color: "#94a3b8", ml: 1.5, whiteSpace: "nowrap", display: { xs: "none", sm: "block" } }}
               >
                 {usuario} · {modulo}{cadena ? ` · ${cadena}` : ""} · {rolM}
               </Typography>
