@@ -1735,26 +1735,26 @@ const FormularioVentaMultiple = () => {
             icon={<ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
             iconPosition="start"
             label="TICKET"
-            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+            sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           {!esCadenas && (
             <Tab
               value={1}
               label="RECIBOS"
-              sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+              sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
             />
           )}
           <Tab
             value={2}
             label={esCadenas ? 'MIS ACTIVACIONES' : 'MIS VENTAS'}
-            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+            sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           <Tab
             value={3}
             icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
             iconPosition="start"
             label={esCadenas ? 'LISTA DE COMISIONES' : 'COMISIONES'}
-            sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+            sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           {esCadenas && (
             <Tab
@@ -1762,7 +1762,7 @@ const FormularioVentaMultiple = () => {
               icon={<AccountBalanceWalletIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
               iconPosition="start"
               label="MI SEMANA"
-              sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+              sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
             />
           )}
         </Tabs>
@@ -2688,7 +2688,7 @@ const FormularioVentaMultiple = () => {
   ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   return (
-    <Box sx={{ mt: { xs: 1, sm: 2 }, px: { xs: 1, sm: 2 } }}>
+    <Box sx={{ mt: { xs: 0.5, sm: 0.75 }, px: { xs: 1, sm: 2 } }}>
       {/* ── Pestañas superiores (encargado) — en barra azul estilo navbar ── */}
       <Tabs
         value={tabAsesor}
@@ -2696,13 +2696,13 @@ const FormularioVentaMultiple = () => {
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          mb: 2,
+          mb: 1.5,
           bgcolor: '#0d1e3a',
           borderRadius: 1,
           borderBottom: '2px solid #f97316',
           px: 1,
-          minHeight: 40,
-          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 40 },
+          minHeight: 36,
+          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 36 },
           '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },
         }}
         TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
@@ -2711,35 +2711,35 @@ const FormularioVentaMultiple = () => {
           icon={<ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
           iconPosition="start"
           label="TICKET"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
           label="RECIBOS"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
           label="MIS VENTAS"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
           icon={<AssessmentIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
           iconPosition="start"
           label="CORTE"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' }, color: '#f97316' }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' }, color: '#f97316' }}
         />
         <Tab
           icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
           iconPosition="start"
           label="COMISIONES"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
           label="RESUMEN DEL DÍA"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
           label="HISTORIAL"
-          sx={{ fontWeight: 700, minHeight: 44, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
+          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
       </Tabs>
 
