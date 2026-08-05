@@ -163,6 +163,12 @@ const Navbar = () => {
             )}
           </Box>
 
+          {/* Ranura donde la página proyecta sus pestañas (Ticket, Recibos, ...) */}
+          <Box
+            id="navbar-tabs-slot"
+            sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}
+          />
+
           {false && (
             <Box display="flex" alignItems="center" gap={0.5}>
 
