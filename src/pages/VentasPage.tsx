@@ -268,6 +268,7 @@ const FormularioVentaMultiple = () => {
   const nombreModuloActual = (user?.modulo?.nombre || moduloLocal || '').trim().toLowerCase();
   const imeiObligatorio = !user?.is_admin && MODULOS_IMEI_OBLIGATORIO.includes(nombreModuloActual);
   const navigate = useNavigate();
+  const [rankingSel, setRankingSel] = useState<'accesorios' | 'telefonos' | 'planes'>('accesorios');
   const [totalAccesorios, setTotalAccesorios] = useState(0);
   const [totalTelefonos, setTotalTelefonos] = useState(0);
   const [cvip, setcvip] = useState<boolean>(false);
@@ -1847,23 +1848,32 @@ const FormularioVentaMultiple = () => {
           ) : (
             <Grid container spacing={2}>
               {(rol as string) !== 'admin' && (
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={5}>
                   {formulario}
                 </Grid>
               )}
               {!esCadenas && (
-                <Grid item xs={12} md={3}>
-                  <RankingModulos solo="accesorios" />
-                </Grid>
-              )}
-              {!esCadenas && (
-                <Grid item xs={12} md={3}>
-                  <RankingModulos solo="telefonos" />
-                </Grid>
-              )}
-              {!esCadenas && (
-                <Grid item xs={12} md={3}>
-                  <RankingModulos solo="planes" />
+                <Grid item xs={12} md={7}>
+                  {/* Selector de ranking: una sola tarjeta, se elige cuál ver */}
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+                    {([
+                      { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
+                      { v: 'telefonos',  t: 'Teléfonos',  icono: <SmartphoneIcon fontSize="small" /> },
+                      { v: 'planes',     t: 'Planes',     icono: <DescriptionIcon fontSize="small" /> },
+                    ] as const).map((op) => (
+                      <Button
+                        key={op.v}
+                        size="small"
+                        startIcon={op.icono}
+                        variant={rankingSel === op.v ? 'contained' : 'outlined'}
+                        onClick={() => setRankingSel(op.v)}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                      >
+                        {op.t}
+                      </Button>
+                    ))}
+                  </Box>
+                  <RankingModulos solo={rankingSel} />
                 </Grid>
               )}
               {/* Tira de asistencia semanal (asesor no-Cadenas) */}
