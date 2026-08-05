@@ -971,15 +971,15 @@ const FormularioVentaMultiple = () => {
   // ── Formulario (compartido) ───────────────────────────────────────────────
   const formulario = localStorage.getItem('rol') !== 'admin' ? (
     <Paper sx={{ borderRadius: 2, p: 0, overflow: 'hidden' }}>
-      <Box sx={{ px: 2, py: 1.5 }}>
-        <Typography sx={{ fontWeight: 700 }}>
+      <Box sx={{ px: 2, py: 0.7 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
           {esCadenas ? 'Activaciones' : 'Registrar Venta'}
         </Typography>
       </Box>
 
       <Box sx={{ borderTop: '1px solid #eef0f3' }} />
 
-      <Box sx={{ px: 2, pt: 1.2, pb: 2 }}>
+      <Box sx={{ px: 2, pt: 1, pb: 2 }}>
       {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.2 }}>{mensaje.texto}</Alert>}
 
       {!esCadenas && (
