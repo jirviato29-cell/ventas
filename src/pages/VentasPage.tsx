@@ -1050,13 +1050,13 @@ const FormularioVentaMultiple = () => {
             Agregar al Carrito
           </Button>
           <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth margin="dense" />
-          <Box mt={1}>
-            <Typography variant="h6">Carrito</Typography>
+          <Box mt={0.5}>
+            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Carrito</Typography>
             {carrito.length === 0
               ? (
-                <Box sx={{ textAlign: 'center', py: 1.5, color: '#9ca3af' }}>
-                  <ShoppingBagIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 0.5 }} />
-                  <Typography sx={{ fontSize: 14 }}>No hay productos agregados</Typography>
+                <Box sx={{ textAlign: 'center', py: 0.5, color: '#9ca3af' }}>
+                  <ShoppingBagIcon sx={{ fontSize: 26, color: '#cbd5e1', mb: 0.2 }} />
+                  <Typography sx={{ fontSize: 12 }}>No hay productos agregados</Typography>
                 </Box>
               )
               : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => (
@@ -1065,11 +1065,11 @@ const FormularioVentaMultiple = () => {
                   </li>
                 ))}</ul>}
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 1, mt: 0.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 0.5, mt: 0.5 }}>
             <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
-            <Typography sx={{ fontWeight: 800, fontSize: 20 }}>${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 17 }}>${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
           </Box>
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 0.5 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
             fullWidth margin="dense" required
@@ -1130,7 +1130,7 @@ const FormularioVentaMultiple = () => {
             );
           })()}
           <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago}
-            sx={{ mt: 2, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 1.5, fontSize: 16, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
+            sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
             Registrar Venta
           </Button>
         </>
