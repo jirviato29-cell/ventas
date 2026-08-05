@@ -2699,7 +2699,7 @@ const FormularioVentaMultiple = () => {
   ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   return (
-    <Box sx={{ mt: { xs: 1, sm: 1.5 }, px: { xs: 1, sm: 2 } }}>
+    <Box sx={{ mt: { xs: 1, sm: 1.5 }, px: { xs: 1, sm: 2 }, maxWidth: '100%', overflowX: 'hidden' }}>
       {/* ── Pestañas del encargado proyectadas DENTRO del navbar ── */}
       {tabsSlot && createPortal(
       <Tabs
@@ -2769,7 +2769,7 @@ const FormularioVentaMultiple = () => {
 
       {/* Columna 2: un solo panel de ranking con selector (Accesorios/Teléfonos/Planes) */}
       {!esCadenas && (
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={7} sx={{ minWidth: 0 }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
