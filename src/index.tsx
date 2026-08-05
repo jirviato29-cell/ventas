@@ -4,7 +4,6 @@ import './index.css';
 import App from './App';
 import { BrowserRouter } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Marquesina from './components/Marquesina';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Analytics } from "@vercel/analytics/react";
@@ -23,7 +22,6 @@ root.render(
       <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDayjs}></LocalizationProvider>
       <BrowserRouter>
-        <Marquesina />
         <Navbar />
         <App />
       </BrowserRouter>
