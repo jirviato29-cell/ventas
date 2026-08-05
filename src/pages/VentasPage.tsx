@@ -983,19 +983,20 @@ const FormularioVentaMultiple = () => {
       {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.2 }}>{mensaje.texto}</Alert>}
 
       {!esCadenas && (
-        <Grid container spacing={1} sx={{ mb: 1, mt: 0.5 }}>
+        <Grid container spacing={0.8} sx={{ mb: 1, mt: 0.5 }}>
           {[
-            { v: 'accesorio', label: 'Accesorio',     icon: <HeadphonesIcon />, color: '#7c3aed' },
-            { v: 'chip',      label: 'Chip',           icon: <SimCardIcon />,    color: '#16a34a' },
-            { v: 'telefono',  label: 'Teléfono',       icon: <SmartphoneIcon />, color: '#0891b2' },
-            { v: 'plan',      label: 'Plan tarifario', icon: <DescriptionIcon />, color: '#d97706' },
+            { v: 'accesorio', label: 'Accesorio', icon: <HeadphonesIcon />, color: '#7c3aed' },
+            { v: 'chip',      label: 'Chip',      icon: <SimCardIcon />,    color: '#16a34a' },
+            { v: 'telefono',  label: 'Teléfono',  icon: <SmartphoneIcon />, color: '#0891b2' },
+            { v: 'plan',      label: 'Plan',      icon: <DescriptionIcon />, color: '#d97706' },
           ].map((t) => (
-            <Grid item xs={6} key={t.v}>
+            <Grid item xs={3} key={t.v}>
               <Box
                 onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen('telcel'); }}
                 sx={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.8,
-                  py: 1, borderRadius: 2.5, cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4,
+                  py: 0.8, px: 0.3, borderRadius: 2, cursor: 'pointer', fontWeight: 600,
+                  fontSize: { xs: 11, sm: 12.5 }, whiteSpace: 'nowrap',
                   border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e5e7eb',
                   bgcolor: tipoVenta === t.v ? '#f5f3ff' : '#fff',
                   color: tipoVenta === t.v ? '#7c3aed' : '#374151',
@@ -1004,7 +1005,7 @@ const FormularioVentaMultiple = () => {
                   '&:hover': { borderColor: '#7c3aed' },
                 }}
               >
-                <Box component="span" sx={{ color: t.color, display: 'flex' }}>{t.icon}</Box>
+                <Box component="span" sx={{ color: t.color, display: 'flex', '& svg': { fontSize: 18 } }}>{t.icon}</Box>
                 {t.label}
               </Box>
             </Grid>
