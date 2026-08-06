@@ -384,15 +384,21 @@ const Navbar = () => {
         PaperProps={{ sx: {
           width: 280,
           scrollbarWidth: "thin",
-          scrollbarColor: "#f97316 #eef2f7",
-          "&::-webkit-scrollbar": { width: 9 },
-          "&::-webkit-scrollbar-track": { background: "#eef2f7" },
+          scrollbarColor: "#f97316 transparent",
+          "&::-webkit-scrollbar": { width: 10 },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
           "&::-webkit-scrollbar-thumb": {
-            background: "linear-gradient(#fb923c, #f97316)",
-            borderRadius: 8,
-            border: "2px solid #eef2f7",
+            background: "linear-gradient(180deg, #fb923c 0%, #f97316 100%)",
+            borderRadius: 999,
+            border: "3px solid transparent",
+            backgroundClip: "padding-box",
+            transition: "background 0.2s ease",
           },
-          "&::-webkit-scrollbar-thumb:hover": { background: "#ea580c" },
+          "&::-webkit-scrollbar-thumb:hover": {
+            background: "linear-gradient(180deg, #f97316 0%, #ea580c 100%)",
+            backgroundClip: "padding-box",
+            border: "2px solid transparent",
+          },
         } }}
       >
         {/* Header con logo */}
