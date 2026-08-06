@@ -1017,6 +1017,7 @@ const FormularioVentaMultiple = () => {
       {!esCadenas && tipoVenta === 'accesorio' && (
         <>
           <Autocomplete<InventarioGeneral>
+            size="small"
             options={productos
               .filter((p) => !p.producto.toLowerCase().includes('telefono'))
               .sort((a, b) => a.producto.localeCompare(b.producto, 'es'))}
@@ -1043,13 +1044,15 @@ const FormularioVentaMultiple = () => {
             }}
             renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="dense" />}
           />
-          <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} fullWidth margin="dense" />
-          <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} fullWidth margin="dense" />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} size="small" margin="dense" sx={{ flex: 1 }} />
+            <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} size="small" margin="dense" sx={{ width: 110 }} />
+          </Box>
           <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
-            sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.9, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
+            sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.7, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
             Agregar al Carrito
           </Button>
-          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth margin="dense" />
+          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth size="small" margin="dense" />
           <Box mt={0.5}>
             <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Carrito</Typography>
             {carrito.length === 0
@@ -1072,7 +1075,7 @@ const FormularioVentaMultiple = () => {
           <Divider sx={{ my: 0.5 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-            fullWidth margin="dense" required
+            fullWidth size="small" margin="dense" required
             error={carrito.length > 0 && !metodoPago}
             helperText={carrito.length > 0 && !metodoPago ? 'Selecciona el método de pago' : ''}>
             <MenuItem value="efectivo">Efectivo 💵</MenuItem>
