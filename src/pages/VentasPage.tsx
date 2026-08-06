@@ -1142,7 +1142,7 @@ const FormularioVentaMultiple = () => {
       {/* ── Chip ── */}
       {(esCadenas || tipoVenta === 'chip') && (
         <>
-          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); }} fullWidth margin="normal">
+          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); }} fullWidth size="small" margin="dense">
             {(rol === null
               ? []
               : esCadenas
@@ -1157,7 +1157,7 @@ const FormularioVentaMultiple = () => {
           {tipoChip !== 'Tarjetas PayJoy' && (
             <>
               <TextField
-                label="Número" type="tel" value={numero} fullWidth margin="normal"
+                label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
                 error={numeroDuplicado}
@@ -1170,11 +1170,11 @@ const FormularioVentaMultiple = () => {
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
               />
-              <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth margin="normal" />
+              <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
                 {tipoChip === 'Boletin 63' && (
                   <>
                     <TextField
-                      label="IMEI" value={imei} fullWidth margin="normal"
+                      label="IMEI" value={imei} fullWidth size="small" margin="dense"
                       onChange={(e) => setImei(e.target.value)}
                     />
                     <FormControlLabel
@@ -1184,7 +1184,7 @@ const FormularioVentaMultiple = () => {
                     />
                     {cambioChip && (
                       <TextField
-                        label="ICCID" value={iccid} fullWidth margin="normal"
+                        label="ICCID" value={iccid} fullWidth size="small" margin="dense"
                         onChange={(e) => setIccid(e.target.value)}
                       />
                     )}
@@ -1200,7 +1200,7 @@ const FormularioVentaMultiple = () => {
             </>
           )}
           {tipoChip === 'Tarjetas PayJoy' && (
-            <TextField label="TAD DEVICE" value={tadDevice} onChange={(e) => setTadDevice(e.target.value)} fullWidth margin="normal" />
+            <TextField label="TAD DEVICE" value={tadDevice} onChange={(e) => setTadDevice(e.target.value)} fullWidth size="small" margin="dense" />
           )}
           <Button
             variant="contained" fullWidth onClick={handleSubmit}
@@ -1222,7 +1222,7 @@ const FormularioVentaMultiple = () => {
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarEquipoPorImeiVenta(); } }}
             onBlur={() => buscarEquipoPorImeiVenta()}
             fullWidth
-            margin="normal"
+            size="small" margin="dense"
             required={imeiObligatorio}
             error={imeiObligatorio && !telefonoImei.trim()}
           />
@@ -1248,7 +1248,7 @@ const FormularioVentaMultiple = () => {
               label="Teléfono (marca + modelo)"
               value={`${telefonoMarca} ${telefonoModelo}`.trim()}
               fullWidth
-              margin="normal"
+              size="small" margin="dense"
               InputProps={{ readOnly: true }}
               placeholder="Se llena automáticamente con el IMEI"
             />
@@ -1278,15 +1278,17 @@ const FormularioVentaMultiple = () => {
                   setTelefonoClave('');
                 }
               }}
-              renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth margin="normal" />}
+              renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth size="small" margin="dense" />}
             />
           )}
-          <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth margin="normal">
-            <MenuItem value="Contado">Contado</MenuItem>
-            <MenuItem value="Pajoy">Pajoy</MenuItem>
-            <MenuItem value="Paguitos">Paguitos</MenuItem>
-          </TextField>
-          <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth margin="normal" />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
+              <MenuItem value="Contado">Contado</MenuItem>
+              <MenuItem value="Pajoy">Pajoy</MenuItem>
+              <MenuItem value="Paguitos">Paguitos</MenuItem>
+            </TextField>
+            <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
+          </Box>
           {imeiObligatorio && telefonoEstadoAct && reglaClasificacion(telefonoEstadoAct).leyenda && (
             <Typography variant="body2" sx={{ display: 'block', mt: 1, fontWeight: 600, color: '#1565c0' }}>
               {reglaClasificacion(telefonoEstadoAct).leyenda}
@@ -1316,14 +1318,14 @@ const FormularioVentaMultiple = () => {
             value={Chip_casado}
             onChange={(e) => setChip_casado(e.target.value)}
             fullWidth
-            margin="normal"
+            size="small" margin="dense"
             required={imeiObligatorio}
             error={imeiObligatorio && !Chip_casado.trim()}
           />
           <Divider sx={{ my: 2 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
             onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-            fullWidth margin="normal" required>
+            fullWidth size="small" margin="dense" required>
             <MenuItem value="efectivo">💵 Efectivo</MenuItem>
             <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
             <MenuItem value="dividido">Dividido 💳💵</MenuItem>
@@ -1382,7 +1384,7 @@ const FormularioVentaMultiple = () => {
               setPlanPrecio('');
               setPlanPlazo('');
             }}
-            fullWidth margin="normal">
+            fullWidth size="small" margin="dense">
             {Object.keys(PLANES_CASCADA).map((t) => (
               <MenuItem key={t} value={t}>{t}</MenuItem>
             ))}
@@ -1390,14 +1392,14 @@ const FormularioVentaMultiple = () => {
 
           <TextField select label="Estatus" value={planEstatus}
             onChange={(e) => setPlanEstatus(e.target.value)}
-            fullWidth margin="normal">
+            fullWidth size="small" margin="dense">
             <MenuItem value="ABIERTO">ABIERTO</MenuItem>
             <MenuItem value="CONTROLADO">CONTROLADO</MenuItem>
           </TextField>
 
           <TextField select label="Categoría" value={planCategoria}
             onChange={(e) => { setPlanCategoria(e.target.value); setPlanClasificacion(''); }}
-            fullWidth margin="normal" disabled={!planTipo}>
+            fullWidth size="small" margin="dense" disabled={!planTipo}>
             {planTipo && Object.keys(PLANES_CASCADA[planTipo] || {}).map((c) => (
               <MenuItem key={c} value={c}>{c}</MenuItem>
             ))}
@@ -1405,7 +1407,7 @@ const FormularioVentaMultiple = () => {
 
           <TextField select label="Clasificación" value={planClasificacion}
             onChange={(e) => setPlanClasificacion(e.target.value)}
-            fullWidth margin="normal" disabled={!planCategoria}>
+            fullWidth size="small" margin="dense" disabled={!planCategoria}>
             {planTipo && planCategoria && (PLANES_CASCADA[planTipo]?.[planCategoria] || []).map((cl) => (
               <MenuItem key={cl} value={cl}>{cl}</MenuItem>
             ))}
@@ -1420,7 +1422,7 @@ const FormularioVentaMultiple = () => {
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (imeiObligatorio) buscarEquipoPorImeiPlan(); } }}
                 onBlur={() => { if (imeiObligatorio) buscarEquipoPorImeiPlan(); }}
                 fullWidth
-                margin="normal"
+                size="small" margin="dense"
                 required={imeiObligatorio}
                 error={imeiObligatorio && !planImei.trim()}
               />
@@ -1429,7 +1431,7 @@ const FormularioVentaMultiple = () => {
                   label="Equipo (del inventario)"
                   value={planEquipo}
                   fullWidth
-                  margin="normal"
+                  size="small" margin="dense"
                   InputProps={{ readOnly: true }}
                   placeholder="Se llena automáticamente con el IMEI"
                 />
@@ -1449,16 +1451,16 @@ const FormularioVentaMultiple = () => {
                   onInputChange={(_, v) => buscarTelefonos(v)}
                   onChange={(_, obj) => { setPlanEquipo(obj ? obj.producto : ''); }}
                   renderInput={(params) => (
-                    <TextField {...params} label="Equipo (del inventario)" fullWidth margin="normal" />
+                    <TextField {...params} label="Equipo (del inventario)" fullWidth size="small" margin="dense" />
                   )}
                 />
               )}
 
               <TextField label="Precio equipo" type="number" value={planPrecio}
-                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth margin="normal" />
+                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth size="small" margin="dense" />
 
               <TextField select label="Plazo (meses)" value={planPlazo}
-                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth margin="normal">
+                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth size="small" margin="dense">
                 <MenuItem value="12">12 meses</MenuItem>
                 <MenuItem value="18">18 meses</MenuItem>
                 <MenuItem value="24">24 meses</MenuItem>
@@ -1468,14 +1470,14 @@ const FormularioVentaMultiple = () => {
           )}
 
           <TextField label="Línea" value={planLinea}
-            onChange={(e) => setPlanLinea(e.target.value)} fullWidth margin="normal" />
+            onChange={(e) => setPlanLinea(e.target.value)} fullWidth size="small" margin="dense" />
 
           <TextField label="Cuenta" value={planCuenta}
-            onChange={(e) => setPlanCuenta(e.target.value)} fullWidth margin="normal" />
+            onChange={(e) => setPlanCuenta(e.target.value)} fullWidth size="small" margin="dense" />
 
           <TextField select label="¿Requiere pago inicial?" value={planPagoInicial ? 'si' : 'no'}
             onChange={(e) => setPlanPagoInicial(e.target.value === 'si')}
-            fullWidth margin="normal">
+            fullWidth size="small" margin="dense">
             <MenuItem value="no">No</MenuItem>
             <MenuItem value="si">Sí</MenuItem>
           </TextField>
@@ -1483,10 +1485,10 @@ const FormularioVentaMultiple = () => {
           {planPagoInicial && (
             <>
               <TextField label="Monto pago inicial" type="number" value={planMontoPagoInicial}
-                onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth margin="normal" />
+                onChange={(e) => setPlanMontoPagoInicial(e.target.value)} fullWidth size="small" margin="dense" />
               <TextField select label="¿Cómo paga el pago inicial?" value={planMetodoPagoInicial}
                 onChange={(e) => { setPlanMetodoPagoInicial(e.target.value); setPlanMontoDividido({ efectivo: '', tarjeta: '' }); }}
-                fullWidth margin="normal">
+                fullWidth size="small" margin="dense">
                 <MenuItem value="efectivo">Efectivo</MenuItem>
                 <MenuItem value="tarjeta">Tarjeta</MenuItem>
                 <MenuItem value="dividido">Dividido 💳💵</MenuItem>
@@ -2764,16 +2766,16 @@ const FormularioVentaMultiple = () => {
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} sx={{ mt: 0 }}>
-      {/* Columna 1: formulario */}
+      {/* Columna 1: formulario (3/4) */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={5} sx={{ minWidth: 0 }}>
+        <Grid item xs={12} md={9} sx={{ minWidth: 0 }}>
           {formulario}
         </Grid>
       )}
 
-      {/* Columna 2: un solo panel de ranking con selector */}
+      {/* Columna 2: un solo panel de ranking con selector (1/4) */}
       {!esCadenas && (
-        <Grid item xs={12} md={7} sx={{ minWidth: 0 }}>
+        <Grid item xs={12} md={3} sx={{ minWidth: 0 }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 0.75, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
