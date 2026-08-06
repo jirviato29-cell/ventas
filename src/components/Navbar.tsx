@@ -524,6 +524,10 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
                     <ListItemText primary="Gestión de Módulos" />
                   </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/tiendas/admin")}>
+                    <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
+                    <ListItemText primary="Tiendas (Cadenas)" />
+                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/planes")}>
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
                     <ListItemText primary="Planes" />
