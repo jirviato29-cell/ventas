@@ -1158,14 +1158,17 @@ const FormularioVentaMultiple = () => {
             <>
               <TextField
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
+                required={tipoChip === 'Boletin 63'}
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
-                error={numeroDuplicado}
+                error={numeroDuplicado || (tipoChip === 'Boletin 63' && !numero.trim())}
                 helperText={
                   numeroDuplicado
                     ? 'Este número ya fue registrado'
                     : verificandoNumero
                     ? 'Verificando…'
+                    : (tipoChip === 'Boletin 63' && !numero.trim())
+                    ? 'Obligatorio para Boletín 63'
                     : ''
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
@@ -1175,6 +1178,9 @@ const FormularioVentaMultiple = () => {
                   <>
                     <TextField
                       label="IMEI" value={imei} fullWidth size="small" margin="dense"
+                      required
+                      error={!imei.trim()}
+                      helperText={!imei.trim() ? 'Obligatorio para Boletín 63' : ''}
                       onChange={(e) => setImei(e.target.value)}
                     />
                     <FormControlLabel

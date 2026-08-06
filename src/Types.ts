@@ -169,6 +169,7 @@ export interface VentaChip {
   cvip: boolean;
   descripcion_rechazo: string | null;
   es_incubadora: boolean;
+  imei?: string | null;
   empleado?: {
     username: string;
   };
