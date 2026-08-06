@@ -381,7 +381,19 @@ const Navbar = () => {
         anchor="left"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 280 } }}
+        PaperProps={{ sx: {
+          width: 280,
+          scrollbarWidth: "thin",
+          scrollbarColor: "#f97316 #eef2f7",
+          "&::-webkit-scrollbar": { width: 9 },
+          "&::-webkit-scrollbar-track": { background: "#eef2f7" },
+          "&::-webkit-scrollbar-thumb": {
+            background: "linear-gradient(#fb923c, #f97316)",
+            borderRadius: 8,
+            border: "2px solid #eef2f7",
+          },
+          "&::-webkit-scrollbar-thumb:hover": { background: "#ea580c" },
+        } }}
       >
         {/* Header con logo */}
         <Box sx={{ p: 2, bgcolor: "#1e293b", display: "flex", alignItems: "center" }}>
