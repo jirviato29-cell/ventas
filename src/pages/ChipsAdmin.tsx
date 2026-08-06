@@ -25,8 +25,8 @@ const headSx   = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
 const numSx    = { ...cellSx, fontWeight: 600 };
 const numDupSx = { ...numSx, color: "#b91c1c" };
 
-// Anchos fijos — tabla admin (Empleado, Tipo, Número, Recarga, Fecha, Validar, Rechazo, Eliminar)
-const colWidthsAdmin = ["160px", "130px", "130px", "80px", "100px", "120px", "150px", "36px"];
+// Anchos fijos — tabla admin (Empleado, Tipo, Número, IMEI, Recarga, Fecha, Validar, Rechazo, Eliminar)
+const colWidthsAdmin = ["160px", "130px", "130px", "140px", "80px", "100px", "120px", "150px", "36px"];
 // Anchos fijos — tabla asesor/encargado
 const colWidthsUser  = ["160px", "130px", "130px", "80px", "100px", "150px", "36px"];
 
@@ -186,6 +186,7 @@ const ChipsAdmin = () => {
                   <TableCell sx={headSx}>Empleado</TableCell>
                   <TableCell sx={headSx}>Tipo</TableCell>
                   <TableCell sx={headSx}>Número</TableCell>
+                  <TableCell sx={headSx}>IMEI</TableCell>
                   <TableCell sx={headSx}>Recarga</TableCell>
                   <TableCell sx={headSx}>Fecha</TableCell>
                   <TableCell sx={headSx}>Validar</TableCell>
@@ -205,6 +206,7 @@ const ChipsAdmin = () => {
                         <TableCell sx={dupCell}>{chip.empleado?.username ?? "Eliminado"}</TableCell>
                         <TableCell sx={dupCell}>{chip.tipo_chip}</TableCell>
                         <TableCell sx={esDup ? numDupSx : numSx}>{chip.numero_telefono}</TableCell>
+                        <TableCell sx={numSx}>{chip.imei || "—"}</TableCell>
                         <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
                         <TableCell sx={cellSx}>{chip.fecha}</TableCell>
 
