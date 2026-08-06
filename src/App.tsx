@@ -8,6 +8,7 @@ import TraspasosPage from './pages/TraspasosPage';
 import TraspasosAdmin from './pages/TraspasosAdmin';
 import CrearUsuario from './pages/CrearUsuarios';
 import UsuariosAdmin from './pages/Usuarios';
+import AdminTiendas from './pages/AdminTiendas';
 import InventarioAdmin from './pages/Inventario';
 import InventarioPorModulo from './pages/InventarioModulo';
 import ChipsAdmin from './pages/ChipsAdmin';
@@ -79,6 +80,7 @@ const App: React.FC = () => {
     { path: '/traspasos/admin', element: <RutaProtegida><TraspasosAdmin /></RutaProtegida> },
     { path: '/usuarios', element: <RutaProtegida><CrearUsuario /></RutaProtegida> },
     { path: '/usuarios/admin', element: <RutaProtegida><UsuariosAdmin /></RutaProtegida> },
+    { path: '/tiendas/admin', element: <RutaProtegida><AdminTiendas /></RutaProtegida> },
     { path: '/inventario', element: <RutaProtegida><InventarioAdmin /></RutaProtegida> },
     { path: '/inventario/modulo', element: <RutaProtegida><InventarioPorModulo /></RutaProtegida> },
     { path: '/ventas/chips', element: <RutaProtegida><ChipsAdmin /></RutaProtegida> },
