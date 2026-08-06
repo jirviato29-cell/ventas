@@ -1374,6 +1374,7 @@ const FormularioVentaMultiple = () => {
 
       {!esCadenas && tipoVenta === 'plan' && (
         <>
+          <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField select label="Tipo de plan" value={planTipo}
             onChange={(e) => {
               setPlanTipo(e.target.value);
@@ -1384,7 +1385,7 @@ const FormularioVentaMultiple = () => {
               setPlanPrecio('');
               setPlanPlazo('');
             }}
-            fullWidth size="small" margin="dense">
+            fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
             {Object.keys(PLANES_CASCADA).map((t) => (
               <MenuItem key={t} value={t}>{t}</MenuItem>
             ))}
@@ -1392,14 +1393,16 @@ const FormularioVentaMultiple = () => {
 
           <TextField select label="Estatus" value={planEstatus}
             onChange={(e) => setPlanEstatus(e.target.value)}
-            fullWidth size="small" margin="dense">
+            fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
             <MenuItem value="ABIERTO">ABIERTO</MenuItem>
             <MenuItem value="CONTROLADO">CONTROLADO</MenuItem>
           </TextField>
+          </Box>
 
+          <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField select label="Categoría" value={planCategoria}
             onChange={(e) => { setPlanCategoria(e.target.value); setPlanClasificacion(''); }}
-            fullWidth size="small" margin="dense" disabled={!planTipo}>
+            fullWidth size="small" margin="dense" disabled={!planTipo} sx={{ flex: 1 }}>
             {planTipo && Object.keys(PLANES_CASCADA[planTipo] || {}).map((c) => (
               <MenuItem key={c} value={c}>{c}</MenuItem>
             ))}
@@ -1407,14 +1410,16 @@ const FormularioVentaMultiple = () => {
 
           <TextField select label="Clasificación" value={planClasificacion}
             onChange={(e) => setPlanClasificacion(e.target.value)}
-            fullWidth size="small" margin="dense" disabled={!planCategoria}>
+            fullWidth size="small" margin="dense" disabled={!planCategoria} sx={{ flex: 1 }}>
             {planTipo && planCategoria && (PLANES_CASCADA[planTipo]?.[planCategoria] || []).map((cl) => (
               <MenuItem key={cl} value={cl}>{cl}</MenuItem>
             ))}
           </TextField>
+          </Box>
 
           {planTipo === 'FORZOSO' && (
             <>
+              <Box sx={{ display: 'flex', gap: 1 }}>
               <TextField
                 label={imeiObligatorio ? "IMEI (obligatorio)" : "IMEI"}
                 value={planImei}
@@ -1422,10 +1427,11 @@ const FormularioVentaMultiple = () => {
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (imeiObligatorio) buscarEquipoPorImeiPlan(); } }}
                 onBlur={() => { if (imeiObligatorio) buscarEquipoPorImeiPlan(); }}
                 fullWidth
-                size="small" margin="dense"
+                size="small" margin="dense" sx={{ flex: 1 }}
                 required={imeiObligatorio}
                 error={imeiObligatorio && !planImei.trim()}
               />
+              <Box sx={{ flex: 1 }}>
               {imeiObligatorio ? (
                 <TextField
                   label="Equipo (del inventario)"
@@ -1455,25 +1461,31 @@ const FormularioVentaMultiple = () => {
                   )}
                 />
               )}
+              </Box>
+              </Box>
 
+              <Box sx={{ display: 'flex', gap: 1 }}>
               <TextField label="Precio equipo" type="number" value={planPrecio}
-                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth size="small" margin="dense" />
+                onChange={(e) => setPlanPrecio(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
 
               <TextField select label="Plazo (meses)" value={planPlazo}
-                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth size="small" margin="dense">
+                onChange={(e) => setPlanPlazo(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
                 <MenuItem value="12">12 meses</MenuItem>
                 <MenuItem value="18">18 meses</MenuItem>
                 <MenuItem value="24">24 meses</MenuItem>
                 <MenuItem value="36">36 meses</MenuItem>
               </TextField>
+              </Box>
             </>
           )}
 
+          <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField label="Línea" value={planLinea}
-            onChange={(e) => setPlanLinea(e.target.value)} fullWidth size="small" margin="dense" />
+            onChange={(e) => setPlanLinea(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
 
           <TextField label="Cuenta" value={planCuenta}
-            onChange={(e) => setPlanCuenta(e.target.value)} fullWidth size="small" margin="dense" />
+            onChange={(e) => setPlanCuenta(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
+          </Box>
 
           <TextField select label="¿Requiere pago inicial?" value={planPagoInicial ? 'si' : 'no'}
             onChange={(e) => setPlanPagoInicial(e.target.value === 'si')}
