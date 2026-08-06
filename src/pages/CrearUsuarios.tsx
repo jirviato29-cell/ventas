@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, MenuItem, TextField, Typography, Alert, Paper,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import axios from "axios";
@@ -16,6 +17,11 @@ const CrearUsuario = () => {
   const [modulo, setModulo] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [modulos, setModulos] = useState<{ id: number; nombre: string }[]>([]);
+  const [tiendas, setTiendas] = useState<{ id: number; nombre: string }[]>([]);
+  const [tiendaId, setTiendaId] = useState<number | "">("");
+  const [nuevaTiendaOpen, setNuevaTiendaOpen] = useState(false);
+  const [nuevaTiendaNombre, setNuevaTiendaNombre] = useState("");
+  const [tiendaError, setTiendaError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
   const navigate = useNavigate();
   const [nombreCompleto, setNombreCompleto] = useState("");
@@ -42,10 +48,46 @@ const CrearUsuario = () => {
         console.error("Error al cargar módulos");
       }
     };
+    const fetchTiendas = async () => {
+      try {
+        const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/tiendas`, cfg);
+        setTiendas(res.data);
+      } catch {
+        console.error("Error al cargar tiendas");
+      }
+    };
     fetchModulos();
+    fetchTiendas();
   }, []);
 
   const mostrarCuentas = formaPago === "BBVA" || formaPago === "Banco Azteca";
+
+  const moduloSeleccionado = modulos.find((m) => m.id === Number(modulo));
+  const esCadenas = !!moduloSeleccionado && /cadena/i.test(moduloSeleccionado.nombre);
+
+  const guardarNuevaTienda = async () => {
+    const nombre = nuevaTiendaNombre.trim();
+    if (!nombre) {
+      setTiendaError("Escribe el nombre de la tienda");
+      return;
+    }
+    try {
+      const res = await axios.post(
+        `https://ato-appservidor-nvxt.onrender.com/registro/tiendas`,
+        { nombre },
+        config
+      );
+      setTiendas((prev) =>
+        [...prev, res.data].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+      );
+      setTiendaId(res.data.id);
+      setNuevaTiendaOpen(false);
+      setNuevaTiendaNombre("");
+      setTiendaError(null);
+    } catch (err: any) {
+      setTiendaError(err?.response?.data?.detail || "No se pudo crear la tienda");
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -64,6 +106,7 @@ const CrearUsuario = () => {
           nombre_englobado: nombreEnglobado || null,
           jornada_fija: jornadaFija,
           horario_semanal: horarioLocal.length > 0 ? horarioLocal : [],
+          tienda_id: esCadenas ? (tiendaId || null) : null,
         },
         config
       );
@@ -80,6 +123,7 @@ const CrearUsuario = () => {
       setNombreEnglobado("");
       setJornadaFija(0);
       setHorarioLocal([]);
+      setTiendaId("");
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
@@ -154,6 +198,39 @@ const CrearUsuario = () => {
           </TextField>
         )}
 
+        {rol !== "admin" && esCadenas && (
+          <Box>
+            <TextField
+              select
+              label="Tienda"
+              value={tiendaId}
+              onChange={(e) =>
+                setTiendaId(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              fullWidth
+              margin="normal"
+              helperText="Tienda de la cadena para este usuario"
+            >
+              <MenuItem value="">(Sin tienda)</MenuItem>
+              {tiendas.map((t) => (
+                <MenuItem key={t.id} value={t.id}>
+                  {t.nombre}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              size="small"
+              onClick={() => {
+                setTiendaError(null);
+                setNuevaTiendaOpen(true);
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              ＋ Nueva tienda
+            </Button>
+          </Box>
+        )}
+
         <TextField
           select
           label="Forma de pago"
@@ -226,6 +303,26 @@ const CrearUsuario = () => {
           }}
           initialHorario={horarioLocal.length > 0 ? horarioLocal : null}
         />
+
+        <Dialog open={nuevaTiendaOpen} onClose={() => setNuevaTiendaOpen(false)} fullWidth maxWidth="xs">
+          <DialogTitle>Nueva tienda</DialogTitle>
+          <DialogContent>
+            {tiendaError && <Alert severity="error" sx={{ mb: 1 }}>{tiendaError}</Alert>}
+            <TextField
+              autoFocus
+              label="Nombre de la tienda"
+              value={nuevaTiendaNombre}
+              onChange={(e) => setNuevaTiendaNombre(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") guardarNuevaTienda(); }}
+              fullWidth
+              margin="dense"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setNuevaTiendaOpen(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={guardarNuevaTienda}>Guardar</Button>
+          </DialogActions>
+        </Dialog>
 
         <Box mt={2}>
           <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>
