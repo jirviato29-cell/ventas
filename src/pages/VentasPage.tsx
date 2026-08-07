@@ -758,7 +758,7 @@ const FormularioVentaMultiple = () => {
         try {
           await axios.post(
             `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
-            { productos: [{ ...productoBase, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', telefono_cliente: telefono?.trim() || '', folio: folioCompartido },
+            { productos: [{ ...productoBase, imei: null, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', telefono_cliente: telefono?.trim() || '', folio: folioCompartido },
             config,
           );
         } catch {
