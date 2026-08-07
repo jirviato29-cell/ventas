@@ -192,6 +192,21 @@ const calcComision = (v: any): number => {
 
 const getTotal = (v: any) => v.total ?? (v.precio_unitario || 0) * (v.cantidad || 1);
 
+// Un telefono con pago dividido genera 2 filas Venta con el mismo folio (efectivo + tarjeta).
+// Agrupamos por folio+producto para contarlo y mostrarlo una sola vez, con el total sumado.
+// El folio puede venir null (modulo Cadenas): en ese caso cae a 'id-<id>', unico por fila.
+// Solo para contar y mostrar: los calculos de dinero siguen sobre las filas crudas.
+const agruparTelefonos = (rows: any[]) => {
+  const grupos = new Map<string, any>();
+  for (const v of rows) {
+    const clave = `${v.folio ?? `id-${v.id}`}|${v.producto ?? ''}`;
+    const g = grupos.get(clave);
+    if (!g) grupos.set(clave, { ...v, total_agrupado: getTotal(v), es_dividido: false });
+    else { g.total_agrupado += getTotal(v); g.es_dividido = true; }
+  }
+  return Array.from(grupos.values());
+};
+
 // ─── CorteVisual (admin / contador) ──────────────────────────────────────────
 const CorteVisual = ({ corte, ventas }: { corte: any; ventas: any[] }) => {
   const totalAdicional =
@@ -395,6 +410,8 @@ const CortePage = () => {
   const ventasDerechaTel = ventasDerecha.filter(
     (v) => v.tipo_producto === 'telefono' && !v.cancelada,
   );
+  // solo para el contador y la tabla; el dinero se sigue calculando sobre ventasDerechaTel
+  const ventasDerechaTelUnicos = agruparTelefonos(ventasDerechaTel);
   const todasVentas = [...ventasDerechaAcc, ...ventasDerechaTel];
   const subtotalDerechaAcc = ventasDerechaAcc.reduce((s, v) => s + getTotal(v), 0);
   const subtotalDerechaTel = ventasDerechaTel.reduce((s, v) => s + getTotal(v), 0);
@@ -800,12 +817,12 @@ const CortePage = () => {
       <Paper sx={{ mb: 2, overflow: 'hidden' }}>
         <Box sx={{ px: 2, py: 1.5, bgcolor: '#eff6ff', borderBottom: '1px solid #bfdbfe' }}>
           <Typography fontWeight={700} fontSize={14} color="#1d4ed8">
-            Teléfonos del día ({ventasDerechaTel.length})
+            Teléfonos del día ({ventasDerechaTelUnicos.length})
           </Typography>
         </Box>
         {loadingVentas ? (
           <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
-        ) : ventasDerechaTel.length === 0 ? (
+        ) : ventasDerechaTelUnicos.length === 0 ? (
           <Box px={2} py={2}>
             <Typography variant="body2" color="text.secondary">Sin teléfonos para esta fecha</Typography>
           </Box>
@@ -821,12 +838,12 @@ const CortePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {ventasDerechaTel.map((v) => (
+                {ventasDerechaTelUnicos.map((v) => (
                   <tr key={v.id}>
                     <td style={{ ...tdStyle, maxWidth: 220 }}>{v.producto}</td>
                     <td style={tdStyle}>{capitalize(v.tipo_venta || '')}</td>
-                    <td style={tdStyle}>{capitalize(v.metodo_pago || '')}</td>
-                    <td style={tdR}>${getTotal(v).toFixed(2)}</td>
+                    <td style={tdStyle}>{v.es_dividido ? 'Dividido' : capitalize(v.metodo_pago || '')}</td>
+                    <td style={tdR}>${v.total_agrupado.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

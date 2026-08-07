@@ -60,6 +60,21 @@ const tdNR: React.CSSProperties = { ...tdN, textAlign: 'right', fontVariantNumer
 
 const getTotal = (v: any) => v.total ?? (v.precio_unitario || 0) * (v.cantidad || 1);
 const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
+
+// Un telefono con pago dividido genera 2 filas Venta con el mismo folio (efectivo + tarjeta).
+// Agrupamos por folio+producto para contarlo y mostrarlo una sola vez, con el total sumado.
+// El folio puede venir null (modulo Cadenas): en ese caso cae a 'id-<id>', unico por fila.
+// Solo para contar y mostrar: los calculos de dinero siguen sobre las filas crudas.
+const agruparTelefonos = (rows: any[]) => {
+  const grupos = new Map<string, any>();
+  for (const v of rows) {
+    const clave = `${v.folio ?? `id-${v.id}`}|${v.producto ?? ''}`;
+    const g = grupos.get(clave);
+    if (!g) grupos.set(clave, { ...v, total_agrupado: getTotal(v), es_dividido: false });
+    else { g.total_agrupado += getTotal(v); g.es_dividido = true; }
+  }
+  return Array.from(grupos.values());
+};
 const fmt$ = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtFecha = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
 
@@ -239,6 +254,8 @@ const DireccionPage: React.FC = () => {
   const ventas: any[]  = corte?.ventas ?? [];
   const ventasAcc      = ventas.filter((v) => v.tipo_producto === 'accesorios');
   const ventasTel      = ventas.filter((v) => v.tipo_producto === 'telefono');
+  // solo para el contador y la tabla; el dinero se sigue calculando sobre ventasTel
+  const ventasTelUnicos = agruparTelefonos(ventasTel);
   const ef_acc = ventasAcc.filter((v) => v.metodo_pago?.toLowerCase() === 'efectivo').reduce((s: number, v: any) => s + getTotal(v), 0);
   const ta_acc = ventasAcc.filter((v) => v.metodo_pago?.toLowerCase() === 'tarjeta').reduce((s: number, v: any)  => s + getTotal(v), 0);
   const ef_tel = ventasTel.filter((v) => v.metodo_pago?.toLowerCase() === 'efectivo').reduce((s: number, v: any) => s + getTotal(v), 0);
@@ -282,20 +299,20 @@ const DireccionPage: React.FC = () => {
   </>);
 
   const cardTelefonos = card(<>
-    {secH(`Teléfonos del día (${ventasTel.length})`, SECTION_TELS)}
-    {ventasTel.length === 0 ? (
+    {secH(`Teléfonos del día (${ventasTelUnicos.length})`, SECTION_TELS)}
+    {ventasTelUnicos.length === 0 ? (
       <Box px="12px" py="6px"><Typography fontSize={11} color="text.secondary">Sin teléfonos para esta fecha</Typography></Box>
     ) : (
       <>
         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr><th style={thStyle}>Modelo</th><th style={thStyle}>Tipo</th><th style={thStyle}>Método</th><th style={{ ...thStyle, textAlign: 'right' }}>Precio</th></tr></thead>
           <tbody>
-            {ventasTel.map((v) => (
+            {ventasTelUnicos.map((v) => (
               <tr key={v.id}>
                 <td style={{ ...tdN, maxWidth: 200 }}>{v.producto}</td>
                 <td style={tdStyle}>{capitalize(v.tipo_venta || '')}</td>
-                <td style={tdStyle}>{capitalize(v.metodo_pago || '')}</td>
-                <td style={tdNR}>${getTotal(v).toFixed(2)}</td>
+                <td style={tdStyle}>{v.es_dividido ? 'Dividido' : capitalize(v.metodo_pago || '')}</td>
+                <td style={tdNR}>${v.total_agrupado.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
