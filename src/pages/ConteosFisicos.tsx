@@ -58,7 +58,52 @@ interface ConteoListItem {
 interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
 
 interface ProductoModulo { id: number; clave: string; producto: string; precio?: number; }
-interface FilaCaptura   { id: number; clave: string; producto: string; cantidad: number; }
+interface AvisoFila     { tipo: string; mensaje: string; }
+interface FilaCaptura   {
+  id: number; clave: string; producto: string; cantidad: number;
+  avisos?: AvisoFila[];
+  // Cuántas de las `cantidad` unidades vinieron de pistolear IMEIs. Permite
+  // devolver la fila a su parte manual si los IMEIs dejan de ser válidos.
+  cantidadImei?: number;
+}
+
+// Respuesta de POST /conteos-fisicos/imei/validar
+interface ValidarImeiResponse {
+  imei: string;
+  encontrado: boolean;
+  resultado: string;                 // ok | reasignado | vendido_presente | pendiente_alta
+  clave?: string | null;
+  producto?: string | null;
+  estatus_sistema?: string | null;
+  modulo_sistema_id?: number | null;
+  modulo_sistema_nombre?: string | null;
+  mensaje: string;
+}
+
+// Respuesta de GET /conteos-fisicos/modulos/{id}/resumen-imei
+interface ClaveZeroable { clave: string; producto: string; cantidad_actual: number; }
+interface ResumenImei {
+  total_surtidos: number;
+  claves_con_imei: number;
+  claves_zeroables: ClaveZeroable[];
+}
+
+// Opción del autocomplete: o viene del catálogo, o es un equipo resuelto por
+// IMEI. El buscador ofrece ambas a la vez, sin adivinar el formato de lo tecleado.
+type OpcionBusqueda =
+  | { kind: "catalogo"; clave: string; producto: string; prod: ProductoModulo }
+  | { kind: "imei"; clave: string; producto: string; resp: ValidarImeiResponse };
+
+// Item que viaja en el campo `imeis` del body de POST /conteos-fisicos/aplicar
+interface ItemAplicarImei {
+  imei: string;
+  clave: string | null;
+  producto: string | null;
+  resultado: string;
+  equipo_id: number | null;
+  estatus_sistema: string | null;
+  modulo_sistema_id: number | null;
+}
 
 interface KardexLinea {
   fecha: string; tipo: string;
@@ -127,6 +172,24 @@ const ConteosFisicos = () => {
   const [cantInput, setCantInput]         = useState<string>("");
   const [filasCaptura, setFilasCaptura]   = useState<FilaCaptura[]>([]);
 
+  // Captura por IMEI
+  const [imeisEscaneados, setImeisEscaneados]   = useState<ItemAplicarImei[]>([]);
+  const [imeisCapturados, setImeisCapturados]   = useState<Set<string>>(new Set());
+  const [validandoImei, setValidandoImei]       = useState(false);
+  const [avisoImei, setAvisoImei]               = useState<string | null>(null);
+  const [confirmAlta, setConfirmAlta]           = useState<ValidarImeiResponse | null>(null);
+  // Candidato IMEI para el texto tecleado ahora mismo (null = el backend no
+  // reconoció nada). Convive con los resultados del catálogo, no los sustituye.
+  const [imeiOpcion, setImeiOpcion]             = useState<ValidarImeiResponse | null>(null);
+  const imeiTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imeiConsultaRef = useRef<string>("");
+
+  // Confirmación previa a aplicar un conteo con IMEIs
+  const [confirmAplicar, setConfirmAplicar]     = useState(false);
+  const [resumenImei, setResumenImei]           = useState<ResumenImei | null>(null);
+  const [cargandoResumen, setCargandoResumen]   = useState(false);
+  const [errorResumen, setErrorResumen]         = useState<string | null>(null);
+
   // Kardex modal
   const [kardexOpen, setKardexOpen]       = useState(false);
   const [kardexLoading, setKardexLoading] = useState(false);
@@ -158,6 +221,43 @@ const ConteosFisicos = () => {
       .catch(() => {})
       .finally(() => setCargandoCatalogo(false));
   }, [modoCaptura]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // El resultado de /imei/validar depende del módulo destino: si cambia el
+  // módulo, lo escaneado antes deja de ser válido y se descarta. Las filas que
+  // esos IMEIs habían alimentado tienen que devolver esas unidades, o quedarían
+  // sumando fantasmas al módulo nuevo. Lo capturado a mano se respeta.
+  useEffect(() => {
+    setFilasCaptura(prev => prev
+      .map(f => {
+        const porImei = f.cantidadImei ?? 0;
+        if (porImei === 0) return f;
+        return { ...f, cantidad: f.cantidad - porImei, cantidadImei: 0, avisos: [] };
+      })
+      .filter(f => f.cantidad > 0)
+    );
+    setImeisEscaneados([]);
+    setImeisCapturados(new Set());
+    setAvisoImei(null);
+    setConfirmAlta(null);
+    setImeiOpcion(null);
+  }, [moduloId]);
+
+  // Resolución de IMEI: NO se adivina el formato. Los IMEIs en equipos_telcel
+  // van desde alfanuméricos de 11 caracteres (tablets) hasta 15 dígitos, así
+  // que cualquier regex deja fuera casos reales. A partir de 6 caracteres se
+  // consulta SIEMPRE al backend, en paralelo con el filtrado del catálogo, y
+  // manda quien encuentre algo. El debounce sólo evita disparar en cada tecla.
+  useEffect(() => {
+    const valor = busquedaInput.trim();
+    if (modoCaptura !== "manual" || !moduloId || valor.length < 6) {
+      setImeiOpcion(null);
+      imeiConsultaRef.current = "";
+      return;
+    }
+    if (imeiTimerRef.current) clearTimeout(imeiTimerRef.current);
+    imeiTimerRef.current = setTimeout(() => { resolverImei(valor); }, 300);
+    return () => { if (imeiTimerRef.current) clearTimeout(imeiTimerRef.current); };
+  }, [busquedaInput, modoCaptura, moduloId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -222,8 +322,39 @@ const ConteosFisicos = () => {
     } finally { setProcesando(false); }
   };
 
+  // Sin IMEIs se aplica directo. Con IMEIs hay que preguntar antes si el
+  // pistoleo del módulo fue completo: de esa respuesta depende que C3 mande
+  // claves a cero en el backend.
   const handleAplicar = async () => {
     if (!preview || (!archivo && modoCaptura === "excel")) return;
+    if (imeisEscaneados.length === 0) {
+      ejecutarAplicar(false);
+      return;
+    }
+    setConfirmAplicar(true);
+    setResumenImei(null);
+    setErrorResumen(null);
+    setCargandoResumen(true);
+    try {
+      const r = await axios.get<ResumenImei>(
+        `${BASE}/conteos-fisicos/modulos/${preview.modulo_id}/resumen-imei`,
+        config,
+      );
+      setResumenImei(r.data);
+    } catch (e: any) {
+      const status  = e.response?.status;
+      const detalle = e.response?.data?.detail;
+      setErrorResumen(
+        detalle
+          ? `Error ${status}: ${detalle}`
+          : `No se pudo obtener el resumen del módulo (${status ?? "sin conexión"}).`
+      );
+    } finally { setCargandoResumen(false); }
+  };
+
+  const ejecutarAplicar = async (conteoCompleto: boolean) => {
+    if (!preview || (!archivo && modoCaptura === "excel")) return;
+    setConfirmAplicar(false);
     setAplicando(true);
     setErrorMsg(null);
     try {
@@ -238,6 +369,10 @@ const ConteosFisicos = () => {
         caso_por_caso: preview.decidir_caso_por_caso.map(i => ({
           clave: i.clave, producto: i.producto, poner_en_cero: enCero.has(i.clave),
         })),
+        // Vacío en el flujo Excel → el backend se comporta igual que siempre.
+        imeis: imeisEscaneados,
+        // Sólo true si el usuario declaró el pistoleo COMPLETO en el diálogo.
+        conteo_imei_completo: conteoCompleto,
       };
       const r = await axios.post(`${BASE}/conteos-fisicos/aplicar`, body, config);
       const d = r.data;
@@ -248,6 +383,12 @@ const ConteosFisicos = () => {
       setPreview(null);
       setArchivo(null);
       setModuloId("");
+      setFilasCaptura([]);
+      setImeisEscaneados([]);
+      setImeisCapturados(new Set());
+      setAvisoImei(null);
+      setImeiOpcion(null);
+      setResumenImei(null);
       cargarHistorial();
     } catch (e: any) {
       const status  = e.response?.status;
@@ -293,8 +434,152 @@ const ConteosFisicos = () => {
     } finally { setRevirtiendoFolio(null); }
   };
 
+  // ── Captura por IMEI ───────────────────────────────────────────────────────
+
+  const limpiarBusqueda = () => {
+    setProdSel(null);
+    setBusquedaInput("");
+    setImeiOpcion(null);
+    imeiConsultaRef.current = "";
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  };
+
+  // Suma el equipo a la partida: 1 unidad sobre la fila de su clave (o fila
+  // nueva) y el item completo a la lista que viaja en /aplicar.
+  const registrarImei = (resp: ValidarImeiResponse) => {
+    setImeisEscaneados(prev => [...prev, {
+      imei:              resp.imei,
+      clave:             resp.clave ?? null,
+      producto:          resp.producto ?? null,
+      resultado:         resp.resultado,
+      // /imei/validar no devuelve equipo_id; el backend resuelve el equipo por
+      // IMEI cuando viene null (conteos_fisicos.py:494-499).
+      equipo_id:         null,
+      estatus_sistema:   resp.estatus_sistema ?? null,
+      modulo_sistema_id: resp.modulo_sistema_id ?? null,
+    }]);
+    setImeisCapturados(prev => new Set(prev).add(resp.imei));
+
+    if (resp.clave) {
+      const clave    = resp.clave;
+      const producto = resp.producto ?? clave;
+      const aviso: AvisoFila | null =
+        resp.resultado === "reasignado" || resp.resultado === "vendido_presente"
+          ? { tipo: resp.resultado, mensaje: resp.mensaje }
+          : null;
+
+      setFilasCaptura(prev => {
+        const idx = prev.findIndex(f => f.clave === clave);
+        if (idx === -1) {
+          const nuevoId = prev.reduce((max, f) => Math.max(max, f.id), Date.now()) + 1;
+          return [...prev, {
+            id: nuevoId, clave, producto, cantidad: 1, cantidadImei: 1,
+            avisos: aviso ? [aviso] : [],
+          }];
+        }
+        return prev.map((f, i) => {
+          if (i !== idx) return f;
+          const previos = f.avisos ?? [];
+          return {
+            ...f,
+            cantidad: f.cantidad + 1,
+            cantidadImei: (f.cantidadImei ?? 0) + 1,
+            avisos: aviso && !previos.some(a => a.mensaje === aviso.mensaje)
+              ? [...previos, aviso]
+              : previos,
+          };
+        });
+      });
+      setAvisoImei(null);
+    } else {
+      // pendiente_alta: no hay clave que sumar, sólo queda el registro del IMEI.
+      setAvisoImei(
+        `IMEI ${resp.imei} capturado como pendiente de alta. Queda registrado en el ` +
+        `conteo pero no suma unidades al inventario.`
+      );
+    }
+    limpiarBusqueda();
+  };
+
+  // Consulta al backend si lo tecleado corresponde a un equipo. NO agrega nada:
+  // sólo deja el candidato listo para que el usuario lo elija en la lista.
+  const resolverImei = async (texto: string): Promise<ValidarImeiResponse | null> => {
+    if (imeiTimerRef.current) { clearTimeout(imeiTimerRef.current); imeiTimerRef.current = null; }
+    if (!moduloId) return null;
+
+    imeiConsultaRef.current = texto;
+    setValidandoImei(true);
+    try {
+      const r = await axios.post<ValidarImeiResponse>(
+        `${BASE}/conteos-fisicos/imei/validar`,
+        { imei: texto, modulo_id: moduloId },
+        config,
+      );
+      // Descartar respuestas viejas: el usuario ya siguió tecleando.
+      if (imeiConsultaRef.current !== texto) return null;
+      setImeiOpcion(r.data);
+      return r.data;
+    } catch (e: any) {
+      if (imeiConsultaRef.current !== texto) return null;
+      setImeiOpcion(null);
+      const status = e.response?.status;
+      // 400 NO es un fallo: es la respuesta normal del backend cuando el texto
+      // no es un IMEI conocido (o sea, cada vez que se busca por clave). Sólo
+      // los errores reales — sesión, permisos, caída — se le muestran al usuario.
+      if (status && status !== 400) {
+        const detalle = e.response?.data?.detail;
+        setErrorMsg(
+          detalle
+            ? `Error ${status} al validar "${texto}": ${detalle}`
+            : `Error ${status} al validar "${texto}".`
+        );
+      } else if (!status) {
+        setErrorMsg(`Sin conexión al validar "${texto}". Revisa la red y reintenta.`);
+      }
+      return null;
+    } finally {
+      if (imeiConsultaRef.current === texto) setValidandoImei(false);
+    }
+  };
+
+  // El usuario eligió el equipo en la lista del autocomplete.
+  const seleccionarOpcionImei = (resp: ValidarImeiResponse) => {
+    if (imeisCapturados.has(resp.imei)) {
+      setAvisoImei(`IMEI ya capturado en esta partida: ${resp.imei}`);
+      limpiarBusqueda();
+      return;
+    }
+    if (resp.resultado === "pendiente_alta") {
+      setConfirmAlta(resp);   // requiere confirmación explícita del usuario
+      return;
+    }
+    registrarImei(resp);
+  };
+
+  const handleConfirmarAlta = () => {
+    if (!confirmAlta) return;
+    const resp = confirmAlta;
+    setConfirmAlta(null);
+    registrarImei(resp);
+  };
+
+  const handleCancelarAlta = () => {
+    setConfirmAlta(null);
+    limpiarBusqueda();
+  };
+
   const handleAgregarFila = () => {
     if (!prodSel || !cantInput) return;
+    // El backend recuenta esta clave desde los IMEIs y descarta lo tecleado
+    // (C1, conteos_fisicos.py:230). Dejar capturar a mano mostraría en pantalla
+    // un número distinto al que se guarda.
+    if (imeisEscaneados.some(i => i.clave === prodSel.clave)) {
+      setAvisoImei(
+        "Esta clave se está contando por IMEI. Escanea los equipos en vez de " +
+        "capturar cantidad a mano."
+      );
+      return;
+    }
     const cant = parseInt(cantInput, 10);
     if (isNaN(cant) || cant < 0) return;
     setFilasCaptura(prev => [...prev, { id: Date.now(), clave: prodSel.clave, producto: prodSel.producto, cantidad: cant }]);
@@ -305,7 +590,21 @@ const ConteosFisicos = () => {
   };
 
   const handleEliminarFila = (id: number) => {
+    const fila = filasCaptura.find(f => f.id === id);
     setFilasCaptura(prev => prev.filter(f => f.id !== id));
+    // Si la fila traía equipos escaneados, sus IMEIs se van con ella: dejarlos
+    // en el payload haría que el backend recreara la clave al aplicar.
+    if (fila) {
+      const bajas = imeisEscaneados.filter(i => i.clave === fila.clave).map(i => i.imei);
+      if (bajas.length > 0) {
+        setImeisEscaneados(prev => prev.filter(i => i.clave !== fila.clave));
+        setImeisCapturados(prev => {
+          const next = new Set(prev);
+          bajas.forEach(im => next.delete(im));
+          return next;
+        });
+      }
+    }
   };
 
   const handleProcesarCaptura = async () => {
@@ -467,13 +766,38 @@ const ConteosFisicos = () => {
     return "success";
   };
 
-  const opcionesBusqueda = useMemo(() => {
+  // El equipo resuelto por IMEI encabeza la lista; debajo, el catálogo de
+  // siempre. Las dos búsquedas corren en paralelo y ninguna anula a la otra.
+  const opcionesBusqueda = useMemo<OpcionBusqueda[]>(() => {
     if (busquedaInput.length < 2) return [];
     const q = busquedaInput.toLowerCase();
     const grupoA = catalogoGeneral.filter(p => p.clave.toLowerCase().startsWith(q));
     const grupoB = catalogoGeneral.filter(p => !p.clave.toLowerCase().startsWith(q) && p.producto.toLowerCase().includes(q));
-    return [...grupoA, ...grupoB];
-  }, [busquedaInput, catalogoGeneral]);
+    const delCatalogo: OpcionBusqueda[] = [...grupoA, ...grupoB].map(p => ({
+      kind: "catalogo", clave: p.clave, producto: p.producto, prod: p,
+    }));
+    if (!imeiOpcion) return delCatalogo;
+    const opcionImei: OpcionBusqueda = {
+      kind:     "imei",
+      clave:    imeiOpcion.clave ?? imeiOpcion.imei,
+      producto: imeiOpcion.producto ?? "IMEI no dado de alta",
+      resp:     imeiOpcion,
+    };
+    return [opcionImei, ...delCatalogo];
+  }, [busquedaInput, catalogoGeneral, imeiOpcion]);
+
+  // Del universo que C3 pondría en cero, quita lo que ya se pistoleó. Lo que
+  // queda es exactamente lo que se perdería al declarar el conteo completo.
+  const clavesQueSeZerean = useMemo<ClaveZeroable[]>(() => {
+    if (!resumenImei) return [];
+    const escaneadas = new Set(
+      imeisEscaneados
+        .filter(i => i.resultado === "ok" || i.resultado === "reasignado")
+        .map(i => i.clave)
+        .filter((c): c is string => Boolean(c))
+    );
+    return resumenImei.claves_zeroables.filter(c => !escaneadas.has(c.clave));
+  }, [resumenImei, imeisEscaneados]);
 
   const resumenDetalle = useMemo(() => {
     if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number })[] };
@@ -633,9 +957,14 @@ const ConteosFisicos = () => {
                     getOptionLabel={o => o.clave}
                     filterOptions={(x) => x}
                     autoHighlight
-                    value={prodSel}
+                    value={prodSel ? { kind: "catalogo" as const, clave: prodSel.clave, producto: prodSel.producto, prod: prodSel } : null}
                     onChange={(_, v) => {
-                      setProdSel(v);
+                      if (v?.kind === "imei") {
+                        setProdSel(null);
+                        seleccionarOpcionImei(v.resp);
+                        return;
+                      }
+                      setProdSel(v ? v.prod : null);
                       if (v) setTimeout(() => cantInputRef.current?.focus(), 0);
                     }}
                     inputValue={busquedaInput}
@@ -645,31 +974,80 @@ const ConteosFisicos = () => {
                       <TextField
                         {...params}
                         inputRef={searchInputRef}
-                        label="Buscar por clave o nombre"
+                        label="Buscar por clave, nombre o escanear IMEI"
                         size="small"
                         sx={{ minWidth: 320 }}
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
                             <>
-                              {cargandoCatalogo ? <CircularProgress size={14} /> : null}
+                              {cargandoCatalogo || validandoImei ? <CircularProgress size={14} /> : null}
                               {params.InputProps.endAdornment}
                             </>
                           ),
                         }}
+                        inputProps={{
+                          ...params.inputProps,
+                          onKeyDown: async (e: React.KeyboardEvent<HTMLInputElement>) => {
+                            // El lector de código de barras manda Enter apenas
+                            // termina de teclear, antes de que corra el debounce.
+                            // Si no hay nada que seleccionar todavía, se resuelve
+                            // en el momento. Con opciones visibles no se toca
+                            // Enter: autoHighlight ya elige la primera.
+                            const valor = busquedaInput.trim();
+                            if (
+                              e.key === "Enter" &&
+                              opcionesBusqueda.length === 0 &&
+                              valor.length >= 6
+                            ) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const resp = await resolverImei(valor);
+                              if (resp) seleccionarOpcionImei(resp);
+                              return;
+                            }
+                            (params.inputProps as any).onKeyDown?.(e);
+                          },
+                        }}
                       />
                     )}
-                    noOptionsText={cargandoCatalogo ? "Cargando catálogo…" : busquedaInput.length < 2 ? "Escribe al menos 2 caracteres" : "Sin coincidencias"}
-                    isOptionEqualToValue={(o, v) => o.clave === v.clave}
+                    noOptionsText={
+                      validandoImei              ? "Buscando…"
+                      : cargandoCatalogo         ? "Cargando catálogo…"
+                      : busquedaInput.length < 2 ? "Escribe al menos 2 caracteres"
+                      : "Sin coincidencias en catálogo ni en equipos"
+                    }
+                    isOptionEqualToValue={(o, v) =>
+                      o.kind === v.kind &&
+                      o.clave === v.clave &&
+                      (o.kind !== "imei" || v.kind !== "imei" || o.resp.imei === v.resp.imei)
+                    }
                     renderOption={(props, o) => (
-                      <li {...props} key={o.clave} style={{ padding: "4px 12px" }}>
+                      <li
+                        {...props}
+                        key={o.kind === "imei" ? `imei-${o.resp.imei}` : `cat-${o.clave}`}
+                        style={{ padding: "4px 12px" }}
+                      >
                         <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75, width: "100%", overflow: "hidden" }}>
+                          {o.kind === "imei" && (
+                            <Chip
+                              label="IMEI"
+                              size="small"
+                              color={o.resp.resultado === "pendiente_alta" ? "warning" : "success"}
+                              sx={{ height: 17, fontSize: 10, fontWeight: 700, flexShrink: 0 }}
+                            />
+                          )}
                           <Typography sx={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", flexShrink: 0, color: "#f97316" }}>
                             {o.clave}
                           </Typography>
                           <Typography sx={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#475569" }}>
                             {o.producto}
                           </Typography>
+                          {o.kind === "imei" && (
+                            <Typography sx={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, ml: "auto" }}>
+                              {o.resp.imei}
+                            </Typography>
+                          )}
                         </Box>
                       </li>
                     )}
@@ -695,6 +1073,12 @@ const ConteosFisicos = () => {
                   </Button>
                 </Box>
 
+                {avisoImei && (
+                  <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setAvisoImei(null)}>
+                    {avisoImei}
+                  </Alert>
+                )}
+
                 {filasCaptura.length > 0 && (
                   <>
                     <TableContainer sx={{ mb: 2, maxHeight: 320 }}>
@@ -711,7 +1095,19 @@ const ConteosFisicos = () => {
                           {filasCaptura.map(f => (
                             <TableRow key={f.id}>
                               <TableCell sx={{ ...cellSx, fontWeight: 700, color: "#f97316" }}>{f.clave}</TableCell>
-                              <TableCell sx={cellSx}>{f.producto}</TableCell>
+                              <TableCell sx={cellSx}>
+                                {f.producto}
+                                {(f.avisos ?? []).map(a => (
+                                  <Chip
+                                    key={a.mensaje}
+                                    label={a.mensaje}
+                                    size="small"
+                                    color={a.tipo === "vendido_presente" ? "error" : "warning"}
+                                    variant="outlined"
+                                    sx={{ ml: 0.75, height: 18, fontSize: 11 }}
+                                  />
+                                ))}
+                              </TableCell>
                               <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700 }}>{f.cantidad}</TableCell>
                               <TableCell sx={cellSx}>
                                 <IconButton size="small" color="error" onClick={() => handleEliminarFila(f.id)}>
@@ -725,6 +1121,7 @@ const ConteosFisicos = () => {
                     </TableContainer>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                       {filasCaptura.length} línea(s) · {filasCaptura.reduce((s, f) => s + f.cantidad, 0)} unidades · {new Set(filasCaptura.map(f => f.clave)).size} claves únicas
+                      {imeisEscaneados.length > 0 && <> · {imeisEscaneados.length} IMEI escaneado(s)</>}
                     </Typography>
                   </>
                 )}
@@ -1349,6 +1746,104 @@ const ConteosFisicos = () => {
           <Button onClick={() => setConfirmCongelarOpen(false)}>Cancelar</Button>
           <Button variant="contained" color="error" disabled={congelando} onClick={handleCongelar}>
             {congelando ? <CircularProgress size={16} /> : "Sí, congelar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmAplicar} onClose={() => setConfirmAplicar(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>¿El pistoleo de este módulo está completo?</DialogTitle>
+        <DialogContent>
+          {cargandoResumen ? (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 2 }}>
+              <CircularProgress size={18} />
+              <Typography variant="body2">Consultando el estado del módulo…</Typography>
+            </Box>
+          ) : errorResumen ? (
+            <Alert severity="error" sx={{ mb: 1 }}>
+              {errorResumen}
+              <br />
+              Sin ese dato no se puede saber qué se pondría en cero. Aplica como
+              conteo parcial o cierra y reintenta.
+            </Alert>
+          ) : (
+            <>
+              <DialogContentText component="div">
+                Escaneaste <strong>{imeisEscaneados.length}</strong> IMEI(s).
+                Este módulo tiene <strong>{resumenImei?.total_surtidos ?? 0}</strong> equipos
+                surtidos.
+              </DialogContentText>
+
+              {clavesQueSeZerean.length > 0 ? (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  Si confirmas <strong>conteo completo</strong>, estas{" "}
+                  <strong>{clavesQueSeZerean.length}</strong> clave(s) se pondrán en{" "}
+                  <strong>CERO</strong>:
+                  <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+                    {clavesQueSeZerean.map(c => (
+                      <li key={c.clave}>
+                        <strong>{c.clave}</strong> — {c.producto}{" "}
+                        <span style={{ color: "#64748b" }}>
+                          (hoy: {c.cantidad_actual})
+                        </span>
+                      </li>
+                    ))}
+                  </Box>
+                </Alert>
+              ) : (
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  No hay claves pendientes: escaneaste todas las que manejan IMEI en
+                  este módulo. Ninguna se pondría en cero.
+                </Alert>
+              )}
+
+              <DialogContentText sx={{ mt: 2, fontSize: 13 }}>
+                Si aún falta equipo por pistolear, elige <strong>conteo parcial</strong>:
+                lo no escaneado se queda como está.
+              </DialogContentText>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="contained"
+            autoFocus
+            disabled={aplicando}
+            onClick={() => ejecutarAplicar(false)}
+            sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}
+          >
+            Conteo parcial
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            disabled={aplicando || cargandoResumen || Boolean(errorResumen)}
+            onClick={() => ejecutarAplicar(true)}
+          >
+            Conteo completo
+          </Button>
+          <Button onClick={() => setConfirmAplicar(false)} disabled={aplicando}>
+            Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(confirmAlta)} onClose={handleCancelarAlta}>
+        <DialogTitle sx={{ fontWeight: 700 }}>IMEI no dado de alta</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            El IMEI <strong>{confirmAlta?.imei}</strong> no está registrado en equipos Telcel.
+            {" "}{confirmAlta?.mensaje}
+            <br /><br />
+            Si lo capturas, quedará registrado en el conteo como pendiente de alta, pero
+            <strong> no suma unidades a ninguna clave</strong> porque el sistema no sabe qué
+            equipo es. ¿Capturarlo de todos modos?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelarAlta}>Cancelar</Button>
+          <Button variant="contained" onClick={handleConfirmarAlta}
+            sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}>
+            Sí, capturar
           </Button>
         </DialogActions>
       </Dialog>
