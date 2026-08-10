@@ -56,6 +56,7 @@ const ChipsAdmin = () => {
     try {
       const params: any = {};
       if (empleadoSeleccionado) params.empleado_id = empleadoSeleccionado;
+      params.solo_pendientes = true;
       const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
