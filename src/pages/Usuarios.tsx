@@ -269,7 +269,14 @@ const UsuariosAdmin = () => {
                   {u.nombre_completo || "-"}
                 </TableCell>
                 <TableCell sx={{ fontSize: "0.75rem" }}>{u.rol}</TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{u.modulo?.nombre || "-"}</TableCell>
+                <TableCell sx={{ fontSize: "0.75rem" }}>
+                  {u.modulo?.nombre || "-"}
+                  {u.tienda && (
+                    <div style={{ fontSize: "0.65rem", color: "#888", marginTop: 2 }}>
+                      {u.tienda.nombre}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
                 <TableCell sx={{ fontSize: "0.75rem" }}>{u.forma_pago || "-"}</TableCell>
                 <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
