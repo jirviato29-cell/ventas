@@ -3,7 +3,7 @@ import {
   Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, Container,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
   Divider, IconButton, MenuItem, Paper, Tab, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Tabs, TextField, Typography,
+  TableContainer, TableHead, TableRow, Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
 import {
   AddCircle, CheckCircle, CloudUpload, Delete, Error as ErrorIcon,
@@ -48,6 +48,10 @@ interface ConteoItem {
   id: number; clave: string; producto: string;
   cantidad_anterior: number; cantidad_nueva: number;
   accion: string; producto_creado: boolean;
+  imeis?: string[];
+  imeis_escaneados?: number;
+  imei_aplica?: boolean;
+  imei_check?: string | null;
 }
 interface ConteoListItem {
   id: number; folio: string; modulo: string; fecha: string;
@@ -55,7 +59,11 @@ interface ConteoListItem {
   productos_actualizados?: number; productos_creados?: number;
   productos_en_cero?: number; estado: string; notas?: string;
 }
-interface ConteoDetalle extends ConteoListItem { items: ConteoItem[]; }
+interface ConteoDetalle extends ConteoListItem {
+  items: ConteoItem[];
+  imeis_sin_clave?: string[];
+  total_imeis?: number;
+}
 
 interface ProductoModulo { id: number; clave: string; producto: string; precio?: number; }
 interface AvisoFila     { tipo: string; mensaje: string; }
@@ -677,12 +685,17 @@ const ConteosFisicos = () => {
     const encabezado = [
       ["Folio", detalle.folio, "", "Módulo", detalle.modulo, "", "Fecha", fechaStr],
       [],
-      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado"],
+      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado", "IMEIs escaneados", "Check IMEI", "Lista IMEIs"],
     ];
     const datos = filas.map(i => {
       const dif = i.diferencia;
       const estado = dif === 0 ? "Cuadra" : dif < 0 ? "Falta" : "Sobra";
-      return [i.clave, i.producto, i.cantidad_anterior, i.cantidad_nueva, dif, estado];
+      return [
+        i.clave, i.producto, i.cantidad_anterior, i.cantidad_nueva, dif, estado,
+        i.imei_aplica ? (i.imeis_escaneados ?? 0) : "",
+        i.imei_aplica ? (i.imei_check === "ok" ? "OK" : "DESCUADRE") : "",
+        (i.imeis ?? []).join(" | "),
+      ];
     });
     const ws = XLSX.utils.aoa_to_sheet([...encabezado, ...datos]);
     const wb = XLSX.utils.book_new();
@@ -1534,6 +1547,12 @@ const ConteosFisicos = () => {
                   Descargar Excel
                 </Button>
               </Box>
+              {!!detalle.imeis_sin_clave?.length && (
+                <Alert severity="warning" sx={{ mb: 1, fontSize: 12 }}>
+                  {detalle.imeis_sin_clave.length} IMEI(s) escaneados no están dados
+                  de alta en el sistema: {detalle.imeis_sin_clave.join(", ")}
+                </Alert>
+              )}
               <TableContainer>
                 <Table size="small">
                   <TableHead>
@@ -1544,6 +1563,7 @@ const ConteosFisicos = () => {
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Nueva</TableCell>
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Diferencia</TableCell>
                       <TableCell sx={headSx}>Acción</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "center" }}>IMEI</TableCell>
                       <TableCell sx={headSx}>Kardex</TableCell>
                     </TableRow>
                   </TableHead>
@@ -1567,6 +1587,31 @@ const ConteosFisicos = () => {
                               color={accionColor(i.accion) as any}
                               sx={{ fontSize: 11 }}
                             />
+                          </TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "center" }}>
+                            {!i.imei_aplica ? (
+                              <span style={{ color: "#9ca3af" }}>—</span>
+                            ) : (
+                              <Tooltip
+                                title={
+                                  (i.imeis ?? []).length
+                                    ? (i.imeis ?? []).join("\n")
+                                    : "Sin IMEIs escaneados"
+                                }
+                                componentsProps={{ tooltip: { sx: { whiteSpace: "pre-line", fontSize: 11 } } }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: 12,
+                                    cursor: "help",
+                                    color: i.imei_check === "ok" ? "#16a34a" : "#dc2626",
+                                  }}
+                                >
+                                  {i.imei_check === "ok" ? "✓" : "✗"} {i.imeis_escaneados ?? 0}/{i.cantidad_nueva ?? 0}
+                                </span>
+                              </Tooltip>
+                            )}
                           </TableCell>
                           <TableCell sx={cellSx}>
                             <Button
