@@ -686,7 +686,7 @@ const ConteosFisicos = () => {
     const encabezado = [
       ["Folio", detalle.folio, "", "Módulo", detalle.modulo, "", "Fecha", fechaStr],
       [],
-      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado", "IMEIs escaneados", "Check IMEI", "IMEIs escaneados (lista)", "IMEIs faltantes"],
+      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia (telefonos: por IMEI)", "Estado", "IMEIs escaneados", "Check IMEI", "IMEIs escaneados (lista)", "IMEIs faltantes"],
     ];
     const datos = filas.map(i => {
       const dif = i.diferencia;
@@ -818,7 +818,9 @@ const ConteosFisicos = () => {
     if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number })[] };
     const items = detalle.items.map(i => ({
       ...i,
-      diferencia: (i.cantidad_nueva ?? 0) - (i.cantidad_anterior ?? 0),
+      diferencia: i.imei_aplica === true
+        ? -((i.imeis_faltantes ?? []).length)
+        : (i.cantidad_nueva ?? 0) - (i.cantidad_anterior ?? 0),
     }));
     return {
       cuadran:   items.filter(i => i.diferencia === 0).length,
@@ -1574,7 +1576,12 @@ const ConteosFisicos = () => {
                       <TableCell sx={headSx}>Producto</TableCell>
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Anterior</TableCell>
                       <TableCell sx={{ ...headSx, textAlign: "right" }}>Nueva</TableCell>
-                      <TableCell sx={{ ...headSx, textAlign: "right" }}>Diferencia</TableCell>
+                      <TableCell sx={{ ...headSx, textAlign: "right" }}>
+                        Diferencia
+                        <Typography component="span" sx={{ display: "block", fontSize: 9, fontWeight: 400, color: "#64748b" }}>
+                          teléfonos: por IMEI
+                        </Typography>
+                      </TableCell>
                       <TableCell sx={headSx}>Acción</TableCell>
                       <TableCell sx={{ ...headSx, textAlign: "center" }}>IMEI</TableCell>
                       <TableCell sx={headSx}>Kardex</TableCell>
