@@ -692,7 +692,7 @@ const ConteosFisicos = () => {
       const dif = i.diferencia;
       const estado = dif === 0 ? "Cuadra" : dif < 0 ? "Falta" : "Sobra";
       return [
-        i.clave, i.producto, i.cantidad_anterior, i.cantidad_nueva, dif, estado,
+        i.clave, i.producto, i.anterior_ver, i.nueva_ver, dif, estado,
         i.imei_aplica ? (i.imeis_escaneados ?? 0) : "",
         i.imei_aplica ? (i.imei_check === "ok" ? "OK" : "DESCUADRE") : "",
         (i.imeis ?? []).join(" | "),
@@ -815,13 +815,19 @@ const ConteosFisicos = () => {
   }, [resumenImei, imeisEscaneados]);
 
   const resumenDetalle = useMemo(() => {
-    if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number })[] };
-    const items = detalle.items.map(i => ({
-      ...i,
-      diferencia: i.imei_aplica === true
-        ? -((i.imeis_faltantes ?? []).length)
-        : (i.cantidad_nueva ?? 0) - (i.cantidad_anterior ?? 0),
-    }));
+    if (!detalle) return { cuadran: 0, faltantes: 0, sobrantes: 0, items: [] as (ConteoItem & { diferencia: number; anterior_ver: number; nueva_ver: number })[] };
+    const items = detalle.items.map(i => {
+      const esImei = i.imei_aplica === true;
+      const nEsc = (i.imeis ?? []).length;
+      const nFal = (i.imeis_faltantes ?? []).length;
+      return {
+        ...i,
+        anterior_ver: esImei ? nEsc + nFal : (i.cantidad_anterior ?? 0),
+        nueva_ver:    esImei ? nEsc        : (i.cantidad_nueva ?? 0),
+        diferencia:   esImei ? -nFal
+                             : (i.cantidad_nueva ?? 0) - (i.cantidad_anterior ?? 0),
+      };
+    });
     return {
       cuadran:   items.filter(i => i.diferencia === 0).length,
       faltantes: items.filter(i => i.diferencia < 0).length,
@@ -1595,8 +1601,8 @@ const ConteosFisicos = () => {
                         <TableRow key={i.id}>
                           <TableCell sx={cellSx}>{i.clave}</TableCell>
                           <TableCell sx={cellSx}>{i.producto}</TableCell>
-                          <TableCell sx={{ ...cellSx, textAlign: "right" }}>{i.cantidad_anterior}</TableCell>
-                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>{i.cantidad_nueva}</TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "right" }}>{i.anterior_ver}</TableCell>
+                          <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 600 }}>{i.nueva_ver}</TableCell>
                           <TableCell sx={{ ...cellSx, textAlign: "right", fontWeight: 700, color: difColor }}>
                             {dif > 0 ? `+${dif}` : dif}
                           </TableCell>
