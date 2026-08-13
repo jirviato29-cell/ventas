@@ -25,6 +25,7 @@ import MoveToInboxIcon from "@mui/icons-material/MoveToInbox";
 import SignalCellular4BarIcon from "@mui/icons-material/SignalCellular4Bar";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import BoltIcon from "@mui/icons-material/Bolt";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -235,6 +236,8 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/comisiones">Comisiones</MenuItem>
                     <MenuItem component={Link} to="/metricas">Métricas</MenuItem>
                     <MenuItem component={Link} to="/admin/modulos">Gestión de Módulos</MenuItem>
+                    <MenuItem component={Link} to="/tiendas/admin">Tiendas (Cadenas)</MenuItem>
+                    <MenuItem component={Link} to="/admin/cadenas">Cadenas</MenuItem>
                     <MenuItem component={Link} to="/admin/planes">Planes</MenuItem>
                     <MenuItem component={Link} to="/admin/presion">Presión</MenuItem>
                     <MenuItem component={Link} to="/recibos">Recibos</MenuItem>
@@ -527,6 +530,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/tiendas/admin")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                     <ListItemText primary="Tiendas (Cadenas)" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/cadenas")}>
+                    <ListItemIcon sx={drawerIconSx}><StorefrontIcon /></ListItemIcon>
+                    <ListItemText primary="Cadenas" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/planes")}>
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
