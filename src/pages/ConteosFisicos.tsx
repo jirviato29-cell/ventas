@@ -1623,7 +1623,7 @@ const ConteosFisicos = () => {
                                   </span>
                                 ))}
                                 {!(i.imeis ?? []).length && !(i.imeis_faltantes ?? []).length && (
-                                  <span style={{ color: "#9ca3af", fontSize: 11 }}>sin IMEI</span>
+                                  <span style={{ color: "#9ca3af" }}>—</span>
                                 )}
                               </Box>
                             )}
