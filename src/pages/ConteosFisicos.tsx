@@ -686,16 +686,13 @@ const ConteosFisicos = () => {
     const encabezado = [
       ["Folio", detalle.folio, "", "Módulo", detalle.modulo, "", "Fecha", fechaStr],
       [],
-      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia (telefonos: por IMEI)", "Estado", "IMEIs escaneados", "Check IMEI", "IMEIs escaneados (lista)", "IMEIs faltantes"],
+      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia (telefonos: por IMEI)", "Estado", "IMEIs faltantes"],
     ];
     const datos = filas.map(i => {
       const dif = i.diferencia;
       const estado = dif === 0 ? "Cuadra" : dif < 0 ? "Falta" : "Sobra";
       return [
         i.clave, i.producto, i.anterior_ver, i.nueva_ver, dif, estado,
-        i.imei_aplica ? (i.imeis_escaneados ?? 0) : "",
-        i.imei_aplica ? (i.imei_check === "ok" ? "OK" : "DESCUADRE") : "",
-        (i.imeis ?? []).join(" | "),
         (i.imeis_faltantes ?? []).join(" | "),
       ];
     });
