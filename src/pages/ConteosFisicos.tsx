@@ -3,7 +3,7 @@ import {
   Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, Container,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
   Divider, IconButton, MenuItem, Paper, Tab, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Tabs, TextField, Tooltip, Typography,
+  TableContainer, TableHead, TableRow, Tabs, TextField, Typography,
 } from "@mui/material";
 import {
   AddCircle, CheckCircle, CloudUpload, Delete, Error as ErrorIcon,
@@ -52,6 +52,7 @@ interface ConteoItem {
   imeis_escaneados?: number;
   imei_aplica?: boolean;
   imei_check?: string | null;
+  imeis_faltantes?: string[];
 }
 interface ConteoListItem {
   id: number; folio: string; modulo: string; fecha: string;
@@ -685,7 +686,7 @@ const ConteosFisicos = () => {
     const encabezado = [
       ["Folio", detalle.folio, "", "Módulo", detalle.modulo, "", "Fecha", fechaStr],
       [],
-      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado", "IMEIs escaneados", "Check IMEI", "Lista IMEIs"],
+      ["Clave", "Producto", "Anterior", "Nueva", "Diferencia", "Estado", "IMEIs escaneados", "Check IMEI", "IMEIs escaneados (lista)", "IMEIs faltantes"],
     ];
     const datos = filas.map(i => {
       const dif = i.diferencia;
@@ -695,6 +696,7 @@ const ConteosFisicos = () => {
         i.imei_aplica ? (i.imeis_escaneados ?? 0) : "",
         i.imei_aplica ? (i.imei_check === "ok" ? "OK" : "DESCUADRE") : "",
         (i.imeis ?? []).join(" | "),
+        (i.imeis_faltantes ?? []).join(" | "),
       ];
     });
     const ws = XLSX.utils.aoa_to_sheet([...encabezado, ...datos]);
@@ -1508,7 +1510,7 @@ const ConteosFisicos = () => {
       </Paper>
 
       {/* ─── MODAL: DETALLE ─────────────────────────────────────────────────── */}
-      <Dialog open={modalDetalle} onClose={() => setModalDetalle(false)} maxWidth="md" fullWidth>
+      <Dialog open={modalDetalle} onClose={() => setModalDetalle(false)} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>
           Detalle — {detalle?.folio}
           {detalle && (
@@ -1588,29 +1590,42 @@ const ConteosFisicos = () => {
                               sx={{ fontSize: 11 }}
                             />
                           </TableCell>
-                          <TableCell sx={{ ...cellSx, textAlign: "center" }}>
+                          <TableCell sx={{ ...cellSx, textAlign: "left" }}>
                             {!i.imei_aplica ? (
                               <span style={{ color: "#9ca3af" }}>—</span>
                             ) : (
-                              <Tooltip
-                                title={
-                                  (i.imeis ?? []).length
-                                    ? (i.imeis ?? []).join("\n")
-                                    : "Sin IMEIs escaneados"
-                                }
-                                componentsProps={{ tooltip: { sx: { whiteSpace: "pre-line", fontSize: 11 } } }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight: 700,
-                                    fontSize: 12,
-                                    cursor: "help",
-                                    color: i.imei_check === "ok" ? "#16a34a" : "#dc2626",
-                                  }}
-                                >
-                                  {i.imei_check === "ok" ? "✓" : "✗"} {i.imeis_escaneados ?? 0}/{i.cantidad_nueva ?? 0}
-                                </span>
-                              </Tooltip>
+                              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
+                                {(i.imeis ?? []).map(im => (
+                                  <span
+                                    key={im}
+                                    style={{
+                                      fontSize: 11,
+                                      fontFamily: "monospace",
+                                      color: "#16a34a",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    ✓ {im}
+                                  </span>
+                                ))}
+                                {(i.imeis_faltantes ?? []).map(im => (
+                                  <span
+                                    key={im}
+                                    style={{
+                                      fontSize: 11,
+                                      fontFamily: "monospace",
+                                      color: "#dc2626",
+                                      fontWeight: 700,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    ✗ {im}
+                                  </span>
+                                ))}
+                                {!(i.imeis ?? []).length && !(i.imeis_faltantes ?? []).length && (
+                                  <span style={{ color: "#9ca3af", fontSize: 11 }}>sin IMEI</span>
+                                )}
+                              </Box>
                             )}
                           </TableCell>
                           <TableCell sx={cellSx}>
