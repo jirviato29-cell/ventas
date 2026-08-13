@@ -824,7 +824,15 @@ const ConteosFisicos = () => {
       cuadran:   items.filter(i => i.diferencia === 0).length,
       faltantes: items.filter(i => i.diferencia < 0).length,
       sobrantes: items.filter(i => i.diferencia > 0).length,
-      items: soloDescuadres ? items.filter(i => i.diferencia !== 0) : items,
+      items: (() => {
+        const visibles = items.filter(i => !(
+          i.imei_aplica === true &&
+          (i.cantidad_nueva ?? 0) === 0 &&
+          !(i.imeis ?? []).length &&
+          !(i.imeis_faltantes ?? []).length
+        ));
+        return soloDescuadres ? visibles.filter(i => i.diferencia !== 0) : visibles;
+      })(),
     };
   }, [detalle, soloDescuadres]);
 
