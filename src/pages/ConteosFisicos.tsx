@@ -831,6 +831,9 @@ const ConteosFisicos = () => {
           !(i.imeis ?? []).length &&
           !(i.imeis_faltantes ?? []).length
         ));
+        visibles.sort((a, b) =>
+          (a.clave ?? "").localeCompare(b.clave ?? "", "es", { sensitivity: "base" })
+        );
         return soloDescuadres ? visibles.filter(i => i.diferencia !== 0) : visibles;
       })(),
     };
