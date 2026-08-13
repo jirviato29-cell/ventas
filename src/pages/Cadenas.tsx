@@ -279,18 +279,27 @@ export default function Cadenas() {
                             {[0, 1, 2, 3].map((i) => {
                               const nombre = d.promotores[i];
                               const esHueco = !nombre && i < d.requeridos;
+                              const sobrante = !!nombre && i >= d.requeridos;
                               return (
                                 <TableCell
                                   key={i}
                                   align="center"
+                                  title={sobrante ? "Sobrante: no cuenta para el garantizado" : ""}
                                   sx={{
-                                    bgcolor: nombre
+                                    bgcolor: sobrante
+                                      ? "#ffcdd2"
+                                      : nombre
                                       ? "#e8f5e9"
                                       : esHueco
                                       ? "#ffebee"
                                       : "transparent",
-                                    color: nombre ? "#1b5e20" : "#b71c1c",
+                                    color: sobrante
+                                      ? "#b71c1c"
+                                      : nombre
+                                      ? "#1b5e20"
+                                      : "#b71c1c",
                                     fontWeight: nombre ? 600 : 400,
+                                    textDecoration: sobrante ? "line-through" : "none",
                                     whiteSpace: "nowrap",
                                     fontSize: "0.7rem",
                                   }}
