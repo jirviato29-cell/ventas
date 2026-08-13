@@ -10,6 +10,8 @@ import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
 
+const API = "https://ato-appservidor-nvxt.onrender.com";
+
 const roles = ["admin", "encargado", "asesor", "contador", "check"];
 
 interface FormEdicion {
@@ -24,6 +26,8 @@ interface FormEdicion {
   cuenta_clabe: string;
   cuenta_interbancaria: string;
   nombre_englobado: string;
+  cadena_id: string;
+  tienda_id: string;
 }
 
 const formVacio: FormEdicion = {
@@ -38,11 +42,15 @@ const formVacio: FormEdicion = {
   cuenta_clabe: "",
   cuenta_interbancaria: "",
   nombre_englobado: "",
+  cadena_id: "",
+  tienda_id: "",
 };
 
 const UsuariosAdmin = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [modulos, setModulos] = useState<{ id: number; nombre: string }[]>([]);
+  const [cadenas, setCadenas] = useState<any[]>([]);
+  const [tiendas, setTiendas] = useState<any[]>([]);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<FormEdicion>(formVacio);
@@ -64,6 +72,19 @@ const UsuariosAdmin = () => {
     }
   };
 
+  const cargarCadenasYTiendas = async () => {
+    try {
+      const [rc, rt] = await Promise.all([
+        axios.get(`${API}/registro/cadenas`, config),
+        axios.get(`${API}/registro/tiendas`, config),
+      ]);
+      setCadenas(rc.data);
+      setTiendas(rt.data);
+    } catch (e) {
+      console.error("Error cargando cadenas/tiendas", e);
+    }
+  };
+
   const cargarUsuarios = async () => {
     try {
       const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios`, config);
@@ -76,6 +97,7 @@ const UsuariosAdmin = () => {
   useEffect(() => {
     cargarUsuarios();
     cargarModulos();
+    cargarCadenasYTiendas();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,6 +115,8 @@ const UsuariosAdmin = () => {
       cuenta_clabe: u.cuenta_clabe ?? "",
       cuenta_interbancaria: u.cuenta_interbancaria ?? "",
       nombre_englobado: u.nombre_englobado ?? "",
+      cadena_id: u.tienda?.cadena_id?.toString() ?? "",
+      tienda_id: u.tienda?.id?.toString() ?? "",
     });
     setDialogAbierto(true);
   };
@@ -119,6 +143,7 @@ const UsuariosAdmin = () => {
       if (form.rol) payload.rol = form.rol;
       if (form.modulo_id) payload.modulo_id = parseInt(form.modulo_id);
       if (form.password) payload.password = form.password;
+      payload.tienda_id = form.tienda_id ? parseInt(form.tienda_id) : null;
 
       await axios.put(
         `https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${editandoId}`,
@@ -349,6 +374,43 @@ const UsuariosAdmin = () => {
               ))}
             </TextField>
           )}
+
+          <TextField
+            select
+            label="Cadena"
+            value={form.cadena_id}
+            onChange={(e) => {
+              setF("cadena_id", e.target.value);
+              setF("tienda_id", "");
+            }}
+            fullWidth
+            margin="normal"
+            size="small"
+          >
+            <MenuItem value="">— Sin cadena —</MenuItem>
+            {cadenas.map((c) => (
+              <MenuItem key={c.id} value={c.id.toString()}>{c.nombre}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Tienda"
+            value={form.tienda_id}
+            onChange={(e) => setF("tienda_id", e.target.value)}
+            disabled={!form.cadena_id}
+            fullWidth
+            margin="normal"
+            size="small"
+            helperText={!form.cadena_id ? "Selecciona primero una cadena" : ""}
+          >
+            <MenuItem value="">— Sin tienda —</MenuItem>
+            {tiendas
+              .filter((t) => t.cadena_id?.toString() === form.cadena_id)
+              .map((t) => (
+                <MenuItem key={t.id} value={t.id.toString()}>{t.nombre}</MenuItem>
+              ))}
+          </TextField>
 
           <TextField
             select

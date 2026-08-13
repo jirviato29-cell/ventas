@@ -105,6 +105,13 @@ export interface Usuario {
   jornada_fija?: number | null;
   horario_semanal?: DiaTrabajo[] | null;
   dia_descanso?: string | null;
+  tienda_id?: number | null;
+  tienda?: {
+    id: number;
+    nombre: string;
+    cadena_id?: number | null;
+    cadena?: { id: number; codigo: string; nombre: string } | null;
+  } | null;
 }
 
 
