@@ -10,6 +10,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PieChartIcon from "@mui/icons-material/PieChart";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
+import FlagIcon from "@mui/icons-material/Flag";
 import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
@@ -111,6 +112,11 @@ export default function Cadenas() {
 
   const colorPct = porcentaje >= 90 ? VERDE : porcentaje >= 70 ? NARANJA : ROJO;
 
+  // Meta: rebasar el 80%. Se necesita superar estrictamente, por eso el +1.
+  const metaCubiertos = Math.floor(totalPlazas * 0.8) + 1;
+  const faltanMeta = Math.max(0, metaCubiertos - cubiertas);
+  const metaLograda = faltanMeta === 0;
+
   return (
     <Container maxWidth={false} sx={{ mt: 3, mb: 4 }}>
       <Paper sx={{ p: 2.5, borderRadius: 2 }}>
@@ -162,6 +168,17 @@ export default function Cadenas() {
                     valor={faltantes}
                     sub={faltantes === 1 ? "promotor por asignar" : "promotores por asignar"}
                     color={faltantes === 0 ? VERDE : ROJO}
+                  />
+                  <Contador
+                    icono={<FlagIcon />}
+                    titulo="Meta 80%"
+                    valor={metaLograda ? "¡Lograda!" : faltanMeta}
+                    sub={
+                      metaLograda
+                        ? `Vas en ${porcentaje}%`
+                        : `promotores para rebasar 80% (${metaCubiertos} de ${totalPlazas})`
+                    }
+                    color={metaLograda ? VERDE : "#6a1b9a"}
                   />
                 </Box>
 
