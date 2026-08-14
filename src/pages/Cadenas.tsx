@@ -20,6 +20,12 @@ const NARANJA = "#f57c00";
 const VERDE = "#2e7d32";
 const ROJO = "#c62828";
 
+// Tiendas marcadas en rojo. Lista fija por tienda_id (PK interno de la tabla
+// tiendas), no es una condición calculada: no depende de garantizados ni de
+// cobertura. Ojo: son tienda_id, no num_tienda (el número que se ve en la
+// columna N° de la tabla).
+const TIENDAS_MARCADAS = new Set([49, 50, 48, 43, 44, 45, 46, 42, 41, 14, 15, 54, 57, 56]);
+
 type Promotor = string | { username: string; asegurado?: boolean };
 
 type Garantizado = {
@@ -240,12 +246,15 @@ export default function Cadenas() {
                       {datos.map((d, idx) => {
                         const sinGar = d.requeridos === 0;
                         const falta = d.requeridos - d.asignados;
+                        const marcada = TIENDAS_MARCADAS.has(d.tienda_id);
                         return (
                           <TableRow
                             key={d.tienda_id}
                             hover
                             sx={{
-                              bgcolor: sinGar
+                              bgcolor: marcada
+                                ? "#ffebee"
+                                : sinGar
                                 ? "#fafafa"
                                 : idx % 2 === 0
                                 ? "#fff"
@@ -253,7 +262,14 @@ export default function Cadenas() {
                               opacity: sinGar ? 0.6 : 1,
                             }}
                           >
-                            <TableCell align="center" sx={{ color: "#607d8b", fontWeight: 600 }}>
+                            <TableCell
+                              align="center"
+                              sx={{
+                                color: "#607d8b",
+                                fontWeight: 600,
+                                borderLeft: marcada ? `4px solid ${ROJO}` : "none",
+                              }}
+                            >
                               {d.num_tienda ?? "-"}
                             </TableCell>
                             <TableCell align="center">
