@@ -3,7 +3,7 @@ import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert,
+  Snackbar, Alert, Chip,
 } from "@mui/material";
 import { Edit, Delete, Close, AccessTime } from "@mui/icons-material";
 import axios from "axios";
@@ -28,6 +28,7 @@ interface FormEdicion {
   nombre_englobado: string;
   cadena_id: string;
   tienda_id: string;
+  asegurado: boolean;
 }
 
 const formVacio: FormEdicion = {
@@ -44,6 +45,7 @@ const formVacio: FormEdicion = {
   nombre_englobado: "",
   cadena_id: "",
   tienda_id: "",
+  asegurado: false,
 };
 
 const UsuariosAdmin = () => {
@@ -117,6 +119,7 @@ const UsuariosAdmin = () => {
       nombre_englobado: u.nombre_englobado ?? "",
       cadena_id: u.tienda?.cadena_id?.toString() ?? "",
       tienda_id: u.tienda?.id?.toString() ?? "",
+      asegurado: !!u.asegurado,
     });
     setDialogAbierto(true);
   };
@@ -144,6 +147,7 @@ const UsuariosAdmin = () => {
       if (form.modulo_id) payload.modulo_id = parseInt(form.modulo_id);
       if (form.password) payload.password = form.password;
       payload.tienda_id = form.tienda_id ? parseInt(form.tienda_id) : null;
+      payload.asegurado = form.asegurado;
 
       await axios.put(
         `https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${editandoId}`,
@@ -231,17 +235,26 @@ const UsuariosAdmin = () => {
     <Box sx={{ mt: 4, px: 2 }}>
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
 
+      <Box sx={{ mb: 1.5 }}>
+        <Chip
+          size="small"
+          color={usuarios.filter((u) => u.asegurado).length === usuarios.length ? "success" : "warning"}
+          label={`Asegurados: ${usuarios.filter((u) => u.asegurado).length} de ${usuarios.length}`}
+        />
+      </Box>
+
       <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
         <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1150 }}>
           <colgroup>
             <col style={{ width: "8%" }} />
             <col style={{ width: "12%" }} />
             <col style={{ width: "7%" }} />
+            <col style={{ width: "6%" }} />
             <col style={{ width: "8%" }} />
             <col style={{ width: "7%" }} />
             <col style={{ width: "8%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "11%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "11%" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "8%" }} />
@@ -251,6 +264,7 @@ const UsuariosAdmin = () => {
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>ID</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Nombre completo</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Rol</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Asegurado</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Módulo</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo base</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
@@ -269,6 +283,13 @@ const UsuariosAdmin = () => {
                   {u.nombre_completo || "-"}
                 </TableCell>
                 <TableCell sx={{ fontSize: "0.75rem" }}>{u.rol}</TableCell>
+                <TableCell align="center" sx={{ fontSize: "0.75rem" }}>
+                  {u.asegurado ? (
+                    <span style={{ color: "#2e7d32", fontWeight: 700 }}>✓</span>
+                  ) : (
+                    <span style={{ color: "#c62828", fontWeight: 700 }}>✗</span>
+                  )}
+                </TableCell>
                 <TableCell sx={{ fontSize: "0.75rem" }}>
                   {u.modulo?.nombre || "-"}
                   {u.tienda && (
@@ -313,7 +334,7 @@ const UsuariosAdmin = () => {
             ))}
             {usuarios.length === 0 && (
               <TableRow>
-                <TableCell colSpan={11} align="center">No hay usuarios</TableCell>
+                <TableCell colSpan={12} align="center">No hay usuarios</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -430,6 +451,17 @@ const UsuariosAdmin = () => {
           >
             <MenuItem value="true">Sí</MenuItem>
             <MenuItem value="false">No</MenuItem>
+          </TextField>
+
+          <TextField
+            select
+            label="¿Está asegurado?"
+            value={form.asegurado ? "si" : "no"}
+            onChange={(e) => setF("asegurado", e.target.value === "si")}
+            fullWidth margin="normal" size="small"
+          >
+            <MenuItem value="si">Sí</MenuItem>
+            <MenuItem value="no">No</MenuItem>
           </TextField>
 
           <TextField

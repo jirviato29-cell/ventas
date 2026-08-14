@@ -112,6 +112,7 @@ export interface Usuario {
     cadena_id?: number | null;
     cadena?: { id: number; codigo: string; nombre: string } | null;
   } | null;
+  asegurado?: boolean;
 }
 
 
