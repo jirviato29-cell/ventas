@@ -20,6 +20,8 @@ const NARANJA = "#f57c00";
 const VERDE = "#2e7d32";
 const ROJO = "#c62828";
 
+type Promotor = string | { username: string; asegurado?: boolean };
+
 type Garantizado = {
   tienda_id: number;
   num_tienda: number | null;
@@ -28,7 +30,7 @@ type Garantizado = {
   nombre: string;
   garantizados: number;
   requeridos: number;
-  promotores: string[];
+  promotores: Promotor[];
   asignados: number;
   cumple: boolean;
 };
@@ -77,6 +79,12 @@ function Contador({
     </Paper>
   );
 }
+
+const nombrePromotor = (p: Promotor | undefined): string | undefined =>
+  p == null ? undefined : typeof p === "string" ? p : p.username;
+
+const estaAsegurado = (p: Promotor | undefined): boolean =>
+  p != null && typeof p !== "string" && !!p.asegurado;
 
 export default function Cadenas() {
   const [tab, setTab] = useState(0);
@@ -277,14 +285,22 @@ export default function Cadenas() {
                               {d.garantizados}
                             </TableCell>
                             {[0, 1, 2, 3].map((i) => {
-                              const nombre = d.promotores[i];
+                              const p = d.promotores[i];
+                              const nombre = nombrePromotor(p);
+                              const asegurado = estaAsegurado(p);
                               const esHueco = !nombre && i < d.requeridos;
                               const sobrante = !!nombre && i >= d.requeridos;
                               return (
                                 <TableCell
                                   key={i}
                                   align="center"
-                                  title={sobrante ? "Sobrante: no cuenta para el garantizado" : ""}
+                                  title={
+                                    sobrante
+                                      ? "Sobrante: no cuenta para el garantizado"
+                                      : asegurado
+                                      ? "Asegurado"
+                                      : ""
+                                  }
                                   sx={{
                                     bgcolor: sobrante
                                       ? "#ffcdd2"
@@ -304,7 +320,36 @@ export default function Cadenas() {
                                     fontSize: "0.7rem",
                                   }}
                                 >
-                                  {nombre ?? (esHueco ? "—" : "")}
+                                  {nombre ? (
+                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
+                                      <span>{nombre}</span>
+                                      {asegurado && (
+                                        <Box
+                                          component="span"
+                                          title="Asegurado"
+                                          sx={{
+                                            bgcolor: "#1565c0",
+                                            color: "#fff",
+                                            width: 16,
+                                            height: 16,
+                                            borderRadius: "50%",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "0.6rem",
+                                            fontWeight: 700,
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          S
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  ) : esHueco ? (
+                                    "—"
+                                  ) : (
+                                    ""
+                                  )}
                                 </TableCell>
                               );
                             })}
