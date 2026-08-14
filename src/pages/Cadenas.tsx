@@ -104,17 +104,17 @@ export default function Cadenas() {
   }, []);
 
   const totalTiendas = datos.length;
-  const tiendasConGar = datos.filter((d) => d.requeridos > 0).length;
-  const totalPlazas = datos.reduce((a, d) => a + d.requeridos, 0);
-  const cubiertas = datos.reduce((a, d) => a + Math.min(d.asignados, d.requeridos), 0);
-  const faltantes = totalPlazas - cubiertas;
+  const tiendasConGar = datos.filter((d) => d.garantizados > 0).length;
+  const totalPlazas = datos.reduce((a, d) => a + d.garantizados, 0);
+  const cubiertas = datos.reduce((a, d) => a + Math.min(d.asignados, d.garantizados), 0);
+  const faltantes = Math.max(0, totalPlazas - cubiertas);
   const porcentaje = totalPlazas > 0 ? Math.round((cubiertas / totalPlazas) * 100) : 0;
 
   const colorPct = porcentaje >= 90 ? VERDE : porcentaje >= 70 ? NARANJA : ROJO;
 
   // Meta: rebasar el 80%. Se necesita superar estrictamente, por eso el +1.
-  const metaCubiertos = Math.floor(totalPlazas * 0.8) + 1;
-  const faltanMeta = Math.max(0, metaCubiertos - cubiertas);
+  const metaCubiertos = totalPlazas * 0.8;
+  const faltanMeta = Math.max(0, Math.ceil(metaCubiertos - cubiertas));
   const metaLograda = faltanMeta === 0;
 
   return (
@@ -151,21 +151,21 @@ export default function Cadenas() {
                   <Contador
                     icono={<GroupsIcon />}
                     titulo="Garantizados totales"
-                    valor={totalPlazas}
-                    sub="0.5 cuenta como 1"
+                    valor={totalPlazas % 1 === 0 ? totalPlazas : totalPlazas.toFixed(1)}
+                    sub="0.5 cuenta como medio"
                     color={NARANJA}
                   />
                   <Contador
                     icono={<PieChartIcon />}
                     titulo="Cobertura"
                     valor={`${porcentaje}%`}
-                    sub={`${cubiertas} de ${totalPlazas} cubiertos`}
+                    sub={`${cubiertas % 1 === 0 ? cubiertas : cubiertas.toFixed(1)} de ${totalPlazas % 1 === 0 ? totalPlazas : totalPlazas.toFixed(1)} cubiertos`}
                     color={colorPct}
                   />
                   <Contador
                     icono={<PersonSearchIcon />}
                     titulo="Nos faltan"
-                    valor={faltantes}
+                    valor={faltantes % 1 === 0 ? faltantes : faltantes.toFixed(1)}
                     sub={faltantes === 1 ? "promotor por asignar" : "promotores por asignar"}
                     color={faltantes === 0 ? VERDE : ROJO}
                   />
@@ -176,7 +176,7 @@ export default function Cadenas() {
                     sub={
                       metaLograda
                         ? `Vas en ${porcentaje}%`
-                        : `promotores para rebasar 80% (${metaCubiertos} de ${totalPlazas})`
+                        : `promotores para rebasar 80% (${metaCubiertos % 1 === 0 ? metaCubiertos : metaCubiertos.toFixed(1)} de ${totalPlazas % 1 === 0 ? totalPlazas : totalPlazas.toFixed(1)})`
                     }
                     color={metaLograda ? VERDE : "#6a1b9a"}
                   />
