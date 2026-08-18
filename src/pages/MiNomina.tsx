@@ -64,6 +64,25 @@ interface MiReciboData {
   fila: FilaRecibo;
 }
 
+interface ItemDesglose {
+  producto?: string;
+  tipo_chip?: string;
+  monto_recarga?: number;
+  tipo_venta?: string;
+  comision_unitaria: number;
+  piezas: number;
+  subtotal: number;
+}
+
+interface DetalleData {
+  disponible: boolean;
+  motivo: string | null;
+  periodo: { inicio: string; fin: string } | null;
+  accesorios: ItemDesglose[];
+  telefonos: ItemDesglose[];
+  chips: ItemDesglose[];
+}
+
 const fmt = (v?: number) => `$${Number(v || 0).toFixed(2)}`;
 const fmtFecha = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
@@ -147,11 +166,53 @@ const Tarjeta: React.FC<{
   </Box>
 );
 
+const ColumnaDesglose: React.FC<{
+  titulo: string;
+  total: number;
+  items: ItemDesglose[];
+  vacioTxt: string;
+  esChip?: boolean;
+}> = ({ titulo, total, items, vacioTxt, esChip }) => (
+  <Box sx={{ minWidth: 0 }}>
+    <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={1}>
+      <Typography fontSize={10.5} fontWeight={700} color="#94a3b8" letterSpacing={0.5}>
+        {titulo}
+      </Typography>
+      <Typography fontSize={12.5} fontWeight={700} color={total > 0 ? GREEN : "#94a3b8"}>
+        {fmt(total)}
+      </Typography>
+    </Box>
+    {items.length === 0 ? (
+      <Typography fontSize={11.5} color="#94a3b8" textAlign="center" py={1}>
+        {vacioTxt}
+      </Typography>
+    ) : (
+      items.map((it, i) => (
+        <Box key={i} display="flex" justifyContent="space-between" gap={0.5} py={0.35}>
+          <Box minWidth={0}>
+            <Typography fontSize={11.5} color="#334155" sx={{ wordBreak: "break-word" }}>
+              {esChip ? `${it.tipo_chip} $${it.monto_recarga}` : it.producto}
+            </Typography>
+            <Typography fontSize={10.5} color="#94a3b8">
+              {it.piezas} x {fmt(it.comision_unitaria)}
+              {it.tipo_venta ? ` - ${it.tipo_venta}` : ""}
+            </Typography>
+          </Box>
+          <Typography fontSize={11.5} fontWeight={600} color="#1e293b" whiteSpace="nowrap">
+            {fmt(it.subtotal)}
+          </Typography>
+        </Box>
+      ))
+    )}
+  </Box>
+);
+
 const MiNomina: React.FC = () => {
   const [data, setData] = useState<MiReciboData | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [descargando, setDescargando] = useState(false);
+  const [detalle, setDetalle] = useState<DetalleData | null>(null);
 
   useEffect(() => {
     axios
@@ -165,6 +226,13 @@ const MiNomina: React.FC = () => {
         }
       })
       .finally(() => setCargando(false));
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get<DetalleData>(`${API}/nomina/mi-recibo/detalle`, { headers: authH() })
+      .then((r) => setDetalle(r.data))
+      .catch(() => setDetalle(null));
   }, []);
 
   const descargarPdf = () => {
@@ -267,7 +335,7 @@ const MiNomina: React.FC = () => {
   const subtituloComisiones = `${numConMonto} de ${conceptosComVisibles.length} conceptos con monto${periodoCadenasTxt ? ` · ${periodoCadenasTxt}` : ""}`;
 
   return (
-    <Box maxWidth={560} mx="auto" py={3} px={2}>
+    <Box maxWidth={{ xs: 560, lg: 1100 }} mx="auto" py={3} px={2}>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} flexWrap="wrap" gap={1}>
         <Typography variant="h6" fontWeight={800} color="#0f172a">Mi recibo de nómina</Typography>
         <Button
@@ -403,6 +471,42 @@ const MiNomina: React.FC = () => {
             ))}
           </Box>
         </Tarjeta>
+
+        {detalle?.disponible && (
+          <Box sx={{ px: 2.5, py: 1.75, borderTop: "1px solid #f1f5f9", bgcolor: "#fafafa" }}>
+            <Typography fontSize={11} fontWeight={700} color="#64748b" letterSpacing={0.5} mb={1.5}>
+              DE DONDE SALEN TUS COMISIONES
+            </Typography>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
+                columnGap: 2.5,
+                rowGap: 2,
+              }}
+            >
+              <ColumnaDesglose
+                titulo="ACCESORIOS"
+                total={Number(fila.accesorios || 0)}
+                items={detalle.accesorios}
+                vacioTxt="Sin accesorios con comision"
+              />
+              <ColumnaDesglose
+                titulo="TELEFONOS"
+                total={Number(fila.telefonos || 0)}
+                items={detalle.telefonos}
+                vacioTxt="Sin telefonos con comision"
+              />
+              <ColumnaDesglose
+                titulo="CHIPS"
+                total={Number(fila.chips || 0)}
+                items={detalle.chips}
+                vacioTxt="Sin chips validados"
+                esChip
+              />
+            </Box>
+          </Box>
+        )}
 
         <Tarjeta
           icon="★"
