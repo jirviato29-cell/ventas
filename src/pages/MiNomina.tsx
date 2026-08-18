@@ -293,10 +293,11 @@ const MiNomina: React.FC = () => {
     Number(fila.planes || 0) +
     Number(fila.pendientes || 0);
 
+  const horasNum = Number(fila.horas_extra || 0);
   const horasTxt =
-    fila.horas_extra != null && Number(fila.horas_extra) !== 0
-      ? `${Number(fila.horas_extra).toFixed(1)} hrs extra`
-      : "";
+    fila.horas_extra == null
+      ? "Sin registro de horas"
+      : `${horasNum > 0 ? "+" : ""}${horasNum.toFixed(1)} hrs extra`;
 
   const otros: { label: string; value?: number }[] = [
     { label: "Planes tarifarios", value: fila.planes },
@@ -416,12 +417,20 @@ const MiNomina: React.FC = () => {
             </Typography>
 
             <Renglon label="Sueldo base" value={fila.sueldo} fuerte />
-            {horasTxt && (
-              <Typography fontSize={10.5} color="#94a3b8" mb={0.3}>
+            <Box display="flex" justifyContent="space-between" alignItems="baseline" gap={1} py={0.35}>
+              <Typography fontSize={12} color={horasNum !== 0 ? "#475569" : "#94a3b8"} noWrap>
+                Horas extra
+              </Typography>
+              <Typography
+                fontSize={12.5}
+                fontWeight={horasNum !== 0 ? 600 : 400}
+                color={horasNum > 0 ? GREEN : horasNum < 0 ? "#dc2626" : "#94a3b8"}
+                whiteSpace="nowrap"
+              >
                 {horasTxt}
               </Typography>
-            )}
-            {Number(fila.pago_he || 0) > 0 && <Renglon label="Pago horas extra" value={fila.pago_he} />}
+            </Box>
+            <Renglon label="Pago horas extra" value={fila.pago_he} />
 
             {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
               <Box pl={1} mb={0.3}>
