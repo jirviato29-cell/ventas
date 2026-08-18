@@ -84,8 +84,9 @@ interface DetalleData {
 }
 
 const fmt = (v?: number) => `$${Number(v || 0).toFixed(2)}`;
+const fmtCorto = (v?: number) => `$${Number(v || 0).toFixed(0)}`;
 const fmtFecha = (iso: string) =>
-  new Date(iso + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  new Date(iso + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 
 const SECCION_LABEL: Record<string, string> = {
   asesor: "Asesor",
@@ -100,102 +101,80 @@ const iniciales = (clave: string): string => {
   return ultima.slice(0, 2).toUpperCase();
 };
 
-const ComItem: React.FC<{ label: string; value?: number }> = ({ label, value }) => {
+const Renglon: React.FC<{
+  label: string;
+  value?: number;
+  fuerte?: boolean;
+  color?: string;
+  negativo?: boolean;
+}> = ({ label, value, fuerte, color, negativo }) => {
   const activo = Number(value || 0) > 0;
   return (
-    <Box display="flex" justifyContent="space-between" alignItems="center" py={0.4}>
-      <Box display="flex" alignItems="center" gap={0.75}>
-        <Box
-          sx={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            bgcolor: activo ? GREEN : "#cbd5e1",
-            flexShrink: 0,
-          }}
-        />
-        <Typography fontSize={12.5} color={activo ? "#334155" : "#94a3b8"}>{label}</Typography>
-      </Box>
-      <Typography fontSize={12.5} fontWeight={activo ? 600 : 400} color={activo ? "#1e293b" : "#94a3b8"}>
+    <Box display="flex" justifyContent="space-between" alignItems="baseline" gap={1} py={0.35}>
+      <Typography fontSize={12} color={activo ? "#475569" : "#94a3b8"} noWrap>
+        {label}
+      </Typography>
+      <Typography
+        fontSize={12.5}
+        fontWeight={fuerte || activo ? 600 : 400}
+        color={activo ? color || "#1e293b" : "#94a3b8"}
+        whiteSpace="nowrap"
+      >
+        {negativo ? "-" : ""}
         {fmt(value)}
       </Typography>
     </Box>
   );
 };
 
-const Tarjeta: React.FC<{
-  icon: string;
-  iconBg: string;
-  iconColor: string;
-  titulo: string;
-  subtitulo: string;
-  monto: string;
-  montoColor?: string;
-  children?: React.ReactNode;
-}> = ({ icon, iconBg, iconColor, titulo, subtitulo, monto, montoColor, children }) => (
-  <Box sx={{ px: 2.5, py: 1.75, borderTop: "1px solid #f1f5f9" }}>
-    <Box display="flex" alignItems="center" justifyContent="space-between" gap={1.5}>
-      <Box display="flex" alignItems="center" gap={1.5} minWidth={0}>
-        <Box
-          sx={{
-            width: 38,
-            height: 38,
-            borderRadius: 2,
-            bgcolor: iconBg,
-            color: iconColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 18,
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </Box>
-        <Box minWidth={0}>
-          <Typography fontWeight={700} fontSize={14} color="#1e293b" noWrap>{titulo}</Typography>
-          <Typography fontSize={12} color="#94a3b8" noWrap>{subtitulo}</Typography>
-        </Box>
-      </Box>
-      <Typography fontWeight={700} fontSize={16} color={montoColor || "#1e293b"} whiteSpace="nowrap">
-        {monto}
-      </Typography>
-    </Box>
-    {children}
-  </Box>
-);
-
-const ColumnaDesglose: React.FC<{
+const Columna: React.FC<{
   titulo: string;
   total: number;
   items: ItemDesglose[];
   vacioTxt: string;
   esChip?: boolean;
 }> = ({ titulo, total, items, vacioTxt, esChip }) => (
-  <Box sx={{ minWidth: 0 }}>
-    <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={1}>
-      <Typography fontSize={10.5} fontWeight={700} color="#94a3b8" letterSpacing={0.5}>
+  <Box
+    sx={{
+      bgcolor: "#f8fafc",
+      borderRadius: 2,
+      p: 1.5,
+      minWidth: 0,
+      display: "flex",
+      flexDirection: "column",
+    }}
+  >
+    <Box
+      display="flex"
+      justifyContent="space-between"
+      alignItems="baseline"
+      gap={1}
+      pb={0.75}
+      mb={0.75}
+      borderBottom="1px solid #e2e8f0"
+    >
+      <Typography fontSize={12} fontWeight={700} color="#334155" noWrap>
         {titulo}
       </Typography>
-      <Typography fontSize={12.5} fontWeight={700} color={total > 0 ? GREEN : "#94a3b8"}>
+      <Typography fontSize={13} fontWeight={700} color={total > 0 ? GREEN : "#94a3b8"} whiteSpace="nowrap">
         {fmt(total)}
       </Typography>
     </Box>
+
     {items.length === 0 ? (
-      <Typography fontSize={11.5} color="#94a3b8" textAlign="center" py={1}>
+      <Typography fontSize={11.5} color="#94a3b8" py={0.5}>
         {vacioTxt}
       </Typography>
     ) : (
       items.map((it, i) => (
-        <Box key={i} display="flex" justifyContent="space-between" gap={0.5} py={0.35}>
-          <Box minWidth={0}>
-            <Typography fontSize={11.5} color="#334155" sx={{ wordBreak: "break-word" }}>
-              {esChip ? `${it.tipo_chip} $${it.monto_recarga}` : it.producto}
+        <Box key={i} display="flex" justifyContent="space-between" alignItems="baseline" gap={1} py={0.3}>
+          <Box minWidth={0} flex={1}>
+            <Typography fontSize={11.5} color="#334155" noWrap title={esChip ? it.tipo_chip : it.producto}>
+              {esChip ? `${it.tipo_chip} ${fmtCorto(it.monto_recarga)}` : it.producto}
             </Typography>
-            <Typography fontSize={10.5} color="#94a3b8">
-              {it.piezas} x {fmt(it.comision_unitaria)}
-              {it.tipo_venta ? ` - ${it.tipo_venta}` : ""}
+            <Typography fontSize={10.5} color="#94a3b8" noWrap>
+              {it.piezas} x {fmtCorto(it.comision_unitaria)}
+              {it.tipo_venta ? ` · ${it.tipo_venta}` : ""}
             </Typography>
           </Box>
           <Typography fontSize={11.5} fontWeight={600} color="#1e293b" whiteSpace="nowrap">
@@ -209,10 +188,10 @@ const ColumnaDesglose: React.FC<{
 
 const MiNomina: React.FC = () => {
   const [data, setData] = useState<MiReciboData | null>(null);
+  const [detalle, setDetalle] = useState<DetalleData | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [descargando, setDescargando] = useState(false);
-  const [detalle, setDetalle] = useState<DetalleData | null>(null);
 
   useEffect(() => {
     axios
@@ -239,7 +218,10 @@ const MiNomina: React.FC = () => {
     setDescargando(true);
     const token = localStorage.getItem("token") ?? "";
     fetch(`${API}/nomina/mi-recibo/pdf`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => { if (!res.ok) throw new Error(); return res.blob(); })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.blob();
+      })
       .then((blob) => {
         const href = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -253,7 +235,11 @@ const MiNomina: React.FC = () => {
   };
 
   if (cargando) {
-    return <Box textAlign="center" py={8}><CircularProgress sx={{ color: ORANGE }} /></Box>;
+    return (
+      <Box textAlign="center" py={8}>
+        <CircularProgress sx={{ color: ORANGE }} />
+      </Box>
+    );
   }
 
   if (error || !data) {
@@ -264,41 +250,22 @@ const MiNomina: React.FC = () => {
     );
   }
 
-  const { etiqueta, creado_en, periodos, fila } = data;
+  const { etiqueta, periodos, fila } = data;
   const seccionLabel = SECCION_LABEL[fila.seccion] || fila.seccion;
-
   const rol = obtenerRolDesdeToken();
 
   const periodosPorRol: Record<string, string[]> = {
-    asesor:    ["horas_extras", "asesores"],
-    encargado: ["horas_extras", "encargados", "sueldos_encargados"],
-    cadena:    ["horas_extras", "cadenas"],
-  };
-
-  const LABEL_PERIODO: Record<string, string> = {
-    horas_extras:       "Horas Extra",
-    asesores:           "Comisiones",
-    encargados:         "Com. Encargados",
-    cadenas:            "Com. Cadenas",
-    sueldos_encargados: "Sueldos Encargados",
+    asesor: ["asesores", "horas_extras"],
+    encargado: ["encargados", "horas_extras", "sueldos_encargados"],
+    cadena: ["cadenas", "horas_extras"],
   };
 
   const clavesPermitidas = periodosPorRol[rol ?? ""] ?? [];
+  const periodoPrincipal =
+    clavesPermitidas.map((c) => periodos[c as keyof Periodos]).find((p) => !!p) ?? null;
 
-  const periodosOrdenados: [string, Periodo][] = clavesPermitidas
-    .map((clave) => [LABEL_PERIODO[clave], periodos[clave as keyof Periodos]] as [string, Periodo | undefined])
-    .filter((entry): entry is [string, Periodo] => !!entry[1]);
+  const esCadena = fila.seccion === "cadena";
 
-  const periodoPrincipal = periodosOrdenados.length > 0 ? periodosOrdenados[0][1] : null;
-
-  const conceptosCom: { label: string; value?: number }[] = [
-    { label: "Accesorios",        value: fila.accesorios },
-    { label: "Teléfonos",         value: fila.telefonos },
-    { label: "Chips",             value: fila.chips },
-    { label: "Incubadora",        value: fila.incubadora },
-    { label: "Planes tarifarios", value: fila.planes },
-    { label: "Com. pendientes",   value: fila.pendientes },
-  ];
   const totalComisiones =
     Number(fila.accesorios || 0) +
     Number(fila.telefonos || 0) +
@@ -306,40 +273,27 @@ const MiNomina: React.FC = () => {
     Number(fila.incubadora || 0) +
     Number(fila.planes || 0) +
     Number(fila.pendientes || 0);
-  const esCadena = fila.seccion === "cadena";
-  const conceptosComVisibles = esCadena
-    ? conceptosCom.filter((c) => c.label !== "Teléfonos" && c.label !== "Accesorios")
-    : conceptosCom;
-  const numConMonto = conceptosComVisibles.filter((c) => Number(c.value || 0) > 0).length;
 
   const horasTxt =
-    fila.horas_extra != null
+    fila.horas_extra != null && Number(fila.horas_extra) !== 0
       ? `${Number(fila.horas_extra).toFixed(1)} hrs extra`
-      : "Semana completa";
-
-  const fmtFechaCorta = (iso: string) =>
-    new Date(iso + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-
-  const tieneDetalle = fila.sueldo_detalle && fila.sueldo_detalle.length > 1;
-  const periodoSueldoTxt = fila.sueldo_periodo
-    ? `${fmtFechaCorta(fila.sueldo_periodo.inicio)} - ${fmtFechaCorta(fila.sueldo_periodo.fin)}`
-    : "";
-  const subtituloSueldo = tieneDetalle
-    ? `${fila.sueldo_detalle!.length} módulos${periodoSueldoTxt ? ` · ${periodoSueldoTxt}` : ""} · ${horasTxt}`
-    : horasTxt;
-
-  const periodoCadenasTxt =
-    esCadena && periodos.cadenas
-      ? `${fmtFechaCorta(periodos.cadenas.inicio)} - ${fmtFechaCorta(periodos.cadenas.fin)}`
       : "";
-  const subtituloComisiones = `${numConMonto} de ${conceptosComVisibles.length} conceptos con monto${periodoCadenasTxt ? ` · ${periodoCadenasTxt}` : ""}`;
+
+  const otros: { label: string; value?: number }[] = [
+    { label: "Incubadora", value: fila.incubadora },
+    { label: "Planes tarifarios", value: fila.planes },
+    { label: "Com. pendientes", value: fila.pendientes },
+  ];
 
   return (
-    <Box maxWidth={{ xs: 560, lg: 1100 }} mx="auto" py={3} px={2}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} flexWrap="wrap" gap={1}>
-        <Typography variant="h6" fontWeight={800} color="#0f172a">Mi recibo de nómina</Typography>
+    <Box maxWidth={{ xs: 600, lg: 1280 }} mx="auto" py={2} px={2}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5} flexWrap="wrap" gap={1}>
+        <Typography variant="h6" fontWeight={800} color="#0f172a">
+          Mi recibo de nómina
+        </Typography>
         <Button
           variant="outlined"
+          size="small"
           startIcon={<DownloadIcon />}
           onClick={descargarPdf}
           disabled={descargando}
@@ -359,44 +313,19 @@ const MiNomina: React.FC = () => {
         elevation={0}
         sx={{ border: "1px solid #e2e8f0", borderRadius: 3, overflow: "hidden", bgcolor: "#fff" }}
       >
-        <Box sx={{ bgcolor: NAVY, px: 2.5, py: 2.25 }}>
-          <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
-            <Box>
-              <Typography fontSize={10.5} fontWeight={700} color={ORANGE} letterSpacing={1} mb={0.5}>
-                SEMANA DE PAGO
-              </Typography>
-              <Typography fontWeight={800} fontSize={19} color="#fff" lineHeight={1.2}>
-                {etiqueta}
-              </Typography>
-              <Typography fontSize={11.5} color="rgba(255,255,255,0.6)" mt={0.5}>
-                Emitida {new Date(creado_en).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </Typography>
-            </Box>
-            <Box
-              sx={{
-                bgcolor: "rgba(34,197,94,0.15)",
-                color: "#4ade80",
-                border: "1px solid rgba(74,222,128,0.4)",
-                px: 1.25,
-                py: 0.5,
-                borderRadius: 5,
-                fontSize: 11.5,
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              ✓ PAGADA
-            </Box>
-          </Box>
-        </Box>
-
-        <Box px={2.5} py={1.75} display="flex" alignItems="center" justifyContent="space-between" gap={1.5}>
+        <Box
+          sx={{ bgcolor: NAVY, px: 2.5, py: 1.5 }}
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          gap={1.5}
+          flexWrap="wrap"
+        >
           <Box display="flex" alignItems="center" gap={1.5} minWidth={0}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 borderRadius: 2,
                 bgcolor: ORANGE,
                 color: "#fff",
@@ -404,145 +333,159 @@ const MiNomina: React.FC = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 fontWeight: 700,
-                fontSize: 14,
+                fontSize: 13,
                 flexShrink: 0,
               }}
             >
               {iniciales(fila.empleado)}
             </Box>
             <Box minWidth={0}>
-              <Typography fontWeight={700} fontSize={14.5} color="#0f172a" noWrap>{fila.empleado}</Typography>
-              <Typography fontSize={12.5} color="#94a3b8" noWrap>{seccionLabel}</Typography>
-            </Box>
-          </Box>
-          {periodoPrincipal && (
-            <Box textAlign="right" flexShrink={0}>
-              <Typography fontSize={10} fontWeight={700} color="#cbd5e1" letterSpacing={0.5}>PERIODO</Typography>
-              <Typography fontSize={12} color="#475569" whiteSpace="nowrap">
-                {fmtFecha(periodoPrincipal.inicio)} — {fmtFecha(periodoPrincipal.fin)}
+              <Typography fontWeight={800} fontSize={16} color="#fff" lineHeight={1.25} noWrap>
+                {etiqueta}
+              </Typography>
+              <Typography fontSize={11.5} color="rgba(255,255,255,0.65)" noWrap>
+                {fila.empleado} · {seccionLabel}
+                {periodoPrincipal
+                  ? ` · ${fmtFecha(periodoPrincipal.inicio)} al ${fmtFecha(periodoPrincipal.fin)}`
+                  : ""}
               </Typography>
             </Box>
-          )}
-        </Box>
-
-        <Tarjeta
-          icon="$"
-          iconBg="#eef2ff"
-          iconColor="#4f46e5"
-          titulo="Sueldo base"
-          subtitulo={subtituloSueldo}
-          monto={fmt(fila.sueldo)}
-        >
-          {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
-            <Box mt={1} ml={6.25}>
-              {fila.sueldo_detalle.map((d) => (
-                <Box key={d.modulo} display="flex" justifyContent="space-between" alignItems="center" py={0.4}>
-                  <Box display="flex" alignItems="center" gap={0.75}>
-                    <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#4f46e5", flexShrink: 0 }} />
-                    <Typography fontSize={12.5} color="#334155">{d.modulo}</Typography>
-                  </Box>
-                  <Typography fontSize={12.5} fontWeight={600} color="#1e293b">{fmt(d.monto)}</Typography>
-                </Box>
-              ))}
-            </Box>
-          )}
-        </Tarjeta>
-
-        <Tarjeta
-          icon="%"
-          iconBg="#ecfdf5"
-          iconColor={GREEN}
-          titulo="Comisiones"
-          subtitulo={subtituloComisiones}
-          monto={fmt(totalComisiones)}
-          montoColor={GREEN}
-        >
+          </Box>
           <Box
-            mt={1}
-            ml={6.25}
             sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-              columnGap: 2.5,
+              bgcolor: "rgba(34,197,94,0.15)",
+              color: "#4ade80",
+              border: "1px solid rgba(74,222,128,0.4)",
+              px: 1.25,
+              py: 0.4,
+              borderRadius: 5,
+              fontSize: 11,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
-            {conceptosComVisibles.map((c) => (
-              <ComItem key={c.label} label={c.label} value={c.value} />
-            ))}
+            ✓ PAGADA
           </Box>
-        </Tarjeta>
+        </Box>
 
-        {detalle?.disponible && (
-          <Box sx={{ px: 2.5, py: 1.75, borderTop: "1px solid #f1f5f9", bgcolor: "#fafafa" }}>
-            <Typography fontSize={11} fontWeight={700} color="#64748b" letterSpacing={0.5} mb={1.5}>
-              DE DONDE SALEN TUS COMISIONES
-            </Typography>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr" },
-                columnGap: 2.5,
-                rowGap: 2,
-              }}
+        <Box
+          sx={{
+            p: 1.5,
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              lg: "0.95fr 1.15fr 1fr 1fr",
+            },
+            gap: 1.5,
+            alignItems: "start",
+          }}
+        >
+          <Box sx={{ bgcolor: "#f1f5f9", borderRadius: 2, p: 1.5, minWidth: 0 }}>
+            <Typography
+              fontSize={12}
+              fontWeight={700}
+              color="#334155"
+              pb={0.75}
+              mb={0.75}
+              borderBottom="1px solid #e2e8f0"
             >
-              <ColumnaDesglose
-                titulo="ACCESORIOS"
-                total={Number(fila.accesorios || 0)}
-                items={detalle.accesorios}
-                vacioTxt="Sin accesorios con comision"
-              />
-              <ColumnaDesglose
-                titulo="TELEFONOS"
-                total={Number(fila.telefonos || 0)}
-                items={detalle.telefonos}
-                vacioTxt="Sin telefonos con comision"
-              />
-              <ColumnaDesglose
-                titulo="CHIPS"
+              Resumen
+            </Typography>
+
+            <Renglon label="Sueldo base" value={fila.sueldo} fuerte />
+            {horasTxt && (
+              <Typography fontSize={10.5} color="#94a3b8" mb={0.3}>
+                {horasTxt}
+              </Typography>
+            )}
+            {Number(fila.pago_he || 0) > 0 && <Renglon label="Pago horas extra" value={fila.pago_he} />}
+
+            {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
+              <Box pl={1} mb={0.3}>
+                {fila.sueldo_detalle.map((d) => (
+                  <Box key={d.modulo} display="flex" justifyContent="space-between" gap={1} py={0.2}>
+                    <Typography fontSize={10.5} color="#94a3b8" noWrap>
+                      {d.modulo}
+                    </Typography>
+                    <Typography fontSize={10.5} color="#94a3b8" whiteSpace="nowrap">
+                      {fmt(d.monto)}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            <Renglon label="Comisiones" value={totalComisiones} color={GREEN} fuerte />
+
+            {otros.map((o) => (
+              <Renglon key={o.label} label={o.label} value={o.value} />
+            ))}
+
+            <Renglon label="Bonos" value={fila.bonos} />
+            <Renglon label="Sanciones" value={fila.sanciones} color="#dc2626" negativo />
+
+            <Box mt={1} pt={1} borderTop="1px dashed #cbd5e1">
+              <Typography fontSize={11} fontWeight={800} color="#15803d" letterSpacing={0.3}>
+                DEPÓSITO TOTAL
+              </Typography>
+              <Typography fontSize={24} fontWeight={800} color={GREEN} lineHeight={1.2}>
+                {fmt(fila.deposito)}
+              </Typography>
+              <Typography fontSize={10.5} color="#94a3b8">
+                Lo que recibes esta semana
+              </Typography>
+            </Box>
+          </Box>
+
+          {detalle?.disponible ? (
+            <>
+              {!esCadena && (
+                <Columna
+                  titulo="Accesorios"
+                  total={Number(fila.accesorios || 0)}
+                  items={detalle.accesorios}
+                  vacioTxt="Sin accesorios con comisión"
+                />
+              )}
+              {!esCadena && (
+                <Columna
+                  titulo="Teléfonos"
+                  total={Number(fila.telefonos || 0)}
+                  items={detalle.telefonos}
+                  vacioTxt="Sin teléfonos con comisión"
+                />
+              )}
+              <Columna
+                titulo="Chips"
                 total={Number(fila.chips || 0)}
                 items={detalle.chips}
                 vacioTxt="Sin chips validados"
                 esChip
               />
+            </>
+          ) : (
+            <Box
+              sx={{
+                gridColumn: { lg: "span 3" },
+                bgcolor: "#f8fafc",
+                borderRadius: 2,
+                p: 2,
+                textAlign: "center",
+              }}
+            >
+              <Typography fontSize={12} color="#94a3b8">
+                {detalle?.motivo || "Detalle de comisiones no disponible para esta nómina"}
+              </Typography>
             </Box>
-          </Box>
-        )}
-
-        <Tarjeta
-          icon="★"
-          iconBg="#fffbeb"
-          iconColor="#d97706"
-          titulo="Bonos"
-          subtitulo={Number(fila.bonos || 0) > 0 ? "Bono asignado" : "Sin bonos esta semana"}
-          monto={fmt(fila.bonos)}
-          montoColor={Number(fila.bonos || 0) > 0 ? "#1e293b" : "#94a3b8"}
-        />
-
-        <Tarjeta
-          icon="−"
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
-          titulo="Sanciones"
-          subtitulo={Number(fila.sanciones || 0) > 0 ? "Descuento aplicado" : "Sin descuentos"}
-          monto={`-${fmt(fila.sanciones)}`}
-          montoColor={Number(fila.sanciones || 0) > 0 ? "#dc2626" : "#94a3b8"}
-        />
-
-        <Box sx={{ borderTop: "1px dashed #cbd5e1", px: 2.5, py: 2.25, bgcolor: "#f0fdf4" }}>
-          <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
-            <Box>
-              <Typography fontWeight={800} fontSize={14} color="#15803d">DEPÓSITO TOTAL</Typography>
-              <Typography fontSize={11.5} color="#64748b">Lo que recibes esta semana</Typography>
-            </Box>
-            <Typography fontWeight={800} fontSize={26} color={GREEN} whiteSpace="nowrap">
-              {fmt(fila.deposito)}
-            </Typography>
-          </Box>
+          )}
         </Box>
 
-        <Box sx={{ px: 2.5, py: 1.5, borderTop: "1px solid #f1f5f9" }}>
+        <Box sx={{ px: 2, py: 1.25, borderTop: "1px solid #f1f5f9", bgcolor: "#fafafa" }}>
           <Typography fontSize={11.5} color="#94a3b8" textAlign="center">
-            Base {fmt(fila.sueldo)} &nbsp;+&nbsp; Comisiones {fmt(totalComisiones)} &nbsp;−&nbsp; Sanciones {fmt(fila.sanciones)} &nbsp;=&nbsp;{" "}
+            Base {fmt(fila.sueldo)} &nbsp;+&nbsp; Comisiones {fmt(totalComisiones)} &nbsp;+&nbsp; Bonos{" "}
+            {fmt(fila.bonos)} &nbsp;−&nbsp; Sanciones {fmt(fila.sanciones)} &nbsp;=&nbsp;{" "}
             <Box component="span" sx={{ color: GREEN, fontWeight: 700 }}>
               Depósito {fmt(fila.deposito)}
             </Box>
