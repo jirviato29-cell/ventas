@@ -133,7 +133,8 @@ const Columna: React.FC<{
   items: ItemDesglose[];
   vacioTxt: string;
   esChip?: boolean;
-}> = ({ titulo, total, items, vacioTxt, esChip }) => (
+  extras?: { label: string; monto: number }[];
+}> = ({ titulo, total, items, vacioTxt, esChip, extras }) => (
   <Box
     sx={{
       bgcolor: "#f8fafc",
@@ -161,7 +162,7 @@ const Columna: React.FC<{
       </Typography>
     </Box>
 
-    {items.length === 0 ? (
+    {items.length === 0 && !extras?.length ? (
       <Typography fontSize={11.5} color="#94a3b8" py={0.5}>
         {vacioTxt}
       </Typography>
@@ -183,6 +184,24 @@ const Columna: React.FC<{
         </Box>
       ))
     )}
+
+    {extras?.map((ex) => (
+      <Box
+        key={ex.label}
+        display="flex"
+        justifyContent="space-between"
+        alignItems="baseline"
+        gap={1}
+        py={0.3}
+      >
+        <Typography fontSize={11.5} color="#334155" noWrap>
+          {ex.label}
+        </Typography>
+        <Typography fontSize={11.5} fontWeight={600} color="#1e293b" whiteSpace="nowrap">
+          {fmt(ex.monto)}
+        </Typography>
+      </Box>
+    ))}
   </Box>
 );
 
@@ -280,10 +299,12 @@ const MiNomina: React.FC = () => {
       : "";
 
   const otros: { label: string; value?: number }[] = [
-    { label: "Incubadora", value: fila.incubadora },
     { label: "Planes tarifarios", value: fila.planes },
     { label: "Com. pendientes", value: fila.pendientes },
   ];
+
+  const montoIncubadora = Number(fila.incubadora || 0);
+  const extrasChips = montoIncubadora > 0 ? [{ label: "Incubadora", monto: montoIncubadora }] : [];
 
   return (
     <Box maxWidth={{ xs: 600, lg: 1280 }} mx="auto" py={2} px={2}>
@@ -459,10 +480,11 @@ const MiNomina: React.FC = () => {
               )}
               <Columna
                 titulo="Chips"
-                total={Number(fila.chips || 0)}
+                total={Number(fila.chips || 0) + montoIncubadora}
                 items={detalle.chips}
                 vacioTxt="Sin chips validados"
                 esChip
+                extras={extrasChips}
               />
             </>
           ) : (
