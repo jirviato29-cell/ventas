@@ -74,6 +74,8 @@ interface ItemDesglose {
   comision_unitaria: number;
   piezas: number;
   subtotal: number;
+  fecha?: string;
+  numero_telefono?: string;
 }
 
 interface DetalleData {
@@ -176,8 +178,14 @@ const Columna: React.FC<{
               {esChip ? `${it.tipo_chip} ${fmtCorto(it.monto_recarga)}` : it.producto}
             </Typography>
             <Typography fontSize={10.5} color="#94a3b8" noWrap>
-              {it.piezas} x {fmtCorto(it.comision_unitaria)}
-              {it.tipo_venta ? ` · ${it.tipo_venta}` : ""}
+              {esChip && it.numero_telefono ? (
+                `${it.fecha ? `${fmtFecha(it.fecha)} · ` : ""}${it.numero_telefono}`
+              ) : (
+                <>
+                  {it.piezas} x {fmtCorto(it.comision_unitaria)}
+                  {it.tipo_venta ? ` · ${it.tipo_venta}` : ""}
+                </>
+              )}
             </Typography>
           </Box>
           <Typography fontSize={11.5} fontWeight={600} color="#1e293b" whiteSpace="nowrap">
