@@ -35,6 +35,10 @@ const CYAN   = "#0891b2";
 const fmtMXN = (n: number) =>
   "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Piso garantizado del sueldo del encargado. Es por persona: aplica sobre la
+// suma de todos sus modulos, no por cada modulo.
+const SUELDO_MINIMO_ENCARGADO = 2500;
+
 interface CicloGuardado {
   id: number;
   etiqueta: string;
@@ -236,7 +240,10 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
     const buildRow = (e: EmpleadoComision, seccion: FilaUnificada["seccion"]): FilaUnificada => {
       const he = heMap.get(e.empleado);
-      const sueldo = seccion === "encargado" ? (sueldosEncMap.get(e.empleado) ?? 0) : (e.sueldo_base ?? 0);
+      const sueldoCiclo = sueldosEncMap.get(e.empleado);
+      const sueldo = seccion === "encargado"
+        ? (sueldoCiclo === undefined ? 0 : Math.max(SUELDO_MINIMO_ENCARGADO, sueldoCiclo))
+        : (e.sueldo_base ?? 0);
       return {
         empleado: e.empleado,
         nombre_completo: e.nombre_completo,
@@ -275,7 +282,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
       if (seen.has(e.empleado)) continue;
       seen.add(e.empleado);
       const he = heMap.get(e.empleado);
-      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, usuario_ids: e.usuario_ids ?? [], seccion: "encargado", sueldo: e.sueldo_total, horas_extra: he?.horas_extra_redondeo ?? null, pago_he: he?.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
+      rows.push({ empleado: e.empleado, nombre_completo: e.nombre_completo, usuario_ids: e.usuario_ids ?? [], seccion: "encargado", sueldo: Math.max(SUELDO_MINIMO_ENCARGADO, e.sueldo_total), horas_extra: he?.horas_extra_redondeo ?? null, pago_he: he?.pago ?? 0, accesorios: 0, telefonos: 0, chips: 0 });
     }
 
     return rows;
@@ -327,8 +334,10 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setError(null);
     try {
       const sueldosEncDetalleMap = new Map<string, { modulo: string; monto: number }[]>();
+      const sueldosEncTotalMap = new Map<string, number>();
       for (const e of (cicloEncargadosSel?.datos ?? []) as EmpleadoSueldo[]) {
         if (e.modulos_sueldo) sueldosEncDetalleMap.set(e.empleado, e.modulos_sueldo);
+        sueldosEncTotalMap.set(e.empleado, e.sueldo_total);
       }
 
       const datos = tablaUnificada.map((r) => {
@@ -341,6 +350,7 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
         const chips_eff   = getValor(r.empleado, "chips",       r.chips);
         const incub_eff   = getValor(r.empleado, "incubadora",  incub);
         const he_eff      = getValor(r.empleado, "horas_extra", r.horas_extra ?? 0);
+        const sumaModulos = sueldosEncTotalMap.get(r.empleado);
         const subtotal    = acces_eff + tel_eff + chips_eff + incub_eff + m.planes + m.pendientes + m.bonos;
         const total       = sueldo_eff + pago_he_eff + subtotal;
         const deposito    = total - m.sanciones;
@@ -366,6 +376,12 @@ const CrearNominaDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
           pago_total: deposito,
           sueldo_detalle: r.seccion === "encargado"
             ? (sueldosEncDetalleMap.get(r.empleado) ?? null)
+            : null,
+          sueldo_suma_modulos: r.seccion === "encargado"
+            ? (sumaModulos ?? null)
+            : null,
+          sueldo_minimo_aplicado: r.seccion === "encargado"
+            ? (sumaModulos !== undefined && sumaModulos < SUELDO_MINIMO_ENCARGADO)
             : null,
         };
       });
