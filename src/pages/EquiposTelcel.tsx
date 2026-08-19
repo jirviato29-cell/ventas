@@ -236,7 +236,7 @@ const EquiposTelcel = () => {
     if (!texto || texto.length < 2) { setAOpciones([]); return; }
     setABuscando(true);
     try {
-      const res = await axios.get(`${BASE}/inventario/buscar?query=${encodeURIComponent(texto)}`, config);
+      const res = await axios.get(`${BASE}/inventario/buscar-catalogo?query=${encodeURIComponent(texto)}`, config);
       setAOpciones(res.data || []);
     } catch { setAOpciones([]); }
     finally { setABuscando(false); }
