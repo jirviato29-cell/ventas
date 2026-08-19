@@ -268,11 +268,13 @@ const ChipsAdmin = () => {
                           {chip.validado ? (
                             <Typography sx={{ fontSize: 12, color: "green" }}>${chip.comision}</Typography>
                           ) : (
-                            <select
-                              value={chip.descripcion_rechazo || ""}
-                              style={{ fontSize: 11 }}
-                              onChange={async (e) => {
-                                const motivo = e.target.value;
+                            <Button
+                              size="small"
+                              variant={chip.descripcion_rechazo ? "contained" : "outlined"}
+                              color="warning"
+                              sx={{ fontSize: 10, textTransform: "none", lineHeight: 1.2, py: 0.2 }}
+                              onClick={async () => {
+                                const motivo = chip.descripcion_rechazo ? "" : "Lista de Espera Incubado";
                                 try {
                                   await axios.put(
                                     `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/${chip.id}/motivo_rechazo`,
@@ -291,15 +293,10 @@ const ChipsAdmin = () => {
                                 }
                               }}
                             >
-                              <option value="">Rechazar…</option>
-                              <option value="Lista de Espera Incubado">Lista de Espera Incubado</option>
-                              {chip.descripcion_rechazo &&
-                                chip.descripcion_rechazo !== "Lista de Espera Incubado" && (
-                                  <option value={chip.descripcion_rechazo}>
-                                    {chip.descripcion_rechazo}
-                                  </option>
-                                )}
-                            </select>
+                              {chip.descripcion_rechazo
+                                ? `Quitar: ${chip.descripcion_rechazo}`
+                                : "Lista de Espera Incubado"}
+                            </Button>
                           )}
                         </TableCell>
 
