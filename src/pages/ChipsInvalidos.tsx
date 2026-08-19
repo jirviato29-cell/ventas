@@ -26,6 +26,8 @@ const ChipsRechazados = () => {
         params.empleado_id = empleadoSeleccionado;
       }
 
+      params.solo_incubadora = true;
+
       const res = await axios.get(
         `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
         {
