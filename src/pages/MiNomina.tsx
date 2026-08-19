@@ -76,6 +76,7 @@ interface ItemDesglose {
   subtotal: number;
   fecha?: string;
   numero_telefono?: string;
+  numeros?: { fecha: string; numero: string }[];
 }
 
 interface DetalleData {
@@ -178,7 +179,7 @@ const Columna: React.FC<{
               {esChip ? `${it.tipo_chip} ${fmtCorto(it.monto_recarga)}` : it.producto}
             </Typography>
             <Typography fontSize={10.5} color="#94a3b8" noWrap>
-              {esChip && it.numero_telefono ? (
+              {esChip && it.numero_telefono && !it.numeros?.length ? (
                 `${it.fecha ? `${fmtFecha(it.fecha)} · ` : ""}${it.numero_telefono}`
               ) : (
                 <>
@@ -187,6 +188,15 @@ const Columna: React.FC<{
                 </>
               )}
             </Typography>
+            {esChip && !!it.numeros?.length && (
+              <Box pl={1} pt={0.2}>
+                {(it.numeros ?? []).map((n, j) => (
+                  <Typography key={j} fontSize={10.5} color="#94a3b8" noWrap>
+                    {`${fmtFecha(n.fecha)}  ${n.numero}`}
+                  </Typography>
+                ))}
+              </Box>
+            )}
           </Box>
           <Typography fontSize={11.5} fontWeight={600} color="#1e293b" whiteSpace="nowrap">
             {fmt(it.subtotal)}
