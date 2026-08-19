@@ -53,6 +53,8 @@ interface FilaRecibo {
   sanciones?: number;
   deposito?: number;
   sueldo_detalle?: SueldoDetalle[];
+  sueldo_suma_modulos?: number | null;
+  sueldo_minimo_aplicado?: boolean | null;
   sueldo_periodo?: { inicio: string; fin: string };
   [key: string]: unknown;
 }
@@ -417,6 +419,38 @@ const MiNomina: React.FC = () => {
             </Typography>
 
             <Renglon label="Sueldo base" value={fila.sueldo} fuerte />
+
+            {fila.sueldo_detalle && fila.sueldo_detalle.length > 0 && (
+              <Box pl={1} mb={0.3}>
+                {fila.sueldo_detalle.map((d) => (
+                  <Box key={d.modulo} display="flex" justifyContent="space-between" gap={1} py={0.2}>
+                    <Typography fontSize={10.5} color="#94a3b8" noWrap>
+                      {d.modulo}
+                    </Typography>
+                    <Typography fontSize={10.5} color="#94a3b8" whiteSpace="nowrap">
+                      {fmt(d.monto)}
+                    </Typography>
+                  </Box>
+                ))}
+
+                {fila.sueldo_minimo_aplicado === true && (
+                  <>
+                    <Box display="flex" justifyContent="space-between" gap={1} py={0.2}>
+                      <Typography fontSize={10.5} color="#94a3b8" noWrap>
+                        Suma módulos
+                      </Typography>
+                      <Typography fontSize={10.5} color="#94a3b8" whiteSpace="nowrap">
+                        {fmt(fila.sueldo_suma_modulos ?? 0)}
+                      </Typography>
+                    </Box>
+                    <Typography fontSize={10.5} color="#94a3b8" py={0.2}>
+                      Mínimo garantizado aplicado
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            )}
+
             <Box display="flex" justifyContent="space-between" alignItems="baseline" gap={1} py={0.35}>
               <Typography fontSize={12} color={horasNum !== 0 ? "#475569" : "#94a3b8"} noWrap>
                 Horas extra
@@ -431,21 +465,6 @@ const MiNomina: React.FC = () => {
               </Typography>
             </Box>
             <Renglon label="Pago horas extra" value={fila.pago_he} />
-
-            {fila.sueldo_detalle && fila.sueldo_detalle.length > 1 && (
-              <Box pl={1} mb={0.3}>
-                {fila.sueldo_detalle.map((d) => (
-                  <Box key={d.modulo} display="flex" justifyContent="space-between" gap={1} py={0.2}>
-                    <Typography fontSize={10.5} color="#94a3b8" noWrap>
-                      {d.modulo}
-                    </Typography>
-                    <Typography fontSize={10.5} color="#94a3b8" whiteSpace="nowrap">
-                      {fmt(d.monto)}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            )}
 
             <Renglon label="Comisiones" value={totalComisiones} color={GREEN} fuerte />
 
