@@ -33,6 +33,7 @@ const fmtMXN = (n: number) =>
   "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface FilaEditada {
+  _original: Record<string, unknown>;
   empleado: string;
   nombre_completo: string;
   usuario_ids: number[];
@@ -81,6 +82,7 @@ interface Props {
 }
 
 const toFila = (d: Record<string, unknown>): FilaEditada => ({
+  _original:      d,
   empleado:       String(d.empleado       ?? ""),
   nombre_completo: String(d.nombre_completo ?? ""),
   usuario_ids:    Array.isArray(d.usuario_ids) ? (d.usuario_ids as number[]) : [],
@@ -201,6 +203,7 @@ const EditarNominaDialog: React.FC<Props> = ({ nominaId, onClose, onGuardado }) 
         const subtotal = f.accesorios + f.telefonos + f.chips + f.incubadora + f.planes + f.pendientes + f.bonos;
         const deposito = f.sueldo + f.pago_he + subtotal - f.sanciones;
         return {
+          ...f._original,
           empleado:        f.empleado,
           nombre_completo: f.nombre_completo,
           usuario_ids:     f.usuario_ids,
