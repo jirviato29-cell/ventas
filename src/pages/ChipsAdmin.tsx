@@ -292,12 +292,13 @@ const ChipsAdmin = () => {
                               }}
                             >
                               <option value="">Rechazar…</option>
-                              <option value="Activacion sin llamada">Activacion sin llamada</option>
-                              <option value="No es su clasificacion">No es su clasificacion</option>
-                              <option value="Esta Preactivado">Esta Preactivado</option>
-                              <option value="No tiene recarga">No tiene recarga</option>
-                              <option value="Linea esta duplicada">Linea esta duplicada</option>
-                              <option value="No esta en el ciclo">No esta en el ciclo</option>
+                              <option value="Lista de Espera Incubado">Lista de Espera Incubado</option>
+                              {chip.descripcion_rechazo &&
+                                chip.descripcion_rechazo !== "Lista de Espera Incubado" && (
+                                  <option value={chip.descripcion_rechazo}>
+                                    {chip.descripcion_rechazo}
+                                  </option>
+                                )}
                             </select>
                           )}
                         </TableCell>
