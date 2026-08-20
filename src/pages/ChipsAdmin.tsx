@@ -17,7 +17,7 @@ const getDuplicados = (arr: VentaChip[]): Set<string> => {
 const sortConDuplicados = (arr: VentaChip[], dups: Set<string>): VentaChip[] =>
   [...arr].sort((a, b) => (dups.has(a.numero_telefono) ? 0 : 1) - (dups.has(b.numero_telefono) ? 0 : 1));
 
-const rowDupSx  = { bgcolor: "#fee2e2" };
+const rowDupSx  = { bgcolor: "#fee2e2", "& td:first-of-type": { borderLeft: "3px solid #b91c1c" } };
 const cellDupSx = { color: "#b91c1c", fontWeight: 700 };
 
 const rowIncSx  = { bgcolor: "#FAEEDA", color: "#412402", "&:hover": { bgcolor: "#F5E3C4" }, "& td:first-of-type": { borderLeft: "3px solid #BA7517" } };
@@ -28,7 +28,7 @@ const gridCellSx = { py: "7px", px: "10px", fontSize: 15, textAlign: "center", b
 const gridNumSx  = { ...gridCellSx, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.5px" };
 
 const gridHeadPendSx = { ...gridHeadSx, bgcolor: "#EEEDFE", borderBottom: "2px solid #AFA9EC", color: "#3C3489" };
-const rowPendSx      = { "&:hover": { bgcolor: "#F7F6FE" } };
+const rowPendSx      = { bgcolor: "#EEEDFE", color: "#26215C", "&:hover": { bgcolor: "#DEDCFB" }, "& td:first-of-type": { borderLeft: "3px solid #7F77DD" } };
 
 const cellSx   = { py: "2px", px: "6px", fontSize: 16 };
 const headSx   = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
@@ -38,7 +38,7 @@ const numDupSx = { ...numSx, color: "#b91c1c" };
 // Anchos fijos — tabla admin (Empleado, Tipo, Número, IMEI, Recarga, Fecha, Validar, Rechazo, Eliminar)
 const colWidthsAdmin = ["160px", "130px", "130px", "140px", "80px", "100px", "120px", "150px", "36px"];
 // Anchos fijos — tabla asesor/encargado
-const colWidthsUser  = ["160px", "130px", "130px", "80px", "100px", "150px", "36px"];
+const colWidthsUser  = ["160px", "130px", "130px", "80px", "100px", "150px", "70px"];
 
 const COMISION_POR_TIPO: Record<string, number> = {
   "Chip Equipo":          15,
