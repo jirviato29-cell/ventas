@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, Paper, Typography, Alert, Chip,
-  Table, TableHead, TableRow, TableCell, TableBody, IconButton, Tooltip,
+  Table, TableContainer, TableHead, TableRow, TableCell, TableBody, IconButton, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
@@ -12,7 +12,16 @@ import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
 
-type Tienda = { id: number; nombre: string; activo: boolean };
+type Tienda = {
+  id: number; nombre: string; activo: boolean;
+  cadena_id: number | null; num_tienda: number | null;
+  cadena?: { id: number; codigo: string; nombre: string } | null;
+};
+
+type Clave = {
+  id: number; tienda_id: number; clave: string; en_uso: boolean;
+  usuario: string | null; password: string | null;
+};
 
 const AdminTiendas: React.FC = () => {
   const [tiendas, setTiendas] = useState<Tienda[]>([]);
@@ -25,14 +34,22 @@ const AdminTiendas: React.FC = () => {
   const [nombre, setNombre] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  // Claves por tienda (chips)
+  const [claves, setClaves] = useState<Clave[]>([]);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
   const cargar = async () => {
     setCargando(true);
     try {
-      const res = await axios.get(`${API}/registro/tiendas?incluir_inactivas=true`, config);
-      setTiendas(res.data);
+      const [resTiendas, resClaves] = await Promise.all([
+        axios.get(`${API}/registro/tiendas?incluir_inactivas=true`, config),
+        axios.get(`${API}/registro/claves`, config),
+      ]);
+      setTiendas(resTiendas.data);
+      setClaves(resClaves.data);
     } catch {
       setMensaje({ tipo: "error", texto: "No se pudieron cargar las tiendas" });
     } finally {
@@ -83,6 +100,20 @@ const AdminTiendas: React.FC = () => {
     }
   };
 
+  const clavesDe = (tiendaId: number) => claves.filter((c) => c.tienda_id === tiendaId);
+
+  const toggleClave = async (c: Clave) => {
+    setTogglingId(c.id);
+    try {
+      const res = await axios.patch(`${API}/registro/claves/${c.id}/uso`, {}, config);
+      setClaves((prev) => prev.map((x) => (x.id === c.id ? { ...x, en_uso: res.data.en_uso } : x)));
+    } catch (e) {
+      console.error("Error al cambiar uso de clave", e);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const alternarActivo = async (t: Tienda) => {
     try {
       await axios.put(`${API}/registro/tiendas/${t.id}`, { activo: !t.activo }, config);
@@ -94,7 +125,7 @@ const AdminTiendas: React.FC = () => {
 
   return (
     <Container sx={{ mt: 4, mb: 6 }}>
-      <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 720, mx: "auto" }}>
+      <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 1100, mx: "auto" }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
           <Typography variant="h5">Tiendas (Cadenas)</Typography>
           <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNueva}>
@@ -111,40 +142,71 @@ const AdminTiendas: React.FC = () => {
             Aún no hay tiendas. Crea la primera con “Nueva tienda”.
           </Typography>
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Nombre</TableCell>
-                <TableCell align="center">Estado</TableCell>
-                <TableCell align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tiendas.map((t) => (
-                <TableRow key={t.id} sx={{ opacity: t.activo ? 1 : 0.55 }}>
-                  <TableCell sx={{ fontWeight: 600 }}>{t.nombre}</TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={t.activo ? "Activa" : "Inactiva"}
-                      size="small"
-                      color={t.activo ? "success" : "default"}
-                      variant={t.activo ? "filled" : "outlined"}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="Renombrar">
-                      <IconButton size="small" onClick={() => abrirEditar(t)}><EditIcon fontSize="small" /></IconButton>
-                    </Tooltip>
-                    <Tooltip title={t.activo ? "Desactivar" : "Activar"}>
-                      <IconButton size="small" onClick={() => alternarActivo(t)} color={t.activo ? "warning" : "success"}>
-                        {t.activo ? <ToggleOnIcon /> : <ToggleOffIcon />}
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell>Cadena</TableCell>
+                  <TableCell align="center">N°</TableCell>
+                  <TableCell>Claves</TableCell>
+                  <TableCell align="center">Estado</TableCell>
+                  <TableCell align="right">Acciones</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {tiendas.map((t) => (
+                  <TableRow key={t.id} sx={{ opacity: t.activo ? 1 : 0.55 }}>
+                    <TableCell sx={{ fontWeight: 600 }}>{t.nombre}</TableCell>
+                    <TableCell>{t.cadena?.codigo ?? "—"}</TableCell>
+                    <TableCell align="center">{t.num_tienda ?? "—"}</TableCell>
+                    <TableCell>
+                      {clavesDe(t.id).length === 0 ? (
+                        <Typography variant="caption" color="text.secondary">sin claves</Typography>
+                      ) : (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {clavesDe(t.id).map((c) => (
+                            <Chip
+                              key={c.id}
+                              label={c.clave}
+                              size="small"
+                              onClick={() => toggleClave(c)}
+                              sx={{
+                                cursor: "pointer",
+                                opacity: togglingId === c.id ? 0.5 : 1,
+                                pointerEvents: togglingId === c.id ? "none" : "auto",
+                                ...(c.en_uso
+                                  ? { bgcolor: "#2e7d32", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#2e7d32" } }
+                                  : { bgcolor: "#e0e0e0", color: "#757575", "&:hover": { bgcolor: "#e0e0e0" } }),
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={t.activo ? "Activa" : "Inactiva"}
+                        size="small"
+                        color={t.activo ? "success" : "default"}
+                        variant={t.activo ? "filled" : "outlined"}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Renombrar">
+                        <IconButton size="small" onClick={() => abrirEditar(t)}><EditIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                      <Tooltip title={t.activo ? "Desactivar" : "Activar"}>
+                        <IconButton size="small" onClick={() => alternarActivo(t)} color={t.activo ? "warning" : "success"}>
+                          {t.activo ? <ToggleOnIcon /> : <ToggleOffIcon />}
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Paper>
 
