@@ -293,9 +293,7 @@ const ChipsAdmin = () => {
                                 }
                               }}
                             >
-                              {chip.descripcion_rechazo
-                                ? `Quitar: ${chip.descripcion_rechazo}`
-                                : "Lista de Espera Incubado"}
+                              {chip.descripcion_rechazo ? "Quitar" : "Lista de Espera Incubado"}
                             </Button>
                           )}
                         </TableCell>
@@ -449,7 +447,7 @@ const ChipsAdmin = () => {
                           <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
                           <TableCell sx={cellSx}>{chip.fecha}</TableCell>
                           <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>
-                            {chip.descripcion_rechazo ?? '—'}
+                            {chip.descripcion_rechazo ? 'Lista de Espera Incubado' : '—'}
                           </TableCell>
                         </TableRow>
                       ))}

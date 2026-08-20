@@ -131,7 +131,7 @@ const eliminarChip = async (id: number) => {
               <TableCell sx={cellSx}>{chip.numero_telefono}</TableCell>
               <TableCell sx={cellSx}>{chip.tipo_chip}</TableCell>
               <TableCell sx={cellSx}>{chip.fecha}</TableCell>
-              <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>{chip.descripcion_rechazo}</TableCell>
+              <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>{chip.descripcion_rechazo ? 'Lista de Espera Incubado' : ''}</TableCell>
               {rolToken === "admin" && (
                 <TableCell sx={cellSx}>
                   <IconButton
