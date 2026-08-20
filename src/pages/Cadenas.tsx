@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Container, Paper, Box, Typography, Tabs, Tab, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, CircularProgress,
-  LinearProgress,
+  LinearProgress, TextField, IconButton,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -11,6 +11,12 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import PieChartIcon from "@mui/icons-material/PieChart";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import FlagIcon from "@mui/icons-material/Flag";
+import VpnKeyIcon from "@mui/icons-material/VpnKey";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
+import CloseIcon from "@mui/icons-material/Close";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import axios from "axios";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
@@ -39,6 +45,13 @@ type Garantizado = {
   promotores: Promotor[];
   asignados: number;
   cumple: boolean;
+};
+
+type ClaveAcceso = {
+  id: number; tienda_id: number; clave: string; en_uso: boolean;
+  usuario: string | null; password: string | null; notas: string | null;
+  tienda_nombre: string | null; cadena: string | null;
+  num_tienda: number | null;
 };
 
 function Contador({
@@ -97,6 +110,15 @@ export default function Cadenas() {
   const [datos, setDatos] = useState<Garantizado[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  // Tab Accesos: claves marcadas en uso y su edición inline
+  const [accesos, setAccesos] = useState<ClaveAcceso[]>([]);
+  const [cargandoAccesos, setCargandoAccesos] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [formUsuario, setFormUsuario] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [verPass, setVerPass] = useState<Set<number>>(new Set());
+
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -116,6 +138,59 @@ export default function Cadenas() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const cargarAccesos = async () => {
+    setCargandoAccesos(true);
+    try {
+      const res = await axios.get(`${API}/registro/claves?solo_en_uso=true`, config);
+      setAccesos(res.data);
+    } catch (e) {
+      console.error("Error cargando accesos", e);
+    } finally {
+      setCargandoAccesos(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 1) cargarAccesos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const toggleVerPass = (id: number) => {
+    setVerPass((prev) => {
+      const siguiente = new Set(prev);
+      if (siguiente.has(id)) siguiente.delete(id);
+      else siguiente.add(id);
+      return siguiente;
+    });
+  };
+
+  const abrirEdicion = (a: ClaveAcceso) => {
+    setEditId(a.id);
+    setFormUsuario(a.usuario ?? "");
+    setFormPassword(a.password ?? "");
+  };
+
+  const guardarAcceso = async (id: number) => {
+    setGuardando(true);
+    try {
+      const res = await axios.put(
+        `${API}/registro/claves/${id}`,
+        { usuario: formUsuario || null, password: formPassword || null },
+        config
+      );
+      setAccesos((prev) =>
+        prev.map((x) =>
+          x.id === id ? { ...x, usuario: res.data.usuario, password: res.data.password } : x
+        )
+      );
+      setEditId(null);
+    } catch (e) {
+      console.error("Error guardando acceso", e);
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const totalTiendas = datos.length;
   const tiendasConGar = datos.filter((d) => d.garantizados > 0).length;
@@ -144,6 +219,7 @@ export default function Cadenas() {
           sx={{ mb: 2.5, borderBottom: "1px solid #e0e0e0" }}
         >
           <Tab label="Garantizados" sx={{ fontWeight: 700 }} />
+          <Tab label="Accesos" sx={{ fontWeight: 700 }} />
         </Tabs>
 
         {tab === 0 && (
@@ -391,6 +467,189 @@ export default function Cadenas() {
                     </TableBody>
                   </Table>
                 </TableContainer>
+              </>
+            )}
+          </>
+        )}
+
+        {tab === 1 && (
+          <>
+            {cargandoAccesos ? (
+              <Box sx={{ display: "flex", justifyContent: "center", p: 6 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mb: 2.5 }}>
+                  <Contador
+                    icono={<VpnKeyIcon />}
+                    titulo="Claves en uso"
+                    valor={accesos.length}
+                    sub={accesos.length === 1 ? "clave prendida" : "claves prendidas"}
+                    color={accesos.length === 0 ? NARANJA : AZUL}
+                  />
+                </Box>
+
+                {accesos.length === 0 ? (
+                  <Typography
+                    sx={{ py: 4, textAlign: "center", color: "#90a4ae", fontSize: "0.85rem" }}
+                  >
+                    No hay claves marcadas en uso. Préndelas en Tiendas (Cadenas).
+                  </Typography>
+                ) : (
+                  <TableContainer sx={{ border: "1px solid #cfd8dc", borderRadius: 1 }}>
+                    <Table
+                      size="small"
+                      sx={{
+                        "& td, & th": {
+                          fontSize: "0.73rem",
+                          border: "1px solid #cfd8dc",
+                          py: 0.7,
+                        },
+                      }}
+                    >
+                      <TableHead>
+                        <TableRow>
+                          {["CADENA", "TIENDA", "N°", "CLAVE",
+                            "USUARIO", "CONTRASEÑA", "ACCIONES"].map((h) => (
+                            <TableCell
+                              key={h}
+                              align="center"
+                              sx={{
+                                bgcolor: AZUL,
+                                color: "#fff",
+                                fontWeight: 700,
+                                whiteSpace: "nowrap",
+                                letterSpacing: 0.3,
+                                borderColor: "#1c3f7d !important",
+                              }}
+                            >
+                              {h}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {accesos.map((a, idx) => {
+                          const editando = editId === a.id;
+                          return (
+                            <TableRow
+                              key={a.id}
+                              hover
+                              sx={{ bgcolor: idx % 2 === 0 ? "#fff" : "#f7f9fc" }}
+                            >
+                              <TableCell align="center">
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    bgcolor: AZUL,
+                                    color: "#fff",
+                                    px: 0.9, py: 0.25,
+                                    borderRadius: 1,
+                                    fontSize: "0.66rem",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {a.cadena ?? "-"}
+                                </Box>
+                              </TableCell>
+                              <TableCell sx={{ fontWeight: 600, color: "#263238" }}>
+                                {a.tienda_nombre ?? "-"}
+                              </TableCell>
+                              <TableCell align="center" sx={{ color: "#607d8b", fontWeight: 600 }}>
+                                {a.num_tienda ?? "-"}
+                              </TableCell>
+                              <TableCell
+                                align="center"
+                                sx={{ fontWeight: 800, color: VERDE, whiteSpace: "nowrap" }}
+                              >
+                                {a.clave}
+                              </TableCell>
+
+                              <TableCell align="center">
+                                {editando ? (
+                                  <TextField
+                                    size="small"
+                                    value={formUsuario}
+                                    onChange={(e) => setFormUsuario(e.target.value)}
+                                    placeholder="usuario"
+                                    sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem", py: 0.6 } }}
+                                  />
+                                ) : a.usuario ? (
+                                  a.usuario
+                                ) : (
+                                  <Box component="span" sx={{ color: "#b0bec5" }}>—</Box>
+                                )}
+                              </TableCell>
+
+                              <TableCell align="center">
+                                {editando ? (
+                                  <TextField
+                                    size="small"
+                                    value={formPassword}
+                                    onChange={(e) => setFormPassword(e.target.value)}
+                                    placeholder="contraseña"
+                                    sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem", py: 0.6 } }}
+                                  />
+                                ) : (
+                                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.3 }}>
+                                    {a.password ? (
+                                      <>
+                                        <Box component="span" sx={{ fontFamily: "monospace", letterSpacing: 1 }}>
+                                          {verPass.has(a.id) ? a.password : "••••••••"}
+                                        </Box>
+                                        <IconButton size="small" onClick={() => toggleVerPass(a.id)}>
+                                          {verPass.has(a.id) ? (
+                                            <VisibilityOffIcon sx={{ fontSize: 16 }} />
+                                          ) : (
+                                            <VisibilityIcon sx={{ fontSize: 16 }} />
+                                          )}
+                                        </IconButton>
+                                      </>
+                                    ) : (
+                                      <Box component="span" sx={{ color: "#b0bec5" }}>—</Box>
+                                    )}
+                                  </Box>
+                                )}
+                              </TableCell>
+
+                              <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                                {editando ? (
+                                  <>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => guardarAcceso(a.id)}
+                                      disabled={guardando}
+                                      sx={{ color: VERDE }}
+                                    >
+                                      <SaveIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => setEditId(null)}
+                                      disabled={guardando}
+                                      sx={{ color: ROJO }}
+                                    >
+                                      <CloseIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                  </>
+                                ) : (
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => abrirEdicion(a)}
+                                    sx={{ color: AZUL }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </>
             )}
           </>
