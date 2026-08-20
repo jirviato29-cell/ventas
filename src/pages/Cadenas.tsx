@@ -526,7 +526,7 @@ export default function Cadenas() {
                       <TableHead>
                         <TableRow>
                           {["CADENA", "TIENDA", "N°", "CLAVE",
-                            "USUARIO", "CONTRASEÑA", "ACCIONES"].map((h) => (
+                            "CONTRASEÑA", "USUARIO", "ACCIONES"].map((h) => (
                             <TableCell
                               key={h}
                               align="center"
@@ -583,30 +583,6 @@ export default function Cadenas() {
 
                               <TableCell align="center">
                                 {editando ? (
-                                  <Autocomplete
-                                    size="small"
-                                    options={asesores.map((x) => x.username)}
-                                    value={formUsuario || null}
-                                    onChange={(_, v) => setFormUsuario(v ?? "")}
-                                    filterOptions={(x) => x}
-                                    sx={{ minWidth: 170 }}
-                                    renderInput={(params) => (
-                                      <TextField
-                                        {...params}
-                                        placeholder="asesor"
-                                        sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem" } }}
-                                      />
-                                    )}
-                                  />
-                                ) : a.usuario ? (
-                                  a.usuario
-                                ) : (
-                                  <Box component="span" sx={{ color: "#b0bec5" }}>—</Box>
-                                )}
-                              </TableCell>
-
-                              <TableCell align="center">
-                                {editando ? (
                                   <TextField
                                     size="small"
                                     value={formPassword}
@@ -633,6 +609,30 @@ export default function Cadenas() {
                                       <Box component="span" sx={{ color: "#b0bec5" }}>—</Box>
                                     )}
                                   </Box>
+                                )}
+                              </TableCell>
+
+                              <TableCell align="center">
+                                {editando ? (
+                                  <Autocomplete
+                                    size="small"
+                                    options={asesores.map((x) => x.username)}
+                                    value={formUsuario || null}
+                                    onChange={(_, v) => setFormUsuario(v ?? "")}
+                                    filterOptions={(x) => x}
+                                    sx={{ minWidth: 170 }}
+                                    renderInput={(params) => (
+                                      <TextField
+                                        {...params}
+                                        placeholder="asesor"
+                                        sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem" } }}
+                                      />
+                                    )}
+                                  />
+                                ) : a.usuario ? (
+                                  a.usuario
+                                ) : (
+                                  <Box component="span" sx={{ color: "#b0bec5" }}>—</Box>
                                 )}
                               </TableCell>
 
