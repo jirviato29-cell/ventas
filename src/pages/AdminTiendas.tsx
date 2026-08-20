@@ -3,6 +3,7 @@ import {
   Box, Button, Container, Paper, Typography, Alert, Chip,
   Table, TableContainer, TableHead, TableRow, TableCell, TableBody, IconButton, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress,
+  Divider,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
@@ -37,6 +38,12 @@ const AdminTiendas: React.FC = () => {
   // Claves por tienda (chips)
   const [claves, setClaves] = useState<Clave[]>([]);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+
+  // Edición de claves dentro del modal de tienda
+  const [clavesEdit, setClavesEdit] = useState<Record<number, string>>({});
+  const [nuevaClave, setNuevaClave] = useState("");
+  const [guardandoClave, setGuardandoClave] = useState(false);
+  const [errorClave, setErrorClave] = useState<string | null>(null);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -73,6 +80,10 @@ const AdminTiendas: React.FC = () => {
     setEditando(t);
     setNombre(t.nombre);
     setMensaje(null);
+    const suyas = claves.filter((c) => c.tienda_id === t.id);
+    setClavesEdit(Object.fromEntries(suyas.map((c) => [c.id, c.clave])));
+    setNuevaClave("");
+    setErrorClave(null);
     setDialogOpen(true);
   };
 
@@ -86,6 +97,37 @@ const AdminTiendas: React.FC = () => {
     try {
       if (editando) {
         await axios.put(`${API}/registro/tiendas/${editando.id}`, { nombre: nom }, config);
+
+        // Solo las claves cuyo texto cambió respecto al valor original.
+        const cambiadas = Object.entries(clavesEdit).filter(([id, valor]) => {
+          const original = claves.find((c) => c.id === Number(id));
+          return !!original && !!valor.trim() && valor.trim() !== original.clave;
+        });
+
+        const actualizadas: Clave[] = [];
+        let falloClave: string | null = null;
+        for (const [id, valor] of cambiadas) {
+          try {
+            const res = await axios.put(
+              `${API}/registro/claves/${Number(id)}`,
+              { clave: valor.trim() },
+              config
+            );
+            actualizadas.push(res.data);
+          } catch (err: any) {
+            falloClave = err?.response?.data?.detail ?? "No se pudo guardar la clave";
+            break;
+          }
+        }
+
+        if (actualizadas.length > 0) {
+          setClaves((prev) => prev.map((c) => actualizadas.find((a) => a.id === c.id) ?? c));
+        }
+        if (falloClave) {
+          setErrorClave(falloClave);
+          return; // deja el modal abierto para corregir
+        }
+
         setMensaje({ tipo: "success", texto: "Tienda actualizada" });
       } else {
         await axios.post(`${API}/registro/tiendas`, { nombre: nom }, config);
@@ -101,6 +143,26 @@ const AdminTiendas: React.FC = () => {
   };
 
   const clavesDe = (tiendaId: number) => claves.filter((c) => c.tienda_id === tiendaId);
+
+  const agregarClave = async () => {
+    if (!editando || !nuevaClave.trim()) return;
+    setGuardandoClave(true);
+    setErrorClave(null);
+    try {
+      const res = await axios.post(
+        `${API}/registro/tiendas/${editando.id}/claves`,
+        { tienda_id: editando.id, clave: nuevaClave.trim() },
+        config
+      );
+      setClaves((prev) => [...prev, res.data]);
+      setClavesEdit((prev) => ({ ...prev, [res.data.id]: res.data.clave }));
+      setNuevaClave("");
+    } catch (e: any) {
+      setErrorClave(e?.response?.data?.detail ?? "No se pudo agregar la clave");
+    } finally {
+      setGuardandoClave(false);
+    }
+  };
 
   const toggleClave = async (c: Clave) => {
     setTogglingId(c.id);
@@ -211,7 +273,7 @@ const AdminTiendas: React.FC = () => {
       </Paper>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>{editando ? "Renombrar tienda" : "Nueva tienda"}</DialogTitle>
+        <DialogTitle>{editando ? "Editar tienda" : "Nueva tienda"}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -222,6 +284,67 @@ const AdminTiendas: React.FC = () => {
             fullWidth
             margin="dense"
           />
+
+          {editando && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Claves</Typography>
+
+              {clavesDe(editando.id).length === 0 ? (
+                <Typography variant="caption" color="text.secondary">
+                  Esta tienda no tiene claves.
+                </Typography>
+              ) : (
+                clavesDe(editando.id).map((c) => (
+                  <Box key={c.id} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={clavesEdit[c.id] ?? ""}
+                      onChange={(e) =>
+                        setClavesEdit((prev) => ({ ...prev, [c.id]: e.target.value }))
+                      }
+                    />
+                    <Chip
+                      size="small"
+                      label={c.en_uso ? "En uso" : "Libre"}
+                      sx={
+                        c.en_uso
+                          ? { bgcolor: "#2e7d32", color: "#fff", fontWeight: 700 }
+                          : { bgcolor: "#e0e0e0", color: "#757575" }
+                      }
+                    />
+                  </Box>
+                ))
+              )}
+
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Agregar clave</Typography>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={nuevaClave}
+                  onChange={(e) => setNuevaClave(e.target.value)}
+                  placeholder="Ej. WAUCCC024"
+                />
+                <Button
+                  variant="outlined"
+                  onClick={agregarClave}
+                  disabled={!nuevaClave.trim() || guardandoClave}
+                >
+                  Agregar
+                </Button>
+              </Box>
+
+              {errorClave && (
+                <Typography variant="caption" sx={{ color: "#c62828", display: "block", mt: 1 }}>
+                  {errorClave}
+                </Typography>
+              )}
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
