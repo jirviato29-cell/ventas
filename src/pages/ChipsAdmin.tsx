@@ -20,6 +20,9 @@ const sortConDuplicados = (arr: VentaChip[], dups: Set<string>): VentaChip[] =>
 const rowDupSx  = { bgcolor: "#fee2e2" };
 const cellDupSx = { color: "#b91c1c", fontWeight: 700 };
 
+const rowIncSx  = { bgcolor: "#FAEEDA", color: "#412402", "& td:first-of-type": { borderLeft: "3px solid #BA7517" } };
+const cellIncSx = { color: "#854F0B", fontWeight: 500 };
+
 const cellSx   = { py: "2px", px: "6px", fontSize: 16 };
 const headSx   = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
 const numSx    = { ...cellSx, fontWeight: 600 };
@@ -440,13 +443,13 @@ const ChipsAdmin = () => {
                     </TableHead>
                     <TableBody>
                       {enIncubadora.map((chip) => (
-                        <TableRow key={chip.id}>
+                        <TableRow key={chip.id} sx={rowIncSx}>
                           <TableCell sx={cellSx}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
                           <TableCell sx={cellSx}>{chip.tipo_chip}</TableCell>
                           <TableCell sx={numSx}>{chip.numero_telefono}</TableCell>
                           <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
                           <TableCell sx={cellSx}>{chip.fecha}</TableCell>
-                          <TableCell sx={{ ...cellSx, color: '#f97316', fontWeight: 600 }}>
+                          <TableCell sx={{ ...cellSx, ...cellIncSx }}>
                             {chip.descripcion_rechazo ? 'Lista de Espera Incubado' : '—'}
                           </TableCell>
                         </TableRow>
