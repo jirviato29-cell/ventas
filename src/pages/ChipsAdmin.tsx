@@ -27,6 +27,9 @@ const gridHeadSx = { py: "8px", px: "10px", fontSize: 15, fontWeight: 700, textA
 const gridCellSx = { py: "7px", px: "10px", fontSize: 15, textAlign: "center", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" };
 const gridNumSx  = { ...gridCellSx, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.5px" };
 
+const gridHeadPendSx = { ...gridHeadSx, bgcolor: "#EEEDFE", borderBottom: "2px solid #AFA9EC", color: "#3C3489" };
+const rowPendSx      = { "&:hover": { bgcolor: "#F7F6FE" } };
+
 const cellSx   = { py: "2px", px: "6px", fontSize: 16 };
 const headSx   = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
 const numSx    = { ...cellSx, fontWeight: 600 };
@@ -368,35 +371,35 @@ const ChipsAdmin = () => {
                 <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
                   Mostrando {pendientes.length} chips
                 </Typography>
-                <TableContainer component={Paper}>
+                <TableContainer component={Paper} sx={{ maxWidth: 1000, mx: "auto", border: "1px solid #cbd5e1", borderRadius: 2, overflow: "hidden" }}>
                   <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                     <colgroup>
                       {colWidthsUser.map((w, i) => <col key={i} style={{ width: w }} />)}
                     </colgroup>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={headSx}>Empleado</TableCell>
-                        <TableCell sx={headSx}>Tipo</TableCell>
-                        <TableCell sx={headSx}>Número</TableCell>
-                        <TableCell sx={headSx}>Recarga</TableCell>
-                        <TableCell sx={headSx}>Fecha</TableCell>
-                        <TableCell sx={headSx}>Estado</TableCell>
-                        <TableCell sx={headSx}></TableCell>
+                        <TableCell sx={gridHeadPendSx}>Empleado</TableCell>
+                        <TableCell sx={gridHeadPendSx}>Tipo</TableCell>
+                        <TableCell sx={gridHeadPendSx}>Número</TableCell>
+                        <TableCell sx={gridHeadPendSx}>Recarga</TableCell>
+                        <TableCell sx={gridHeadPendSx}>Fecha</TableCell>
+                        <TableCell sx={gridHeadPendSx}>Estado</TableCell>
+                        <TableCell sx={gridHeadPendSx}></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {sortConDuplicados(pendientes, dups).map((chip) => {
                         const esDup = dups.has(chip.numero_telefono);
-                        const dupCell = esDup ? { ...cellSx, ...cellDupSx } : cellSx;
+                        const dupCell = esDup ? { ...gridCellSx, ...cellDupSx } : gridCellSx;
                         return (
-                          <TableRow key={chip.id} sx={esDup ? rowDupSx : {}}>
+                          <TableRow key={chip.id} sx={esDup ? rowDupSx : rowPendSx}>
                             <TableCell sx={dupCell}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
                             <TableCell sx={dupCell}>{chip.tipo_chip}</TableCell>
-                            <TableCell sx={esDup ? numDupSx : numSx}>{chip.numero_telefono}</TableCell>
-                            <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
-                            <TableCell sx={cellSx}>{chip.fecha}</TableCell>
-                            <TableCell sx={cellSx}>Pendiente</TableCell>
-                            <TableCell sx={cellSx}>
+                            <TableCell sx={esDup ? { ...gridNumSx, ...cellDupSx } : gridNumSx}>{chip.numero_telefono}</TableCell>
+                            <TableCell sx={gridNumSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
+                            <TableCell sx={gridCellSx}>{chip.fecha}</TableCell>
+                            <TableCell sx={{ ...gridCellSx, color: "#5B21B6", fontWeight: 500 }}>Pendiente</TableCell>
+                            <TableCell sx={gridCellSx}>
                               <Button color="error" size="small" onClick={() => eliminarChip(chip.id)}>
                                 <DeleteIcon sx={{ fontSize: 16 }} />
                               </Button>
@@ -406,7 +409,7 @@ const ChipsAdmin = () => {
                       })}
                       {pendientes.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} align="center" sx={cellSx}>
+                          <TableCell colSpan={7} align="center" sx={gridCellSx}>
                             No hay chips pendientes
                           </TableCell>
                         </TableRow>
