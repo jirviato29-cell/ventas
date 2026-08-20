@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Container, Paper, Box, Typography, Tabs, Tab, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, CircularProgress,
-  LinearProgress, TextField, IconButton,
+  LinearProgress, TextField, IconButton, Autocomplete,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -30,6 +30,8 @@ const ROJO = "#c62828";
 // tiendas), no es una condición calculada: no depende de garantizados ni de
 // cobertura. Ojo: son tienda_id, no num_tienda (el número que se ve en la
 // columna N° de la tabla).
+const MODULO_CADENAS = "Cadenas C.";
+
 const TIENDAS_MARCADAS = new Set([49, 50, 48, 43, 44, 45, 46, 42, 41, 14, 15, 54, 57, 56]);
 
 type Promotor = string | { username: string; asegurado?: boolean };
@@ -118,6 +120,7 @@ export default function Cadenas() {
   const [formPassword, setFormPassword] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [verPass, setVerPass] = useState<Set<number>>(new Set());
+  const [asesores, setAsesores] = useState<{ username: string }[]>([]);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -142,8 +145,20 @@ export default function Cadenas() {
   const cargarAccesos = async () => {
     setCargandoAccesos(true);
     try {
-      const res = await axios.get(`${API}/registro/claves?solo_en_uso=true`, config);
-      setAccesos(res.data);
+      const [resClaves, resUsuarios] = await Promise.all([
+        axios.get(`${API}/registro/claves?solo_en_uso=true`, config),
+        axios.get(`${API}/registro/usuarios`, config),
+      ]);
+      setAccesos(resClaves.data);
+
+      // El backend ya devuelve solo usuarios activos, por eso no se filtra
+      // por "activo" aqui: ese campo no viene en UsuarioResponse.
+      const soloAsesores = (resUsuarios.data as any[])
+        .filter((u) => u?.rol === "asesor" && u?.modulo?.nombre === MODULO_CADENAS)
+        .map((u) => ({ username: u?.username ?? "" }))
+        .filter((u) => !!u.username)
+        .sort((a, b) => (a.username ?? "").localeCompare(b.username ?? ""));
+      setAsesores(soloAsesores);
     } catch (e) {
       console.error("Error cargando accesos", e);
     } finally {
@@ -568,12 +583,20 @@ export default function Cadenas() {
 
                               <TableCell align="center">
                                 {editando ? (
-                                  <TextField
+                                  <Autocomplete
                                     size="small"
-                                    value={formUsuario}
-                                    onChange={(e) => setFormUsuario(e.target.value)}
-                                    placeholder="usuario"
-                                    sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem", py: 0.6 } }}
+                                    options={asesores.map((x) => x.username)}
+                                    value={formUsuario || null}
+                                    onChange={(_, v) => setFormUsuario(v ?? "")}
+                                    filterOptions={(x) => x}
+                                    sx={{ minWidth: 170 }}
+                                    renderInput={(params) => (
+                                      <TextField
+                                        {...params}
+                                        placeholder="asesor"
+                                        sx={{ "& .MuiInputBase-input": { fontSize: "0.73rem" } }}
+                                      />
+                                    )}
                                   />
                                 ) : a.usuario ? (
                                   a.usuario
