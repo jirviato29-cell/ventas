@@ -75,9 +75,6 @@ export default function MiSemanaPasada() {
   const diasFaltantes = Math.max(0, 6 - data.dias_cumplidos);
 
   // Derivados SOLO de presentación (no recalculan reglas de negocio).
-  const diasMulta = data.dias_detalle
-    ? data.dias_detalle.filter((d) => !d.cumple).length
-    : Math.max(0, 6 - data.dias_cumplidos);
   const bonoGanado = data.bono ? 100 : 0;
   const anguloVerde = (data.dias_cumplidos / 6) * 360;
 
@@ -231,22 +228,14 @@ export default function MiSemanaPasada() {
         )}
       </Box>
 
-      {/* ── Bono ganado / Multa ── */}
-      <Box sx={{ mx: "16px", mb: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+      {/* ── Bono ganado ── */}
+      <Box sx={{ mx: "16px", mb: "16px", display: "grid", gridTemplateColumns: "1fr", gap: "8px" }}>
         <Box sx={{ border: "1px solid #eef2f7", borderRadius: "11px", p: "10px 12px" }}>
           <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.4px" }}>
             Bono ganado
           </Typography>
           <Typography sx={{ fontFamily: FONT, fontSize: 16, fontWeight: 900, fontVariantNumeric: "tabular-nums", mt: "2px", color: bonoGanado > 0 ? "#16a34a" : "#94a3b8" }}>
             ${bonoGanado}
-          </Typography>
-        </Box>
-        <Box sx={{ border: "1px solid #eef2f7", borderRadius: "11px", p: "10px 12px" }}>
-          <Typography sx={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-            Multa ({diasMulta} {diasMulta === 1 ? "día" : "días"})
-          </Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: 16, fontWeight: 900, fontVariantNumeric: "tabular-nums", mt: "2px", color: "#dc2626" }}>
-            −${data.multa}
           </Typography>
         </Box>
       </Box>
