@@ -20,8 +20,12 @@ const sortConDuplicados = (arr: VentaChip[], dups: Set<string>): VentaChip[] =>
 const rowDupSx  = { bgcolor: "#fee2e2" };
 const cellDupSx = { color: "#b91c1c", fontWeight: 700 };
 
-const rowIncSx  = { bgcolor: "#FAEEDA", color: "#412402", "& td:first-of-type": { borderLeft: "3px solid #BA7517" } };
+const rowIncSx  = { bgcolor: "#FAEEDA", color: "#412402", "&:hover": { bgcolor: "#F5E3C4" }, "& td:first-of-type": { borderLeft: "3px solid #BA7517" } };
 const cellIncSx = { color: "#854F0B", fontWeight: 500 };
+
+const gridHeadSx = { py: "8px", px: "10px", fontSize: 15, fontWeight: 700, textAlign: "center", bgcolor: "#f8fafc", borderBottom: "2px solid #cbd5e1", borderRight: "1px solid #e2e8f0", color: "#334155" };
+const gridCellSx = { py: "7px", px: "10px", fontSize: 15, textAlign: "center", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0" };
+const gridNumSx  = { ...gridCellSx, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.5px" };
 
 const cellSx   = { py: "2px", px: "6px", fontSize: 16 };
 const headSx   = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
@@ -424,7 +428,7 @@ const ChipsAdmin = () => {
                 <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
                   Mostrando {enIncubadora.length} chips
                 </Typography>
-                <TableContainer component={Paper}>
+                <TableContainer component={Paper} sx={{ maxWidth: 1000, mx: "auto", border: "1px solid #cbd5e1", borderRadius: 2, overflow: "hidden" }}>
                   <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
                     <colgroup>
                       {['160px', '130px', '130px', '80px', '100px', '1fr'].map((w, i) => (
@@ -433,30 +437,30 @@ const ChipsAdmin = () => {
                     </colgroup>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={headSx}>Empleado</TableCell>
-                        <TableCell sx={headSx}>Tipo</TableCell>
-                        <TableCell sx={headSx}>Número</TableCell>
-                        <TableCell sx={headSx}>Recarga</TableCell>
-                        <TableCell sx={headSx}>Fecha</TableCell>
-                        <TableCell sx={headSx}>Motivo</TableCell>
+                        <TableCell sx={gridHeadSx}>Empleado</TableCell>
+                        <TableCell sx={gridHeadSx}>Tipo</TableCell>
+                        <TableCell sx={gridHeadSx}>Número</TableCell>
+                        <TableCell sx={gridHeadSx}>Recarga</TableCell>
+                        <TableCell sx={gridHeadSx}>Fecha</TableCell>
+                        <TableCell sx={gridHeadSx}>Motivo</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {enIncubadora.map((chip) => (
                         <TableRow key={chip.id} sx={rowIncSx}>
-                          <TableCell sx={cellSx}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
-                          <TableCell sx={cellSx}>{chip.tipo_chip}</TableCell>
-                          <TableCell sx={numSx}>{chip.numero_telefono}</TableCell>
-                          <TableCell sx={numSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
-                          <TableCell sx={cellSx}>{chip.fecha}</TableCell>
-                          <TableCell sx={{ ...cellSx, ...cellIncSx }}>
+                          <TableCell sx={gridCellSx}>{chip.empleado?.username ?? 'Eliminado'}</TableCell>
+                          <TableCell sx={gridCellSx}>{chip.tipo_chip}</TableCell>
+                          <TableCell sx={gridNumSx}>{chip.numero_telefono}</TableCell>
+                          <TableCell sx={gridNumSx}>${chip.monto_recarga.toFixed(2)}</TableCell>
+                          <TableCell sx={gridCellSx}>{chip.fecha}</TableCell>
+                          <TableCell sx={{ ...gridCellSx, ...cellIncSx }}>
                             {chip.descripcion_rechazo ? 'Lista de Espera Incubado' : '—'}
                           </TableCell>
                         </TableRow>
                       ))}
                       {enIncubadora.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} align="center" sx={cellSx}>
+                          <TableCell colSpan={6} align="center" sx={gridCellSx}>
                             No hay chips en incubadora
                           </TableCell>
                         </TableRow>
