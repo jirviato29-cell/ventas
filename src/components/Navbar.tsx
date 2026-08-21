@@ -12,6 +12,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
@@ -340,17 +341,17 @@ const Navbar = () => {
                 </>
               )}
 
-              {/* ASISTENCIA: asesor/encargado con módulo (no Cadenas) + admin/direccion */}
+              {/* CHECK-IN / CHECK-OUT: asesor/encargado con módulo (no Cadenas) + admin/direccion */}
               {mostrarAsistencia && (
                 <Button sx={navBtnSx} component={Link} to="/asistencia">
-                  ASISTENCIA
+                  CHECK-IN / CHECK-OUT
                 </Button>
               )}
 
-              {/* CHECK-IN / CHECK-OUT: asistencia propia, sin exclusión de módulo */}
+              {/* ASISTENCIA: asistencia propia, sin exclusión de módulo */}
               {mostrarMiAsistencia && (
                 <Button sx={navBtnSx} component={Link} to="/mi-asistencia">
-                  CHECK-IN / CHECK-OUT
+                  ASISTENCIA
                 </Button>
               )}
 
@@ -742,19 +743,19 @@ const Navbar = () => {
             </>
           )}
 
-          {/* ── ASISTENCIA (condicional) ───────────────────────────────────────── */}
+          {/* ── CHECK-IN / CHECK-OUT (condicional) ─────────────────────────────── */}
           {mostrarAsistencia && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/asistencia")}>
               <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
-              <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemText primary="CHECK-IN / CHECK-OUT" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
-          {/* ── CHECK-IN / CHECK-OUT (asistencia propia) ───────────────────────── */}
+          {/* ── ASISTENCIA (asistencia propia) ─────────────────────────────────── */}
           {mostrarMiAsistencia && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-asistencia")}>
-              <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
-              <ListItemText primary="CHECK-IN / CHECK-OUT" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemIcon sx={drawerIconSx}><EmojiPeopleIcon /></ListItemIcon>
+              <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
