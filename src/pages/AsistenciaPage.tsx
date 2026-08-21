@@ -481,26 +481,34 @@ const VistaEmpleado: React.FC = () => {
             Ya hiciste tu CHECK-IN
           </Typography>
 
-          <Box display="flex" alignItems="center" gap={1} mb={yaSalio ? 1 : 0}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "120px auto",
+              columnGap: 2,
+              rowGap: 1.5,
+              alignItems: "center",
+            }}
+          >
             <Typography variant="body2">Entrada: {formatHora(estadoHoy?.entrada ?? null)}</Typography>
             <FotoThumb url={estadoHoy?.foto_entrada_url ?? null} size={72} />
+
+            {yaSalio && (
+              <>
+                <Typography variant="body2">Salida: {formatHora(estadoHoy?.salida ?? null)}</Typography>
+                <FotoThumb url={estadoHoy?.foto_salida_url ?? null} size={72} />
+
+                <Typography variant="body2" sx={{ gridColumn: "1 / -1" }}>
+                  Horas trabajadas: {(estadoHoy?.horas_trabajadas ?? 0).toFixed(2)} h
+                </Typography>
+              </>
+            )}
           </Box>
 
           {yaSalio && (
-            <>
-              <Box display="flex" alignItems="center" gap={1} mb={1}>
-                <Typography variant="body2">Salida: {formatHora(estadoHoy?.salida ?? null)}</Typography>
-                <FotoThumb url={estadoHoy?.foto_salida_url ?? null} size={72} />
-              </Box>
-
-              <Typography variant="body2">
-                Horas trabajadas: {(estadoHoy?.horas_trabajadas ?? 0).toFixed(2)} h
-              </Typography>
-
-              <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 2 }}>
-                Día completo
-              </Typography>
-            </>
+            <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 2 }}>
+              Día completo
+            </Typography>
           )}
 
           {!yaSalio && (
