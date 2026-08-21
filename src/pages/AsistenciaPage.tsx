@@ -209,11 +209,6 @@ const formatHora24 = (iso: string | null) => {
   });
 };
 
-const mesActual = () => {
-  const hoy = new Date();
-  return { y: hoy.getFullYear(), m: hoy.getMonth() };
-};
-
 // ── FotoThumb: miniatura con click para ampliar ───────────────────────────────
 
 const FotoThumb: React.FC<{ url: string | null }> = ({ url }) => {
@@ -254,8 +249,6 @@ const ZonaChip: React.FC<{ dentro: boolean | null }> = ({ dentro }) => {
 const VistaEmpleado: React.FC = () => {
   const [ahora, setAhora] = useState(new Date());
   const [cargando, setCargando] = useState(false);
-  const [historial, setHistorial] = useState<AsistenciaResumen[]>([]);
-  const [mes, setMes] = useState(mesActual());
   const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" | "warning"; autoHide?: boolean } | null>(null);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -271,24 +264,6 @@ const VistaEmpleado: React.FC = () => {
     const t = setInterval(() => setAhora(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-
-  const cargarHistorial = useCallback(async () => {
-    const { y, m } = mes;
-    const desde = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-    const ultimo = new Date(y, m + 1, 0).getDate();
-    const hasta = `${y}-${String(m + 1).padStart(2, "0")}-${ultimo}`;
-    try {
-      const { data } = await axios.get<AsistenciaResumen[]>(
-        `${API}/asistencia/mi-historial?desde=${desde}&hasta=${hasta}`,
-        { headers: authH() }
-      );
-      setHistorial(data.sort((a, b) => b.fecha.localeCompare(a.fecha)));
-    } catch {
-      // silencioso
-    }
-  }, [mes]);
-
-  useEffect(() => { cargarHistorial(); }, [cargarHistorial]);
 
   const cerrarCamara = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -391,7 +366,6 @@ const VistaEmpleado: React.FC = () => {
       } else {
         setSnack({ msg: `${tipo === "entrada" ? "CHECK-IN" : "CHECK-OUT"} registrado ✓`, sev: "success" });
       }
-      cargarHistorial();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (detail && typeof detail === "object" && detail.codigo) {
@@ -409,11 +383,6 @@ const VistaEmpleado: React.FC = () => {
       pendingRef.current = null;
     }
   };
-
-  const totalHoras = historial.reduce((s, r) => s + r.horas_trabajadas, 0);
-  const meses = Array.from({ length: 12 }, (_, i) => i);
-  const anios = [new Date().getFullYear() - 1, new Date().getFullYear()];
-  const nombresMes = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", p: 3 }}>
@@ -524,77 +493,6 @@ const VistaEmpleado: React.FC = () => {
           </Button>
         </Box>
       </Dialog>
-
-      {/* ── Historial ── */}
-      <Typography variant="h6" fontWeight={600} mb={1}>Mi historial</Typography>
-
-      <Box display="flex" gap={2} mb={2}>
-        <FormControl size="small">
-          <InputLabel>Mes</InputLabel>
-          <Select
-            label="Mes"
-            value={mes.m}
-            onChange={(e) => setMes((p) => ({ ...p, m: Number(e.target.value) }))}
-            sx={{ minWidth: 100 }}
-          >
-            {meses.map((i) => <MenuItem key={i} value={i}>{nombresMes[i]}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl size="small">
-          <InputLabel>Año</InputLabel>
-          <Select
-            label="Año"
-            value={mes.y}
-            onChange={(e) => setMes((p) => ({ ...p, y: Number(e.target.value) }))}
-            sx={{ minWidth: 90 }}
-          >
-            {anios.map((y) => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-          </Select>
-        </FormControl>
-      </Box>
-
-      <TableContainer component={Paper} elevation={1}>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: "#f8fafc" }}>
-              {["Fecha","Entrada","Foto E","Salida","Foto S","Horas","Estado E","Estado S"].map((h) => (
-                <TableCell key={h} sx={{ fontWeight: 700, color: "#FF6600" }}>{h}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {historial.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ color: "#94a3b8", py: 3 }}>
-                  Sin registros para este período
-                </TableCell>
-              </TableRow>
-            )}
-            {historial.map((r) => {
-              const fueraAlguno = r.dentro_de_zona_entrada === false || r.dentro_de_zona_salida === false;
-              return (
-                <TableRow key={r.fecha} sx={{ bgcolor: fueraAlguno ? "#fff7ed" : undefined }}>
-                  <TableCell>{formatFecha(r.fecha)}</TableCell>
-                  <TableCell>{formatHora(r.entrada)}</TableCell>
-                  <TableCell><FotoThumb url={r.foto_entrada_url} /></TableCell>
-                  <TableCell>{formatHora(r.salida)}</TableCell>
-                  <TableCell><FotoThumb url={r.foto_salida_url} /></TableCell>
-                  <TableCell>{r.horas_trabajadas.toFixed(2)} h</TableCell>
-                  <TableCell><ZonaChip dentro={r.dentro_de_zona_entrada ?? null} /></TableCell>
-                  <TableCell><ZonaChip dentro={r.dentro_de_zona_salida ?? null} /></TableCell>
-                </TableRow>
-              );
-            })}
-            {historial.length > 0 && (
-              <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                <TableCell colSpan={5} sx={{ fontWeight: 700 }}>Total del mes</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{totalHoras.toFixed(2)} h</TableCell>
-                <TableCell /><TableCell />
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
 
       <Snackbar open={!!snack} autoHideDuration={snack?.autoHide === false ? null : 5000} onClose={() => setSnack(null)}>
         <Alert severity={snack?.sev} variant="filled" onClose={() => setSnack(null)} sx={{ width: "100%", fontSize: 15 }}>
