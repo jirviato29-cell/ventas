@@ -252,6 +252,8 @@ const VistaEmpleado: React.FC = () => {
   const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" | "warning"; autoHide?: boolean } | null>(null);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [estadoHoy, setEstadoHoy] = useState<AsistenciaResumen | null>(null);
+  const [cargandoEstado, setCargandoEstado] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -260,10 +262,30 @@ const VistaEmpleado: React.FC = () => {
   const esMovil = isMobileDevice();
   const bloquearCheckIn = !esMovil;
 
+  const yaEntro = !!estadoHoy?.entrada;
+  const yaSalio = !!estadoHoy?.salida;
+
   useEffect(() => {
     const t = setInterval(() => setAhora(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const cargarEstadoHoy = useCallback(async () => {
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    try {
+      const { data } = await axios.get<AsistenciaResumen[]>(
+        `${API}/asistencia/mi-historial?desde=${hoy}&hasta=${hoy}`,
+        { headers: authH() }
+      );
+      setEstadoHoy(data[0] ?? null);
+    } catch {
+      setEstadoHoy(null);
+    } finally {
+      setCargandoEstado(false);
+    }
+  }, []);
+
+  useEffect(() => { cargarEstadoHoy(); }, [cargarEstadoHoy]);
 
   const cerrarCamara = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -366,6 +388,7 @@ const VistaEmpleado: React.FC = () => {
       } else {
         setSnack({ msg: `${tipo === "entrada" ? "CHECK-IN" : "CHECK-OUT"} registrado ✓`, sev: "success" });
       }
+      cargarEstadoHoy();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (detail && typeof detail === "object" && detail.codigo) {
@@ -400,7 +423,7 @@ const VistaEmpleado: React.FC = () => {
           <Button
             variant="contained"
             size="large"
-            disabled={cargando}
+            disabled={cargando || cargandoEstado || yaEntro}
             onClick={() => handleCheck("entrada")}
             startIcon={<AccessTimeIcon />}
             sx={{
@@ -413,7 +436,7 @@ const VistaEmpleado: React.FC = () => {
           <Button
             variant="contained"
             size="large"
-            disabled={cargando}
+            disabled={cargando || cargandoEstado || !yaEntro || yaSalio}
             onClick={() => handleCheck("salida")}
             startIcon={<AccessTimeIcon />}
             sx={{
@@ -442,6 +465,40 @@ const VistaEmpleado: React.FC = () => {
           <Typography variant="caption" display="block" sx={{ mt: 2, color: "text.secondary" }}>
             Esto es para validar que estés físicamente en tu módulo con tu propia cámara y GPS.
           </Typography>
+        </Paper>
+      )}
+
+      {cargandoEstado && (
+        <Box display="flex" alignItems="center" gap={1} mb={3} sx={{ color: "text.secondary" }}>
+          <CircularProgress size={18} />
+          <Typography variant="body2">Consultando tu registro de hoy...</Typography>
+        </Box>
+      )}
+
+      {yaEntro && (
+        <Paper elevation={1} sx={{ p: 2, mb: 3, bgcolor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+          <Typography fontWeight={700} sx={{ color: "#16a34a", mb: 1 }}>
+            Ya hiciste tu CHECK-IN
+          </Typography>
+
+          <Box display="flex" alignItems="center" gap={1} mb={yaSalio ? 1 : 0}>
+            <Typography variant="body2">Entrada: {formatHora(estadoHoy?.entrada ?? null)}</Typography>
+            <FotoThumb url={estadoHoy?.foto_entrada_url ?? null} />
+          </Box>
+
+          {yaSalio && (
+            <Box display="flex" alignItems="center" gap={1}>
+              <Typography variant="body2">Salida: {formatHora(estadoHoy?.salida ?? null)}</Typography>
+              <FotoThumb url={estadoHoy?.foto_salida_url ?? null} />
+            </Box>
+          )}
+
+          {!yaSalio && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              No olvides hacer tu CHECK-OUT al terminar tu turno. Si no lo haces,
+              no se cuenta tu asistencia del día y no se te puede pagar.
+            </Alert>
+          )}
         </Paper>
       )}
 
