@@ -118,6 +118,13 @@ const Navbar = () => {
     rolToken === "admin" ||
     rolToken === "direccion";
 
+  // Asistencia propia: sin exclusion de modulo, Cadenas tambien la ve.
+  const mostrarMiAsistencia =
+    rolToken === "asesor" ||
+    rolToken === "encargado" ||
+    rolToken === "admin" ||
+    rolToken === "direccion";
+
   const navegar = (ruta: string) => {
     navigate(ruta);
     setDrawerOpen(false);
@@ -188,7 +195,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
-                    {mostrarAsistencia && (
+                    {mostrarMiAsistencia && (
                       <MenuItem component={Link} to="/mi-asistencia">Asistencia</MenuItem>
                     )}
                   </Menu>
@@ -454,7 +461,7 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Teléfonos" />
                   </ListItemButton>
-                  {mostrarAsistencia && (
+                  {mostrarMiAsistencia && (
                     <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/mi-asistencia")}>
                       <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
                       <ListItemText primary="Asistencia" />

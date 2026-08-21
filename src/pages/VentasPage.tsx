@@ -1876,9 +1876,6 @@ const FormularioVentaMultiple = () => {
             </Paper>
               </Box>
               )}
-              <Box sx={{ mt: 2 }}>
-                <TiraAsistenciaSemana />
-              </Box>
             </>
           ) : (
             <Grid container spacing={2}>
