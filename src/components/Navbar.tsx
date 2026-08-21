@@ -188,6 +188,9 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
+                    {mostrarAsistencia && (
+                      <MenuItem component={Link} to="/mi-asistencia">Asistencia</MenuItem>
+                    )}
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorTelefonos)}>
@@ -451,6 +454,12 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Teléfonos" />
                   </ListItemButton>
+                  {mostrarAsistencia && (
+                    <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/mi-asistencia")}>
+                      <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
+                      <ListItemText primary="Asistencia" />
+                    </ListItemButton>
+                  )}
                 </List>
               </Collapse>
 

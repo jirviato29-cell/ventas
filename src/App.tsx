@@ -30,6 +30,7 @@ import EntradaMercancia from './pages/EntradaMercancia';
 import DireccionPage from './pages/DireccionPage';
 import QuienTienePage from './pages/QuienTienePage';
 import AsistenciaPage from './pages/AsistenciaPage';
+import MiAsistenciaPage from './pages/MiAsistenciaPage';
 import EstadisticasPage from './pages/EstadisticasPage';
 import RankingModulosPage from './pages/RankingModulosPage';
 import TiempoRealPage from './pages/TiempoRealPage';
@@ -104,6 +105,7 @@ const App: React.FC = () => {
     { path: '/direccion', element: <RutaProtegida><DireccionPage /></RutaProtegida> },
     { path: '/quien-tiene', element: <RutaProtegida><QuienTienePage /></RutaProtegida> },
     { path: '/asistencia', element: <RutaProtegida><AsistenciaPage /></RutaProtegida> },
+    { path: '/mi-asistencia', element: <RutaProtegida><MiAsistenciaPage /></RutaProtegida> },
     { path: '/estadisticas', element: <RutaProtegida><EstadisticasPage /></RutaProtegida> },
     { path: '/ranking', element: <RutaProtegida><RankingModulosPage /></RutaProtegida> },
     { path: '/tiempo-real', element: <RutaProtegida><TiempoRealPage /></RutaProtegida> },
