@@ -195,9 +195,6 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
-                    {mostrarMiAsistencia && (
-                      <MenuItem component={Link} to="/mi-asistencia">Check-in / Check-out</MenuItem>
-                    )}
                   </Menu>
 
                   <Button sx={navBtnSx} onClick={(e) => openMenu(e, setAnchorTelefonos)}>
@@ -350,6 +347,13 @@ const Navbar = () => {
                 </Button>
               )}
 
+              {/* CHECK-IN / CHECK-OUT: asistencia propia, sin exclusión de módulo */}
+              {mostrarMiAsistencia && (
+                <Button sx={navBtnSx} component={Link} to="/mi-asistencia">
+                  CHECK-IN / CHECK-OUT
+                </Button>
+              )}
+
               {rolToken === "direccion" && (
                 <Button sx={navBtnSx} component={Link} to="/sueldos-encargados">
                   SUELDOS ENCARGADOS
@@ -461,12 +465,6 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Teléfonos" />
                   </ListItemButton>
-                  {mostrarMiAsistencia && (
-                    <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/mi-asistencia")}>
-                      <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
-                      <ListItemText primary="Check-in / Check-out" />
-                    </ListItemButton>
-                  )}
                 </List>
               </Collapse>
 
@@ -749,6 +747,14 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/asistencia")}>
               <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
               <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── CHECK-IN / CHECK-OUT (asistencia propia) ───────────────────────── */}
+          {mostrarMiAsistencia && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-asistencia")}>
+              <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
+              <ListItemText primary="CHECK-IN / CHECK-OUT" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
