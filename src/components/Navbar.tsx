@@ -196,7 +196,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
                     {mostrarMiAsistencia && (
-                      <MenuItem component={Link} to="/mi-asistencia">Asistencia</MenuItem>
+                      <MenuItem component={Link} to="/mi-asistencia">Check-in / Check-out</MenuItem>
                     )}
                   </Menu>
 
@@ -464,7 +464,7 @@ const Navbar = () => {
                   {mostrarMiAsistencia && (
                     <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/mi-asistencia")}>
                       <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
-                      <ListItemText primary="Asistencia" />
+                      <ListItemText primary="Check-in / Check-out" />
                     </ListItemButton>
                   )}
                 </List>

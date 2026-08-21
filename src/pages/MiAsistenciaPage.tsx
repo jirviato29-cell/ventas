@@ -6,7 +6,7 @@ const MiAsistenciaPage: React.FC = () => {
   return (
     <Container sx={{ mt: 4, mb: 6 }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        Asistencia
+        Check-in / Check-out
       </Typography>
 
       <Box sx={{ mt: 2 }}>
