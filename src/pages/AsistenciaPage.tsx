@@ -211,7 +211,7 @@ const formatHora24 = (iso: string | null) => {
 
 // ── FotoThumb: miniatura con click para ampliar ───────────────────────────────
 
-const FotoThumb: React.FC<{ url: string | null }> = ({ url }) => {
+const FotoThumb: React.FC<{ url: string | null; size?: number }> = ({ url, size = 40 }) => {
   const [open, setOpen] = useState(false);
   if (!url) return <span style={{ color: "#94a3b8" }}>—</span>;
   return (
@@ -219,7 +219,7 @@ const FotoThumb: React.FC<{ url: string | null }> = ({ url }) => {
       <img
         src={url}
         alt="foto"
-        style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, cursor: "pointer" }}
+        style={{ width: size, height: size, objectFit: "cover", borderRadius: 4, cursor: "pointer" }}
         onClick={() => setOpen(true)}
       />
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md">
@@ -483,14 +483,24 @@ const VistaEmpleado: React.FC = () => {
 
           <Box display="flex" alignItems="center" gap={1} mb={yaSalio ? 1 : 0}>
             <Typography variant="body2">Entrada: {formatHora(estadoHoy?.entrada ?? null)}</Typography>
-            <FotoThumb url={estadoHoy?.foto_entrada_url ?? null} />
+            <FotoThumb url={estadoHoy?.foto_entrada_url ?? null} size={72} />
           </Box>
 
           {yaSalio && (
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography variant="body2">Salida: {formatHora(estadoHoy?.salida ?? null)}</Typography>
-              <FotoThumb url={estadoHoy?.foto_salida_url ?? null} />
-            </Box>
+            <>
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <Typography variant="body2">Salida: {formatHora(estadoHoy?.salida ?? null)}</Typography>
+                <FotoThumb url={estadoHoy?.foto_salida_url ?? null} size={72} />
+              </Box>
+
+              <Typography variant="body2">
+                Horas trabajadas: {(estadoHoy?.horas_trabajadas ?? 0).toFixed(2)} h
+              </Typography>
+
+              <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 2 }}>
+                Día completo
+              </Typography>
+            </>
           )}
 
           {!yaSalio && (
