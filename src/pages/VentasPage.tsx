@@ -283,9 +283,14 @@ const FormularioVentaMultiple = () => {
   const [comisionesHoy, setComisionesHoy] = useState<any>(null);
   const [sinCiclo, setSinCiclo] = useState(false);
   const [tabAsesor, setTabAsesor] = useState(0);
-  // Ranura del navbar donde se proyectan las pestañas (Ticket, Recibos, ...)
+  // Ranura donde se proyectan las pestañas (Ticket, Recibos, ...).
+  // Solo el asesor de Cadenas las manda al Drawer; asesor normal y encargado
+  // (incluido el encargado de Cadenas) siguen en la franja del navbar.
+  const tabsEnDrawer = rol === 'asesor' && esCadenas;
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null);
-  useEffect(() => { setTabsSlot(document.getElementById('navbar-tabs-slot')); }, []);
+  useEffect(() => {
+    setTabsSlot(document.getElementById(tabsEnDrawer ? 'drawer-tabs-slot' : 'navbar-tabs-slot'));
+  }, [tabsEnDrawer]);
   const [misVentasFecha, setMisVentasFecha] = useState(HOY);
   const [misVentasData, setMisVentasData] = useState<Venta[]>([]);
   const [comisionesMisVentas, setComisionesMisVentas] = useState<any>(null);
@@ -1754,10 +1759,20 @@ const FormularioVentaMultiple = () => {
         {tabsSlot && createPortal(
         <Tabs
           value={tabAsesor}
-          onChange={(_, v) => setTabAsesor(v)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
+          onChange={(_, v) => { setTabAsesor(v); if (tabsEnDrawer) window.dispatchEvent(new Event('ato-close-drawer')); }}
+          orientation={tabsEnDrawer ? 'vertical' : 'horizontal'}
+          variant={tabsEnDrawer ? 'standard' : 'scrollable'}
+          scrollButtons={tabsEnDrawer ? false : 'auto'}
+          sx={tabsEnDrawer ? {
+            '& .MuiTab-root': {
+              color: '#334155',
+              minHeight: 44,
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              textAlign: 'left',
+            },
+            '& .MuiTab-root.Mui-selected': { color: '#f97316' },
+          } : {
             minHeight: 44,
             '& .MuiTab-root': { color: '#cbd5e1', minHeight: 44 },
             '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },

@@ -88,6 +88,13 @@ const Navbar = () => {
     return () => window.removeEventListener("storage", actualizarDatos);
   }, []);
 
+  // Permite que una página cierre el drawer tras elegir una pestaña proyectada en él.
+  useEffect(() => {
+    const cerrar = () => setDrawerOpen(false);
+    window.addEventListener('ato-close-drawer', cerrar);
+    return () => window.removeEventListener('ato-close-drawer', cerrar);
+  }, []);
+
   const cerrarSesion = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -399,6 +406,7 @@ const Navbar = () => {
         anchor="left"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        ModalProps={{ keepMounted: true }}
         PaperProps={{ sx: {
           width: 280,
           scrollbarWidth: "thin",
@@ -758,6 +766,9 @@ const Navbar = () => {
               <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
+
+          {/* Ranura donde Cadenas proyecta sus pestañas */}
+          <Box id="drawer-tabs-slot" sx={{ px: 1 }} />
 
           {rolToken === "direccion" && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/sueldos-encargados")}>
