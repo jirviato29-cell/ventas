@@ -3,6 +3,7 @@ import axios from "axios";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
 const FONT = "Inter, system-ui, -apple-system, sans-serif";
@@ -36,6 +37,7 @@ export default function TiraAsistenciaSemana() {
   const token = localStorage.getItem("token");
   const [data, setData] = useState<SemanaDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
+  const esMovil = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
     const cargar = async () => {
@@ -67,7 +69,7 @@ export default function TiraAsistenciaSemana() {
         <span style={{ fontSize: 12, color: "#64748b" }}>{fmtRango(data.semana_inicio, data.semana_fin)}</span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: esMovil ? "1fr" : "repeat(7, 1fr)", gap: 10 }}>
         {data.dias.map((dia) => {
           const esHoy = dia.fecha === HOY;
           const num = parseInt(dia.fecha.split("-")[2]);
@@ -87,10 +89,16 @@ export default function TiraAsistenciaSemana() {
             <div key={dia.fecha} style={{
               border: cardBorder,
               background: cardBg,
-              borderRadius: 12, padding: "12px 8px", minHeight: 150,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
+              borderRadius: 12,
+              padding: esMovil ? "10px 14px" : "12px 8px",
+              minHeight: esMovil ? 0 : 150,
+              gap: esMovil ? 12 : 0,
+              display: "flex",
+              flexDirection: esMovil ? "row" : "column",
+              alignItems: "center",
+              justifyContent: esMovil ? "flex-start" : "space-between",
             }}>
-              <div style={{ textAlign: "center" }}>
+              <div style={{ textAlign: esMovil ? "left" : "center", minWidth: esMovil ? 62 : "auto" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: esHoy ? "#FF6600" : "#16213e" }}>
                   {dia.dia_semana}{esHoy ? " · hoy" : ""}
                 </div>
