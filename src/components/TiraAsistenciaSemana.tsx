@@ -4,6 +4,8 @@ import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
 const FONT = "Inter, system-ui, -apple-system, sans-serif";
@@ -37,21 +39,23 @@ export default function TiraAsistenciaSemana() {
   const token = localStorage.getItem("token");
   const [data, setData] = useState<SemanaDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [offset, setOffset] = useState(0);
   const esMovil = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
     const cargar = async () => {
+      setCargando(true);
       try {
-        const r = await axios.get<SemanaDetalle>(`${API}/asistencia/mi-semana`, { headers: { Authorization: `Bearer ${token}` } });
+        const r = await axios.get<SemanaDetalle>(`${API}/asistencia/mi-semana`, { params: { offset }, headers: { Authorization: `Bearer ${token}` } });
         setData(r.data);
-      } catch { setData(null); }
+      } catch { /* conserva la semana previa visible */ }
       finally { setCargando(false); }
     };
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [offset]);
 
-  if (cargando || !data) return null;
+  if (!data) return null;
 
   const fmtRango = (ini: string, fin: string) => {
     const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -66,7 +70,34 @@ export default function TiraAsistenciaSemana() {
           <AccessTimeRoundedIcon sx={{ fontSize: 20, color: "#FF6600" }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: "#16213e" }}>Mi asistencia de la semana</span>
         </div>
-        <span style={{ fontSize: 12, color: "#64748b" }}>{fmtRango(data.semana_inicio, data.semana_fin)}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button
+            onClick={() => setOffset(offset - 1)}
+            disabled={cargando || offset <= -52}
+            style={{ border: "1px solid #e2e8f0", background: "#fff", borderRadius: 8,
+                     width: 30, height: 30, display: "flex", alignItems: "center",
+                     justifyContent: "center", cursor: "pointer", padding: 0 }}
+            aria-label="Semana anterior"
+          >
+            <ChevronLeftRoundedIcon sx={{ fontSize: 18, color: "#64748b" }} />
+          </button>
+          <span style={{ fontSize: 12, color: "#64748b", minWidth: 92, textAlign: "center",
+                         opacity: cargando ? 0.5 : 1 }}>
+            {fmtRango(data.semana_inicio, data.semana_fin)}
+          </span>
+          <button
+            onClick={() => setOffset(offset + 1)}
+            disabled={cargando || offset >= 0}
+            style={{ border: "1px solid #e2e8f0",
+                     background: offset >= 0 ? "#f8fafc" : "#fff", borderRadius: 8,
+                     width: 30, height: 30, display: "flex", alignItems: "center",
+                     justifyContent: "center",
+                     cursor: offset >= 0 ? "default" : "pointer", padding: 0 }}
+            aria-label="Semana siguiente"
+          >
+            <ChevronRightRoundedIcon sx={{ fontSize: 18, color: offset >= 0 ? "#cbd5e1" : "#64748b" }} />
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: esMovil ? "1fr" : "repeat(7, 1fr)", gap: 10 }}>
