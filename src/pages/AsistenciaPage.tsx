@@ -161,6 +161,16 @@ interface EmpleadoAcumuladoSemanal {
   descansos?: string[];
 }
 
+interface EstadoCandado {
+  aplica_candado: boolean;
+  puede_usar: boolean;
+  hizo_checkin: boolean;
+  es_descanso: boolean;
+  englobado: string | null;
+  ruta_checkin: string | null;
+  fecha: string;
+}
+
 interface DiaCelda {
   horas: number;
   entrada: string | null;
@@ -256,6 +266,9 @@ const VistaEmpleado: React.FC = () => {
   const [cameraReady, setCameraReady] = useState(false);
   const [estadoHoy, setEstadoHoy] = useState<AsistenciaResumen | null>(null);
   const [cargandoEstado, setCargandoEstado] = useState(true);
+  const [candado, setCandado] = useState<EstadoCandado | null>(null);
+  const [cargandoCandado, setCargandoCandado] = useState(true);
+  const [cancelandoDescanso, setCancelandoDescanso] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -266,6 +279,12 @@ const VistaEmpleado: React.FC = () => {
 
   const yaEntro = !!estadoHoy?.entrada;
   const yaSalio = !!estadoHoy?.salida;
+
+  // Hasta no tener las dos respuestas no se pinta nada: evita que aparezca
+  // el CHECK-IN y un instante despues lo tape el aviso de descanso.
+  const cargandoInicial = cargandoEstado || cargandoCandado;
+  // Si estado-hoy falla, candado queda en null y los botones salen normales.
+  const mostrarAvisoDescanso = !!candado?.es_descanso && !yaEntro;
 
   useEffect(() => {
     const t = setInterval(() => setAhora(new Date()), 1000);
@@ -288,6 +307,39 @@ const VistaEmpleado: React.FC = () => {
   }, []);
 
   useEffect(() => { cargarEstadoHoy(); }, [cargarEstadoHoy]);
+
+  const cargarCandado = useCallback(async () => {
+    try {
+      const { data } = await axios.get<EstadoCandado>(
+        `${API}/asistencia/estado-hoy`,
+        { headers: authH() }
+      );
+      setCandado(data);
+    } catch {
+      setCandado(null);
+    } finally {
+      setCargandoCandado(false);
+    }
+  }, []);
+
+  useEffect(() => { cargarCandado(); }, [cargarCandado]);
+
+  const cancelarDescanso = async () => {
+    setCancelandoDescanso(true);
+    try {
+      const { data } = await axios.post<EstadoCandado>(
+        `${API}/asistencia/dia-descanso/cancelar`,
+        {},
+        { headers: authH() }
+      );
+      setCandado(data);
+      setSnack({ msg: "Listo, ya puedes registrar tu entrada", sev: "success" });
+    } catch {
+      setSnack({ msg: "No se pudo cancelar el día de descanso", sev: "error" });
+    } finally {
+      setCancelandoDescanso(false);
+    }
+  };
 
   const cerrarCamara = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -421,6 +473,29 @@ const VistaEmpleado: React.FC = () => {
       </Typography>
 
       {!bloquearCheckIn ? (
+        cargandoInicial ? null : mostrarAvisoDescanso ? (
+        <Paper elevation={2} sx={{ p: 4, mb: 4, bgcolor: "#e0f2fe", border: "2px solid #0284c7", textAlign: "center" }}>
+          <Typography variant="h5" fontWeight={700} sx={{ color: "#0284c7", mb: 1 }}>
+            Hoy marcaste día de descanso
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
+            Si al final sí vas a trabajar, dale al botón para poder registrar tu entrada.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            disabled={cancelandoDescanso}
+            onClick={cancelarDescanso}
+            startIcon={cancelandoDescanso ? <CircularProgress size={18} color="inherit" /> : <AccessTimeIcon />}
+            sx={{
+              py: 2, px: 4, fontSize: 16, fontWeight: 700,
+              bgcolor: "#0284c7", "&:hover": { bgcolor: "#0369a1" },
+            }}
+          >
+            SÍ VOY A TRABAJAR
+          </Button>
+        </Paper>
+        ) : (
         <Box display="flex" gap={2} mb={4}>
           <Button
             variant="contained"
@@ -449,6 +524,7 @@ const VistaEmpleado: React.FC = () => {
             CHECK-OUT (SALIDA)
           </Button>
         </Box>
+        )
       ) : (
         <Paper elevation={2} sx={{ p: 4, mb: 3, bgcolor: "#FFF3E0", border: "2px solid #FF6600", textAlign: "center" }}>
           <Box sx={{ fontSize: 64, mb: 2 }}>📱</Box>
