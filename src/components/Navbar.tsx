@@ -122,7 +122,7 @@ const Navbar = () => {
   const closeMenu = (setFn: any) => setFn(null);
 
   const mostrarAsistencia =
-    ((rolToken === "asesor" || rolToken === "encargado") && modulo && modulo !== "Cadenas") ||
+    (rolToken === "asesor" || rolToken === "encargado") ||
     rolToken === "admin" ||
     rolToken === "direccion";
 
@@ -348,7 +348,7 @@ const Navbar = () => {
                 </>
               )}
 
-              {/* CHECK-IN / CHECK-OUT: asesor/encargado con módulo (no Cadenas) + admin/direccion */}
+              {/* CHECK-IN / CHECK-OUT: asesor/encargado/admin/direccion */}
               {mostrarAsistencia && (
                 <Button sx={navBtnSx} component={Link} to="/asistencia">
                   CHECK-IN / CHECK-OUT
@@ -751,7 +751,7 @@ const Navbar = () => {
             </>
           )}
 
-          {/* ── CHECK-IN / CHECK-OUT (condicional) ─────────────────────────────── */}
+          {/* ── CHECK-IN / CHECK-OUT: asesor/encargado/admin/direccion ────────── */}
           {mostrarAsistencia && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/asistencia")}>
               <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
