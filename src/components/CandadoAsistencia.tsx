@@ -120,7 +120,7 @@ const CandadoAsistencia: React.FC<{ children: React.ReactElement }> = ({ childre
             </p>
 
             <button
-              onClick={() => navigate(estado?.ruta_checkin || "/mi-asistencia")}
+              onClick={() => navigate(estado?.ruta_checkin || "/asistencia")}
               style={{
                 width: "100%",
                 padding: "14px 16px",

@@ -158,6 +158,7 @@ interface EmpleadoAcumuladoSemanal {
   horas_extra: number | null;
   jornada_fija?: number | null;
   sueldo_base?: number | null;
+  descansos?: string[];
 }
 
 interface DiaCelda {
@@ -176,6 +177,7 @@ interface GrupoAcumulado {
   jornada: number | null;
   horas_extra: number | null;
   sueldo_base: number;
+  descansos: string[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1410,6 +1412,7 @@ const TabAcumulado: React.FC = () => {
       sueldos: number[];
       nombre_completo: string;
       diasAgg: Record<string, { horas: number; count: number; entrada: string | null; salida: string | null }>;
+      descansos: Set<string>;
     };
     const map = new Map<string, Acc>();
 
@@ -1424,12 +1427,14 @@ const TabAcumulado: React.FC = () => {
           sueldos: [],
           nombre_completo: f.nombre_completo || f.username,
           diasAgg: {},
+          descansos: new Set<string>(),
         });
       }
       const g = map.get(key)!;
       g.ids.push(f.usuario_id);
       g.jornadas.push(f.jornada_fija ?? 0);
       g.sueldos.push(f.sueldo_base ?? 0);
+      for (const fd of f.descansos ?? []) g.descansos.add(fd);
 
       for (const [dk, dia] of Object.entries(f.dias)) {
         if (!g.diasAgg[dk]) {
@@ -1485,7 +1490,7 @@ const TabAcumulado: React.FC = () => {
 
         const sueldo_base = Math.max(0, ...g.sueldos);
 
-        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base };
+        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos) };
       });
   }, [filas]);
 
@@ -1670,6 +1675,10 @@ const TabAcumulado: React.FC = () => {
                               <Box sx={{ fontSize: 10, color: "#64748b" }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
+                            </Box>
+                          ) : grupo.descansos.includes(diaKey) ? (
+                            <Box sx={{ fontSize: 10, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
+                              DESCANSO
                             </Box>
                           ) : (
                             <Box sx={{ fontSize: 11, color: "#94a3b8" }}>Falta</Box>
