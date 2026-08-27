@@ -690,12 +690,9 @@ const TabRegistros: React.FC = () => {
       );
       const ordenarRegistros = (arr: AsistenciaResumen[]) =>
         [...arr].sort((a, b) => {
-          const modA = a.modulo_nombre ?? "￿";
-          const modB = b.modulo_nombre ?? "￿";
-          if (modA !== modB) return modA.localeCompare(modB);
-          const entA = a.entrada ? new Date(a.entrada).getTime() : Infinity;
-          const entB = b.entrada ? new Date(b.entrada).getTime() : Infinity;
-          if (entA !== entB) return entA - entB;
+          const entA = a.entrada ? new Date(a.entrada).getTime() : -Infinity;
+          const entB = b.entrada ? new Date(b.entrada).getTime() : -Infinity;
+          if (entA !== entB) return entB - entA;
           return (a.username ?? "").localeCompare(b.username ?? "");
         });
       setRegistros(ordenarRegistros(data));
