@@ -53,6 +53,7 @@ import ListaPrecios from './pages/ListaPrecios';
 import VentasTelcel from './pages/VentasTelcel';
 import AltaImeis from './pages/AltaImeis';
 import PantallaTVPage from './pages/PantallaTVPage';
+import CandadoAsistencia from './components/CandadoAsistencia';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -69,7 +70,7 @@ const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children })
   }, [token]);
 
   if (!token || tokenExpirado()) return <Navigate to="/" replace />;
-  return children;
+  return <CandadoAsistencia>{children}</CandadoAsistencia>;
 };
 
 const App: React.FC = () => {
