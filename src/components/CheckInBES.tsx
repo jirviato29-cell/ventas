@@ -212,7 +212,7 @@ const CheckInBES: React.FC = () => {
             {fotoFallo[tipo] ? (
               <Box
                 sx={{
-                  height: 160,
+                  height: 280,
                   mb: 1.5,
                   display: "flex",
                   alignItems: "center",
@@ -241,7 +241,7 @@ const CheckInBES: React.FC = () => {
                   alt={`Captura de ${tipo}`}
                   onError={() => setFotoFallo((prev) => ({ ...prev, [tipo]: true }))}
                   sx={{
-                    height: 160,
+                    height: 280,
                     width: "100%",
                     objectFit: "contain",
                     bgcolor: "#f8fafc",
@@ -322,65 +322,68 @@ const CheckInBES: React.FC = () => {
   };
 
   return (
-    <Paper elevation={2} sx={{ p: 3 }}>
-      <input
-        ref={inputApertura}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={onArchivo("apertura")}
-      />
-      <input
-        ref={inputCierre}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={onArchivo("cierre")}
-      />
-
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+    <>
+      <Typography variant="h5" fontWeight={700} gutterBottom>
         Check In BES
       </Typography>
-      <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-        Sube la pantalla completa de Check In/Out de la app de Telcel, sin recortar.
-      </Typography>
 
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          gap: 2,
-          mb: 2,
-        }}
-      >
-        {tarjeta("apertura")}
-        {tarjeta("cierre")}
-      </Box>
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <input
+          ref={inputApertura}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={onArchivo("apertura")}
+        />
+        <input
+          ref={inputCierre}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={onArchivo("cierre")}
+        />
 
-      {cargando && (
-        <Box display="flex" alignItems="center" gap={1} sx={{ color: "text.secondary" }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2">
-            Leyendo la captura... tarda unos segundos, no cierres la pantalla.
-          </Typography>
-        </Box>
-      )}
+        <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
+          Sube la pantalla completa de Check In/Out de la app de Telcel, sin recortar.
+        </Typography>
 
-      <Snackbar
-        open={!!snack}
-        autoHideDuration={snack?.autoHide === false ? null : 5000}
-        onClose={() => setSnack(null)}
-      >
-        <Alert
-          severity={snack?.sev}
-          variant="filled"
-          onClose={() => setSnack(null)}
-          sx={{ width: "100%", fontSize: 15 }}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
+            mb: 2,
+          }}
         >
-          {snack?.msg}
-        </Alert>
-      </Snackbar>
-    </Paper>
+          {tarjeta("apertura")}
+          {tarjeta("cierre")}
+        </Box>
+
+        {cargando && (
+          <Box display="flex" alignItems="center" gap={1} sx={{ color: "text.secondary" }}>
+            <CircularProgress size={18} />
+            <Typography variant="body2">
+              Leyendo la captura... tarda unos segundos, no cierres la pantalla.
+            </Typography>
+          </Box>
+        )}
+
+        <Snackbar
+          open={!!snack}
+          autoHideDuration={snack?.autoHide === false ? null : 5000}
+          onClose={() => setSnack(null)}
+        >
+          <Alert
+            severity={snack?.sev}
+            variant="filled"
+            onClose={() => setSnack(null)}
+            sx={{ width: "100%", fontSize: 15 }}
+          >
+            {snack?.msg}
+          </Alert>
+          </Snackbar>
+      </Paper>
+    </>
   );
 };
 

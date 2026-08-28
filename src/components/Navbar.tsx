@@ -13,6 +13,7 @@ import InventoryIcon from "@mui/icons-material/Inventory";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
+import PhotoCameraBackIcon from "@mui/icons-material/PhotoCameraBack";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
@@ -125,6 +126,12 @@ const Navbar = () => {
     (rolToken === "asesor" || rolToken === "encargado") ||
     rolToken === "admin" ||
     rolToken === "direccion";
+
+  // Check In BES: solo promotores de Cadenas. Mismo criterio por nombre de
+  // modulo que ya usan los demas gates de este menu.
+  const mostrarCheckInBES =
+    (rolToken === "asesor" || rolToken === "encargado") &&
+    modulo.toLowerCase().includes("cadena");
 
   // Asistencia propia: sin exclusion de modulo, Cadenas tambien la ve.
   const mostrarMiAsistencia =
@@ -352,6 +359,13 @@ const Navbar = () => {
               {mostrarAsistencia && (
                 <Button sx={navBtnSx} component={Link} to="/asistencia">
                   CHECK-IN / CHECK-OUT
+                </Button>
+              )}
+
+              {/* CHECK IN BES: solo promotores de Cadenas */}
+              {mostrarCheckInBES && (
+                <Button sx={navBtnSx} component={Link} to="/check-in-bes">
+                  CHECK IN BES
                 </Button>
               )}
 
@@ -756,6 +770,14 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/asistencia")}>
               <ListItemIcon sx={drawerIconSx}><AccessTimeIcon /></ListItemIcon>
               <ListItemText primary="CHECK-IN / CHECK-OUT" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── CHECK IN BES: solo promotores de Cadenas ──────────────────────── */}
+          {mostrarCheckInBES && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/check-in-bes")}>
+              <ListItemIcon sx={drawerIconSx}><PhotoCameraBackIcon /></ListItemIcon>
+              <ListItemText primary="CHECK IN BES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 

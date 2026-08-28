@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Container, Typography } from '@mui/material';
 import TiraAsistenciaSemana from '../components/TiraAsistenciaSemana';
-import CheckInBES from '../components/CheckInBES';
 
 const MiAsistenciaPage: React.FC = () => {
   return (
@@ -12,12 +11,6 @@ const MiAsistenciaPage: React.FC = () => {
 
       <Box sx={{ mt: 2 }}>
         <TiraAsistenciaSemana />
-      </Box>
-
-      {/* CheckInBES trae su propio Paper y titulo: si no aplica devuelve null
-          y no queda ningun recuadro vacio en la pagina. */}
-      <Box sx={{ mt: 3 }}>
-        <CheckInBES />
       </Box>
     </Container>
   );
