@@ -38,13 +38,6 @@ const nombreDia = (fechaISO: string) => {
 // Solo fecha "DD/MM" reutilizando el helper existente (parte tras el espacio).
 const soloFecha = (iso: string) => nombreDia(iso).split(" ")[1];
 
-const formatDuracion = (minutos: number | null) => {
-  if (minutos == null) return "—";
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  return `${h}h ${m}m`;
-};
-
 interface Props {
   /** Cambia el valor para forzar una recarga desde el padre. */
   recargar?: number;
@@ -139,7 +132,7 @@ export default function SemanaBES({ recargar = 0 }: Props) {
               estado === "ok" ? "#bbf7d0" : estado === "bad" ? "#fecaca" : estado === "today" ? "#fed7aa" : "transparent";
             const ckBg =
               estado === "ok" ? "#16a34a" : estado === "bad" ? "#dc2626" : estado === "today" ? "#FF6600" : "#e2e8f0";
-            const durColor =
+            const hrsColor =
               estado === "ok" ? "#16a34a" : estado === "bad" ? "#dc2626" : estado === "today" ? "#0f172a" : "#cbd5e1";
             const dnameColor = estado === "pending" ? "#64748b" : "#0f172a";
 
@@ -183,7 +176,7 @@ export default function SemanaBES({ recargar = 0 }: Props) {
                   </Typography>
                   {estado === "today" && !algo && (
                     <Typography sx={{ fontFamily: FONT, display: "block", fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>
-                      Aún sin subir
+                      Falta tu captura BES
                     </Typography>
                   )}
                 </Box>
@@ -208,9 +201,9 @@ export default function SemanaBES({ recargar = 0 }: Props) {
                   </Typography>
                 </Box>
 
-                {/* duración */}
-                <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums", minWidth: 56, textAlign: "right", color: durColor }}>
-                  {formatDuracion(d.duracion_minutos)}
+                {/* horas */}
+                <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums", minWidth: 46, textAlign: "right", color: hrsColor }}>
+                  {d.duracion_minutos != null ? (d.duracion_minutos / 60).toFixed(2) : "—"}
                 </Typography>
               </Box>
             );
