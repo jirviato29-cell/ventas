@@ -19,6 +19,7 @@ interface DiaBES {
   hora_entrada: string | null;
   hora_salida: string | null;
   duracion_minutos: number | null;
+  cumple: boolean | null;
 }
 
 interface SemanaBESData {
@@ -116,18 +117,21 @@ export default function SemanaBES({ recargar = 0 }: Props) {
           {data.dias.map((d) => {
             const esHoy = d.fecha === data.hoy;
             const esFuturo = d.fecha > data.hoy;
-            const completo = d.apertura && d.cierre;
+            const tieneDatos = d.hora_entrada != null || d.hora_salida != null;
+            // Si todavia no subio la captura BES de hoy se le recuerda,
+            // aunque el dia ya tenga datos capturados en ZEliCheck.
             const algo = d.apertura || d.cierre;
-            // HOY manda sobre todo.
-            const estado: "today" | "pending" | "ok" | "bad" = esHoy
-              ? "today"
-              : esFuturo
-              ? "pending"
-              : completo
-              ? "ok"
-              : algo
-              ? "bad"
-              : "pending";
+            // HOY manda sobre todo. Despues manda cumple, no el origen del
+            // dato: un dia capturado a mano vale igual que uno con foto.
+            // cumple null CON datos = entrada sin salida en dia pasado,
+            // o sea un dia perdido, va en rojo.
+            const estado: "today" | "pending" | "ok" | "bad" =
+                esHoy                ? "today"
+              : esFuturo             ? "pending"
+              : d.cumple === true    ? "ok"
+              : d.cumple === false   ? "bad"
+              : tieneDatos           ? "bad"
+              :                        "pending";
 
             const rowBg =
               estado === "ok" ? "#f0fdf6" : estado === "bad" ? "#fef5f5" : estado === "today" ? "#fff7ed" : "transparent";
