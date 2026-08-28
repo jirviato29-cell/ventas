@@ -242,7 +242,6 @@ tr:hover td{background:#F5F8FC;}
       <h2 style="margin:0;">Acumulado semanal</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <div class="sem-sel"><label style="margin:0;">Ciclo:</label><select id="sel-sem" onchange="cargarSem()"></select></div>
-        <button class="btn btn-gris btn-sm" onclick="resetSem()">Nueva semana</button>
         <button class="btn btn-azul btn-sm" onclick="cerrarSemana()">Cerrar y congelar semana</button>
       </div>
     </div>
@@ -700,7 +699,6 @@ return`<td><span class="tci">${r.entrada}</span>${co}${hLabel}</td>`;
   html+='</tbody>';
   document.getElementById('tbl-sem').innerHTML=html;
 }
-async function resetSem(){if(!confirm('¿Nueva semana?'))return;await fetch(API_CHECK+'/semana/reset',{method:'POST',headers:HDRS_CHECK});await cargarTodo();}
 
 function calcDatos(semVal){
   const dias=dSem(semVal);
