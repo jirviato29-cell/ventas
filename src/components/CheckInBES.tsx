@@ -12,6 +12,8 @@ import PhotoCameraBackIcon from "@mui/icons-material/PhotoCameraBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import axios from "axios";
 
+import SemanaBES from "./SemanaBES";
+
 const API = "https://ato-appservidor-nvxt.onrender.com";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
@@ -88,10 +90,15 @@ const CheckInBES: React.FC = () => {
     { msg: string; sev: "success" | "error" | "warning"; autoHide?: boolean } | null
   >(null);
 
+  // Cada corrida de cargarCapturas() incrementa este contador y SemanaBES,
+  // que lo tiene como dependencia de su useEffect, vuelve a pedir la semana.
+  const [recargaSemana, setRecargaSemana] = useState(0);
+
   const inputApertura = useRef<HTMLInputElement>(null);
   const inputCierre = useRef<HTMLInputElement>(null);
 
   const cargarCapturas = useCallback(async () => {
+    setRecargaSemana((n) => n + 1);
     try {
       const { data } = await axios.get<MisCapturas>(
         `${API}/capturas-telcel/mis-capturas`,
@@ -357,6 +364,10 @@ const CheckInBES: React.FC = () => {
         >
           {tarjeta("apertura")}
           {tarjeta("cierre")}
+        </Box>
+
+        <Box sx={{ mt: 3 }}>
+          <SemanaBES recargar={recargaSemana} />
         </Box>
 
         {cargando && (
