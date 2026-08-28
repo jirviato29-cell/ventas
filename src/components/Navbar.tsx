@@ -14,6 +14,7 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
 import PhotoCameraBackIcon from "@mui/icons-material/PhotoCameraBack";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
@@ -385,6 +386,13 @@ const Navbar = () => {
               {rolToken === "direccion" && (
                 <Button sx={navBtnSx} component={Link} to="/reportes-director">
                   REPORTE DIARIO
+                </Button>
+              )}
+
+              {/* CONTROL BES: solo admin y direccion */}
+              {(rolToken === "admin" || rolToken === "direccion") && (
+                <Button sx={navBtnSx} component={Link} to="/control-bes">
+                  CONTROL BES
                 </Button>
               )}
 
@@ -803,6 +811,14 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/reportes-director")}>
               <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
               <ListItemText primary="REPORTE DIARIO" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── CONTROL BES: solo admin y direccion ───────────────────────────── */}
+          {(rolToken === "admin" || rolToken === "direccion") && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/control-bes")}>
+              <ListItemIcon sx={drawerIconSx}><FactCheckIcon /></ListItemIcon>
+              <ListItemText primary="CONTROL BES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
