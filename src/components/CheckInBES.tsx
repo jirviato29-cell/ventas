@@ -212,7 +212,7 @@ const CheckInBES: React.FC = () => {
             {fotoFallo[tipo] ? (
               <Box
                 sx={{
-                  height: 90,
+                  height: 160,
                   mb: 1.5,
                   display: "flex",
                   alignItems: "center",
@@ -241,9 +241,10 @@ const CheckInBES: React.FC = () => {
                   alt={`Captura de ${tipo}`}
                   onError={() => setFotoFallo((prev) => ({ ...prev, [tipo]: true }))}
                   sx={{
-                    height: 90,
+                    height: 160,
                     width: "100%",
-                    objectFit: "cover",
+                    objectFit: "contain",
+                    bgcolor: "#f8fafc",
                     borderRadius: 1,
                     border: "1px solid",
                     borderColor: "divider",
