@@ -231,6 +231,8 @@ const FormularioVentaMultiple = () => {
   const [tadDevice, setTadDevice] = useState('');
   const [imei, setImei] = useState('');
   const [iccid, setIccid] = useState('');
+  const [curp, setCurp] = useState('');
+  const [nip, setNip] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
 
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
@@ -682,17 +684,21 @@ const FormularioVentaMultiple = () => {
         {
           tipo_chip: tipoChip,
           numero_telefono: esPayJoy ? tadDevice : numero,
-          monto_recarga: esPayJoy ? 0 : parseFloat(recarga),
+          monto_recarga: (esPayJoy || tipoChip === 'Portabilidad') ? 0 : parseFloat(recarga),
           telefono_cliente: telefono || null,
           cvip: esPayJoy ? false : cvip,
           imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
-          iccid: tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null,
+          iccid: tipoChip === 'Portabilidad'
+            ? (iccid || null)
+            : (tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null),
+          curp: tipoChip === 'Portabilidad' ? (curp || null) : null,
+          nip: tipoChip === 'Portabilidad' ? (nip || null) : null,
           cambio_chip: tipoChip === 'Boletin 63' ? cambioChip : false,
         },
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
-      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false);
+      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip('');
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
@@ -1147,7 +1153,7 @@ const FormularioVentaMultiple = () => {
       {/* ── Chip ── */}
       {(esCadenas || tipoVenta === 'chip') && (
         <>
-          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); }} fullWidth size="small" margin="dense">
+          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); }} fullWidth size="small" margin="dense">
             {(rol === null
               ? []
               : esCadenas
@@ -1178,7 +1184,25 @@ const FormularioVentaMultiple = () => {
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
               />
-              <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
+              {tipoChip !== 'Portabilidad' && (
+                <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
+              )}
+              {tipoChip === 'Portabilidad' && (
+                <>
+                  <TextField
+                    label="CURP" value={curp} fullWidth size="small" margin="dense"
+                    onChange={(e) => setCurp(e.target.value)}
+                  />
+                  <TextField
+                    label="ICCID" value={iccid} fullWidth size="small" margin="dense"
+                    onChange={(e) => setIccid(e.target.value)}
+                  />
+                  <TextField
+                    label="NIP" value={nip} fullWidth size="small" margin="dense"
+                    onChange={(e) => setNip(e.target.value)}
+                  />
+                </>
+              )}
                 {tipoChip === 'Boletin 63' && (
                   <>
                     <TextField
@@ -1215,7 +1239,13 @@ const FormularioVentaMultiple = () => {
           )}
           <Button
             variant="contained" fullWidth onClick={handleSubmit}
-            disabled={registrando || !tipoChip || (tipoChip === 'Tarjetas PayJoy' ? !tadDevice : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei)))}
+            disabled={registrando || !tipoChip || (
+              tipoChip === 'Tarjetas PayJoy'
+                ? !tadDevice
+                : tipoChip === 'Portabilidad'
+                  ? (!numero || !curp || !iccid || !nip || numeroDuplicado || verificandoNumero)
+                  : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei))
+            )}
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
         </>
