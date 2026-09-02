@@ -1169,7 +1169,7 @@ const FormularioVentaMultiple = () => {
             <>
               <TextField
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
-                required={tipoChip === 'Boletin 63'}
+                required={tipoChip === 'Boletin 63' || tipoChip === 'Portabilidad'}
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
                 error={numeroDuplicado || (tipoChip === 'Boletin 63' && !numero.trim())}
@@ -1190,15 +1190,15 @@ const FormularioVentaMultiple = () => {
               {tipoChip === 'Portabilidad' && (
                 <>
                   <TextField
-                    label="CURP" value={curp} fullWidth size="small" margin="dense"
+                    required label="CURP" value={curp} fullWidth size="small" margin="dense"
                     onChange={(e) => setCurp(e.target.value)}
                   />
                   <TextField
-                    label="ICCID" value={iccid} fullWidth size="small" margin="dense"
+                    required label="ICCID" value={iccid} fullWidth size="small" margin="dense"
                     onChange={(e) => setIccid(e.target.value)}
                   />
                   <TextField
-                    label="NIP" value={nip} fullWidth size="small" margin="dense"
+                    required label="NIP" value={nip} fullWidth size="small" margin="dense"
                     onChange={(e) => setNip(e.target.value)}
                   />
                 </>
