@@ -198,6 +198,7 @@ const ConteosFisicos = () => {
   const [resumenImei, setResumenImei]           = useState<ResumenImei | null>(null);
   const [cargandoResumen, setCargandoResumen]   = useState(false);
   const [errorResumen, setErrorResumen]         = useState<string | null>(null);
+  const [confirmBaja, setConfirmBaja]           = useState(false);
 
   // Kardex modal
   const [kardexOpen, setKardexOpen]       = useState(false);
@@ -361,7 +362,7 @@ const ConteosFisicos = () => {
     } finally { setCargandoResumen(false); }
   };
 
-  const ejecutarAplicar = async (conteoCompleto: boolean) => {
+  const ejecutarAplicar = async (conteoCompleto: boolean, darDeBajaFaltantes: boolean = false) => {
     if (!preview || (!archivo && modoCaptura === "excel")) return;
     setConfirmAplicar(false);
     setAplicando(true);
@@ -382,6 +383,7 @@ const ConteosFisicos = () => {
         imeis: imeisEscaneados,
         // Sólo true si el usuario declaró el pistoleo COMPLETO en el diálogo.
         conteo_imei_completo: conteoCompleto,
+        dar_de_baja_faltantes: darDeBajaFaltantes,
       };
       const r = await axios.post(`${BASE}/conteos-fisicos/aplicar`, body, config);
       const d = r.data;
@@ -1898,12 +1900,42 @@ const ConteosFisicos = () => {
             variant="outlined"
             color="error"
             disabled={aplicando || cargandoResumen || Boolean(errorResumen)}
-            onClick={() => ejecutarAplicar(true)}
+            onClick={() => { setConfirmAplicar(false); setConfirmBaja(true); }}
           >
             Conteo completo
           </Button>
           <Button onClick={() => setConfirmAplicar(false)} disabled={aplicando}>
             Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmBaja} onClose={() => setConfirmBaja(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Dar de baja los equipos no encontrados</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Declaraste que el pistoleo del modulo esta COMPLETO.
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Los equipos con IMEI que no se hayan pistoleado se daran de baja del
+            modulo. Quedaran marcados con folio AJUSTE y se pueden revertir despues
+            si aparecen.
+          </Typography>
+          <Typography variant="body2" color="error">
+            Si no pistoleaste TODO el modulo, cancela: se darian de baja equipos
+            que si estan fisicamente.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmBaja(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={() => { setConfirmBaja(false); ejecutarAplicar(true, false); }}>
+            Aplicar sin dar de baja
+          </Button>
+          <Button variant="contained" color="error"
+            onClick={() => { setConfirmBaja(false); ejecutarAplicar(true, true); }}>
+            Confirmar baja
           </Button>
         </DialogActions>
       </Dialog>
