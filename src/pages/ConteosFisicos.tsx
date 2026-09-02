@@ -165,6 +165,10 @@ const ConteosFisicos = () => {
   const [modalDetalle, setModalDetalle] = useState(false);
   const [cargandoDet, setCargandoDet] = useState(false);
   const [soloDescuadres, setSoloDescuadres] = useState(false);
+  // Alta de IMEIs sin clave desde el detalle del conteo
+  const [claveAlta, setClaveAlta] = useState<Record<string, any>>({});
+  const [guardandoAlta, setGuardandoAlta] = useState<string | null>(null);
+  const [altaOk, setAltaOk] = useState<string[]>([]);
 
   // Revertir
   const [confirmFolio, setConfirmFolio]   = useState<string | null>(null);
@@ -224,13 +228,13 @@ const ConteosFisicos = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (modoCaptura !== "manual" || catalogoGeneral.length > 0) return;
+    if ((modoCaptura !== "manual" && !modalDetalle) || catalogoGeneral.length > 0) return;
     setCargandoCatalogo(true);
     axios.get(`${BASE}/inventario/inventario/general`, config)
       .then(r => setCatalogoGeneral(r.data))
       .catch(() => {})
       .finally(() => setCargandoCatalogo(false));
-  }, [modoCaptura]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modoCaptura, modalDetalle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // El resultado de /imei/validar depende del módulo destino: si cambia el
   // módulo, lo escaneado antes deja de ser válido y se descarta. Las filas que
@@ -430,6 +434,33 @@ const ConteosFisicos = () => {
       setDetalle(r.data);
     } catch { setDetalle(null); }
     finally { setCargandoDet(false); }
+  };
+
+  // El detalle del backend trae el nombre del modulo, no su id; alta-individual
+  // exige modulo_id, asi que se resuelve contra la lista de modulos ya cargada.
+  const darDeAltaImei = async (imei: string) => {
+    const prod = claveAlta[imei];
+    if (!prod || !detalle) return;
+    const moduloIdDetalle = modulos.find(m => m.nombre === detalle.modulo)?.id;
+    if (!moduloIdDetalle) {
+      alert(`No se pudo identificar el modulo "${detalle.modulo}" del conteo.`);
+      return;
+    }
+    setGuardandoAlta(imei);
+    try {
+      await axios.post(`${BASE}/equipos_telcel/alta-individual`, {
+        imei: imei,
+        clave: prod.clave,
+        producto: prod.producto,
+        modulo_id: moduloIdDetalle,
+        folio: `ALTA-${detalle.folio}`,
+      }, config);
+      setAltaOk(prev => [...prev, imei]);
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "No se pudo dar de alta el IMEI");
+    } finally {
+      setGuardandoAlta(null);
+    }
   };
 
   const handleRevertir = async () => {
@@ -1568,10 +1599,47 @@ const ConteosFisicos = () => {
                 </Button>
               </Box>
               {!!detalle.imeis_sin_clave?.length && (
-                <Alert severity="warning" sx={{ mb: 1, fontSize: 12 }}>
-                  {detalle.imeis_sin_clave.length} IMEI(s) escaneados no están dados
-                  de alta en el sistema: {detalle.imeis_sin_clave.join(", ")}
-                </Alert>
+                <Box sx={{ mb: 2 }}>
+                  <Alert severity="warning" sx={{ mb: 1, fontSize: 12 }}>
+                    {detalle.imeis_sin_clave.length} IMEI(s) escaneados no están dados
+                    de alta en el sistema. Asigna la clave de cada uno y guárdalo.
+                  </Alert>
+                  {detalle.imeis_sin_clave.map(imei => (
+                    altaOk.includes(imei) ? (
+                      <Box key={imei} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                        <CheckCircle sx={{ fontSize: 15, color: "#16a34a" }} />
+                        <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{imei}</Typography>
+                        <Typography sx={{ fontSize: 12, color: "#16a34a" }}>dado de alta</Typography>
+                      </Box>
+                    ) : (
+                      <Box key={imei} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, flexWrap: "wrap" }}>
+                        <Typography sx={{ fontSize: 13, fontWeight: 700, minWidth: 130 }}>{imei}</Typography>
+                        <Autocomplete
+                          size="small"
+                          options={catalogoGeneral}
+                          loading={cargandoCatalogo}
+                          value={claveAlta[imei] ?? null}
+                          onChange={(_, v) => setClaveAlta(prev => ({ ...prev, [imei]: v }))}
+                          getOptionLabel={o => `${o.clave} — ${o.producto}`}
+                          isOptionEqualToValue={(o, v) => o.clave === v.clave}
+                          sx={{ minWidth: 300, flexGrow: 1 }}
+                          renderInput={params => (
+                            <TextField {...params} size="small" label="Clave / producto" />
+                          )}
+                        />
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={!claveAlta[imei] || guardandoAlta === imei}
+                          onClick={() => darDeAltaImei(imei)}
+                          sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" }, fontSize: 11 }}
+                        >
+                          {guardandoAlta === imei ? "Guardando…" : "Guardar"}
+                        </Button>
+                      </Box>
+                    )
+                  ))}
+                </Box>
               )}
               <TableContainer>
                 <Table size="small">
