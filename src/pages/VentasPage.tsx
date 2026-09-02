@@ -125,6 +125,8 @@ const CHIP_OPCIONES_POR_CADENA: Record<string, typeof CHIP_OPCIONES_TODAS> = {
   WALMART:  CHIP_OPCIONES_OTRAS_CADENAS,
 };
 
+const TIPOS_CON_CURP_NIP = ['Portabilidad', 'Porta Otras cadenas'];
+
 interface ComisionChip { tipo: string; comision: string; nota?: string; }
 
 const COMISIONES_EKT: ComisionChip[] = [
@@ -684,15 +686,15 @@ const FormularioVentaMultiple = () => {
         {
           tipo_chip: tipoChip,
           numero_telefono: esPayJoy ? tadDevice : numero,
-          monto_recarga: (esPayJoy || tipoChip === 'Portabilidad') ? 0 : parseFloat(recarga),
+          monto_recarga: (esPayJoy || TIPOS_CON_CURP_NIP.includes(tipoChip)) ? 0 : parseFloat(recarga),
           telefono_cliente: telefono || null,
           cvip: esPayJoy ? false : cvip,
           imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
-          iccid: tipoChip === 'Portabilidad'
+          iccid: TIPOS_CON_CURP_NIP.includes(tipoChip)
             ? (iccid || null)
             : (tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null),
-          curp: tipoChip === 'Portabilidad' ? (curp || null) : null,
-          nip: tipoChip === 'Portabilidad' ? (nip || null) : null,
+          curp: TIPOS_CON_CURP_NIP.includes(tipoChip) ? (curp || null) : null,
+          nip: TIPOS_CON_CURP_NIP.includes(tipoChip) ? (nip || null) : null,
           cambio_chip: tipoChip === 'Boletin 63' ? cambioChip : false,
         },
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
@@ -1169,7 +1171,7 @@ const FormularioVentaMultiple = () => {
             <>
               <TextField
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
-                required={tipoChip === 'Boletin 63' || tipoChip === 'Portabilidad'}
+                required={tipoChip === 'Boletin 63' || TIPOS_CON_CURP_NIP.includes(tipoChip)}
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
                 error={numeroDuplicado || (tipoChip === 'Boletin 63' && !numero.trim())}
@@ -1184,10 +1186,10 @@ const FormularioVentaMultiple = () => {
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
               />
-              {tipoChip !== 'Portabilidad' && (
+              {!TIPOS_CON_CURP_NIP.includes(tipoChip) && (
                 <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
               )}
-              {tipoChip === 'Portabilidad' && (
+              {TIPOS_CON_CURP_NIP.includes(tipoChip) && (
                 <>
                   <TextField
                     required label="CURP" value={curp} fullWidth size="small" margin="dense"
@@ -1242,7 +1244,7 @@ const FormularioVentaMultiple = () => {
             disabled={registrando || !tipoChip || (
               tipoChip === 'Tarjetas PayJoy'
                 ? !tadDevice
-                : tipoChip === 'Portabilidad'
+                : TIPOS_CON_CURP_NIP.includes(tipoChip)
                   ? (!numero || !curp || !iccid || !nip || numeroDuplicado || verificandoNumero)
                   : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei))
             )}
