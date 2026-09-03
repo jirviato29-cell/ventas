@@ -396,6 +396,13 @@ const Navbar = () => {
                 </Button>
               )}
 
+              {/* PORTABILIDADES: solo admin y direccion */}
+              {(rolToken === "admin" || rolToken === "direccion") && (
+                <Button sx={navBtnSx} component={Link} to="/portabilidades">
+                  PORTABILIDADES
+                </Button>
+              )}
+
               {!modulo.toLowerCase().includes("cadena") && (
                 <Button sx={navBtnSx} component={Link} to="/lista-precios">
                   LISTA DE PRECIOS
@@ -819,6 +826,14 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/control-bes")}>
               <ListItemIcon sx={drawerIconSx}><FactCheckIcon /></ListItemIcon>
               <ListItemText primary="CONTROL BES" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── PORTABILIDADES: solo admin y direccion ────────────────────────── */}
+          {(rolToken === "admin" || rolToken === "direccion") && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/portabilidades")}>
+              <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
+              <ListItemText primary="PORTABILIDADES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
