@@ -191,6 +191,10 @@ const ConteosFisicos = () => {
   const [validandoImei, setValidandoImei]       = useState(false);
   const [avisoImei, setAvisoImei]               = useState<string | null>(null);
   const [confirmAlta, setConfirmAlta]           = useState<ValidarImeiResponse | null>(null);
+  // Alta express desde el diálogo de confirmAlta: clave elegida para el IMEI
+  // que el sistema no conoce, para no perder el escaneo.
+  const [claveAltaRapida, setClaveAltaRapida]   = useState<any>(null);
+  const [guardandoAltaRapida, setGuardandoAltaRapida] = useState(false);
   // Candidato IMEI para el texto tecleado ahora mismo (null = el backend no
   // reconoció nada). Convive con los resultados del catálogo, no los sustituye.
   const [imeiOpcion, setImeiOpcion]             = useState<ValidarImeiResponse | null>(null);
@@ -602,12 +606,47 @@ const ConteosFisicos = () => {
     if (!confirmAlta) return;
     const resp = confirmAlta;
     setConfirmAlta(null);
+    setClaveAltaRapida(null);
     registrarImei(resp);
   };
 
   const handleCancelarAlta = () => {
     setConfirmAlta(null);
+    setClaveAltaRapida(null);
     limpiarBusqueda();
+  };
+
+  // Da de alta el IMEI en equipos_telcel con la clave elegida y lo captura ya
+  // resuelto, para que sume unidades en vez de quedar como pendiente de alta.
+  const darDeAltaYCapturar = async () => {
+    if (!confirmAlta || !claveAltaRapida) return;
+    const moduloIdActual = moduloId;
+    if (!moduloIdActual) {
+      alert("No se pudo determinar el modulo destino");
+      return;
+    }
+    setGuardandoAltaRapida(true);
+    try {
+      await axios.post(`${BASE}/equipos_telcel/alta-individual`, {
+        imei: confirmAlta.imei,
+        clave: claveAltaRapida.clave,
+        producto: claveAltaRapida.producto,
+        modulo_id: moduloIdActual,
+      }, config);
+      registrarImei({
+        ...confirmAlta,
+        resultado: "ok",
+        clave: claveAltaRapida.clave,
+        producto: claveAltaRapida.producto,
+      });
+      setConfirmAlta(null);
+      setClaveAltaRapida(null);
+      limpiarBusqueda();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "No se pudo dar de alta el IMEI");
+    } finally {
+      setGuardandoAltaRapida(false);
+    }
   };
 
   const handleAgregarFila = () => {
@@ -2008,7 +2047,14 @@ const ConteosFisicos = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(confirmAlta)} onClose={handleCancelarAlta}>
+      <Dialog
+        open={Boolean(confirmAlta)}
+        maxWidth="sm"
+        fullWidth
+        onClose={(_, reason) => {
+          if (reason !== "backdropClick" && reason !== "escapeKeyDown") handleCancelarAlta();
+        }}
+      >
         <DialogTitle sx={{ fontWeight: 700 }}>IMEI no dado de alta</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -2019,8 +2065,33 @@ const ConteosFisicos = () => {
             <strong> no suma unidades a ninguna clave</strong> porque el sistema no sabe qué
             equipo es. ¿Capturarlo de todos modos?
           </DialogContentText>
+          <DialogContentText sx={{ mt: 2, fontSize: 13 }}>
+            O dale de alta aquí mismo: elige la clave del equipo y se registrará en
+            equipos Telcel antes de capturarlo, para que sí sume unidades.
+          </DialogContentText>
+          <Autocomplete
+            size="small"
+            options={catalogoGeneral}
+            loading={cargandoCatalogo}
+            value={claveAltaRapida}
+            onChange={(_, v) => setClaveAltaRapida(v)}
+            getOptionLabel={o => `${o.clave} — ${o.producto}`}
+            isOptionEqualToValue={(o, v) => o.clave === v.clave}
+            sx={{ mt: 2 }}
+            renderInput={params => (
+              <TextField {...params} size="small" label="Clave / producto" />
+            )}
+          />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={!claveAltaRapida || guardandoAltaRapida}
+            onClick={darDeAltaYCapturar}
+          >
+            {guardandoAltaRapida ? "Dando de alta…" : "DAR DE ALTA Y CAPTURAR"}
+          </Button>
           <Button onClick={handleCancelarAlta}>Cancelar</Button>
           <Button variant="contained" onClick={handleConfirmarAlta}
             sx={{ bgcolor: "#f97316", "&:hover": { bgcolor: "#ea6c10" } }}>
