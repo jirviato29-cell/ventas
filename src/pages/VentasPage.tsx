@@ -125,7 +125,11 @@ const CHIP_OPCIONES_POR_CADENA: Record<string, typeof CHIP_OPCIONES_TODAS> = {
   WALMART:  CHIP_OPCIONES_OTRAS_CADENAS,
 };
 
-const TIPOS_CON_CURP_NIP = ['Portabilidad', 'Porta Otras cadenas'];
+// Cadenas: captura CURP/ICCID/NIP al vender, el tramite se sigue despues.
+const TIPOS_CON_CURP_NIP = ['Porta Otras cadenas'];
+// Modulos: el asesor registra la venta cuando el tramite YA se hizo, asi que
+// en vez de esos datos captura la fecha en que se realizo.
+const TIPOS_CON_FECHA_PORTA = ['Portabilidad'];
 
 interface ComisionChip { tipo: string; comision: string; nota?: string; }
 
@@ -235,6 +239,7 @@ const FormularioVentaMultiple = () => {
   const [iccid, setIccid] = useState('');
   const [curp, setCurp] = useState('');
   const [nip, setNip] = useState('');
+  const [fechaPorta, setFechaPorta] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
 
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
@@ -686,7 +691,7 @@ const FormularioVentaMultiple = () => {
         {
           tipo_chip: tipoChip,
           numero_telefono: esPayJoy ? tadDevice : numero,
-          monto_recarga: (esPayJoy || TIPOS_CON_CURP_NIP.includes(tipoChip)) ? 0 : parseFloat(recarga),
+          monto_recarga: (esPayJoy || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)) ? 0 : parseFloat(recarga),
           telefono_cliente: telefono || null,
           cvip: esPayJoy ? false : cvip,
           imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
@@ -695,12 +700,15 @@ const FormularioVentaMultiple = () => {
             : (tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null),
           curp: TIPOS_CON_CURP_NIP.includes(tipoChip) ? (curp || null) : null,
           nip: TIPOS_CON_CURP_NIP.includes(tipoChip) ? (nip || null) : null,
+          // El input type="date" ya entrega YYYY-MM-DD: se manda tal cual, sin
+          // pasar por Date, que desplazaria el dia por zona horaria.
+          fecha_portabilidad: TIPOS_CON_FECHA_PORTA.includes(tipoChip) ? (fechaPorta || null) : null,
           cambio_chip: tipoChip === 'Boletin 63' ? cambioChip : false,
         },
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
-      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip('');
+      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
@@ -1155,7 +1163,7 @@ const FormularioVentaMultiple = () => {
       {/* ── Chip ── */}
       {(esCadenas || tipoVenta === 'chip') && (
         <>
-          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); }} fullWidth size="small" margin="dense">
+          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); setFechaPorta(''); }} fullWidth size="small" margin="dense">
             {(rol === null
               ? []
               : esCadenas
@@ -1171,7 +1179,7 @@ const FormularioVentaMultiple = () => {
             <>
               <TextField
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
-                required={tipoChip === 'Boletin 63' || TIPOS_CON_CURP_NIP.includes(tipoChip)}
+                required={tipoChip === 'Boletin 63' || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)}
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
                 error={numeroDuplicado || (tipoChip === 'Boletin 63' && !numero.trim())}
@@ -1186,7 +1194,15 @@ const FormularioVentaMultiple = () => {
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
               />
-              {!TIPOS_CON_CURP_NIP.includes(tipoChip) && (
+              {TIPOS_CON_FECHA_PORTA.includes(tipoChip) && (
+                <TextField
+                  required label="Fecha de la portabilidad" type="date"
+                  value={fechaPorta} fullWidth size="small" margin="dense"
+                  InputLabelProps={{ shrink: true }}
+                  onChange={(e) => setFechaPorta(e.target.value)}
+                />
+              )}
+              {!(TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)) && (
                 <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
               )}
               {TIPOS_CON_CURP_NIP.includes(tipoChip) && (
@@ -1246,7 +1262,9 @@ const FormularioVentaMultiple = () => {
                 ? !tadDevice
                 : TIPOS_CON_CURP_NIP.includes(tipoChip)
                   ? (!numero || !curp || !iccid || !nip || numeroDuplicado || verificandoNumero)
-                  : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei))
+                  : TIPOS_CON_FECHA_PORTA.includes(tipoChip)
+                    ? (!numero || !fechaPorta || numeroDuplicado || verificandoNumero)
+                    : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei))
             )}
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
