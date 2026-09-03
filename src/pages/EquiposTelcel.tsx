@@ -287,6 +287,10 @@ const EquiposTelcel = () => {
 
   const equiposVisibles = equiposSinVendidos
     .filter(eq => {
+      // Al filtrar por vendido, lo que ya tiene palomita de ARL esta capturado
+      // y no necesita seguir a la vista: solo estorba para hallar lo pendiente.
+      // Va primero porque es la condicion que mas descarta.
+      if (esVendido && eq.cumple_arl) return false;
       if (fActivacion && obtenerEstado(eq) !== fActivacion) return false;
       if (fTipo && tipoEquipo(eq.producto) !== fTipo) return false;
       if (fModulo && String(eq.modulo_id) !== fModulo) return false;
