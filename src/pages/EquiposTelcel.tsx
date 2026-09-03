@@ -120,6 +120,12 @@ const EquiposTelcel = () => {
     );
   }, [equipos, fEstatus]);
 
+  // Con el filtro en "Vendido" sobran Estatus (ya se sabe) y Fecha surtido (no
+  // interesa ahi), y su lugar lo ocupa Vendedor: queda donde el ojo buscaba el
+  // estatus. Por eso la tabla pasa de 13 a 12 columnas.
+  const esVendido = fEstatus === "vendido";
+  const numColumnas = esVendido ? 12 : 13;
+
   const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
@@ -447,8 +453,14 @@ const EquiposTelcel = () => {
                 <TableCell>Producto</TableCell>
                 <TableCell>Tipo</TableCell>
                 <TableCell>Módulo</TableCell>
-                <TableCell>Estatus</TableCell>
-                <TableCell>Fecha surtido</TableCell>
+                {esVendido ? (
+                  <TableCell>Vendedor</TableCell>
+                ) : (
+                  <>
+                    <TableCell>Estatus</TableCell>
+                    <TableCell>Fecha surtido</TableCell>
+                  </>
+                )}
                 <TableCell>Fecha venta</TableCell>
                 <TableCell>Activación</TableCell>
                 <TableCell>Fecha activación</TableCell>
@@ -461,13 +473,13 @@ const EquiposTelcel = () => {
             <TableBody>
               {cargando ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={numColumnas} align="center">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : equiposVisibles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={numColumnas} align="center">
                     Sin resultados
                   </TableCell>
                 </TableRow>
@@ -516,8 +528,14 @@ const EquiposTelcel = () => {
                         </Box>
                       </TableCell>
                       <TableCell>{eq.modulo_nombre || "—"}</TableCell>
-                      <TableCell>{eq.estatus}</TableCell>
-                      <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
+                      {esVendido ? (
+                        <TableCell>{eq.vendedor || "—"}</TableCell>
+                      ) : (
+                        <>
+                          <TableCell>{eq.estatus}</TableCell>
+                          <TableCell>{eq.fecha_salida ? String(eq.fecha_salida).split(' ')[0] : "—"}</TableCell>
+                        </>
+                      )}
                       <TableCell>{eq.fecha_venta ? String(eq.fecha_venta).split(' ')[0] : "—"}</TableCell>
                       <TableCell>
                         {(() => {
