@@ -46,6 +46,17 @@ interface PlanTarifario {
 const nil = (v: string | number | null | undefined): string =>
   v === null || v === undefined || v === "" ? "-" : String(v);
 
+const NOMBRES_MES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO",
+  "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+
+interface GrupoMes {
+  clave: string;
+  anio: number;
+  mes: number;
+  titulo: string;
+  lista: PlanTarifario[];
+}
+
 // Mes de corte: el ULTIMO dia de cada mes cuenta para el mes SIGUIENTE.
 // 29/jun -> junio; 30/jun (ultimo de junio) -> julio; 31/jul -> agosto, etc.
 // Devuelve null si la fecha es nula o no parseable.
@@ -78,19 +89,36 @@ const PlanesAdmin = () => {
   const [editPlan, setEditPlan] = useState<PlanTarifario | null>(null);
   const [guardando, setGuardando] = useState(false);
 
-  // Agrupa por mes de corte. Esta vista muestra JUNIO 2026 (mes 5) y JULIO 2026
-  // (mes 6); todo lo demas (otras fechas o sin fecha) cae en "otros".
-  const grupos = useMemo(() => {
-    const junio: PlanTarifario[] = [];
-    const julio: PlanTarifario[] = [];
-    const otros: PlanTarifario[] = [];
+  // Agrupa por mes de corte. Los grupos salen de las fechas presentes, sin meses
+  // fijos; en "otros" solo caen los planes sin fecha o con fecha no parseable.
+  const { gruposTodos, gruposVisibles, otros } = useMemo(() => {
+    const anioActual = new Date().getFullYear();
+    const mapa = new Map<string, GrupoMes>();
+    const sinFecha: PlanTarifario[] = [];
     for (const p of planes) {
       const c = mesDeCorte(p.fecha);
-      if (c && c.anio === 2026 && c.mes === 5) junio.push(p);
-      else if (c && c.anio === 2026 && c.mes === 6) julio.push(p);
-      else otros.push(p);
+      if (!c) { sinFecha.push(p); continue; }
+      const clave = `${c.anio}-${c.mes}`;
+      let g = mapa.get(clave);
+      if (!g) {
+        g = {
+          clave,
+          anio: c.anio,
+          mes: c.mes,
+          titulo: c.anio === anioActual
+            ? NOMBRES_MES[c.mes]
+            : `${NOMBRES_MES[c.mes]} ${c.anio}`,
+          lista: [],
+        };
+        mapa.set(clave, g);
+      }
+      g.lista.push(p);
     }
-    return { junio, julio, otros };
+    // Mas reciente primero.
+    const todos = [...mapa.values()].sort(
+      (a, b) => (b.anio * 12 + b.mes) - (a.anio * 12 + a.mes)
+    );
+    return { gruposTodos: todos, gruposVisibles: todos.slice(0, 3), otros: sinFecha };
   }, [planes]);
 
   const cargar = async () => {
@@ -211,13 +239,15 @@ const PlanesAdmin = () => {
 
   const exportarExcel = () => {
     const wb = XLSX.utils.book_new();
+    // SheetJS: max 31 caracteres y sin : \ / ? * [ ]
+    const nombreHoja = (t: string) => t.replace(/[:\\/?*[\]]/g, "").slice(0, 31);
     const agregarHoja = (nombre: string, lista: PlanTarifario[]) => {
       const ws = XLSX.utils.json_to_sheet(filasDe(lista));
-      XLSX.utils.book_append_sheet(wb, ws, nombre);
+      XLSX.utils.book_append_sheet(wb, ws, nombreHoja(nombre));
     };
-    agregarHoja("Junio", grupos.junio);
-    agregarHoja("Julio", grupos.julio);
-    if (grupos.otros.length > 0) agregarHoja("Otros", grupos.otros);
+    agregarHoja("TODO", planes);
+    for (const g of gruposTodos) agregarHoja(g.titulo, g.lista);
+    if (otros.length > 0) agregarHoja("Otros", otros);
     XLSX.writeFile(wb, `planes_tarifarios_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
@@ -225,7 +255,7 @@ const PlanesAdmin = () => {
 
   if (rol !== "admin") return <Navigate to="/" replace />;
 
-  // Render de una fila (identico al anterior); reutilizado por las tres tablas.
+  // Render de una fila (identico al anterior); reutilizado por todas las tablas.
   const renderFila = (p: PlanTarifario) => (
     <TableRow key={p.id}>
       <TableCell sx={cellSx}>
@@ -375,9 +405,10 @@ const PlanesAdmin = () => {
         </Box>
       ) : (
         <>
-          {renderTabla("JULIO", grupos.julio)}
-          {renderTabla("JUNIO", grupos.junio)}
-          {grupos.otros.length > 0 && renderTabla("OTROS", grupos.otros)}
+          {gruposVisibles.map(g => (
+            <React.Fragment key={g.clave}>{renderTabla(g.titulo, g.lista)}</React.Fragment>
+          ))}
+          {otros.length > 0 && renderTabla("OTROS", otros)}
         </>
       )}
 
