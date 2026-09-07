@@ -10,6 +10,7 @@ const API = "https://ato-appservidor-nvxt.onrender.com";
 
 const AZUL = "#0d2b5e";
 const NARANJA = "#f57c00";
+const ROJO = "#c62828";
 
 type Ciclo = {
   inicio: string;
@@ -61,11 +62,8 @@ const MSG_403 = "No tienes permisos para ver esta pantalla.";
 const es403 = (e: unknown) =>
   (e as { response?: { status?: number } })?.response?.status === 403;
 
-// Celda de la fila de totales: queda pegada al fondo del contenedor.
+// Celda de la fila de totales: ultima fila de la tabla, siempre azul.
 const celdaTotalSx = {
-  position: "sticky" as const,
-  bottom: 0,
-  zIndex: 2,
   bgcolor: AZUL,
   color: "#fff",
   fontWeight: 700,
@@ -235,10 +233,9 @@ function VentasCadenas() {
           </Box>
         ) : (
           !error && (
-            <TableContainer sx={{ mt: 2, maxHeight: "calc(100vh - 300px)" }}>
+            <TableContainer sx={{ mt: 2 }}>
               <Table
                 size="small"
-                stickyHeader
                 sx={{
                   "& .MuiTableCell-root": {
                     fontSize: "0.73rem",
@@ -281,24 +278,46 @@ function VentasCadenas() {
                     </TableRow>
                   )}
 
-                  {filas.map((f, idx) => (
+                  {filas.map((f, idx) => {
+                    // Sin telefono activado en el ciclo: fila completa en rojo,
+                    // manda sobre el alternado.
+                    const sinTelefono = f.tel_activado === 0;
+                    return (
                     <TableRow
                       key={f.promotor}
                       hover
-                      sx={{ bgcolor: idx % 2 === 1 ? "#fafafa" : "inherit" }}
+                      sx={{
+                        bgcolor: sinTelefono
+                          ? "#ffebee"
+                          : idx % 2 === 1
+                          ? "#fafafa"
+                          : "inherit",
+                      }}
                     >
                       <TableCell align="center" sx={{ color: "#90a4ae" }}>
                         {idx + 1}
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontSize: "0.73rem", fontWeight: 600 }}>
+                        <Typography
+                          sx={{
+                            fontSize: "0.73rem",
+                            fontWeight: 600,
+                            ...(sinTelefono && { color: ROJO }),
+                          }}
+                        >
                           {f.promotor}
                         </Typography>
-                        <Typography sx={{ fontSize: "0.65rem", color: "#607d8b" }}>
+                        <Typography
+                          sx={{ fontSize: "0.65rem", color: sinTelefono ? ROJO : "#607d8b" }}
+                        >
                           {f.nombre}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>{f.tienda}</TableCell>
+                      <TableCell
+                        sx={{ whiteSpace: "nowrap", ...(sinTelefono && { color: ROJO }) }}
+                      >
+                        {f.tienda}
+                      </TableCell>
 
                       {COLUMNAS.map((col) => {
                         const valor = f[col.clave];
@@ -308,10 +327,10 @@ function VentasCadenas() {
                               key={col.clave}
                               align="center"
                               sx={{
-                                bgcolor: "#e3f0ff",
+                                bgcolor: sinTelefono ? "#ffcdd2" : "#e3f0ff",
                                 fontSize: "0.85rem",
-                                color: valor === 0 ? "#90a4ae" : AZUL,
-                                fontWeight: valor === 0 ? 400 : 700,
+                                color: sinTelefono ? ROJO : AZUL,
+                                fontWeight: 700,
                               }}
                             >
                               {valor}
@@ -329,7 +348,8 @@ function VentasCadenas() {
                         );
                       })}
                     </TableRow>
-                  ))}
+                    );
+                  })}
 
                   {totales && (
                     <TableRow>
