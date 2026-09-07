@@ -29,6 +29,7 @@ import SignalCellular4BarIcon from "@mui/icons-material/SignalCellular4Bar";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import BoltIcon from "@mui/icons-material/Bolt";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -586,6 +587,10 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/cadenas")}>
                     <ListItemIcon sx={drawerIconSx}><StorefrontIcon /></ListItemIcon>
                     <ListItemText primary="Cadenas" />
+                  </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/ventas-cadenas")}>
+                    <ListItemIcon sx={drawerIconSx}><TrendingUpIcon /></ListItemIcon>
+                    <ListItemText primary="Ventas Cadenas" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/planes")}>
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
