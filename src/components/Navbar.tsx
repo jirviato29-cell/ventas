@@ -469,7 +469,7 @@ const Navbar = () => {
 
         <List disablePadding>
 
-          {!modulo.toLowerCase().includes("cadena") && (
+          {rolToken !== "admin" && !modulo.toLowerCase().includes("cadena") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
               <ListItemText primary="LISTA DE PRECIOS" />
             </ListItemButton>
