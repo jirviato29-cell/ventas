@@ -209,7 +209,9 @@ const Navbar = () => {
                   >
                     <MenuItem component={Link} to="/ventas"><ConfirmationNumberIcon fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />Ticket</MenuItem>
                     <MenuItem component={Link} to="/ventas/chips">Chips</MenuItem>
+                    {/* OCULTO para admin - los Cortes los llevan contador y direccion.
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
+                    */}
                     <MenuItem component={Link} to="/lista-precios">Lista de Precios</MenuItem>
                     <MenuItem component={Link} to="/ventas/telefonos">Teléfonos</MenuItem>
                   </Menu>
@@ -496,10 +498,12 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Lista de Precios" />
                   </ListItemButton>
+                  {/* OCULTO para admin - los Cortes los llevan contador y direccion.
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/corte")}>
                     <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                     <ListItemText primary="Cortes" />
                   </ListItemButton>
+                  */}
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/telefonos")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Teléfonos" />
