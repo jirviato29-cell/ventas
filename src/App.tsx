@@ -10,6 +10,7 @@ import CrearUsuario from './pages/CrearUsuarios';
 import UsuariosAdmin from './pages/Usuarios';
 import AdminTiendas from './pages/AdminTiendas';
 import Cadenas from './pages/Cadenas';
+import VentasCadenas from './pages/VentasCadenas';
 import InventarioAdmin from './pages/Inventario';
 import InventarioPorModulo from './pages/InventarioModulo';
 import ChipsAdmin from './pages/ChipsAdmin';
@@ -124,6 +125,7 @@ const App: React.FC = () => {
     { path: '/admin/modulos', element: <RutaProtegida><GestionModulos /></RutaProtegida> },
     { path: '/admin/planes', element: <RutaProtegida><PlanesAdmin /></RutaProtegida> },
     { path: '/admin/cadenas', element: <RutaProtegida><Cadenas /></RutaProtegida> },
+    { path: '/admin/ventas-cadenas', element: <RutaProtegida><VentasCadenas /></RutaProtegida> },
     { path: '/admin/presion', element: <RutaProtegida><PresionAdmin /></RutaProtegida> },
     { path: '/inventario/productos', element: <RutaProtegida><ProductosPage /></RutaProtegida> },
     { path: '/reportes-director', element: <RutaProtegida><ReportesDirector /></RutaProtegida> },
