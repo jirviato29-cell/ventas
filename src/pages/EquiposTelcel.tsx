@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box, Container, Typography, TextField, Button, Select, MenuItem,
   Table, TableHead, TableBody, TableRow, TableCell, TableContainer, Paper,
@@ -235,6 +235,34 @@ const EquiposTelcel = () => {
       setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, cumple_arl: nuevo } : x));
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al guardar");
+    }
+  };
+
+  // Valor del input de Numero al recibir el foco, para no postear si no cambio.
+  const numeroOriginalRef = useRef<string>("");
+
+  const guardarNumeroChip = async (eq: any, valor: string) => {
+    const limpio = (valor || "").replace(/\D/g, "");
+    if (limpio.length !== 10) {
+      // Regresar la celda a lo que tiene el backend: si no, queda mostrando
+      // un valor que nunca se guardo.
+      setEquipos(prev => prev.map(x =>
+        x.id === eq.id ? { ...x, numero_linea: numeroOriginalRef.current || null } : x
+      ));
+      alert("El numero debe tener exactamente 10 digitos");
+      return;
+    }
+    try {
+      await axios.post(
+        `${BASE}/equipos_telcel/editar-chip-casado/${eq.id}`,
+        { chip_casado: limpio },
+        config
+      );
+      setEquipos(prev => prev.map(x =>
+        x.id === eq.id ? { ...x, numero_linea: limpio } : x
+      ));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al guardar el numero");
     }
   };
 
@@ -606,7 +634,25 @@ const EquiposTelcel = () => {
                           />
                         )}
                       </TableCell>
-                      <TableCell>{eq.numero_linea || "—"}</TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          placeholder="10 digitos"
+                          inputProps={{ maxLength: 10 }}
+                          value={eq.numero_linea || ''}
+                          onFocus={(e) => {
+                            numeroOriginalRef.current = e.target.value;
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            setEquipos(prev => prev.map(x => x.id === eq.id ? { ...x, numero_linea: val || null } : x));
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === numeroOriginalRef.current) return;
+                            guardarNumeroChip(eq, e.target.value);
+                          }}
+                        />
+                      </TableCell>
                       <TableCell>
                         {infoClasif ? (
                           <Box
