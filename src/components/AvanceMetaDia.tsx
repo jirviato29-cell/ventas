@@ -129,17 +129,8 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
   const aPct = (v: number) => (tope > 0 ? Math.min(100, Math.max(0, (v / tope) * 100)) : 0);
   const gana = data.nivel > 0;
 
-  // Tramo = de la meta anterior a la siguiente. Alcanzado en esmeralda, en curso en ambar.
-  const tramos = escalera.map((e, i) => {
-    const desde = i === 0 ? 0 : Number(escalera[i - 1].meta);
-    const hasta = Number(e.meta);
-    return {
-      nivel: e.nivel,
-      izq: aPct(desde),
-      ancho: venta > desde ? aPct(Math.min(venta, hasta)) - aPct(desde) : 0,
-      color: venta >= hasta ? ESMERALDA : AMBAR,
-    };
-  });
+  // Relleno de 0 a la venta, con tope en el nivel 4. Siempre en esmeralda.
+  const llenado = aPct(venta);
 
   // Marcas solo en los niveles 1 a 3: el nivel 4 es el final de la barra.
   const etiquetas = acomodarEtiquetas(escalera.slice(0, -1), tope, anchoBarra);
@@ -148,9 +139,11 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
 
   // Sin montos de comision: solo el nivel alcanzado.
-  const nivelAlcanzado = data.nivel >= 4 ? 'Nivel 4 - Récord' : `Nivel ${data.nivel} alcanzado`;
+  const estado = gana
+    ? (data.nivel >= 4 ? 'Nivel 4 - Récord' : `Nivel ${data.nivel} alcanzado`)
+    : `Faltan ${dinero(data.falta_siguiente)} para la primera meta`;
 
-  // Con nivel 0 el "Faltan" ya es el estado principal; el detalle solo va con nivel > 0.
+  // Con nivel 0 el "Faltan" ya es el estado; el detalle solo va con nivel > 0.
   const detalleNivel = !gana
     ? null
     : data.siguiente_nivel == null
@@ -169,17 +162,46 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
           alignItems: 'start',
         }}
       >
-        {/* Izquierda: modulo y venta del dia */}
-        <Box sx={{ gridArea: 'modulo', display: 'flex', alignItems: 'baseline', gap: 1.25, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: { xs: 18, md: 20 }, whiteSpace: 'nowrap' }}>
-            {data.modulo}
+        {/* Izquierda: modulo, venta del dia y estado */}
+        <Box sx={{ gridArea: 'modulo', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: 18, md: 20 }, whiteSpace: 'nowrap' }}>
+              {data.modulo}
+            </Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+              {dinero(venta)}
+            </Typography>
+          </Box>
+
+          <Typography
+            sx={{
+              mt: 0.25,
+              fontWeight: 800,
+              fontSize: { xs: 15, md: 16 },
+              lineHeight: 1.25,
+              whiteSpace: { xs: 'normal', sm: 'nowrap' },
+              color: gana ? ESMERALDA : AMBAR,
+            }}
+          >
+            {estado}
           </Typography>
-          <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-            {dinero(venta)}
-          </Typography>
+
+          {detalleNivel && (
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.25,
+                whiteSpace: { xs: 'normal', sm: 'nowrap' },
+                color: data.siguiente_nivel == null ? ESMERALDA : 'text.secondary',
+              }}
+            >
+              {detalleNivel}
+            </Typography>
+          )}
         </Box>
 
-        {/* Derecha: barra del modulo, estado y participacion propia */}
+        {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
         <Box sx={{ gridArea: 'barras', minWidth: 0, pt: { md: 0.75 } }}>
           <div ref={medirBarra} style={{ position: 'relative' }}>
             <Box
@@ -188,14 +210,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                 bgcolor: PISTA, overflow: 'hidden',
               }}
             >
-              {tramos.map((t) =>
-                t.ancho > 0 ? (
-                  <Box
-                    key={t.nivel}
-                    sx={{ position: 'absolute', top: 0, bottom: 0, left: `${t.izq}%`, width: `${t.ancho}%`, bgcolor: t.color }}
-                  />
-                ) : null
-              )}
+              <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${llenado}%`, bgcolor: ESMERALDA }} />
             </Box>
             {etiquetas.map((e) => (
               <Box
@@ -229,30 +244,6 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
               ))}
             </Box>
           </div>
-
-          {/* Estado: debajo de la barra del modulo, a la derecha y en una sola linea */}
-          <Typography
-            sx={{
-              mt: 0.25,
-              textAlign: 'right',
-              whiteSpace: { xs: 'normal', sm: 'nowrap' },
-              fontSize: { xs: 15, md: 16 },
-              fontWeight: 800,
-              lineHeight: 1.25,
-            }}
-          >
-            <Box component="span" sx={{ color: gana ? ESMERALDA : AMBAR }}>
-              {gana ? nivelAlcanzado : `Faltan ${dinero(data.falta_siguiente)} para la primera meta`}
-            </Box>
-            {detalleNivel && (
-              <Box
-                component="span"
-                sx={{ fontSize: 12, fontWeight: 700, color: data.siguiente_nivel == null ? ESMERALDA : 'text.secondary' }}
-              >
-                {' · '}{detalleNivel}
-              </Box>
-            )}
-          </Typography>
 
           <Box sx={{ mt: 0.5 }}>
             <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
