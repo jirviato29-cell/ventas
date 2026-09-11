@@ -30,6 +30,7 @@ import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import BoltIcon from "@mui/icons-material/Bolt";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -576,6 +577,10 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                     <ListItemText primary="Comisiones" />
                   </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/metas")}>
+                    <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
+                    <ListItemText primary="Metas" />
+                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/metricas")}>
                     <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                     <ListItemText primary="Métricas" />
@@ -785,6 +790,10 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/tiempo-real")}>
                 <ListItemIcon sx={drawerIconSx}><BoltIcon /></ListItemIcon>
                 <ListItemText primary="⚡ TIEMPO REAL" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/metas")}>
+                <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
+                <ListItemText primary="Metas" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
             </>
           )}
