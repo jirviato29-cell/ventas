@@ -10,7 +10,9 @@ const AZUL = '#1e3a5f';
 const PISTA = '#e2e8f0';
 
 const REFRESCO_MS = 60 * 1000;
-const ALTO_ETIQUETA = 24;
+const GROSOR_BARRA = 20;
+const ALTO_ETIQUETA = 27;
+const FUENTE = "'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif";
 
 type Escalon = { nivel: number; meta: number | null; bolsa: number | null };
 
@@ -47,7 +49,17 @@ const dinero = (v: number | null | undefined) =>
 const porcentaje = (v: number | null | undefined) =>
   `${Number(v ?? 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
 
-/** Reparte las etiquetas de las marcas en renglones para que no se encimen cuando las metas estan juntas. */
+let lienzo: CanvasRenderingContext2D | null = null;
+
+/** Ancho real del texto en la fuente del tema; si no hay canvas, una estimacion. */
+function anchoTexto(texto: string, peso: number) {
+  if (!lienzo) lienzo = document.createElement('canvas').getContext('2d');
+  if (!lienzo) return texto.length * 7;
+  lienzo.font = `${peso} 11px ${FUENTE}`;
+  return lienzo.measureText(texto).width;
+}
+
+/** Coloca cada etiqueta bajo su marca; solo baja a otro renglon si chocaria con la anterior. */
 function acomodarEtiquetas(marcas: Escalon[], tope: number, anchoBarra: number): Etiqueta[] {
   const finPorFila: number[] = [];
   return marcas.map((m) => {
@@ -55,7 +67,7 @@ function acomodarEtiquetas(marcas: Escalon[], tope: number, anchoBarra: number):
     const pos = tope > 0 ? (meta / tope) * 100 : 0;
     const monto = dinero(meta);
     const bolsa = `+${dinero(m.bolsa)}`;
-    const ancho = Math.max(monto.length, bolsa.length) * 6.5 + 6;
+    const ancho = Math.ceil(Math.max(anchoTexto(monto, 700), anchoTexto(bolsa, 400))) + 6;
     if (anchoBarra <= 0) return { nivel: m.nivel, meta, pos, monto, bolsa, fila: 0, izq: null, ancho };
 
     const izq = Math.max(0, Math.min((pos / 100) * anchoBarra - ancho / 2, anchoBarra - ancho));
@@ -87,7 +99,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
     }
   }, []);
 
-  // Carga inicial y cada vez que VentasPage registra una venta.
+  // Carga inicial y cada vez que VentasPage registra o cancela una venta.
   useEffect(() => {
     cargar();
   }, [refrescar, cargar]);
@@ -97,6 +109,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
     return () => clearInterval(id);
   }, [cargar]);
 
+  // Mide el ancho de la barra para acomodar las etiquetas (sobre todo en movil).
   const medirBarra = useCallback((el: HTMLDivElement | null) => {
     observador.current?.disconnect();
     observador.current = null;
@@ -134,88 +147,116 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
 
+  // Con nivel 0 el "Faltan" ya va en el estado principal; aqui solo con nivel > 0.
+  const detalleNivel = !gana
+    ? null
+    : data.siguiente_nivel == null
+      ? 'Nivel máximo alcanzado'
+      : `Faltan ${dinero(data.falta_siguiente)} para el nivel ${data.siguiente_nivel}`;
+
   return (
-    <Paper sx={{ p: 1.25, mb: 1.5, borderRadius: 2 }}>
-      {/* 1. Modulo, venta del dia y estado */}
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: 15 }}>{data.modulo}</Typography>
-          <Typography sx={{ fontWeight: 800, fontSize: 22, lineHeight: 1.1 }}>{dinero(venta)}</Typography>
-        </Box>
-        <Typography sx={{ fontWeight: 800, fontSize: 13, color: gana ? VERDE : NARANJA }}>
-          {gana ? `Ganando ${dinero(data.bolsa)}` : `Faltan ${dinero(data.falta_siguiente)} para la primera meta`}
-        </Typography>
-      </Box>
-
-      {/* 2. Barra del modulo: de 0 al nivel 4, con marcas en los niveles 1, 2 y 3 */}
-      <div ref={medirBarra} style={{ position: 'relative', marginTop: 8 }}>
-        <Box sx={{ position: 'relative', height: 14, borderRadius: 7, bgcolor: PISTA, overflow: 'hidden' }}>
-          {tramos.map((t) =>
-            t.ancho > 0 ? (
-              <Box
-                key={t.nivel}
-                sx={{ position: 'absolute', top: 0, bottom: 0, left: `${t.izq}%`, width: `${t.ancho}%`, bgcolor: t.color }}
-              />
-            ) : null
-          )}
-        </Box>
-        {etiquetas.map((e) => (
-          <Box
-            key={`marca-${e.nivel}`}
-            sx={{
-              position: 'absolute', top: -2, height: 18, width: 2, ml: '-1px',
-              left: `${e.pos}%`, bgcolor: '#0f172a', opacity: 0.55, borderRadius: 1,
-            }}
-          />
-        ))}
-        <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.5 }}>
-          {etiquetas.map((e) => (
-            <Box
-              key={`etiqueta-${e.nivel}`}
-              sx={{
-                position: 'absolute',
-                top: e.fila * ALTO_ETIQUETA,
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                ...(e.izq === null
-                  ? { left: `${e.pos}%`, transform: 'translateX(-50%)' }
-                  : { left: e.izq, width: e.ancho }),
-              }}
-            >
-              <Typography sx={{ fontSize: 10, fontWeight: 700, lineHeight: 1.15, color: venta >= e.meta ? VERDE : 'text.primary' }}>
-                {e.monto}
-              </Typography>
-              <Typography sx={{ fontSize: 10, lineHeight: 1.15, color: 'text.secondary' }}>{e.bolsa}</Typography>
-            </Box>
-          ))}
-        </Box>
-      </div>
-
-      {/* 3. Cuanto falta para el siguiente nivel. Con nivel 0 ya lo dice el renglon de arriba. */}
-      {gana && (
-        <Typography sx={{ fontSize: 12, fontWeight: 700, color: data.siguiente_nivel == null ? VERDE : 'text.primary' }}>
-          {data.siguiente_nivel == null
-            ? 'Nivel máximo alcanzado'
-            : `Faltan ${dinero(data.falta_siguiente)} para el nivel ${data.siguiente_nivel}`}
-        </Typography>
-      )}
-
-      {/* 4. Participacion propia en la venta del modulo */}
-      <Box sx={{ mt: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700 }}>Tu venta: {dinero(data.mi_venta)}</Typography>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: AZUL }}>
-            {porcentaje(data.mi_participacion_pct)} del módulo
+    <Paper sx={{ px: { xs: 1.5, md: 2.5 }, py: 1.5, mt: { xs: 0.5, sm: 1 }, mb: 1.5, borderRadius: 2 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(0, 1fr) auto' },
+          gridTemplateAreas: { xs: '"modulo" "estado" "barras"', md: '"modulo barras estado"' },
+          columnGap: 3,
+          rowGap: 1,
+          alignItems: 'start',
+        }}
+      >
+        {/* Izquierda: modulo y venta del dia */}
+        <Box sx={{ gridArea: 'modulo', display: 'flex', alignItems: 'baseline', gap: 1.25, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 18, md: 20 }, whiteSpace: 'nowrap' }}>
+            {data.modulo}
+          </Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+            {dinero(venta)}
           </Typography>
         </Box>
-        <LinearProgress
-          variant="determinate"
-          value={miParte}
-          sx={{ height: 6, borderRadius: 3, mt: 0.4, bgcolor: PISTA, '& .MuiLinearProgress-bar': { bgcolor: AZUL, borderRadius: 3 } }}
-        />
-        <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mt: 0.3 }}>
-          Participantes hoy: {data.n_participantes}
-        </Typography>
+
+        {/* Centro: barra del modulo y, debajo, la participacion propia */}
+        <Box sx={{ gridArea: 'barras', minWidth: 0, pt: { md: 0.75 } }}>
+          <div ref={medirBarra} style={{ position: 'relative' }}>
+            <Box
+              sx={{
+                position: 'relative', height: GROSOR_BARRA, borderRadius: GROSOR_BARRA / 2,
+                bgcolor: PISTA, overflow: 'hidden',
+              }}
+            >
+              {tramos.map((t) =>
+                t.ancho > 0 ? (
+                  <Box
+                    key={t.nivel}
+                    sx={{ position: 'absolute', top: 0, bottom: 0, left: `${t.izq}%`, width: `${t.ancho}%`, bgcolor: t.color }}
+                  />
+                ) : null
+              )}
+            </Box>
+            {etiquetas.map((e) => (
+              <Box
+                key={`marca-${e.nivel}`}
+                sx={{
+                  position: 'absolute', top: -3, height: GROSOR_BARRA + 6, width: 2, ml: '-1px',
+                  left: `${e.pos}%`, bgcolor: '#0f172a', opacity: 0.55, borderRadius: 1,
+                }}
+              />
+            ))}
+            <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.5 }}>
+              {etiquetas.map((e) => (
+                <Box
+                  key={`etiqueta-${e.nivel}`}
+                  sx={{
+                    position: 'absolute',
+                    top: e.fila * ALTO_ETIQUETA,
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                    ...(e.izq === null
+                      ? { left: `${e.pos}%`, transform: 'translateX(-50%)' }
+                      : { left: e.izq, width: e.ancho }),
+                  }}
+                >
+                  <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.15, color: venta >= e.meta ? VERDE : 'text.primary' }}>
+                    {e.monto}
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, fontWeight: 400, lineHeight: 1.15, color: 'text.secondary' }}>
+                    {e.bolsa}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </div>
+
+          <Box sx={{ mt: 0.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 700 }}>Tu venta: {dinero(data.mi_venta)}</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: AZUL }}>
+                {porcentaje(data.mi_participacion_pct)} del módulo
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={miParte}
+              sx={{ height: 8, borderRadius: 4, mt: 0.4, bgcolor: PISTA, '& .MuiLinearProgress-bar': { bgcolor: AZUL, borderRadius: 4 } }}
+            />
+            <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.3 }}>
+              Participantes hoy: {data.n_participantes}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Derecha: lo que se esta ganando o lo que falta para la primera meta */}
+        <Box sx={{ gridArea: 'estado', textAlign: { xs: 'left', md: 'right' }, maxWidth: { md: 260 } }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 16, md: 18 }, lineHeight: 1.2, color: gana ? VERDE : NARANJA }}>
+            {gana ? `Ganando ${dinero(data.bolsa)}` : `Faltan ${dinero(data.falta_siguiente)} para la primera meta`}
+          </Typography>
+          {detalleNivel && (
+            <Typography sx={{ fontSize: 12, fontWeight: 700, mt: 0.25, color: data.siguiente_nivel == null ? VERDE : 'text.secondary' }}>
+              {detalleNivel}
+            </Typography>
+          )}
+        </Box>
       </Box>
     </Paper>
   );

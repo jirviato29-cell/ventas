@@ -1000,6 +1000,10 @@ const FormularioVentaMultiple = () => {
   const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // ── Formulario (compartido) ───────────────────────────────────────────────
+  // Franja de avance de meta: ancho completo arriba de la pestaña TICKET.
+  // Una sola definicion para las dos vistas (asesor y encargado); Cadenas no la ve.
+  const franjaAvance = !esCadenas && tabAsesor === 0 ? <AvanceMetaDia refrescar={refrescoAvance} /> : null;
+
   const formulario = localStorage.getItem('rol') !== 'admin' ? (
     <Paper sx={{ borderRadius: 2, p: 0, overflow: 'hidden' }}>
       <Box sx={{ px: 2, py: 0.7 }}>
@@ -1877,6 +1881,8 @@ const FormularioVentaMultiple = () => {
         </Tabs>
         , tabsSlot)}
 
+        {franjaAvance}
+
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
           esCadenas ? (
@@ -1961,7 +1967,6 @@ const FormularioVentaMultiple = () => {
               )}
               {!esCadenas && (
                 <Grid item xs={12} md={7}>
-                  <AvanceMetaDia refrescar={refrescoAvance} />
                   {/* Selector de ranking: una sola tarjeta, se elige cuál ver */}
                   <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
                     {([
@@ -2848,6 +2853,8 @@ const FormularioVentaMultiple = () => {
       </Tabs>
       , tabsSlot)}
 
+    {franjaAvance}
+
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} sx={{ mt: 0 }}>
@@ -2861,7 +2868,6 @@ const FormularioVentaMultiple = () => {
       {/* Columna 2: un solo panel de ranking con selector (1/4) */}
       {!esCadenas && (
         <Grid item xs={12} md={3} sx={{ minWidth: 0 }}>
-          <AvanceMetaDia refrescar={refrescoAvance} />
           <Box sx={{ display: 'flex', gap: 1, mb: 0.75, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
