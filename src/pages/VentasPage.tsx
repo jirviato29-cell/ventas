@@ -27,6 +27,7 @@ import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
+import AvanceMetaDia from '../components/AvanceMetaDia';
 import MiCheckinSemana from '../components/MiCheckinSemana';
 import MiSemanaPasada from '../components/MiSemanaPasada';
 import TiraAsistenciaSemana from '../components/TiraAsistenciaSemana';
@@ -279,6 +280,8 @@ const FormularioVentaMultiple = () => {
   const imeiObligatorio = !user?.is_admin && MODULOS_IMEI_OBLIGATORIO.includes(nombreModuloActual);
   const navigate = useNavigate();
   const [rankingSel, setRankingSel] = useState<'accesorios' | 'telefonos' | 'planes'>('accesorios');
+  // Sube tras cada venta registrada para que AvanceMetaDia recargue al instante.
+  const [refrescoAvance, setRefrescoAvance] = useState(0);
   const [totalAccesorios, setTotalAccesorios] = useState(0);
   const [totalTelefonos, setTotalTelefonos] = useState(0);
   const [cvip, setcvip] = useState<boolean>(false);
@@ -586,6 +589,7 @@ const FormularioVentaMultiple = () => {
             vendedor: localStorage.getItem('usuario') || '',
           });
           setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+          setRefrescoAvance((n) => n + 1);
           if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
         }
       } catch (errEf: any) {
@@ -619,6 +623,7 @@ const FormularioVentaMultiple = () => {
         vendedor: localStorage.getItem('usuario') || '',
       });
       setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+      setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
@@ -631,6 +636,7 @@ const FormularioVentaMultiple = () => {
       await axios.put(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas/${id}/cancelar`, {}, config);
       alert('Venta cancelada');
       fetchVentas();
+      setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') fetchComisionesHoy();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Error al cancelar la venta');
@@ -709,6 +715,7 @@ const FormularioVentaMultiple = () => {
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
       setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
+      setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
       setMensaje({ tipo: 'error', texto: err?.response?.data?.detail || 'Error al registrar la venta' });
@@ -805,6 +812,7 @@ const FormularioVentaMultiple = () => {
             clasificacion: 'Telefono',
           });
           resetTel();
+          setRefrescoAvance((n) => n + 1);
           if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
         }
       } catch (errEf: any) {
@@ -838,6 +846,7 @@ const FormularioVentaMultiple = () => {
         clasificacion: 'Telefono',
       });
       resetTel();
+      setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
     } catch (err: any) {
       let msg = 'Error al registrar la venta de teléfono';
@@ -901,6 +910,7 @@ const FormularioVentaMultiple = () => {
       await axios.post('https://ato-appservidor-nvxt.onrender.com/planes-tarifarios', payload, config);
       setMensaje({ tipo: 'success', texto: 'Plan registrado correctamente' });
       resetPlan();
+      setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); }
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Error al registrar el plan';
@@ -1951,6 +1961,7 @@ const FormularioVentaMultiple = () => {
               )}
               {!esCadenas && (
                 <Grid item xs={12} md={7}>
+                  <AvanceMetaDia refrescar={refrescoAvance} />
                   {/* Selector de ranking: una sola tarjeta, se elige cuál ver */}
                   <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
                     {([
@@ -2850,6 +2861,7 @@ const FormularioVentaMultiple = () => {
       {/* Columna 2: un solo panel de ranking con selector (1/4) */}
       {!esCadenas && (
         <Grid item xs={12} md={3} sx={{ minWidth: 0 }}>
+          <AvanceMetaDia refrescar={refrescoAvance} />
           <Box sx={{ display: 'flex', gap: 1, mb: 0.75, flexWrap: 'wrap' }}>
             {([
               { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
