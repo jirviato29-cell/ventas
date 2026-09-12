@@ -46,6 +46,7 @@ type Etiqueta = {
   meta: number;
   pos: number;
   monto: string;
+  final: boolean;
   fila: number;
   izq: number | null;
   ancho: number;
@@ -60,32 +61,58 @@ const porcentaje = (v: number | null | undefined) =>
 let lienzo: CanvasRenderingContext2D | null = null;
 
 /** Ancho real del texto en la fuente del tema; si no hay canvas, una estimacion. */
-function anchoTexto(texto: string) {
+function anchoTexto(texto: string, grande: boolean) {
   if (!lienzo) lienzo = document.createElement('canvas').getContext('2d');
-  if (!lienzo) return texto.length * 7;
-  lienzo.font = `700 11px ${FUENTE}`;
+  if (!lienzo) return texto.length * (grande ? 7.6 : 7);
+  lienzo.font = `700 ${grande ? 12 : 11}px ${FUENTE}`;
   return lienzo.measureText(texto).width;
 }
 
-/** Coloca cada etiqueta bajo su marca; solo baja a otro renglon si chocaria con la anterior. */
-function acomodarEtiquetas(marcas: Escalon[], tope: number, anchoBarra: number): Etiqueta[] {
-  const finPorFila: number[] = [];
-  return marcas.map((m) => {
+/**
+ * Etiquetas de las metas. La del nivel maximo va pegada al extremo derecho de
+ * la barra y se coloca primero, para que siempre se quede en el renglon de
+ * arriba: si choca con la del nivel anterior, baja la otra.
+ */
+function acomodarEtiquetas(escalones: Escalon[], tope: number, anchoBarra: number): Etiqueta[] {
+  if (!escalones.length) return [];
+  const ultimo = escalones.length - 1;
+
+  const etiquetas: Etiqueta[] = escalones.map((m, i) => {
     const meta = Number(m.meta);
+    const final = i === ultimo;
     const pos = tope > 0 ? (meta / tope) * 100 : 0;
     const monto = dinero(meta);
-    const ancho = Math.ceil(anchoTexto(monto)) + 6;
-    if (anchoBarra <= 0) return { nivel: m.nivel, meta, pos, monto, fila: 0, izq: null, ancho };
-
-    const izq = Math.max(0, Math.min((pos / 100) * anchoBarra - ancho / 2, anchoBarra - ancho));
-    let fila = finPorFila.findIndex((fin) => izq >= fin + 4);
-    if (fila === -1) {
-      fila = finPorFila.length;
-      finPorFila.push(0);
-    }
-    finPorFila[fila] = izq + ancho;
-    return { nivel: m.nivel, meta, pos, monto, fila, izq, ancho };
+    const ancho = Math.ceil(anchoTexto(monto, final)) + 6;
+    const izq = anchoBarra <= 0
+      ? null
+      : final
+        ? anchoBarra - ancho
+        : Math.max(0, Math.min((pos / 100) * anchoBarra - ancho / 2, anchoBarra - ancho));
+    return { nivel: m.nivel, meta, pos, monto, final, fila: 0, izq, ancho };
   });
+
+  if (anchoBarra <= 0) return etiquetas;
+
+  // Se compara contra todo lo ya colocado en cada renglon, no solo contra la
+  // ultima: la del nivel maximo ocupa el extremo derecho antes que las demas.
+  const filas: { desde: number; hasta: number }[][] = [];
+  const orden = [ultimo, ...etiquetas.map((_, i) => i).filter((i) => i !== ultimo)];
+  orden.forEach((i) => {
+    const e = etiquetas[i];
+    const desde = e.izq as number;
+    const hasta = desde + e.ancho;
+    let fila = filas.findIndex((ocupadas) =>
+      ocupadas.every((o) => hasta + 4 <= o.desde || desde >= o.hasta + 4)
+    );
+    if (fila === -1) {
+      fila = filas.length;
+      filas.push([]);
+    }
+    filas[fila].push({ desde, hasta });
+    e.fila = fila;
+  });
+
+  return etiquetas;
 }
 
 export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number }) {
@@ -149,8 +176,9 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
     };
   });
 
-  // Marcas solo en los niveles 1 a 3: el nivel 4 es el final de la barra.
-  const etiquetas = acomodarEtiquetas(escalera.slice(0, -1), tope, anchoBarra);
+  // Todas las metas llevan etiqueta; la marca vertical solo va de la 1 a la 3,
+  // porque la del nivel maximo cae en el borde y se veria cortada.
+  const etiquetas = acomodarEtiquetas(escalera, tope, anchoBarra);
   const filas = etiquetas.reduce((max, e) => Math.max(max, e.fila + 1), 1);
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
@@ -257,7 +285,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                 ) : null
               )}
             </Box>
-            {etiquetas.map((e) => (
+            {etiquetas.filter((e) => !e.final).map((e) => (
               <Box
                 key={`marca-${e.nivel}`}
                 sx={{
@@ -275,12 +303,12 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                     top: e.fila * ALTO_ETIQUETA,
                     textAlign: 'center',
                     whiteSpace: 'nowrap',
-                    fontSize: 11,
+                    fontSize: e.final ? 12 : 11,
                     fontWeight: 700,
                     lineHeight: 1.15,
                     color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
                     ...(e.izq === null
-                      ? { left: `${e.pos}%`, transform: 'translateX(-50%)' }
+                      ? (e.final ? { right: 0 } : { left: `${e.pos}%`, transform: 'translateX(-50%)' })
                       : { left: e.izq, width: e.ancho }),
                   }}
                 >
