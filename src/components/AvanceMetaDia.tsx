@@ -10,8 +10,16 @@ const AZUL = '#2563eb';
 const ESMERALDA = '#059669';
 const PISTA = '#e2e8f0';
 
+// Un color fijo por tramo, de menor a mayor. No dependen de si el tramo se
+// alcanzo: cada tramo siempre es de su color y solo se pinta lo cubierto.
+const COLORES_TRAMO = ['#fbbf24', '#f59e0b', '#ea580c', '#dc2626'];
+const colorTramo = (nivel: number) => COLORES_TRAMO[nivel - 1] ?? COLORES_TRAMO[COLORES_TRAMO.length - 1];
+
+const CUADRICULA = 'repeating-linear-gradient(90deg, #cbd5e1 0 1px, transparent 1px 10%)';
+const BRILLO = 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)';
+
 const REFRESCO_MS = 60 * 1000;
-const GROSOR_BARRA = 20;
+const GROSOR_BARRA = 26;
 const ALTO_ETIQUETA = 15;
 const FUENTE = "'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif";
 
@@ -129,8 +137,18 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
   const aPct = (v: number) => (tope > 0 ? Math.min(100, Math.max(0, (v / tope) * 100)) : 0);
   const gana = data.nivel > 0;
 
-  // Relleno de 0 a la venta, con tope en el nivel 4. Siempre en dorado.
-  const llenado = aPct(venta);
+  // Tramo = de la meta anterior a la siguiente, con su color fijo. Se pinta
+  // solo la parte cubierta por la venta; el relleno corta en la venta actual.
+  const tramos = escalera.map((e, i) => {
+    const desde = i === 0 ? 0 : Number(escalera[i - 1].meta);
+    const hasta = Number(e.meta);
+    return {
+      nivel: e.nivel,
+      izq: aPct(desde),
+      ancho: venta > desde ? aPct(Math.min(venta, hasta)) - aPct(desde) : 0,
+      color: colorTramo(e.nivel),
+    };
+  });
 
   // Marcas solo en los niveles 1 a 3: el nivel 4 es el final de la barra.
   const etiquetas = acomodarEtiquetas(escalera.slice(0, -1), tope, anchoBarra);
@@ -213,24 +231,36 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
         {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
         <Box sx={{ gridArea: 'barras', minWidth: 0, pt: { md: 0.75 } }}>
           <div ref={medirBarra} style={{ position: 'relative' }}>
+            {/* Pista con cuadricula de fondo; los tramos van encima */}
             <Box
               sx={{
                 position: 'relative', height: GROSOR_BARRA, borderRadius: GROSOR_BARRA / 2,
-                bgcolor: PISTA, overflow: 'hidden',
+                bgcolor: PISTA, backgroundImage: CUADRICULA, overflow: 'hidden',
               }}
             >
-              <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: `${llenado}%`, bgcolor: DORADO }} />
+              {tramos.map((t) =>
+                t.ancho > 0 ? (
+                  <Box
+                    key={t.nivel}
+                    sx={{
+                      position: 'absolute', top: 0, bottom: 0,
+                      left: `${t.izq}%`, width: `${t.ancho}%`,
+                      bgcolor: t.color, backgroundImage: BRILLO,
+                    }}
+                  />
+                ) : null
+              )}
             </Box>
             {etiquetas.map((e) => (
               <Box
                 key={`marca-${e.nivel}`}
                 sx={{
-                  position: 'absolute', top: -3, height: GROSOR_BARRA + 6, width: 2, ml: '-1px',
-                  left: `${e.pos}%`, bgcolor: '#0f172a', opacity: 0.55, borderRadius: 1,
+                  position: 'absolute', top: -4, height: GROSOR_BARRA + 8, width: 3, ml: '-1.5px',
+                  left: `${e.pos}%`, bgcolor: '#1e293b', borderRadius: 1,
                 }}
               />
             ))}
-            <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.5 }}>
+            <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.75 }}>
               {etiquetas.map((e) => (
                 <Typography
                   key={`etiqueta-${e.nivel}`}
@@ -242,7 +272,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                     fontSize: 11,
                     fontWeight: 700,
                     lineHeight: 1.15,
-                    color: venta >= e.meta ? DORADO : 'text.primary',
+                    color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
                     ...(e.izq === null
                       ? { left: `${e.pos}%`, transform: 'translateX(-50%)' }
                       : { left: e.izq, width: e.ancho }),
