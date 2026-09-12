@@ -4,9 +4,9 @@ import axios from 'axios';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
-// Temporal: la leyenda "no se paga" se quita la semana del 14 de septiembre.
-// Para quitarla basta cambiar este true por false.
-const SEMANA_PRUEBA = true;
+// El bono ya se paga, asi que la leyenda queda apagada. Para volver a
+// mostrarla basta cambiar este false por true, sin tocar nada mas.
+const SEMANA_PRUEBA = false;
 
 // Paleta propia para no confundirse con el azul marino y el naranja del resto de la app.
 const DORADO = '#eab308';
