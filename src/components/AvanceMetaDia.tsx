@@ -30,6 +30,7 @@ const BRILLO = 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,
 
 const REFRESCO_MS = 60 * 1000;
 const GROSOR_BARRA = 26;
+const GROSOR_BARRA_XS = 22;
 const ALTO_ETIQUETA = 15;
 const FUENTE = "'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif";
 
@@ -120,9 +121,9 @@ function rangoSemana(lunes: string, domingo: string) {
 
 let lienzo: CanvasRenderingContext2D | null = null;
 
-/** Tamano de la etiqueta. En modo corto baja 1px para ganar espacio. */
+/** Tamano de la etiqueta. Repartidas en movil, las cuatro van al mismo 11px. */
 const fuenteEtiqueta = (grande: boolean, corto: boolean) =>
-  corto ? (grande ? 11 : 10) : grande ? 12 : 11;
+  corto ? 11 : grande ? 12 : 11;
 
 /** Ancho real del texto en la fuente del tema; si no hay canvas, una estimacion. */
 function anchoTexto(texto: string, grande: boolean, corto: boolean) {
@@ -286,15 +287,38 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
 
   const tamanoEstado = { xs: 15, md: 16 };
 
+  // Mismo bloque en los dos sitios: en md cierra la columna izquierda y en xs
+  // encabeza el bloque de la semana. Se pinta una vez y se elige por CSS.
+  const bloqueBono = (tamanoMonto: number) => (
+    <>
+      <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: 'text.secondary' }}>
+        Bono ganado
+      </Typography>
+      <Typography
+        sx={{
+          fontWeight: 800, fontSize: tamanoMonto, lineHeight: 1.15,
+          color: bono > 0 ? ESMERALDA : 'text.secondary',
+        }}
+      >
+        {dinero(bono)}
+      </Typography>
+      {SEMANA_PRUEBA && (
+        <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
+          Simulación - arranca la próxima semana
+        </Typography>
+      )}
+    </>
+  );
+
   return (
-    <Paper sx={{ px: { xs: 1.5, md: 2.5 }, py: 1.5, mt: { xs: 0.5, sm: 1 }, mb: 1.5, borderRadius: 2 }}>
+    <Paper sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 2, md: 1.5 }, mt: { xs: 0.5, sm: 1 }, mb: 1.5, borderRadius: 2 }}>
       <Box
         sx={{
           display: 'grid',
           gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(0, 1fr)' },
           gridTemplateAreas: { xs: '"modulo" "barras"', md: '"modulo barras"' },
           columnGap: 3,
-          rowGap: 1,
+          rowGap: { xs: 0, md: 1 },
           alignItems: 'start',
         }}
       >
@@ -302,16 +326,16 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
         <Box
           sx={{
             gridArea: 'modulo', minWidth: 0,
-            pr: { md: 2.5 }, pb: { xs: 1, md: 0 },
+            pr: { md: 2.5 },
+            // En movil no hay divisoria: los bloques se separan con aire.
             borderRight: { xs: 'none', md: '1px solid #cbd5e1' },
-            borderBottom: { xs: '1px solid #cbd5e1', md: 'none' },
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, minWidth: 0 }}>
             <Typography sx={{ fontWeight: 800, fontSize: { xs: 18, md: 20 }, whiteSpace: 'nowrap' }}>
               {data.modulo}
             </Typography>
-            <Typography sx={{ fontWeight: 800, fontSize: { xs: 26, md: 30 }, lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: 28, md: 30 }, lineHeight: 1.1, whiteSpace: 'nowrap' }}>
               {dinero(venta)}
             </Typography>
           </Box>
@@ -352,34 +376,22 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
             </Typography>
           )}
 
-          {/* Bono: me_toca, no la bolsa del modulo. En 0 se muestra en gris, no se esconde */}
-          <Box sx={{ mt: 0.75 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: 'text.secondary' }}>
-              Bono ganado
-            </Typography>
-            <Typography
-              sx={{
-                fontWeight: 800, fontSize: { xs: 20, md: 22 }, lineHeight: 1.15,
-                color: bono > 0 ? ESMERALDA : 'text.secondary',
-              }}
-            >
-              {dinero(bono)}
-            </Typography>
-            {SEMANA_PRUEBA && (
-              <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
-                Simulación - arranca la próxima semana
-              </Typography>
-            )}
+          {/* Bono: me_toca, no la bolsa del modulo. En 0 se muestra en gris, no se
+              esconde. En movil no va aqui: baja al bloque de la semana. */}
+          <Box sx={{ mt: 0.75, display: { xs: 'none', md: 'block' } }}>
+            {bloqueBono(22)}
           </Box>
         </Box>
 
         {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
-        <Box sx={{ gridArea: 'barras', minWidth: 0, pt: { md: 0.75 } }}>
+        <Box sx={{ gridArea: 'barras', minWidth: 0, mt: { xs: 1.5, md: 0 }, pt: { md: 0.75 } }}>
           <div ref={medirBarra} style={{ position: 'relative' }}>
             {/* Pista con los tramos de color y su brillo */}
             <Box
               sx={{
-                position: 'relative', height: GROSOR_BARRA, borderRadius: GROSOR_BARRA / 2,
+                position: 'relative',
+                height: { xs: GROSOR_BARRA_XS, md: GROSOR_BARRA },
+                borderRadius: { xs: GROSOR_BARRA_XS / 2, md: GROSOR_BARRA / 2 },
                 bgcolor: PISTA, overflow: 'hidden',
               }}
             >
@@ -400,7 +412,8 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
               <Box
                 key={`marca-${e.nivel}`}
                 sx={{
-                  position: 'absolute', top: -4, height: GROSOR_BARRA + 8, width: 3, ml: '-1.5px',
+                  position: 'absolute', top: -4, width: 3, ml: '-1.5px',
+                  height: { xs: GROSOR_BARRA_XS + 8, md: GROSOR_BARRA + 8 },
                   left: `${e.pos}%`, bgcolor: '#1e293b', borderRadius: 1,
                 }}
               />
@@ -453,7 +466,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
             </Box>
           </div>
 
-          <Box sx={{ mt: 0.5 }}>
+          <Box sx={{ mt: { xs: 1.5, md: 0.5 } }}>
             <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
               Tu participación es de {dinero(data.mi_venta)}{' '}
               <Box component="span" sx={{ color: AZUL }}>— {porcentaje(data.mi_participacion_pct)} del módulo</Box>
@@ -466,11 +479,19 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
             <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.3 }}>
               Participantes hoy: {data.n_participantes}
             </Typography>
+          </Box>
 
-            {/* Tira semanal: informacion secundaria, por eso va compacta y en letra chica */}
+          {/* Bloque 4: en movil arranca con el bono; en md solo la semana y la
+              tira, que es informacion secundaria y va compacta. El bono queda
+              fuera del {semana} para que no desaparezca si mi-semana no responde. */}
+          <Box sx={{ mt: { xs: 1.5, md: 0.6 } }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 1 }}>
+              {bloqueBono(24)}
+            </Box>
+
             {semana && (
-              <Box sx={{ mt: 0.6 }}>
-                <Typography sx={{ fontSize: 9, lineHeight: 1.3, color: 'text.secondary' }}>
+              <>
+                <Typography sx={{ fontSize: { xs: 10, md: 9 }, lineHeight: 1.3, color: 'text.secondary' }}>
                   {rangoSemana(semana.lunes, semana.domingo)}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: '4px', mt: 0.3 }}>
@@ -484,7 +505,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                         key={d.fecha}
                         sx={{
                           flex: 1, minWidth: 0, textAlign: 'center',
-                          py: '2px', borderRadius: '4px', boxSizing: 'border-box',
+                          py: { xs: '4px', md: '2px' }, borderRadius: '4px', boxSizing: 'border-box',
                           bgcolor: !d.cuenta ? TIRA_APAGADO_FONDO : ganado ? TIRA_GANADO_FONDO : '#fff',
                           border: esHoy
                             ? `2px solid ${AZUL}`
@@ -493,7 +514,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                       >
                         <Typography
                           sx={{
-                            fontSize: 9, lineHeight: 1.3,
+                            fontSize: { xs: 10, md: 9 }, lineHeight: 1.3,
                             color: d.cuenta ? 'text.secondary' : TIRA_APAGADO_TEXTO,
                           }}
                         >
@@ -501,7 +522,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                         </Typography>
                         <Typography
                           sx={{
-                            fontSize: 11, fontWeight: 800, lineHeight: 1.3,
+                            fontSize: { xs: 12, md: 11 }, fontWeight: 800, lineHeight: 1.3,
                             color: !d.cuenta ? TIRA_APAGADO_TEXTO : ganado ? ESMERALDA : 'text.secondary',
                           }}
                         >
@@ -513,11 +534,11 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                   <Box
                     sx={{
                       flex: 1.4, minWidth: 0, textAlign: 'center',
-                      py: '2px', borderRadius: '4px', boxSizing: 'border-box',
+                      py: { xs: '4px', md: '2px' }, borderRadius: '4px', boxSizing: 'border-box',
                       bgcolor: TIRA_TOTAL_FONDO, border: `1px solid ${AZUL}`,
                     }}
                   >
-                    <Typography sx={{ fontSize: 9, lineHeight: 1.3, color: 'text.secondary' }}>
+                    <Typography sx={{ fontSize: { xs: 10, md: 9 }, lineHeight: 1.3, color: 'text.secondary' }}>
                       Total
                     </Typography>
                     <Typography
@@ -530,7 +551,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                     </Typography>
                   </Box>
                 </Box>
-              </Box>
+              </>
             )}
           </Box>
         </Box>
