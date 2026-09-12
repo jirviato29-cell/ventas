@@ -15,7 +15,8 @@ const PISTA = '#e2e8f0';
 const COLORES_TRAMO = ['#fbbf24', '#f59e0b', '#ea580c', '#dc2626'];
 const colorTramo = (nivel: number) => COLORES_TRAMO[nivel - 1] ?? COLORES_TRAMO[COLORES_TRAMO.length - 1];
 
-const CUADRICULA = 'repeating-linear-gradient(90deg, #cbd5e1 0 1px, transparent 1px 10%)';
+// Blanco semitransparente: se ve tanto sobre el relleno de color como sobre el gris de la pista.
+const CUADRICULA = 'repeating-linear-gradient(90deg, rgba(255,255,255,0.45) 0 1px, transparent 1px 10%)';
 const BRILLO = 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)';
 
 const REFRESCO_MS = 60 * 1000;
@@ -231,11 +232,11 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
         {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
         <Box sx={{ gridArea: 'barras', minWidth: 0, pt: { md: 0.75 } }}>
           <div ref={medirBarra} style={{ position: 'relative' }}>
-            {/* Pista con cuadricula de fondo; los tramos van encima */}
+            {/* Pista, tramos encima y, sobre todo, la cuadricula */}
             <Box
               sx={{
                 position: 'relative', height: GROSOR_BARRA, borderRadius: GROSOR_BARRA / 2,
-                bgcolor: PISTA, backgroundImage: CUADRICULA, overflow: 'hidden',
+                bgcolor: PISTA, overflow: 'hidden',
               }}
             >
               {tramos.map((t) =>
@@ -250,6 +251,8 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                   />
                 ) : null
               )}
+              {/* Capa propia, encima del relleno: si va debajo, el color la tapa */}
+              <Box sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: CUADRICULA }} />
             </Box>
             {etiquetas.map((e) => (
               <Box
