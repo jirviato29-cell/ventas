@@ -15,6 +15,12 @@ const AZUL = '#2563eb';
 const ESMERALDA = '#059669';
 const PISTA = '#e2e8f0';
 
+// Colores de la tira semanal.
+const TIRA_APAGADO_FONDO = '#f8fafc';
+const TIRA_APAGADO_TEXTO = '#cbd5e1';
+const TIRA_GANADO_FONDO = '#ecfdf5';
+const TIRA_TOTAL_FONDO = '#eff6ff';
+
 // Un color fijo por tramo, de menor a mayor. No dependen de si el tramo se
 // alcanzo: cada tramo siempre es de su color y solo se pinta lo cubierto.
 const COLORES_TRAMO = ['#fbbf24', '#f59e0b', '#ea580c', '#dc2626'];
@@ -46,6 +52,23 @@ type MiAvance = {
   me_toca: number;
 };
 
+// Tira semanal: los 7 dias salen siempre, tengan bono o no. "cuenta" es false
+// en los dias anteriores a que existieran las metas; se pintan apagados.
+type DiaSemana = {
+  fecha: string;
+  dia: string;
+  bono: number;
+  nivel: number;
+  cuenta: boolean;
+};
+
+type MiSemana = {
+  lunes: string;
+  domingo: string;
+  dias: DiaSemana[];
+  total: number;
+};
+
 type Etiqueta = {
   nivel: number;
   meta: number;
@@ -62,6 +85,27 @@ const dinero = (v: number | null | undefined) =>
 
 const porcentaje = (v: number | null | undefined) =>
   `${Number(v ?? 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/** Parte un "2026-09-07" a mano: new Date() lo leeria como UTC y correria el dia. */
+const partes = (iso: string) => {
+  const [a, m, d] = iso.split('-').map(Number);
+  return { anio: a, mes: m - 1, dia: d };
+};
+
+/** "Semana del 7 al 13 de septiembre", o con los dos meses si la semana los cruza. */
+function rangoSemana(lunes: string, domingo: string) {
+  const l = partes(lunes);
+  const d = partes(domingo);
+  if (!MESES[l.mes] || !MESES[d.mes]) return '';
+  return l.mes === d.mes
+    ? `Semana del ${l.dia} al ${d.dia} de ${MESES[d.mes]}`
+    : `Semana del ${l.dia} de ${MESES[l.mes]} al ${d.dia} de ${MESES[d.mes]}`;
+}
 
 let lienzo: CanvasRenderingContext2D | null = null;
 
@@ -122,20 +166,34 @@ function acomodarEtiquetas(escalones: Escalon[], tope: number, anchoBarra: numbe
 
 export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number }) {
   const [data, setData] = useState<MiAvance | null>(null);
+  const [semana, setSemana] = useState<MiSemana | null>(null);
   const [anchoBarra, setAnchoBarra] = useState(0);
   const observador = useRef<ResizeObserver | null>(null);
 
+  // Las dos peticiones van juntas y se resuelven por separado: un fallo de
+  // mi-semana solo quita la tira, nunca tumba el resto de la franja.
   const cargar = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get<MiAvance | ''>(`${API}/api/metas/mi-avance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // 204: sin modulo o sin meta vigente hoy. No se muestra nada.
+    const token = localStorage.getItem('token');
+    const cabeceras = { headers: { Authorization: `Bearer ${token}` } };
+
+    const [avance, tira] = await Promise.allSettled([
+      axios.get<MiAvance | ''>(`${API}/api/metas/mi-avance`, cabeceras),
+      axios.get<MiSemana | ''>(`${API}/api/metas/mi-semana`, cabeceras),
+    ]);
+
+    // 204: sin modulo o sin meta vigente hoy. No se muestra nada.
+    // Si falla se quedan los ultimos datos visibles, sin alertas.
+    if (avance.status === 'fulfilled') {
+      const res = avance.value;
       setData(res.status === 204 || !res.data ? null : (res.data as MiAvance));
-    } catch {
-      // Si falla se quedan los ultimos datos visibles, sin alertas.
     }
+
+    // 204 o error: sin tira. El resto del componente sigue igual.
+    setSemana(
+      tira.status === 'fulfilled' && tira.value.status !== 204 && tira.value.data
+        ? (tira.value.data as MiSemana)
+        : null
+    );
   }, []);
 
   // Carga inicial y cada vez que VentasPage registra o cancela una venta.
@@ -358,6 +416,72 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
             <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.3 }}>
               Participantes hoy: {data.n_participantes}
             </Typography>
+
+            {/* Tira semanal: informacion secundaria, por eso va compacta y en letra chica */}
+            {semana && (
+              <Box sx={{ mt: 0.6 }}>
+                <Typography sx={{ fontSize: 9, lineHeight: 1.3, color: 'text.secondary' }}>
+                  {rangoSemana(semana.lunes, semana.domingo)}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: '4px', mt: 0.3 }}>
+                  {semana.dias.map((d) => {
+                    const monto = Number(d.bono ?? 0);
+                    const ganado = d.cuenta && monto > 0;
+                    // data.fecha es el hoy del backend, en hora de Mexico.
+                    const esHoy = d.fecha === data.fecha;
+                    return (
+                      <Box
+                        key={d.fecha}
+                        sx={{
+                          flex: 1, minWidth: 0, textAlign: 'center',
+                          py: '2px', borderRadius: '4px', boxSizing: 'border-box',
+                          bgcolor: !d.cuenta ? TIRA_APAGADO_FONDO : ganado ? TIRA_GANADO_FONDO : '#fff',
+                          border: esHoy
+                            ? `2px solid ${AZUL}`
+                            : `1px solid ${ganado ? ESMERALDA : PISTA}`,
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: 9, lineHeight: 1.3,
+                            color: d.cuenta ? 'text.secondary' : TIRA_APAGADO_TEXTO,
+                          }}
+                        >
+                          {d.dia}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontSize: 11, fontWeight: 800, lineHeight: 1.3,
+                            color: !d.cuenta ? TIRA_APAGADO_TEXTO : ganado ? ESMERALDA : 'text.secondary',
+                          }}
+                        >
+                          {d.cuenta ? dinero(monto) : '—'}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                  <Box
+                    sx={{
+                      flex: 1.4, minWidth: 0, textAlign: 'center',
+                      py: '2px', borderRadius: '4px', boxSizing: 'border-box',
+                      bgcolor: TIRA_TOTAL_FONDO, border: `1px solid ${AZUL}`,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 9, lineHeight: 1.3, color: 'text.secondary' }}>
+                      Total
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 12, fontWeight: 800, lineHeight: 1.3,
+                        color: Number(semana.total ?? 0) > 0 ? ESMERALDA : 'text.secondary',
+                      }}
+                    >
+                      {dinero(semana.total)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
