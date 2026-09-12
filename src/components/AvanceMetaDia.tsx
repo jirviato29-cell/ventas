@@ -4,9 +4,10 @@ import axios from 'axios';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
-// El bono ya se paga, asi que la leyenda queda apagada. Para volver a
-// mostrarla basta cambiar este false por true, sin tocar nada mas.
-const SEMANA_PRUEBA = false;
+// Esta semana corre como simulacion, con el equipo ya enterado del modelo.
+// El pago real arranca el 15 de septiembre: ese dia se quita la leyenda
+// cambiando este true por false, sin tocar nada mas.
+const SEMANA_PRUEBA = true;
 
 // Paleta propia para no confundirse con el azul marino y el naranja del resto de la app.
 const DORADO = '#eab308';
@@ -282,7 +283,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
             </Typography>
             {SEMANA_PRUEBA && (
               <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
-                Semana de prueba - no se paga
+                Simulación - arranca la próxima semana
               </Typography>
             )}
           </Box>
