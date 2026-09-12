@@ -266,7 +266,9 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
   // ResizeObserver responde, un solo frame despues.
   const corto = anchoBarra > 0 && anchoBarra < ANCHO_CORTO;
   const etiquetas = acomodarEtiquetas(escalera, tope, anchoBarra, corto);
-  const filas = etiquetas.reduce((max, e) => Math.max(max, e.fila + 1), 1);
+  // En modo corto no se acomoda por filas: las etiquetas se reparten a lo
+  // ancho y siempre ocupan un solo renglon.
+  const filas = corto ? 1 : etiquetas.reduce((max, e) => Math.max(max, e.fila + 1), 1);
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
 
@@ -404,26 +406,50 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
               />
             ))}
             <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.75 }}>
-              {etiquetas.map((e) => (
-                <Typography
-                  key={`etiqueta-${e.nivel}`}
-                  sx={{
-                    position: 'absolute',
-                    top: e.fila * ALTO_ETIQUETA,
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    fontSize: fuenteEtiqueta(e.final, corto),
-                    fontWeight: 700,
-                    lineHeight: 1.15,
-                    color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
-                    ...(e.izq === null
-                      ? (e.final ? { right: 0 } : { left: `${e.pos}%`, transform: 'translateX(-50%)' })
-                      : { left: e.izq, width: e.ancho }),
-                  }}
-                >
-                  {e.monto}
-                </Typography>
-              ))}
+              {corto ? (
+                // Movil: columnas iguales a lo ancho de la barra. La etiqueta ya
+                // no cae sobre su marca; quien senala el punto exacto es la marca.
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  {etiquetas.map((e, i) => (
+                    <Typography
+                      key={`etiqueta-${e.nivel}`}
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        textAlign: i === 0 ? 'left' : i === etiquetas.length - 1 ? 'right' : 'center',
+                        whiteSpace: 'nowrap',
+                        fontSize: fuenteEtiqueta(e.final, true),
+                        fontWeight: 700,
+                        lineHeight: 1.15,
+                        color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
+                      }}
+                    >
+                      {e.monto}
+                    </Typography>
+                  ))}
+                </Box>
+              ) : (
+                etiquetas.map((e) => (
+                  <Typography
+                    key={`etiqueta-${e.nivel}`}
+                    sx={{
+                      position: 'absolute',
+                      top: e.fila * ALTO_ETIQUETA,
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      fontSize: fuenteEtiqueta(e.final, false),
+                      fontWeight: 700,
+                      lineHeight: 1.15,
+                      color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
+                      ...(e.izq === null
+                        ? (e.final ? { right: 0 } : { left: `${e.pos}%`, transform: 'translateX(-50%)' })
+                        : { left: e.izq, width: e.ancho }),
+                    }}
+                  >
+                    {e.monto}
+                  </Typography>
+                ))
+              )}
             </Box>
           </div>
 
