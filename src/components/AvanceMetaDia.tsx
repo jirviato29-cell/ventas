@@ -83,6 +83,17 @@ type Etiqueta = {
 const dinero = (v: number | null | undefined) =>
   `$${Math.round(Number(v ?? 0)).toLocaleString('es-MX')}`;
 
+// Debajo de este ancho de barra las cuatro etiquetas no caben con el monto
+// completo, asi que se acortan para que sigan en un solo renglon.
+const ANCHO_CORTO = 480;
+
+/** "$450", "$2.7k", "$3k". Un decimal, sin comas, y sin el .0 cuando sobra. */
+const dineroCorto = (v: number | null | undefined) => {
+  const n = Math.round(Number(v ?? 0));
+  if (Math.abs(n) < 1000) return `$${n}`;
+  return `$${Math.round(n / 100) / 10}k`;
+};
+
 const porcentaje = (v: number | null | undefined) =>
   `${Number(v ?? 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
 
@@ -109,11 +120,16 @@ function rangoSemana(lunes: string, domingo: string) {
 
 let lienzo: CanvasRenderingContext2D | null = null;
 
+/** Tamano de la etiqueta. En modo corto baja 1px para ganar espacio. */
+const fuenteEtiqueta = (grande: boolean, corto: boolean) =>
+  corto ? (grande ? 11 : 10) : grande ? 12 : 11;
+
 /** Ancho real del texto en la fuente del tema; si no hay canvas, una estimacion. */
-function anchoTexto(texto: string, grande: boolean) {
+function anchoTexto(texto: string, grande: boolean, corto: boolean) {
+  const px = fuenteEtiqueta(grande, corto);
   if (!lienzo) lienzo = document.createElement('canvas').getContext('2d');
-  if (!lienzo) return texto.length * (grande ? 7.6 : 7);
-  lienzo.font = `700 ${grande ? 12 : 11}px ${FUENTE}`;
+  if (!lienzo) return texto.length * px * 0.63;
+  lienzo.font = `700 ${px}px ${FUENTE}`;
   return lienzo.measureText(texto).width;
 }
 
@@ -122,7 +138,12 @@ function anchoTexto(texto: string, grande: boolean) {
  * la barra y se coloca primero, para que siempre se quede en el renglon de
  * arriba: si choca con la del nivel anterior, baja la otra.
  */
-function acomodarEtiquetas(escalones: Escalon[], tope: number, anchoBarra: number): Etiqueta[] {
+function acomodarEtiquetas(
+  escalones: Escalon[],
+  tope: number,
+  anchoBarra: number,
+  corto: boolean
+): Etiqueta[] {
   if (!escalones.length) return [];
   const ultimo = escalones.length - 1;
 
@@ -130,8 +151,8 @@ function acomodarEtiquetas(escalones: Escalon[], tope: number, anchoBarra: numbe
     const meta = Number(m.meta);
     const final = i === ultimo;
     const pos = tope > 0 ? (meta / tope) * 100 : 0;
-    const monto = dinero(meta);
-    const ancho = Math.ceil(anchoTexto(monto, final)) + 6;
+    const monto = corto ? dineroCorto(meta) : dinero(meta);
+    const ancho = Math.ceil(anchoTexto(monto, final, corto)) + 6;
     const izq = anchoBarra <= 0
       ? null
       : final
@@ -241,7 +262,10 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
 
   // Todas las metas llevan etiqueta; la marca vertical solo va de la 1 a la 3,
   // porque la del nivel maximo cae en el borde y se veria cortada.
-  const etiquetas = acomodarEtiquetas(escalera, tope, anchoBarra);
+  // anchoBarra 0 es "todavia sin medir": se asume ancho normal hasta que el
+  // ResizeObserver responde, un solo frame despues.
+  const corto = anchoBarra > 0 && anchoBarra < ANCHO_CORTO;
+  const etiquetas = acomodarEtiquetas(escalera, tope, anchoBarra, corto);
   const filas = etiquetas.reduce((max, e) => Math.max(max, e.fila + 1), 1);
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
@@ -388,7 +412,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
                     top: e.fila * ALTO_ETIQUETA,
                     textAlign: 'center',
                     whiteSpace: 'nowrap',
-                    fontSize: e.final ? 12 : 11,
+                    fontSize: fuenteEtiqueta(e.final, corto),
                     fontWeight: 700,
                     lineHeight: 1.15,
                     color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
