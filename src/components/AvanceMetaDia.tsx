@@ -4,6 +4,10 @@ import axios from 'axios';
 
 const API = 'https://ato-appservidor-nvxt.onrender.com';
 
+// Temporal: la leyenda "no se paga" se quita la semana del 14 de septiembre.
+// Para quitarla basta cambiar este true por false.
+const SEMANA_PRUEBA = true;
+
 // Paleta propia para no confundirse con el azul marino y el naranja del resto de la app.
 const DORADO = '#eab308';
 const AZUL = '#2563eb';
@@ -24,9 +28,8 @@ const FUENTE = "'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif";
 
 type Escalon = { nivel: number; meta: number | null; bolsa: number | null };
 
-// me_toca, bolsa y las bolsas de la escalera tambien llegan en la respuesta,
-// pero no se muestran: esta semana es de prueba y no se paga. El asesor no
-// debe ver montos de comision en esta pantalla.
+// me_toca se muestra como "Bono ganado": es la parte que le toca a esta persona.
+// bolsa y las bolsas de la escalera NO se muestran: son del modulo completo.
 type MiAvance = {
   fecha: string;
   modulo: string;
@@ -39,6 +42,7 @@ type MiAvance = {
   mi_venta: number;
   mi_participacion_pct: number;
   n_participantes: number;
+  me_toca: number;
 };
 
 type Etiqueta = {
@@ -183,7 +187,9 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
 
-  // Sin montos de comision: solo el nivel alcanzado.
+  // Lo que le toca a esta persona, no la bolsa del modulo.
+  const bono = Number(data.me_toca ?? 0);
+
   const nivelAlcanzado = data.nivel >= 4 ? 'Nivel 4 - Récord' : `Nivel ${data.nivel} alcanzado`;
 
   // Con nivel 0 el "Faltan" ya es el estado; el detalle solo va con nivel > 0.
@@ -207,7 +213,7 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
           alignItems: 'start',
         }}
       >
-        {/* Izquierda: modulo, venta del dia y estado */}
+        {/* Izquierda: modulo, venta del dia, estado y bono */}
         <Box
           sx={{
             gridArea: 'modulo', minWidth: 0,
@@ -260,6 +266,26 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
               {detalleNivel}
             </Typography>
           )}
+
+          {/* Bono: me_toca, no la bolsa del modulo. En 0 se muestra en gris, no se esconde */}
+          <Box sx={{ mt: 0.75 }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: 'text.secondary' }}>
+              Bono ganado
+            </Typography>
+            <Typography
+              sx={{
+                fontWeight: 800, fontSize: { xs: 20, md: 22 }, lineHeight: 1.15,
+                color: bono > 0 ? ESMERALDA : 'text.secondary',
+              }}
+            >
+              {dinero(bono)}
+            </Typography>
+            {SEMANA_PRUEBA && (
+              <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
+                Semana de prueba - no se paga
+              </Typography>
+            )}
+          </Box>
         </Box>
 
         {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
