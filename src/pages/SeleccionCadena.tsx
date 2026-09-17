@@ -5,13 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../ATO.jpeg';
 
 const CADENAS = [
-  { nombre: 'CHEDRAUI', color: '#f97316' },
-  { nombre: 'COPPEL',   color: '#eab308' },
-  { nombre: 'EKT',      color: '#ef4444' },
-  { nombre: 'SUBURBIA', color: '#ec4899' },
-  { nombre: 'AURRERA',  color: '#22c55e' },
-  { nombre: 'SAMS',     color: '#1e3a5f' },
-  { nombre: 'WALMART',  color: '#3b82f6' },
+  { nombre: 'CHEDRAUI',  color: '#f97316' },
+  { nombre: 'COPPEL',    color: '#eab308' },
+  { nombre: 'EKT',       color: '#ef4444' },
+  { nombre: 'SUBURBIA',  color: '#ec4899' },
+  { nombre: 'AURRERA',   color: '#22c55e' },
+  { nombre: 'SAMS',      color: '#1e3a5f' },
+  { nombre: 'WALMART',   color: '#3b82f6' },
+  { nombre: 'LIVERPOOL', color: '#8b5cf6' },
 ];
 
 const SeleccionCadena: React.FC = () => {
