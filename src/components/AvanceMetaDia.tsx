@@ -7,7 +7,7 @@ const API = 'https://ato-appservidor-nvxt.onrender.com';
 // Esta semana corre como simulacion, con el equipo ya enterado del modelo.
 // El pago real arranca el 15 de septiembre: ese dia se quita la leyenda
 // cambiando este true por false, sin tocar nada mas.
-const SEMANA_PRUEBA = true;
+const SEMANA_PRUEBA = false;
 
 // Paleta propia para no confundirse con el azul marino y el naranja del resto de la app.
 const DORADO = '#eab308';
