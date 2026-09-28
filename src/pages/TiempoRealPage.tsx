@@ -47,7 +47,7 @@ interface TRData {
   horas_totales: number;
   porcentaje_dia: number;
   resumen_general: { total_ventas_mxn: number; total_telefonos: number; total_chips: number; total_accesorios: number; };
-  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; sin_clasificar: CM; };
+  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; plan?: CM; sin_clasificar: CM; };
   chips: { total: number; por_tipo: { tipo_chip: string; cantidad: number }[]; por_monto_recarga: { monto: string; cantidad: number }[]; };
   accesorios: { total_unidades: number; monto_total: number; top_5_productos: { producto: string; cantidad: number; monto: number }[]; };
   lista_telefonos_hoy: { hora: string; modulo: string; asesor: string; producto: string; tipo_venta: string; precio: number; }[];
@@ -57,6 +57,7 @@ interface TRData {
     telefonos_contado: number;
     telefonos_payjoy: number;
     telefonos_paguitos: number;
+    telefonos_plan?: number;
     telefonos_total: number;
     chips: number;
     accesorios: number;
@@ -75,7 +76,10 @@ const fmtN = (n: number) => n.toLocaleString('es-MX');
 const pct = (part: number, total: number) =>
   total > 0 ? `${Math.round((part / total) * 100)}%` : '0%';
 
-const PHONE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#94a3b8'];
+const PHONE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#a855f7', '#94a3b8'];
+
+// Respaldo si el backend aun no manda telefonos.plan.
+const CM_CERO: CM = { cantidad: 0, monto: 0 };
 
 const cardSx = {
   p: { xs: 2, md: 2.5 },
@@ -243,6 +247,7 @@ const TiempoRealPage: React.FC = () => {
                       { label: 'Contado', item: data.telefonos.contado, color: '#22c55e' },
                       { label: 'Payjoy', item: data.telefonos.payjoy, color: '#f97316' },
                       { label: 'Paguitos', item: data.telefonos.paguitos, color: '#3b82f6' },
+                      { label: 'Planes', item: data.telefonos.plan ?? CM_CERO, color: '#a855f7' },
                     ].map(({ label, item, color }) => (
                       <Box key={label} sx={{ p: 1.5, mb: 1, borderRadius: 1.5, border: `1.5px solid ${color}33`, bgcolor: `${color}0D` }}>
                         <Box display="flex" justifyContent="space-between" alignItems="baseline">
@@ -269,11 +274,21 @@ const TiempoRealPage: React.FC = () => {
                               { name: 'Contado', value: data.telefonos.contado.cantidad },
                               { name: 'Payjoy', value: data.telefonos.payjoy.cantidad },
                               { name: 'Paguitos', value: data.telefonos.paguitos.cantidad },
+                              { name: 'Planes', value: data.telefonos.plan?.cantidad ?? 0 },
                               ...(data.telefonos.sin_clasificar.cantidad > 0 ? [{ name: 'Sin clasificar', value: data.telefonos.sin_clasificar.cantidad }] : []),
                             ].filter((d) => d.value > 0)}
                             cx="50%" cy="50%" innerRadius={48} outerRadius={80} paddingAngle={2} dataKey="value"
                           >
-                            {PHONE_COLORS.map((color, i) => <Cell key={i} fill={color} />)}
+                            {[
+                              data.telefonos.contado.cantidad,
+                              data.telefonos.payjoy.cantidad,
+                              data.telefonos.paguitos.cantidad,
+                              data.telefonos.plan?.cantidad ?? 0,
+                              data.telefonos.sin_clasificar.cantidad,
+                            ]
+                              .map((v, i) => ({ v, color: PHONE_COLORS[i] }))
+                              .filter((d) => d.v > 0)
+                              .map((d, i) => <Cell key={i} fill={d.color} />)}
                           </Pie>
                           <Tooltip formatter={(v: any) => [fmtN(Number(v)), '']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                         </PieChart>
@@ -434,7 +449,7 @@ const TiempoRealPage: React.FC = () => {
               <Table size="small" sx={{ minWidth: 820 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Módulo', 'Total MXN', 'Contado', 'Payjoy', 'Paguitos', 'Total Tels', 'Chips', 'Accesorios', 'Productividad'].map((h, i) => (
+                    {['Módulo', 'Total MXN', 'Contado', 'Payjoy', 'Paguitos', 'Planes Tel', 'Total Tels', 'Chips', 'Accesorios', 'Productividad'].map((h, i) => (
                       <TableCell key={h} align={i === 0 ? 'left' : 'right'} sx={{ fontWeight: 700, color: '#FF6600', fontSize: 11, whiteSpace: 'nowrap' }}>
                         {h}
                       </TableCell>
@@ -461,6 +476,7 @@ const TiempoRealPage: React.FC = () => {
                         <TableCell align="right" sx={{ fontSize: 12, color: '#22c55e' }}>{fmtN(mod.telefonos_contado)}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, color: '#f97316' }}>{fmtN(mod.telefonos_payjoy)}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, color: '#3b82f6' }}>{fmtN(mod.telefonos_paguitos)}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, color: '#a855f7' }}>{fmtN(mod.telefonos_plan ?? 0)}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600 }}>{fmtN(mod.telefonos_total)}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12 }}>{fmtN(mod.chips)}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12 }}>{fmtN(mod.accesorios)}</TableCell>
@@ -487,11 +503,12 @@ const TiempoRealPage: React.FC = () => {
                         contado: a.contado + m.telefonos_contado,
                         payjoy: a.payjoy + m.telefonos_payjoy,
                         paguitos: a.paguitos + m.telefonos_paguitos,
+                        plan: a.plan + (m.telefonos_plan ?? 0),
                         tels: a.tels + m.telefonos_total,
                         chips: a.chips + m.chips,
                         acc: a.acc + m.accesorios,
                       }),
-                      { mxn: 0, contado: 0, payjoy: 0, paguitos: 0, tels: 0, chips: 0, acc: 0 },
+                      { mxn: 0, contado: 0, payjoy: 0, paguitos: 0, plan: 0, tels: 0, chips: 0, acc: 0 },
                     );
                     return (
                       <TableRow sx={{ bgcolor: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
@@ -500,6 +517,7 @@ const TiempoRealPage: React.FC = () => {
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#22c55e' }}>{fmtN(tot.contado)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#f97316' }}>{fmtN(tot.payjoy)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#3b82f6' }}>{fmtN(tot.paguitos)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#a855f7' }}>{fmtN(tot.plan)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>{fmtN(tot.tels)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>{fmtN(tot.chips)}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>{fmtN(tot.acc)}</TableCell>

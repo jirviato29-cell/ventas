@@ -45,7 +45,7 @@ interface EstData {
   mes: string;
   periodo_texto: string;
   resumen_general: { total_ventas_mxn: number; total_telefonos: number; total_chips: number; total_accesorios: number; total_planes: number; };
-  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; sin_clasificar: CM; };
+  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; plan?: CM; sin_clasificar: CM; };
   accesorios: { total_unidades: number; monto_total: number; top_5_productos: { producto: string; cantidad: number; monto: number }[]; };
   chips: { total: number; por_tipo: { tipo_chip: string; cantidad: number }[]; por_monto_recarga: { monto: string; cantidad: number }[]; };
   planes: { total: number; por_tramite: { tramite: string; cantidad: number }[]; por_plan: { plan: string; cantidad: number }[]; };
@@ -55,6 +55,7 @@ interface EstData {
     telefonos_contado: number;
     telefonos_payjoy: number;
     telefonos_paguitos: number;
+    telefonos_plan?: number;
     telefonos_total: number;
     chips: number;
     accesorios: number;
@@ -65,7 +66,7 @@ interface EstData {
     meses_considerados: number;
   }[];
   ventas_por_dia: { dia: number; total: number }[];
-  telefonos_por_modulo: { modulo: string; total_telefonos: number; monto_total: number; contado: number; payjoy: number; paguitos: number }[];
+  telefonos_por_modulo: { modulo: string; total_telefonos: number; monto_total: number; contado: number; payjoy: number; paguitos: number; plan?: number }[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,7 +77,10 @@ const fmtN = (n: number) => n.toLocaleString('es-MX');
 const pct = (part: number, total: number) =>
   total > 0 ? `${Math.round((part / total) * 100)}%` : '0%';
 
-const PHONE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#94a3b8'];
+const PHONE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#a855f7', '#94a3b8'];
+
+// Respaldo si el backend aun no manda telefonos.plan.
+const CM_CERO: CM = { cantidad: 0, monto: 0 };
 
 const cardSx = {
   p: { xs: 2, md: 2.5 },
@@ -274,6 +278,7 @@ const EstadisticasPage: React.FC = () => {
                       { label: 'Contado', item: data.telefonos.contado, color: '#22c55e' },
                       { label: 'Payjoy', item: data.telefonos.payjoy, color: '#f97316' },
                       { label: 'Paguitos', item: data.telefonos.paguitos, color: '#3b82f6' },
+                      { label: 'Planes', item: data.telefonos.plan ?? CM_CERO, color: '#a855f7' },
                     ].map(({ label, item, color }) => (
                       <Box
                         key={label}
@@ -316,6 +321,7 @@ const EstadisticasPage: React.FC = () => {
                               { name: 'Contado', value: data.telefonos.contado.cantidad },
                               { name: 'Payjoy', value: data.telefonos.payjoy.cantidad },
                               { name: 'Paguitos', value: data.telefonos.paguitos.cantidad },
+                              { name: 'Planes', value: data.telefonos.plan?.cantidad ?? 0 },
                               ...(data.telefonos.sin_clasificar.cantidad > 0
                                 ? [{ name: 'Sin clasificar', value: data.telefonos.sin_clasificar.cantidad }]
                                 : []),
@@ -327,9 +333,18 @@ const EstadisticasPage: React.FC = () => {
                             paddingAngle={2}
                             dataKey="value"
                           >
-                            {PHONE_COLORS.map((color, i) => (
-                              <Cell key={i} fill={color} />
-                            ))}
+                            {[
+                              data.telefonos.contado.cantidad,
+                              data.telefonos.payjoy.cantidad,
+                              data.telefonos.paguitos.cantidad,
+                              data.telefonos.plan?.cantidad ?? 0,
+                              data.telefonos.sin_clasificar.cantidad,
+                            ]
+                              .map((v, i) => ({ v, color: PHONE_COLORS[i] }))
+                              .filter((d) => d.v > 0)
+                              .map((d, i) => (
+                                <Cell key={i} fill={d.color} />
+                              ))}
                           </Pie>
                           <Tooltip
                             formatter={(v: any) => [fmtN(Number(v)), '']}
@@ -580,7 +595,7 @@ const EstadisticasPage: React.FC = () => {
               <Table size="small" sx={{ minWidth: 900 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                    {['Módulo', 'Total MXN', 'Contado', 'Payjoy', 'Paguitos', 'Total Tels', 'Chips', 'Accesorios', 'Planes', 'Productividad'].map((h, i) => (
+                    {['Módulo', 'Total MXN', 'Contado', 'Payjoy', 'Paguitos', 'Planes Tel', 'Total Tels', 'Chips', 'Accesorios', 'Planes', 'Productividad'].map((h, i) => (
                       <TableCell
                         key={h}
                         align={i === 0 ? 'left' : 'right'}
@@ -630,6 +645,9 @@ const EstadisticasPage: React.FC = () => {
                         </TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, color: '#3b82f6' }}>
                           {fmtN(mod.telefonos_paguitos)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12, color: '#a855f7' }}>
+                          {fmtN(mod.telefonos_plan ?? 0)}
                         </TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600 }}>
                           {fmtN(mod.telefonos_total)}
@@ -747,8 +765,9 @@ const EstadisticasPage: React.FC = () => {
                 contado: acc.contado + m.contado,
                 payjoy: acc.payjoy + m.payjoy,
                 paguitos: acc.paguitos + m.paguitos,
+                plan: acc.plan + (m.plan ?? 0),
               }),
-              { total: 0, monto: 0, contado: 0, payjoy: 0, paguitos: 0 },
+              { total: 0, monto: 0, contado: 0, payjoy: 0, paguitos: 0, plan: 0 },
             );
             const topModulo = (data.telefonos_por_modulo ?? [])[0]?.modulo;
 
@@ -795,7 +814,7 @@ const EstadisticasPage: React.FC = () => {
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                          {['Módulo', 'Total', 'Contado', 'Payjoy', 'Paguitos', 'Monto $'].map((h, i) => (
+                          {['Módulo', 'Total', 'Contado', 'Payjoy', 'Paguitos', 'Planes', 'Monto $'].map((h, i) => (
                             <TableCell
                               key={h}
                               align={i === 0 ? 'left' : 'right'}
@@ -826,6 +845,9 @@ const EstadisticasPage: React.FC = () => {
                               <TableCell align="right" sx={{ fontWeight: isTop ? 700 : 400, fontSize: 12, color: '#3b82f6', py: 0.8, px: 1 }}>
                                 {fmtN(m.paguitos)}
                               </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: isTop ? 700 : 400, fontSize: 12, color: '#a855f7', py: 0.8, px: 1 }}>
+                                {fmtN(m.plan ?? 0)}
+                              </TableCell>
                               <TableCell align="right" sx={{ fontWeight: isTop ? 700 : 400, fontSize: 12, py: 0.8, px: 1 }}>
                                 {fmt$(m.monto_total)}
                               </TableCell>
@@ -846,6 +868,9 @@ const EstadisticasPage: React.FC = () => {
                           </TableCell>
                           <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#3b82f6', py: 0.8, px: 1 }}>
                             {fmtN(totales.paguitos)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#a855f7', py: 0.8, px: 1 }}>
+                            {fmtN(totales.plan)}
                           </TableCell>
                           <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, py: 0.8, px: 1 }}>
                             {fmt$(totales.monto)}

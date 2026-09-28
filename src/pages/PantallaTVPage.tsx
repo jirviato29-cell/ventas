@@ -25,7 +25,7 @@ interface EstData {
     total_accesorios: number;
     total_planes: number;
   };
-  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; };
+  telefonos: { total: number; contado: CM; payjoy: CM; paguitos: CM; plan?: CM; };
   accesorios: { total_unidades: number; top_5_productos: { producto: string; cantidad: number }[]; top_10_productos: { producto: string; cantidad: number; monto: number }[]; };
   chips: { total: number; por_tipo: { tipo_chip: string; cantidad: number }[]; };
   planes: { total: number; por_plan: { plan: string; cantidad: number }[]; contratos_pendientes: number; contratos_listos: number; };
@@ -60,6 +60,7 @@ const CARD = '#16213e';
 const ORANGE = '#FF6600';
 const GREEN = '#22c55e';
 const BLUE = '#3b82f6';
+const PURPLE = '#a855f7';
 const TEXT_DIM = '#94a3b8';
 const MONO = '"Roboto Mono","SF Mono",Menlo,Consolas,monospace';
 
@@ -418,32 +419,33 @@ const PantallaTVPage: React.FC = () => {
         return (
           <ScreenShell title={SCREEN_TITLES[0]}>
             <BigStat label="TOTAL DEL MES" value={fmtN(data.telefonos.total)} color="#fff" />
-            <Box sx={{ display: 'flex', gap: '2vw', mt: '4vh', justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', gap: '1.4vw', mt: '3.5vh', justifyContent: 'center' }}>
               {[
                 { l: 'Contado', v: data.telefonos.contado.cantidad, c: GREEN },
                 { l: 'PayJoy', v: data.telefonos.payjoy.cantidad, c: ORANGE },
                 { l: 'Paguitos', v: data.telefonos.paguitos.cantidad, c: BLUE },
+                { l: 'Planes', v: data.telefonos.plan?.cantidad ?? 0, c: PURPLE },
               ].map((s) => (
                 <Box
                   key={s.l}
                   sx={{
                     flex: 1,
-                    maxWidth: '28%',
+                    maxWidth: '23%',
                     textAlign: 'center',
                     bgcolor: CARD,
                     border: `2px solid ${s.c}55`,
                     borderRadius: 3,
-                    py: '3vh',
+                    py: '2.6vh',
                   }}
                 >
-                  <Box sx={{ fontSize: 'clamp(16px, 1.7vw, 30px)', color: s.c, fontWeight: 700 }}>{s.l}</Box>
+                  <Box sx={{ fontSize: 'clamp(14px, 1.5vw, 27px)', color: s.c, fontWeight: 700 }}>{s.l}</Box>
                   <Box
                     sx={{
                       fontFamily: MONO,
                       fontVariantNumeric: 'tabular-nums',
                       fontWeight: 800,
                       color: s.c,
-                      fontSize: 'clamp(44px, 7vw, 120px)',
+                      fontSize: 'clamp(36px, 5.4vw, 100px)',
                       lineHeight: 1,
                     }}
                   >
