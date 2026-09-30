@@ -91,6 +91,8 @@ interface MiReciboData {
 }
 
 interface ItemDesglose {
+  /** Encabezado propio de un grupo de chips (ej. "Incubadora"); si falta se usa tipo_chip + recarga. */
+  etiqueta?: string;
   producto?: string;
   tipo_chip?: string;
   monto_recarga?: number;
@@ -110,6 +112,7 @@ interface DetalleData {
   accesorios: ItemDesglose[];
   telefonos: ItemDesglose[];
   chips: ItemDesglose[];
+  incubadora?: { fecha: string; numero_telefono: string; tipo_chip: string; comision: number }[];
 }
 
 /* Formato contable con separador de miles (el diseño pide $2,500.00, no $2500.00). */
@@ -226,7 +229,7 @@ const GrupoChips: React.FC<{ it: ItemDesglose; paleta: Paleta }> = ({ it, paleta
   <Box sx={{ borderBottom: "1px solid #f1f5f9", "&:last-of-type": { borderBottom: "none" } }}>
     <Box display="flex" alignItems="baseline" gap={1.1} sx={{ px: "12px", pt: "8px", pb: "5px" }}>
       <Typography fontSize={12.5} fontWeight={800} color="#0f172a" noWrap>
-        {it.tipo_chip} {fmtCorto(it.monto_recarga)}
+        {it.etiqueta ?? `${it.tipo_chip} ${fmtCorto(it.monto_recarga)}`}
       </Typography>
       <Typography
         fontSize={10}
@@ -566,7 +569,30 @@ const MiNomina: React.FC = () => {
   ];
 
   const montoIncubadora = Number(fila.incubadora || 0);
-  const extrasChips = montoIncubadora > 0 ? [{ label: "Incubadora", monto: montoIncubadora }] : [];
+
+  /* Incubadora (solo cadena): las líneas pagadas se agrupan por comisión, igual que los chips,
+     y ocupan el lugar del renglón "Incubadora". Sin líneas queda el renglón con el total. */
+  const gruposIncubadora: ItemDesglose[] = [];
+  if (esCadena && detalle?.disponible) {
+    const porComision = new Map<number, ItemDesglose>();
+    for (const c of detalle.incubadora ?? []) {
+      const com = Number(c.comision || 0);
+      let g = porComision.get(com);
+      if (!g) {
+        g = { etiqueta: "Incubadora", comision_unitaria: com, piezas: 0, subtotal: 0, numeros: [] };
+        porComision.set(com, g);
+        gruposIncubadora.push(g);
+      }
+      g.piezas += 1;
+      g.subtotal = Math.round((g.subtotal + com) * 100) / 100;
+      g.numeros!.push({ fecha: c.fecha, numero: c.numero_telefono });
+    }
+    gruposIncubadora.sort((a, b) => b.subtotal - a.subtotal);
+  }
+  const extrasChips =
+    montoIncubadora > 0 && gruposIncubadora.length === 0
+      ? [{ label: "Incubadora", monto: montoIncubadora }]
+      : [];
 
   /* Caja "Planes": los mismos conceptos de `otros`, que antes sólo salían en el resumen. */
   const NOTA_PLANES: Record<string, string> = {
@@ -580,7 +606,8 @@ const MiNomina: React.FC = () => {
 
   /* Renglones que cada caja pinta: alimentan el badge de conteo y el reparto del layout. */
   const filasChips = detalle?.disponible
-    ? detalle.chips.reduce((a, it) => a + (it.numeros?.length || 1), 0) + extrasChips.length
+    ? [...detalle.chips, ...gruposIncubadora].reduce((a, it) => a + (it.numeros?.length || 1), 0) +
+      extrasChips.length
     : 0;
 
   const cajas = [
@@ -632,7 +659,7 @@ const MiNomina: React.FC = () => {
       props: {
         titulo: "Chips",
         total: Number(fila.chips || 0) + montoIncubadora,
-        items: detalle.chips,
+        items: [...detalle.chips, ...gruposIncubadora],
         vacioTxt: "Sin chips validados",
         esChip: true,
         extras: extrasChips,
