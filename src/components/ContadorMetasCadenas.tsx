@@ -75,17 +75,32 @@ type MiAvanceCadenas = {
 type Respuesta = MiAvanceCadenas | { aplica: false };
 
 const dinero = (v: number | null | undefined) =>
-  `$${Number(v ?? 0).toLocaleString('es-MX', { maximumFractionDigits: 2 })}`;
+  `$${num(v).toLocaleString('es-MX', { maximumFractionDigits: 2 })}`;
 
 const porcentaje = (v: number | null | undefined) =>
   `${Number(v ?? 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
 
-const aPct = (v: number, meta: number | null) =>
-  meta && meta > 0 ? Math.min(100, Math.max(0, (v / meta) * 100)) : 0;
+/** Numero finito o 0: undefined, null, NaN e Infinity no llegan a la pantalla. */
+const num = (v: unknown) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Ancho de barra 0..100. Sin meta (null o 0) la barra queda vacia. */
+const aPct = (v: unknown, meta: unknown) => {
+  const m = num(meta);
+  return m > 0 ? Math.min(100, Math.max(0, (num(v) / m) * 100)) : 0;
+};
+
+const SIN_CONTEO: Conteo = { subidas: 0, validadas: 0, meta: null, cumplida: false };
 
 /** Una barra con dos tonos: claro = subidas, fuerte = validadas encima. */
-function BarraMeta({ titulo, conteo }: { titulo: string; conteo: Conteo }) {
-  const faltan = Math.max(0, Number(conteo.meta ?? 0) - conteo.validadas);
+function BarraMeta({ titulo, conteo: c }: { titulo: string; conteo?: Partial<Conteo> | null }) {
+  const conteo = { ...SIN_CONTEO, ...(c ?? {}) };
+  const subidas = num(conteo.subidas);
+  const validadas = num(conteo.validadas);
+  const cumplida = conteo.cumplida === true;
+  const faltan = Math.max(0, num(conteo.meta) - validadas);
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
@@ -93,7 +108,7 @@ function BarraMeta({ titulo, conteo }: { titulo: string; conteo: Conteo }) {
           {titulo}
         </Typography>
         <Typography sx={{ fontSize: { xs: 15, md: 16 }, fontWeight: 800, whiteSpace: 'nowrap' }}>
-          {conteo.subidas} / {conteo.meta ?? '—'}
+          {subidas} / {conteo.meta ?? '—'}
         </Typography>
       </Box>
       <Box
@@ -107,25 +122,25 @@ function BarraMeta({ titulo, conteo }: { titulo: string; conteo: Conteo }) {
         <Box
           sx={{
             position: 'absolute', top: 0, bottom: 0, left: 0,
-            width: `${aPct(conteo.subidas, conteo.meta)}%`, bgcolor: DORADO_CLARO,
+            width: `${aPct(subidas, conteo.meta)}%`, bgcolor: DORADO_CLARO,
           }}
         />
         <Box
           sx={{
             position: 'absolute', top: 0, bottom: 0, left: 0,
-            width: `${aPct(conteo.validadas, conteo.meta)}%`,
-            bgcolor: conteo.cumplida ? ESMERALDA : DORADO, backgroundImage: BRILLO,
+            width: `${aPct(validadas, conteo.meta)}%`,
+            bgcolor: cumplida ? ESMERALDA : DORADO, backgroundImage: BRILLO,
           }}
         />
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.3 }}>
         <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
-          Validadas: {conteo.validadas}
+          Validadas: {validadas}
         </Typography>
         <Typography
-          sx={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', color: conteo.cumplida ? ESMERALDA : DORADO }}
+          sx={{ fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', color: cumplida ? ESMERALDA : DORADO }}
         >
-          {conteo.cumplida ? 'Meta cumplida ✓' : `Faltan ${faltan} validadas`}
+          {cumplida ? 'Meta cumplida ✓' : `Faltan ${faltan} validadas`}
         </Typography>
       </Box>
     </Box>
@@ -141,16 +156,17 @@ export default function ContadorMetasCadenas({
 }) {
   const [data, setData] = useState<MiAvanceCadenas | null>(null);
 
-  // Si falla se quedan los ultimos datos visibles, sin alertas.
+  // Cualquier fallo (500, 401, red) esconde el contador, sin alertas; la
+  // pagina sigue funcionando y el siguiente refresco lo vuelve a intentar.
   const cargar = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
       const res = await axios.get<Respuesta>(`${API}/metas-cadenas/mi-avance`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setData(res.data && res.data.aplica ? res.data : null);
+      setData(res.data && res.data.aplica === true ? res.data : null);
     } catch {
-      // Sin cambios: se conserva lo ultimo que se mostro.
+      setData(null);
     }
   }, []);
 
@@ -166,9 +182,15 @@ export default function ContadorMetasCadenas({
 
   if (!data) return null;
 
-  const bolsa = data.mi_bolsa;
-  const yo = data.promotores.find((p) => p.usuario_id === usuarioId) ?? null;
-  const avisoSemanal = yo !== null && Number(yo.participacion_semana_pct ?? 0) < PARTICIPACION_SEMANAL_MIN;
+  // La respuesta puede venir incompleta: todo se lee con valores por defecto.
+  const bolsa: Partial<MiAvanceCadenas['mi_bolsa']> = data.mi_bolsa ?? {};
+  const diasGanados = num(bolsa.dias_ganados);
+  const semanasGanadas = num(bolsa.semanas_ganadas);
+  const promotores = Array.isArray(data.promotores) ? data.promotores.filter(Boolean) : [];
+  const diasSemana = Array.isArray(data.semana?.dias) ? data.semana.dias.filter(Boolean) : [];
+  const hoy = data.dia?.fecha;
+  const yo = promotores.find((p) => p.usuario_id === usuarioId) ?? null;
+  const avisoSemanal = yo !== null && num(yo.participacion_semana_pct) < PARTICIPACION_SEMANAL_MIN;
 
   return (
     <Paper sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 2, md: 1.5 }, mt: { xs: 0.5, sm: 1 }, mb: 1.5, borderRadius: 2 }}>
@@ -180,19 +202,19 @@ export default function ContadorMetasCadenas({
         }}
       >
         <Typography sx={{ fontWeight: 800, fontSize: { xs: 18, md: 20 }, minWidth: 0 }}>
-          {data.tienda.nombre}
+          {data.tienda?.nombre ?? ''}
         </Typography>
         <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
           <Typography sx={{ fontWeight: 800, fontSize: { xs: 16, md: 18 }, lineHeight: 1.2 }}>
             Bolsa acumulada del mes:{' '}
-            <Box component="span" sx={{ color: Number(bolsa.total_acumulado) > 0 ? ESMERALDA : 'text.secondary' }}>
+            <Box component="span" sx={{ color: num(bolsa.total_acumulado) > 0 ? ESMERALDA : 'text.secondary' }}>
               {dinero(bolsa.total_acumulado)}
             </Box>
           </Typography>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary', lineHeight: 1.3 }}>
-            Diaria {dinero(bolsa.diaria_acumulada)} ({bolsa.dias_ganados} {bolsa.dias_ganados === 1 ? 'día' : 'días'})
-            {' · '}Semanal {dinero(bolsa.semanal_acumulada)} ({bolsa.semanas_ganadas}{' '}
-            {bolsa.semanas_ganadas === 1 ? 'semana' : 'semanas'})
+            Diaria {dinero(bolsa.diaria_acumulada)} ({diasGanados} {diasGanados === 1 ? 'día' : 'días'})
+            {' · '}Semanal {dinero(bolsa.semanal_acumulada)} ({semanasGanadas}{' '}
+            {semanasGanadas === 1 ? 'semana' : 'semanas'})
             {' · '}Mensual estimada {dinero(bolsa.mensual_estimada)}
           </Typography>
         </Box>
@@ -212,8 +234,8 @@ export default function ContadorMetasCadenas({
           <BarraMeta titulo="SEMANAL" conteo={data.semana} />
           {/* Tira Lun..Dom: validadas grandes, subidas abajo; hoy con borde azul */}
           <Box sx={{ display: 'flex', gap: '4px', mt: 0.75 }}>
-            {data.semana.dias.map((d) => {
-              const esHoy = d.fecha === data.dia.fecha;
+            {diasSemana.map((d) => {
+              const esHoy = d.fecha === hoy;
               return (
                 <Box
                   key={d.fecha}
@@ -233,10 +255,10 @@ export default function ContadorMetasCadenas({
                       color: d.cumplida ? ESMERALDA : 'text.secondary',
                     }}
                   >
-                    {d.validadas}
+                    {num(d.validadas)}
                   </Typography>
                   <Typography sx={{ fontSize: { xs: 9, md: 8 }, lineHeight: 1.2, color: 'text.secondary' }}>
-                    de {d.subidas}
+                    de {num(d.subidas)}
                   </Typography>
                 </Box>
               );
@@ -266,7 +288,7 @@ export default function ContadorMetasCadenas({
         )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, mt: 0.75 }}>
-          {data.promotores.map((p) => {
+          {promotores.map((p) => {
             const esYo = p.usuario_id === usuarioId;
             return (
               <Box
@@ -297,14 +319,14 @@ export default function ContadorMetasCadenas({
                   ].map((c) => (
                     <Box key={c.etiqueta} sx={{ minWidth: 0 }}>
                       <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                        {c.etiqueta}: <b>{c.validadas}</b> val.{' '}
+                        {c.etiqueta}: <b>{num(c.validadas)}</b> val.{' '}
                         <Box component="span" sx={{ color: AZUL, fontWeight: 700 }}>
-                          {porcentaje(c.pct)}
+                          {porcentaje(num(c.pct))}
                         </Box>
                       </Typography>
                       <LinearProgress
                         variant="determinate"
-                        value={Math.min(100, Math.max(0, Number(c.pct ?? 0)))}
+                        value={Math.min(100, Math.max(0, num(c.pct)))}
                         sx={{
                           height: 6, borderRadius: 3, mt: 0.25, bgcolor: PISTA,
                           '& .MuiLinearProgress-bar': { bgcolor: AZUL, borderRadius: 3 },
