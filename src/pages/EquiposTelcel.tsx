@@ -5,6 +5,7 @@ import {
   Autocomplete, Checkbox,
 } from "@mui/material";
 import axios from "axios";
+import * as XLSX from "xlsx";
 
 const BASE = "https://ato-appservidor-nvxt.onrender.com";
 
@@ -336,6 +337,43 @@ const EquiposTelcel = () => {
       return (b.id || 0) - (a.id || 0);
     });
 
+  const descargarExcel = () => {
+    if (equiposVisibles.length === 0) return;
+    const soloFecha = (f: any) => (f ? String(f).split(' ')[0] : "");
+    const encabezado = [
+      "IMEI", "Producto", "Tipo", "Módulo", "Vendedor", "Fecha venta", "Activación",
+      "Fecha activación", "Fecha Estatus inicial", "Número", "Qué fue", "Cumple ARL",
+    ];
+    const filas = equiposVisibles.map(eq => [
+      String(eq.imei ?? ""),
+      eq.producto || "",
+      tipoEquipo(eq.producto),
+      eq.modulo_nombre || "",
+      eq.vendedor || "",
+      soloFecha(eq.fecha_venta),
+      ESTILO_ESTADO[obtenerEstado(eq)].label,
+      soloFecha(eq.fecha_activacion),
+      soloFecha(eq.fecha_estatus_inicial),
+      String(eq.numero_linea ?? ""),
+      infoClasificacionVenta(eq.clasificacion_venta)?.label || "",
+      eq.cumple_arl === true ? "Sí" : "No",
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([encabezado, ...filas]);
+    // IMEI (col A) y Numero (col J) como texto: si no, Excel los pasa a notacion cientifica.
+    for (let r = 1; r <= filas.length; r++) {
+      for (const c of [0, 9]) {
+        const celda = ws[XLSX.utils.encode_cell({ r, c })];
+        if (celda) { celda.t = "s"; celda.z = "@"; }
+      }
+    }
+    ws["!cols"] = encabezado.map((_, i) => ({ wch: i === 1 ? 40 : 18 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Equipos");
+    const hoy = new Date();
+    const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+    XLSX.writeFile(wb, `equipos_${fEstatus || "todos"}_${fecha}.xlsx`);
+  };
+
   return (
     <Container maxWidth={false} sx={{ mt: 4 }}>
       <Box sx={{ p: 3 }}>
@@ -474,6 +512,14 @@ const EquiposTelcel = () => {
 
           <Button variant="contained" onClick={cargarEquipos}>
             Buscar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={descargarExcel}
+            disabled={cargando || equiposVisibles.length === 0}
+          >
+            Descargar Excel
           </Button>
         </Box>
 
