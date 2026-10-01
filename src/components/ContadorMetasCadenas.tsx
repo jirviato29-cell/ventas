@@ -14,6 +14,8 @@ const ROJO = '#dc2626';
 
 const TIRA_GANADO_FONDO = '#ecfdf5';
 const AVISO_FONDO = '#fef2f2';
+const GRIS_FONDO = '#f1f5f9';
+const GRIS_TEXTO = '#64748b';
 
 const BRILLO = 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)';
 
@@ -34,6 +36,7 @@ type Conteo = {
 type DiaSemana = {
   fecha: string;
   dia: string;
+  num_dia: number;
   subidas: number;
   validadas: number;
   cumplida: boolean;
@@ -58,7 +61,9 @@ type MiAvanceCadenas = {
   metas: { diaria: number | null; semanal: number | null; mensual: number | null };
   montos: { diaria: number; semanal: number; mensual: number };
   dia: Conteo & { fecha: string };
-  semana: Conteo & { inicio: string; fin: string; dias: DiaSemana[] };
+  // Bloque fijo en curso (1-7, 8-14, 15-21, 22-28). null del dia 29 en adelante.
+  semana: (Conteo & { numero: number; inicio: string; fin: string; dias: DiaSemana[] }) | null;
+  sin_semana?: boolean;
   mes: Conteo & { inicio: string; fin: string };
   promotores: Promotor[];
   mi_bolsa: {
@@ -69,7 +74,16 @@ type MiAvanceCadenas = {
     semana_en_curso_califica: boolean;
     mensual_estimada: number;
     total_acumulado: number;
+    semanas: SemanaBolsa[];
   };
+};
+
+type SemanaBolsa = {
+  numero: number;
+  inicio: string;
+  fin: string;
+  estado: 'cerrada' | 'en_curso' | 'pendiente';
+  ganada: boolean;
 };
 
 type Respuesta = MiAvanceCadenas | { aplica: false };
@@ -90,6 +104,25 @@ const num = (v: unknown) => {
 const aPct = (v: unknown, meta: unknown) => {
   const m = num(meta);
   return m > 0 ? Math.min(100, Math.max(0, (num(v) / m) * 100)) : 0;
+};
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** "1 al 7 oct". Parte el "2026-10-01" a mano: new Date() lo leeria como UTC y correria el dia. */
+const rangoBloque = (inicio?: string, fin?: string) => {
+  const [, , di] = String(inicio ?? '').split('-').map(Number);
+  const [, mf, df] = String(fin ?? '').split('-').map(Number);
+  if (!di || !df || !MESES_CORTOS[mf - 1]) return '';
+  return `${di} al ${df} ${MESES_CORTOS[mf - 1]}`;
+};
+
+/** Texto y colores de cada chip de semana en la bolsa. */
+const chipSemana = (s: Partial<SemanaBolsa>, monto: unknown) => {
+  const n = `S${num(s.numero)}`;
+  if (s.ganada === true) return { texto: `${n} ✓ ${dinero(num(monto))}`, color: ESMERALDA, fondo: TIRA_GANADO_FONDO, borde: ESMERALDA };
+  if (s.estado === 'en_curso') return { texto: `${n} en curso`, color: AZUL, fondo: '#eff6ff', borde: AZUL };
+  if (s.estado === 'pendiente') return { texto: `${n} pendiente`, color: GRIS_TEXTO, fondo: GRIS_FONDO, borde: PISTA };
+  return { texto: `${n} ✗`, color: ROJO, fondo: AVISO_FONDO, borde: '#fecaca' };
 };
 
 const SIN_CONTEO: Conteo = { subidas: 0, validadas: 0, meta: null, cumplida: false };
@@ -187,10 +220,14 @@ export default function ContadorMetasCadenas({
   const diasGanados = num(bolsa.dias_ganados);
   const semanasGanadas = num(bolsa.semanas_ganadas);
   const promotores = Array.isArray(data.promotores) ? data.promotores.filter(Boolean) : [];
-  const diasSemana = Array.isArray(data.semana?.dias) ? data.semana.dias.filter(Boolean) : [];
+  const semana = data.sin_semana === true ? null : data.semana ?? null;
+  const diasSemana = semana && Array.isArray(semana.dias) ? semana.dias.filter(Boolean) : [];
+  const semanasBolsa = Array.isArray(bolsa.semanas) ? bolsa.semanas.filter(Boolean) : [];
+  const etiquetaSemana = semana ? `Semana ${num(semana.numero)}` : '';
   const hoy = data.dia?.fecha;
   const yo = promotores.find((p) => p.usuario_id === usuarioId) ?? null;
-  const avisoSemanal = yo !== null && num(yo.participacion_semana_pct) < PARTICIPACION_SEMANAL_MIN;
+  // Sin bloque en curso (dia 29+) no hay bolsa semanal que perseguir.
+  const avisoSemanal = semana !== null && yo !== null && num(yo.participacion_semana_pct) < PARTICIPACION_SEMANAL_MIN;
 
   return (
     <Paper sx={{ px: { xs: 2, md: 2.5 }, py: { xs: 2, md: 1.5 }, mt: { xs: 0.5, sm: 1 }, mb: 1.5, borderRadius: 2 }}>
@@ -217,6 +254,30 @@ export default function ContadorMetasCadenas({
             {semanasGanadas === 1 ? 'semana' : 'semanas'})
             {' · '}Mensual estimada {dinero(bolsa.mensual_estimada)}
           </Typography>
+          {semanasBolsa.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5,
+                justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+              }}
+            >
+              {semanasBolsa.map((s) => {
+                const chip = chipSemana(s, data.montos?.semanal);
+                return (
+                  <Box
+                    key={num(s.numero)}
+                    sx={{
+                      px: 0.75, py: '1px', borderRadius: '10px', whiteSpace: 'nowrap',
+                      fontSize: 11, fontWeight: 800, lineHeight: 1.5,
+                      color: chip.color, bgcolor: chip.fondo, border: `1px solid ${chip.borde}`,
+                    }}
+                  >
+                    {chip.texto}
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
         </Box>
       </Box>
 
@@ -230,9 +291,13 @@ export default function ContadorMetasCadenas({
       >
         <BarraMeta titulo="DIARIA" conteo={data.dia} />
 
+        {semana ? (
         <Box sx={{ minWidth: 0 }}>
-          <BarraMeta titulo="SEMANAL" conteo={data.semana} />
-          {/* Tira Lun..Dom: validadas grandes, subidas abajo; hoy con borde azul */}
+          <BarraMeta
+            titulo={`SEMANA ${num(semana.numero)} (${rangoBloque(semana.inicio, semana.fin)})`}
+            conteo={semana}
+          />
+          {/* Tira con los 7 dias del bloque tal como vienen: "Jue 15"; hoy con borde azul */}
           <Box sx={{ display: 'flex', gap: '4px', mt: 0.75 }}>
             {diasSemana.map((d) => {
               const esHoy = d.fecha === hoy;
@@ -246,8 +311,10 @@ export default function ContadorMetasCadenas({
                     border: esHoy ? `2px solid ${AZUL}` : `1px solid ${d.cumplida ? ESMERALDA : PISTA}`,
                   }}
                 >
-                  <Typography sx={{ fontSize: { xs: 10, md: 9 }, lineHeight: 1.3, color: 'text.secondary' }}>
-                    {d.dia}
+                  <Typography
+                    sx={{ fontSize: { xs: 10, md: 9 }, lineHeight: 1.3, color: 'text.secondary', whiteSpace: 'nowrap' }}
+                  >
+                    {d.dia} {num(d.num_dia) || ''}
                   </Typography>
                   <Typography
                     sx={{
@@ -268,6 +335,21 @@ export default function ContadorMetasCadenas({
             Validadas de subidas por día
           </Typography>
         </Box>
+        ) : (
+          <Box
+            sx={{
+              minWidth: 0, px: 1.5, py: 1.25, borderRadius: 1,
+              bgcolor: GRIS_FONDO, border: `1px solid ${PISTA}`,
+            }}
+          >
+            <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.5, color: 'text.secondary' }}>
+              SEMANAL
+            </Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: GRIS_TEXTO, mt: 0.25 }}>
+              Del 29 al fin de mes solo cuentan la meta diaria y la mensual
+            </Typography>
+          </Box>
+        )}
 
         <BarraMeta titulo="MENSUAL" conteo={data.mes} />
       </Box>
@@ -315,7 +397,9 @@ export default function ContadorMetasCadenas({
                 >
                   {[
                     { etiqueta: 'Mes', validadas: p.validadas_mes, pct: p.participacion_mes_pct },
-                    { etiqueta: 'Semana', validadas: p.validadas_semana, pct: p.participacion_semana_pct },
+                    ...(semana
+                      ? [{ etiqueta: etiquetaSemana, validadas: p.validadas_semana, pct: p.participacion_semana_pct }]
+                      : []),
                   ].map((c) => (
                     <Box key={c.etiqueta} sx={{ minWidth: 0 }}>
                       <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
