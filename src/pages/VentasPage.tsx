@@ -28,6 +28,7 @@ import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
 import AvanceMetaDia from '../components/AvanceMetaDia';
+import ContadorMetasCadenas from '../components/ContadorMetasCadenas';
 import MiCheckinSemana from '../components/MiCheckinSemana';
 import MiSemanaPasada from '../components/MiSemanaPasada';
 import TiraAsistenciaSemana from '../components/TiraAsistenciaSemana';
@@ -1003,8 +1004,13 @@ const FormularioVentaMultiple = () => {
 
   // ── Formulario (compartido) ───────────────────────────────────────────────
   // Franja de avance de meta: ancho completo arriba de la pestaña TICKET.
-  // Una sola definicion para las dos vistas (asesor y encargado); Cadenas no la ve.
-  const franjaAvance = !esCadenas && tabAsesor === 0 ? <AvanceMetaDia refrescar={refrescoAvance} /> : null;
+  // Una sola definicion para las dos vistas (asesor y encargado); Cadenas ve
+  // en su lugar el contador de metas de activaciones de su tienda.
+  const franjaAvance = tabAsesor !== 0
+    ? null
+    : esCadenas
+      ? <ContadorMetasCadenas refrescar={refrescoAvance} usuarioId={user?.id} />
+      : <AvanceMetaDia refrescar={refrescoAvance} />;
 
   const formulario = localStorage.getItem('rol') !== 'admin' ? (
     <Paper sx={{ borderRadius: 2, p: 0, overflow: 'hidden' }}>
