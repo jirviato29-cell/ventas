@@ -23,6 +23,7 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PrintIcon from "@mui/icons-material/Print";
 import axios from "axios";
+import MetasCadenasResumen from "../components/MetasCadenasResumen";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
 const token = () => localStorage.getItem("token") ?? "";
@@ -691,12 +692,14 @@ const MetasPage: React.FC = () => {
         <Tab label="Hoy" />
         <Tab label="Asesores" />
         <Tab label="Semana" />
+        <Tab label="Cadenas" />
       </Tabs>
 
       {/* Solo se monta la seccion visible: el refresco de Hoy se detiene al salir */}
       {tab === 0 && <SeccionHoy />}
       {tab === 1 && <SeccionAsesores />}
       {tab === 2 && <SeccionSemana />}
+      {tab === 3 && <MetasCadenasResumen />}
     </Container>
   );
 };
