@@ -672,7 +672,7 @@ function cargarSem(){
   let html=`<thead><tr><th style="text-align:left;">Promotor</th>`;
   dias.forEach((_,i)=>html+=`<th>${DS[i]}<br><small style="font-weight:400">${dias[i].slice(5)}</small></th>`);
   html+=`<th>Días</th><th>Bono</th></tr></thead><tbody>`;
-  P.forEach((p,pi)=>{
+  ordenTienda(P).forEach((p,pi)=>{
     let ok=0;
     const celdas=dias.map(f=>{
       const r=(R[f]||{})[p.nombre];
@@ -694,7 +694,9 @@ return`<td><span class="tci">${r.entrada}</span>${co}${hLabel}</td>`;
       return`<td style="color:#ddd;">—</td>`;
     }).join('');
     const bono=ok>=6?`<td><span class="bono-si">✅ $100</span></td>`:`<td><span class="bono-no">${ok}/6</span></td>`;
-    html+=`<tr><td title="${p.nombre}">${p.nombre}</td>${celdas}<td style="font-weight:700;text-align:center;">${ok}</td>${bono}</tr>`;
+    const tda=(TIENDA_DE[claveP(p.nombre)]||{}).tienda;
+    const tdaHtml=tda?`<br><span style="font-size:9px;font-weight:400;color:#888;">${tda}</span>`:'';
+    html+=`<tr><td title="${p.nombre}">${p.nombre}${tdaHtml}</td>${celdas}<td style="font-weight:700;text-align:center;">${ok}</td>${bono}</tr>`;
   });
   html+='</tbody>';
   document.getElementById('tbl-sem').innerHTML=html;
@@ -825,6 +827,30 @@ async function guardarProms(){
   await cargarTodo();
 }
 
+// Orden por tienda (mismo orden que la tabla de Cadenas > Garantizados).
+// Solo afecta cómo se pinta la tabla de Semana; no cambia P ni los registros.
+const API_BASE_CHECK=API_CHECK.replace(/\/checkin$/,'');
+let TIENDA_DE={};
+const claveP=n=>String(n||'').trim().toUpperCase();
+async function cargarTiendas(){
+  try{
+    const r=await fetch(API_BASE_CHECK+'/registro/garantizados',{headers:{Authorization:'Bearer '+TOKEN_CHECK}});
+    if(!r.ok)return;
+    const datos=await r.json();
+    const m={};
+    datos.forEach((d,i)=>(d.promotores||[]).forEach(pr=>{
+      const u=claveP(typeof pr==='string'?pr:pr&&pr.username);
+      if(u&&!m[u])m[u]={orden:i,tienda:d.nombre};
+    }));
+    TIENDA_DE=m;
+  }catch(e){console.error('No se pudo cargar tiendas',e);}
+}
+function ordenTienda(lista){
+  return lista.map((p,i)=>({p,i,t:TIENDA_DE[claveP(p.nombre)]}))
+    .sort((a,b)=>(a.t?a.t.orden:1e9)-(b.t?b.t.orden:1e9)||a.i-b.i)
+    .map(x=>x.p);
+}
+
 async function cargarProms(){
   const r=await fetch(API_CHECK+'/promotores',{headers:{Authorization:'Bearer '+TOKEN_CHECK}});
   P=await r.json();
@@ -851,7 +877,7 @@ function mostrarConf(id,msg){
   setTimeout(()=>c.style.display='none',4000);
 }
 
-(async()=>{await cargarProms();await cargarTodo();})();
+(async()=>{await cargarProms();await cargarTiendas();await cargarTodo();})();
 </script>
 </body>
 </html>
