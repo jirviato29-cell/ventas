@@ -29,6 +29,7 @@ import {
   Tabs,
   TextField,
   Typography,
+  Divider,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -41,6 +42,11 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 
 const API = "https://ato-appservidor-nvxt.onrender.com";
+
+// Filtro de módulos en Registros: Cadenas vs ATO
+const MODULO_CADENAS_ID = 7;
+const MODULO_ATO = "ATO";
+const MODULOS_OCULTOS = ["V2", "MI2", "BO", "prueba"];
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 
@@ -680,14 +686,18 @@ const TabRegistros: React.FC = () => {
     setCargando(true);
     const params = new URLSearchParams();
     if (filtros.usuario_id) params.set("usuario_id", filtros.usuario_id);
-    if (filtros.modulo_id) params.set("modulo_id", filtros.modulo_id);
+    // "ATO" = todos los módulos menos Cadenas: se trae todo y se filtra aquí
+    if (filtros.modulo_id && filtros.modulo_id !== MODULO_ATO) params.set("modulo_id", filtros.modulo_id);
     if (filtros.desde) params.set("desde", filtros.desde);
     if (filtros.hasta) params.set("hasta", filtros.hasta);
     try {
-      const { data } = await axios.get<AsistenciaResumen[]>(
+      const { data: crudo } = await axios.get<AsistenciaResumen[]>(
         `${API}/asistencia/admin?${params}`,
         { headers: authH() }
       );
+      const data = filtros.modulo_id === MODULO_ATO
+        ? crudo.filter((r) => r.modulo_id !== MODULO_CADENAS_ID)
+        : crudo;
       const ordenarRegistros = (arr: AsistenciaResumen[]) =>
         [...arr].sort((a, b) => {
           const entA = a.entrada ? new Date(a.entrada).getTime() : -Infinity;
@@ -745,7 +755,12 @@ const TabRegistros: React.FC = () => {
             onChange={(e) => setFiltros((p) => ({ ...p, modulo_id: e.target.value as string }))}
           >
             <MenuItem value="">Todos</MenuItem>
-            {modulos.map((m) => <MenuItem key={m.id} value={String(m.id)}>{m.nombre}</MenuItem>)}
+            <MenuItem value={String(MODULO_CADENAS_ID)} sx={{ fontWeight: 700 }}>Cadenas</MenuItem>
+            <MenuItem value={MODULO_ATO} sx={{ fontWeight: 700 }}>ATO (todos los módulos)</MenuItem>
+            <Divider />
+            {modulos
+              .filter((m) => m.id !== MODULO_CADENAS_ID && !MODULOS_OCULTOS.includes(m.nombre))
+              .map((m) => <MenuItem key={m.id} value={String(m.id)}>{m.nombre}</MenuItem>)}
           </Select>
         </FormControl>
         <TextField
