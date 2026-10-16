@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Usuario, VentaChip } from "../Types";
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, TextField, Checkbox, Box, IconButton } from "@mui/material";
-import { Delete } from "@mui/icons-material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, TextField, Checkbox, Box, IconButton, Button } from "@mui/material";
+import { Delete, FileDownload } from "@mui/icons-material";
+import * as XLSX from "xlsx";
 import { obtenerRolDesdeToken } from "../components/Token";
 
 const headSx = { py: "4px", px: "6px", fontSize: 16, fontWeight: 700 };
@@ -89,9 +90,37 @@ const eliminarChip = async (id: number) => {
     fetchRechazados();
   }, [empleadoSeleccionado]);
 
+  const descargarExcel = () => {
+    const filas = rechazados.map((chip) => ({
+      Empleado: chip.empleado?.username ?? "Empleado eliminado",
+      "Número": chip.numero_telefono,
+      "Tipo Chip": chip.tipo_chip,
+      Fecha: chip.fecha,
+      "Motivo de Rechazo": chip.descripcion_rechazo ? "Lista de Espera Incubado" : "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(filas);
+    ws["!cols"] = [{ wch: 22 }, { wch: 14 }, { wch: 20 }, { wch: 12 }, { wch: 26 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Incubadora");
+    const empleado = usuarios.find((u) => u.id === empleadoSeleccionado)?.username;
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    XLSX.writeFile(wb, `Incubadora_${empleado ? empleado + "_" : ""}${hoy}.xlsx`);
+  };
+
   return (
     <TableContainer component={Paper} sx={{ mt: 4 }}>
-      <Typography variant="h6" sx={{ p: 2 }}>INCUBADORA</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="h6">INCUBADORA</Typography>
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<FileDownload />}
+          onClick={descargarExcel}
+          disabled={rechazados.length === 0}
+        >
+          Descargar Excel
+        </Button>
+      </Box>
       <Box sx={{ mb: 2 }}>
         {rolToken === "admin" && (
           <Box sx={{ mb: 2 }}>
