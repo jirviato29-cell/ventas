@@ -1,9 +1,24 @@
 import React, { useState } from "react";
-import { Box, Container, Paper, Typography } from "@mui/material";
+import { Alert, Box, Container, Paper, Snackbar, Typography } from "@mui/material";
 import { Navigate } from "react-router-dom";
 import { obtenerRolDesdeToken } from "../components/Token";
 
 const AZUL = "#0A2878";
+const ROJO_FONDO = "#FDE2E2";
+const ROJO_TEXTO = "#B91C1C";
+
+// Periodos en los que no se pueden pedir vacaciones (fechas YYYY-MM-DD, ambos días incluidos).
+// Se comparan como texto, así no intervienen horas ni zona horaria.
+const PERIODOS_BLOQUEADOS = [
+  {
+    inicio: "2026-12-07",
+    fin: "2027-01-07",
+    motivo: "Periodo de ventas navideñas: no se pueden ingresar vacaciones.",
+  },
+];
+
+const periodoBloqueado = (clave: string) =>
+  PERIODOS_BLOQUEADOS.find((p) => clave >= p.inicio && clave <= p.fin);
 
 // Meses del calendario de vacaciones (mes en base 0, como Date)
 const MESES_VACACIONES = [
@@ -67,6 +82,8 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
           const pasado = clave < hoy;
           const esHoy = clave === hoy;
           const marcado = seleccionadas.has(clave);
+          // Un día pasado queda gris aunque caiga en un periodo bloqueado
+          const bloqueado = !pasado && !!periodoBloqueado(clave);
 
           return (
             <Box
@@ -74,6 +91,7 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
               component="button"
               type="button"
               disabled={pasado}
+              aria-disabled={bloqueado || undefined}
               onClick={() => onToggle(clave)}
               sx={{
                 aspectRatio: "1 / 1",
@@ -85,13 +103,13 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
                 fontWeight: marcado || esHoy ? 700 : 500,
                 fontFamily: "inherit",
                 p: 0,
-                cursor: pasado ? "default" : "pointer",
+                cursor: pasado ? "default" : bloqueado ? "not-allowed" : "pointer",
                 border: esHoy ? `2px solid ${AZUL}` : "1px solid #e2e8f0",
-                bgcolor: marcado ? AZUL : pasado ? "#f1f5f9" : "#fff",
-                color: marcado ? "#fff" : pasado ? "#cbd5e1" : "#1e293b",
+                bgcolor: marcado ? AZUL : bloqueado ? ROJO_FONDO : pasado ? "#f1f5f9" : "#fff",
+                color: marcado ? "#fff" : bloqueado ? ROJO_TEXTO : pasado ? "#cbd5e1" : "#1e293b",
                 transition: "background-color 0.15s ease",
                 // Solo con mouse: en celular el hover se queda pegado tras tocar
-                "@media (hover: hover)": !pasado && !marcado
+                "@media (hover: hover)": !pasado && !marcado && !bloqueado
                   ? { "&:hover": { bgcolor: "rgba(10,40,120,0.08)" } }
                   : undefined,
               }}
@@ -108,10 +126,16 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
 const MiPerfil = () => {
   const rol = obtenerRolDesdeToken();
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
+  const [aviso, setAviso] = useState<string | null>(null);
   const hoy = hoyLocal();
 
   const toggleDia = (clave: string) => {
     if (clave < hoy) return;
+    const periodo = periodoBloqueado(clave);
+    if (periodo) {
+      setAviso(periodo.motivo);
+      return;
+    }
     setSeleccionadas((prev) => {
       const nuevo = new Set(prev);
       if (nuevo.has(clave)) nuevo.delete(clave);
@@ -153,11 +177,36 @@ const MiPerfil = () => {
         ))}
       </Box>
 
+      <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
+        {[
+          { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
+          { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
+          { texto: "Periodo de ventas navideñas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
+        ].map(({ texto, fondo, borde }) => (
+          <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <Box sx={{ width: 14, height: 14, borderRadius: "3px", bgcolor: fondo, border: `1px solid ${borde}` }} />
+            <Typography sx={{ fontSize: 12, color: "#64748b" }}>{texto}</Typography>
+          </Box>
+        ))}
+      </Box>
+
       <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
         <Typography sx={{ fontWeight: 700, color: AZUL }}>
           {total} {total === 1 ? "día seleccionado" : "días seleccionados"}
         </Typography>
       </Paper>
+
+      <Snackbar
+        open={aviso !== null}
+        autoHideDuration={4000}
+        // Ignora clickaway: si no, tocar otro día rojo cerraría el aviso que acaba de abrir
+        onClose={(_, razon) => razon !== "clickaway" && setAviso(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="error" variant="filled" onClose={() => setAviso(null)} sx={{ width: "100%" }}>
+          {aviso}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
