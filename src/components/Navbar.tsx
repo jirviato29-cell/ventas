@@ -31,6 +31,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -648,6 +649,10 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/pantalla-tv")}>
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="📺 PANTALLA TV" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
+                <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
+                <ListItemText primary="MI PERFIL" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
             </>
           )}
