@@ -11,6 +11,11 @@ const ROJO_TEXTO = "#B91C1C";
 // Se comparan como texto, así no intervienen horas ni zona horaria.
 const PERIODOS_BLOQUEADOS = [
   {
+    inicio: "2026-11-13",
+    fin: "2026-11-16",
+    motivo: "Periodo de ventas del Buen Fin: no se pueden ingresar vacaciones.",
+  },
+  {
     inicio: "2026-12-07",
     fin: "2027-01-07",
     motivo: "Periodo de ventas navideñas: no se pueden ingresar vacaciones.",
@@ -181,7 +186,7 @@ const MiPerfil = () => {
         {[
           { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
           { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
-          { texto: "Periodo de ventas navideñas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
+          { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
         ].map(({ texto, fondo, borde }) => (
           <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
             <Box sx={{ width: 14, height: 14, borderRadius: "3px", bgcolor: fondo, border: `1px solid ${borde}` }} />
