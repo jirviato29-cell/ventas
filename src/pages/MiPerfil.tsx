@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Box, Container, Paper, Snackbar, Typography } from "@mui/material";
+import { Alert, Box, Button, Container, Paper, Snackbar, Typography } from "@mui/material";
 import { Navigate } from "react-router-dom";
 import { obtenerRolDesdeToken } from "../components/Token";
 
@@ -47,6 +47,14 @@ const claveFecha = (anio: number, mes: number, dia: number) =>
   `${anio}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 
 const hoyLocal = () => new Date().toLocaleDateString("en-CA");
+
+const MAX_DIAS_VACACIONES = 6;
+
+// Suma n días a una clave YYYY-MM-DD; se calcula en UTC para que no influya la zona horaria
+const sumarDias = (clave: string, n: number) => {
+  const [anio, mes, dia] = clave.split("-").map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia + n)).toISOString().slice(0, 10);
+};
 
 interface MesProps {
   anio: number;
@@ -141,12 +149,41 @@ const MiPerfil = () => {
       setAviso(periodo.motivo);
       return;
     }
-    setSeleccionadas((prev) => {
-      const nuevo = new Set(prev);
-      if (nuevo.has(clave)) nuevo.delete(clave);
-      else nuevo.add(clave);
-      return nuevo;
-    });
+
+    // La selección siempre es un solo bloque de días seguidos, así que basta con sus extremos
+    const ordenadas = Array.from(seleccionadas).sort();
+    const primero = ordenadas[0];
+    const ultimo = ordenadas[ordenadas.length - 1];
+
+    if (seleccionadas.has(clave)) {
+      if (clave !== primero && clave !== ultimo) {
+        setAviso("Solo puedes quitar el primer o el último día para que sigan siendo seguidos.");
+        return;
+      }
+      setSeleccionadas((prev) => {
+        const nuevo = new Set(prev);
+        nuevo.delete(clave);
+        return nuevo;
+      });
+      return;
+    }
+
+    if (primero) {
+      if (clave.slice(0, 7) !== primero.slice(0, 7)) {
+        setAviso("Tus vacaciones deben ser dentro del mismo mes.");
+        return;
+      }
+      if (seleccionadas.size >= MAX_DIAS_VACACIONES) {
+        setAviso("Máximo 6 días seguidos de vacaciones.");
+        return;
+      }
+      if (clave !== sumarDias(primero, -1) && clave !== sumarDias(ultimo, 1)) {
+        setAviso("Tus vacaciones deben ser días seguidos.");
+        return;
+      }
+    }
+
+    setSeleccionadas((prev) => new Set(prev).add(clave));
   };
 
   if (rol !== "admin") return <Navigate to="/" replace />;
@@ -197,8 +234,17 @@ const MiPerfil = () => {
 
       <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
         <Typography sx={{ fontWeight: 700, color: AZUL }}>
-          {total} {total === 1 ? "día seleccionado" : "días seleccionados"}
+          {total} de {MAX_DIAS_VACACIONES} días seleccionados
         </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          disabled={total === 0}
+          onClick={() => setSeleccionadas(new Set())}
+          sx={{ mt: 1.5 }}
+        >
+          Limpiar selección
+        </Button>
       </Paper>
 
       <Snackbar
