@@ -141,8 +141,8 @@ const ChipsAdmin = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setChips((prev) => prev.map((c) => (c.id === id ? { ...c, validado: true } : c)));
-    } catch {
-      alert("Error al validar chip");
+    } catch (e: any) {
+      alert(e?.response?.data?.detail ?? "Error al validar chip");
     }
   };
 
