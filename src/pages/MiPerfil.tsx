@@ -59,26 +59,39 @@ const sumarDias = (clave: string, n: number) => {
 };
 
 interface Bloque {
-  mes: string; // YYYY-MM
   inicio: string;
   fin: string;
   dias: number;
 }
 
-// Cada mes tiene a lo sumo un bloque de días seguidos, así que basta con agrupar por mes
+// Agrupa los días seleccionados en bloques de días seguidos (un bloque puede cruzar de mes)
 const agruparBloques = (seleccionadas: Set<string>): Bloque[] => {
-  const porMes = new Map<string, Bloque>();
+  const bloques: Bloque[] = [];
   Array.from(seleccionadas).sort().forEach((clave) => {
-    const mes = clave.slice(0, 7);
-    const b = porMes.get(mes);
-    if (b) {
-      b.fin = clave;
-      b.dias++;
+    const ultimo = bloques[bloques.length - 1];
+    if (ultimo && clave === sumarDias(ultimo.fin, 1)) {
+      ultimo.fin = clave;
+      ultimo.dias++;
     } else {
-      porMes.set(mes, { mes, inicio: clave, fin: clave, dias: 1 });
+      bloques.push({ inicio: clave, fin: clave, dias: 1 });
     }
   });
-  return Array.from(porMes.values());
+  return bloques;
+};
+
+// Un bloque ocupa el mes donde empieza y el mes donde termina
+const ocupaMes = (b: Bloque, mes: string) => b.inicio.slice(0, 7) === mes || b.fin.slice(0, 7) === mes;
+const cruzaDeMes = (b: Bloque) => b.inicio.slice(0, 7) !== b.fin.slice(0, 7);
+
+// "Febrero: 23 al 28 (6 días)", "Marzo: 16 (1 día)" o "Noviembre 30 a Diciembre 5 (6 días)"
+const textoBloque = (b: Bloque) => {
+  const nombreMes = (clave: string) => NOMBRES_MES[Number(clave.slice(5, 7)) - 1];
+  const dia = (clave: string) => Number(clave.slice(8));
+  if (b.dias === 1) return `${nombreMes(b.inicio)}: ${dia(b.inicio)} (1 día)`;
+  if (cruzaDeMes(b)) {
+    return `${nombreMes(b.inicio)} ${dia(b.inicio)} a ${nombreMes(b.fin)} ${dia(b.fin)} (${b.dias} días)`;
+  }
+  return `${nombreMes(b.inicio)}: ${dia(b.inicio)} al ${dia(b.fin)} (${b.dias} días)`;
 };
 
 // ¿Quedan al menos DIAS_ENTRE_BLOQUES días libres entre la fecha y el bloque?
@@ -181,11 +194,10 @@ const MiPerfil = () => {
 
     const bloques = agruparBloques(seleccionadas);
     const mes = clave.slice(0, 7);
-    const bloqueMes = bloques.find((b) => b.mes === mes);
-    const otrosBloques = bloques.filter((b) => b.mes !== mes);
 
     if (seleccionadas.has(clave)) {
-      if (clave !== bloqueMes!.inicio && clave !== bloqueMes!.fin) {
+      const propio = bloques.find((b) => clave >= b.inicio && clave <= b.fin)!;
+      if (clave !== propio.inicio && clave !== propio.fin) {
         setAviso("Solo puedes quitar el primer o el último día para que sigan siendo seguidos.");
         return;
       }
@@ -197,15 +209,26 @@ const MiPerfil = () => {
       return;
     }
 
-    if (bloqueMes) {
-      if (clave !== sumarDias(bloqueMes.inicio, -1) && clave !== sumarDias(bloqueMes.fin, 1)) {
-        setAviso("Tus vacaciones deben ser días seguidos.");
-        return;
-      }
-      if (bloqueMes.dias >= MAX_DIAS_POR_BLOQUE) {
-        setAviso("Máximo 6 días seguidos por mes.");
-        return;
-      }
+    // Bloque al que el día queda pegado (por el inicio o por el final), si lo hay
+    const pegado = bloques.find(
+      (b) => clave === sumarDias(b.inicio, -1) || clave === sumarDias(b.fin, 1)
+    );
+    const otrosBloques = bloques.filter((b) => b !== pegado);
+    const bloqueEnMes = otrosBloques.find((b) => ocupaMes(b, mes));
+
+    if (bloqueEnMes) {
+      // Si el mes ya tiene un bloque propio, el día debería ir pegado a él; si lo ocupa
+      // un bloque que cruza de mes, o el día alarga otro bloque hacia ese mes, ya está lleno
+      setAviso(
+        pegado || cruzaDeMes(bloqueEnMes)
+          ? "Ya tienes vacaciones en este mes. Solo se permite un periodo por mes."
+          : "Tus vacaciones deben ser días seguidos."
+      );
+      return;
+    }
+    if (pegado && pegado.dias >= MAX_DIAS_POR_BLOQUE) {
+      setAviso("Máximo 6 días seguidos por periodo.");
+      return;
     }
     if (!otrosBloques.every((b) => respetaSeparacion(clave, b))) {
       setAviso("Debe haber al menos 15 días entre un periodo de vacaciones y otro.");
@@ -267,10 +290,8 @@ const MiPerfil = () => {
           {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
         </Typography>
         {bloques.map((b) => (
-          <Typography key={b.mes} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-            {b.dias === 1
-              ? `${NOMBRES_MES[Number(b.mes.slice(5)) - 1]}: ${Number(b.inicio.slice(8))} (1 día)`
-              : `${NOMBRES_MES[Number(b.mes.slice(5)) - 1]}: ${Number(b.inicio.slice(8))} al ${Number(b.fin.slice(8))} (${b.dias} días)`}
+          <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
+            {textoBloque(b)}
           </Typography>
         ))}
         <Button
