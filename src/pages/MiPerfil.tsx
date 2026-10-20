@@ -58,6 +58,14 @@ const sumarDias = (clave: string, n: number) => {
   return new Date(Date.UTC(anio, mes - 1, dia + n)).toISOString().slice(0, 10);
 };
 
+// Las vacaciones se piden con anticipación: el primer día elegible es hoy + 31 días
+const DIAS_ANTICIPACION = 31;
+const primerDiaDisponible = (hoy: string) => sumarDias(hoy, DIAS_ANTICIPACION);
+
+// "2026-11-19" → "19 de noviembre"
+const fechaLarga = (clave: string) =>
+  `${Number(clave.slice(8))} de ${NOMBRES_MES[Number(clave.slice(5, 7)) - 1].toLowerCase()}`;
+
 interface Bloque {
   inicio: string;
   fin: string;
@@ -102,11 +110,12 @@ interface MesProps {
   anio: number;
   mes: number;
   hoy: string;
+  primerDisponible: string;
   seleccionadas: Set<string>;
   onToggle: (clave: string) => void;
 }
 
-const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onToggle }) => {
+const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, seleccionadas, onToggle }) => {
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
   // getDay(): 0 = domingo; lo pasamos a 0 = lunes
   const huecosInicio = (new Date(anio, mes, 1).getDay() + 6) % 7;
@@ -136,9 +145,12 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
           const clave = claveFecha(anio, mes, dia);
           const pasado = clave < hoy;
           const esHoy = clave === hoy;
+          // Entre hoy y el primer día disponible: gris como los pasados, pero al tocarlo sale el aviso
+          const sinAnticipacion = !pasado && clave < primerDisponible;
+          const noDisponible = pasado || sinAnticipacion;
           const marcado = seleccionadas.has(clave);
-          // Un día pasado queda gris aunque caiga en un periodo bloqueado
-          const bloqueado = !pasado && !!periodoBloqueado(clave);
+          // Un día no disponible queda gris aunque caiga en un periodo bloqueado
+          const bloqueado = !noDisponible && !!periodoBloqueado(clave);
 
           return (
             <Box
@@ -146,7 +158,7 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
               component="button"
               type="button"
               disabled={pasado}
-              aria-disabled={bloqueado || undefined}
+              aria-disabled={bloqueado || sinAnticipacion || undefined}
               onClick={() => onToggle(clave)}
               sx={{
                 aspectRatio: "1 / 1",
@@ -158,13 +170,13 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, seleccionadas, onTo
                 fontWeight: marcado || esHoy ? 700 : 500,
                 fontFamily: "inherit",
                 p: 0,
-                cursor: pasado ? "default" : bloqueado ? "not-allowed" : "pointer",
+                cursor: pasado ? "default" : bloqueado || sinAnticipacion ? "not-allowed" : "pointer",
                 border: esHoy ? `2px solid ${AZUL}` : "1px solid #e2e8f0",
-                bgcolor: marcado ? AZUL : bloqueado ? ROJO_FONDO : pasado ? "#f1f5f9" : "#fff",
-                color: marcado ? "#fff" : bloqueado ? ROJO_TEXTO : pasado ? "#cbd5e1" : "#1e293b",
+                bgcolor: marcado ? AZUL : bloqueado ? ROJO_FONDO : noDisponible ? "#f1f5f9" : "#fff",
+                color: marcado ? "#fff" : bloqueado ? ROJO_TEXTO : noDisponible ? "#cbd5e1" : "#1e293b",
                 transition: "background-color 0.15s ease",
                 // Solo con mouse: en celular el hover se queda pegado tras tocar
-                "@media (hover: hover)": !pasado && !marcado && !bloqueado
+                "@media (hover: hover)": !noDisponible && !marcado && !bloqueado
                   ? { "&:hover": { bgcolor: "rgba(10,40,120,0.08)" } }
                   : undefined,
               }}
@@ -183,9 +195,16 @@ const MiPerfil = () => {
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
   const hoy = hoyLocal();
+  const primerDisponible = primerDiaDisponible(hoy);
 
   const toggleDia = (clave: string) => {
     if (clave < hoy) return;
+    if (clave < primerDisponible) {
+      setAviso(
+        `Las vacaciones se piden con 30 días de anticipación. Puedes elegir a partir del ${fechaLarga(primerDisponible)}.`
+      );
+      return;
+    }
     const periodo = periodoBloqueado(clave);
     if (periodo) {
       setAviso(periodo.motivo);
@@ -266,6 +285,7 @@ const MiPerfil = () => {
             anio={anio}
             mes={mes}
             hoy={hoy}
+            primerDisponible={primerDisponible}
             seleccionadas={seleccionadas}
             onToggle={toggleDia}
           />
