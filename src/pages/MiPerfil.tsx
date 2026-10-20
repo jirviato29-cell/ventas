@@ -48,13 +48,42 @@ const claveFecha = (anio: number, mes: number, dia: number) =>
 
 const hoyLocal = () => new Date().toLocaleDateString("en-CA");
 
-const MAX_DIAS_VACACIONES = 6;
+const MAX_DIAS_POR_BLOQUE = 6;
+// Días libres mínimos entre bloques: si uno termina el 28 feb, el siguiente puede empezar el 16 mar
+const DIAS_ENTRE_BLOQUES = 15;
 
 // Suma n días a una clave YYYY-MM-DD; se calcula en UTC para que no influya la zona horaria
 const sumarDias = (clave: string, n: number) => {
   const [anio, mes, dia] = clave.split("-").map(Number);
   return new Date(Date.UTC(anio, mes - 1, dia + n)).toISOString().slice(0, 10);
 };
+
+interface Bloque {
+  mes: string; // YYYY-MM
+  inicio: string;
+  fin: string;
+  dias: number;
+}
+
+// Cada mes tiene a lo sumo un bloque de días seguidos, así que basta con agrupar por mes
+const agruparBloques = (seleccionadas: Set<string>): Bloque[] => {
+  const porMes = new Map<string, Bloque>();
+  Array.from(seleccionadas).sort().forEach((clave) => {
+    const mes = clave.slice(0, 7);
+    const b = porMes.get(mes);
+    if (b) {
+      b.fin = clave;
+      b.dias++;
+    } else {
+      porMes.set(mes, { mes, inicio: clave, fin: clave, dias: 1 });
+    }
+  });
+  return Array.from(porMes.values());
+};
+
+// ¿Quedan al menos DIAS_ENTRE_BLOQUES días libres entre la fecha y el bloque?
+const respetaSeparacion = (clave: string, b: Bloque) =>
+  clave > sumarDias(b.fin, DIAS_ENTRE_BLOQUES) || clave < sumarDias(b.inicio, -DIAS_ENTRE_BLOQUES);
 
 interface MesProps {
   anio: number;
@@ -150,13 +179,13 @@ const MiPerfil = () => {
       return;
     }
 
-    // La selección siempre es un solo bloque de días seguidos, así que basta con sus extremos
-    const ordenadas = Array.from(seleccionadas).sort();
-    const primero = ordenadas[0];
-    const ultimo = ordenadas[ordenadas.length - 1];
+    const bloques = agruparBloques(seleccionadas);
+    const mes = clave.slice(0, 7);
+    const bloqueMes = bloques.find((b) => b.mes === mes);
+    const otrosBloques = bloques.filter((b) => b.mes !== mes);
 
     if (seleccionadas.has(clave)) {
-      if (clave !== primero && clave !== ultimo) {
+      if (clave !== bloqueMes!.inicio && clave !== bloqueMes!.fin) {
         setAviso("Solo puedes quitar el primer o el último día para que sigan siendo seguidos.");
         return;
       }
@@ -168,19 +197,19 @@ const MiPerfil = () => {
       return;
     }
 
-    if (primero) {
-      if (clave.slice(0, 7) !== primero.slice(0, 7)) {
-        setAviso("Tus vacaciones deben ser dentro del mismo mes.");
-        return;
-      }
-      if (seleccionadas.size >= MAX_DIAS_VACACIONES) {
-        setAviso("Máximo 6 días seguidos de vacaciones.");
-        return;
-      }
-      if (clave !== sumarDias(primero, -1) && clave !== sumarDias(ultimo, 1)) {
+    if (bloqueMes) {
+      if (clave !== sumarDias(bloqueMes.inicio, -1) && clave !== sumarDias(bloqueMes.fin, 1)) {
         setAviso("Tus vacaciones deben ser días seguidos.");
         return;
       }
+      if (bloqueMes.dias >= MAX_DIAS_POR_BLOQUE) {
+        setAviso("Máximo 6 días seguidos por mes.");
+        return;
+      }
+    }
+    if (!otrosBloques.every((b) => respetaSeparacion(clave, b))) {
+      setAviso("Debe haber al menos 15 días entre un periodo de vacaciones y otro.");
+      return;
     }
 
     setSeleccionadas((prev) => new Set(prev).add(clave));
@@ -189,6 +218,7 @@ const MiPerfil = () => {
   if (rol !== "admin") return <Navigate to="/" replace />;
 
   const total = seleccionadas.size;
+  const bloques = agruparBloques(seleccionadas);
 
   return (
     <Container sx={{ mt: 4, mb: 6 }}>
@@ -234,8 +264,15 @@ const MiPerfil = () => {
 
       <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
         <Typography sx={{ fontWeight: 700, color: AZUL }}>
-          {total} de {MAX_DIAS_VACACIONES} días seleccionados
+          {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
         </Typography>
+        {bloques.map((b) => (
+          <Typography key={b.mes} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
+            {b.dias === 1
+              ? `${NOMBRES_MES[Number(b.mes.slice(5)) - 1]}: ${Number(b.inicio.slice(8))} (1 día)`
+              : `${NOMBRES_MES[Number(b.mes.slice(5)) - 1]}: ${Number(b.inicio.slice(8))} al ${Number(b.fin.slice(8))} (${b.dias} días)`}
+          </Typography>
+        ))}
         <Button
           variant="outlined"
           size="small"
