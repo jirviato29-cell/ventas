@@ -38,6 +38,13 @@ interface ItemEntrada {
   imei?: string;
 }
 
+interface ChipEntrada {
+  paquete: string;
+  clave: string;
+  numero: string;
+  iccid: string;
+}
+
 interface EncargadoInfo {
   usuario_id: number;
   username: string;
@@ -63,6 +70,7 @@ interface EntradaHistorial {
   usuario_username: string;
   usuario_nombre: string;
   productos: ProductoDetalle[];
+  total_chips?: number;
 }
 
 interface EditItem {
@@ -162,6 +170,9 @@ const EntradaMercancia = () => {
   const [existenciaActual, setExistenciaActual] = useState<number>(0);
   const [imeiInput, setImeiInput] = useState("");
   const [buscandoImei, setBuscandoImei] = useState(false);
+  const [chipsLista, setChipsLista] = useState<ChipEntrada[]>([]);
+  const [paqueteInput, setPaqueteInput] = useState("");
+  const [buscandoPaquete, setBuscandoPaquete] = useState(false);
 
   // ── Historial ─────────────────────────────────────────────────────────────────
   const [historialFiltroFolio, setHistorialFiltroFolio] = useState("");
@@ -175,6 +186,7 @@ const EntradaMercancia = () => {
   const [modoImpresionDetalle, setModoImpresionDetalle] = useState(false);
   const [equiposDetalle, setEquiposDetalle] = useState<{ imei: string; clave: string; producto: string }[]>([]);
   const [cargandoEquiposDetalle, setCargandoEquiposDetalle] = useState(false);
+  const [chipsDetalle, setChipsDetalle] = useState<(ChipEntrada & { estatus: string })[]>([]);
 
   // ── Usuario actual (para is_admin) ────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -199,6 +211,7 @@ const EntradaMercancia = () => {
   const inputCantidadRef = useRef<HTMLInputElement>(null);
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const inputImeiRef = useRef<HTMLInputElement>(null);
+  const inputPaqueteRef = useRef<HTMLInputElement>(null);
 
   // ── Efectos ──────────────────────────────────────────────────────────────────
 
@@ -298,12 +311,16 @@ const EntradaMercancia = () => {
     setEntradaActiva(true);
     setFolioGuardado(null);
     setEntradaLista([]);
+    setChipsLista([]);
+    setPaqueteInput("");
     await obtenerEncargado(moduloSeleccionado as number);
   };
 
   const nuevaEntrada = () => {
     setEntradaActiva(false);
     setEntradaLista([]);
+    setChipsLista([]);
+    setPaqueteInput("");
     setFolioGuardado(null);
     setEncargado(null);
     setModuloSeleccionado("");
@@ -418,9 +435,43 @@ const EntradaMercancia = () => {
     }
   };
 
+  const agregarPaqueteChips = async () => {
+    if (!moduloSeleccionado) { alert("Selecciona un módulo"); return; }
+    const paquete = paqueteInput.trim().toUpperCase();
+    if (!paquete) return;
+    // Un paquete solo puede ir una vez en la entrada
+    if (chipsLista.some((c) => c.paquete === paquete)) {
+      alert(`El paquete ${paquete} ya está en la lista`);
+      setPaqueteInput("");
+      return;
+    }
+    setBuscandoPaquete(true);
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/chips/paquete/${encodeURIComponent(paquete)}`,
+        config
+      );
+      const nuevos: ChipEntrada[] = (res.data.chips || []).map((c: any) => ({
+        paquete: res.data.paquete,
+        clave: c.clave,
+        numero: c.numero ?? "",
+        iccid: c.iccid ?? "",
+      }));
+      setChipsLista((prev) => [...prev, ...nuevos]);
+      setPaqueteInput("");
+      setTimeout(() => { inputPaqueteRef.current?.focus(); }, 100);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      alert(detail ? String(detail) : "Error al buscar el paquete de chips");
+      setPaqueteInput("");
+    } finally {
+      setBuscandoPaquete(false);
+    }
+  };
+
   const guardarEntradaMercancia = async () => {
     if (!moduloSeleccionado) { alert("Selecciona un módulo"); return; }
-    if (entradaLista.length === 0) { alert("No hay productos en la lista"); return; }
+    if (entradaLista.length === 0 && chipsLista.length === 0) { alert("No hay productos en la lista"); return; }
 
     setGuardandoEntrada(true);
     try {
@@ -430,6 +481,7 @@ const EntradaMercancia = () => {
           producto_id: p.producto_id,
           cantidad: p.cantidad,
         })),
+        paquetes_chips: Array.from(new Set(chipsLista.map((c) => c.paquete))),
       };
       const res = await axios.post(
         `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entrada_mercancia`,
@@ -497,6 +549,7 @@ const EntradaMercancia = () => {
 
   const cargarEquiposDetalle = async (entradaId: number) => {
     setEquiposDetalle([]);
+    setChipsDetalle([]);
     setCargandoEquiposDetalle(true);
     try {
       const res = await axios.get(
@@ -504,8 +557,10 @@ const EntradaMercancia = () => {
         config
       );
       setEquiposDetalle(res.data.equipos || []);
+      setChipsDetalle(res.data.chips || []);
     } catch (err) {
       setEquiposDetalle([]);
+      setChipsDetalle([]);
     } finally {
       setCargandoEquiposDetalle(false);
     }
@@ -695,6 +750,7 @@ const EntradaMercancia = () => {
     !!p.imei || (p.tipo_producto || '').toLowerCase() === 'telefono';
   const itemsAccesorios = entradaLista.filter((p) => !esTelefonoItem(p));
   const itemsTelefonos = entradaLista.filter((p) => esTelefonoItem(p));
+  const totalPaquetesChips = new Set(chipsLista.map((c) => c.paquete)).size;
 
   const colorExistenciaTel = (n: number) => {
     if (n >= 3) return { bgcolor: '#fee2e2', color: '#b91c1c', fontWeight: 700 };
@@ -926,7 +982,7 @@ const EntradaMercancia = () => {
                       </TableCell>
                       <TableCell align="right">
                         <Chip
-                          label={`${entrada.productos.length} art.`}
+                          label={`${entrada.productos.length + (entrada.total_chips ?? 0)} art.`}
                           size="small"
                         />
                       </TableCell>
@@ -1037,7 +1093,7 @@ const EntradaMercancia = () => {
                   {fechaHoy}
                 </Typography>
               </Box>
-              {entradaActiva && entradaLista.length > 0 && (
+              {entradaActiva && (entradaLista.length > 0 || chipsLista.length > 0) && (
                 <Button
                   variant="contained"
                   startIcon={
@@ -1223,9 +1279,31 @@ const EntradaMercancia = () => {
             </Box>
           )}
 
+          {entradaActiva && (
+            <Box mb={3} className="no-print" sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <TextField
+                label="Paquete de chips (ej. A1)"
+                value={paqueteInput}
+                inputRef={inputPaqueteRef}
+                onChange={(e) => setPaqueteInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); agregarPaqueteChips(); }
+                }}
+                fullWidth
+                size="small"
+                disabled={buscandoPaquete}
+              />
+              <Button variant="outlined" onClick={agregarPaqueteChips} disabled={buscandoPaquete} sx={{ whiteSpace: "nowrap" }}>
+                {buscandoPaquete ? "Buscando..." : "Agregar chips"}
+              </Button>
+            </Box>
+          )}
+
           {/* Tabla de productos de la entrada activa */}
-          {entradaLista.length > 0 && (
+          {(entradaLista.length > 0 || chipsLista.length > 0) && (
             <Box display="flex" gap={2} flexWrap="wrap" alignItems="flex-start" className="no-print" sx={{ mb: 3 }}>
+
+              {entradaLista.length > 0 && (<>
 
               {/* ACCESORIOS - izquierda */}
               <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', flex: '1 1 420px', minWidth: 380 }}>
@@ -1340,6 +1418,49 @@ const EntradaMercancia = () => {
                   </TableBody>
                 </Table>
               </Paper>
+              </>)}
+
+              {/* CHIPS */}
+              {chipsLista.length > 0 && (
+              <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden', flex: '1 1 420px', minWidth: 380 }}>
+                <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="subtitle1" fontWeight={700}>Chips</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {chipsLista.length} chip{chipsLista.length !== 1 ? 's' : ''} ({totalPaquetesChips} paquete{totalPaquetesChips !== 1 ? 's' : ''})
+                  </Typography>
+                </Box>
+                <Table size="small" sx={{ '& th, & td': { border: '1px solid #e2e8f0' }, '& thead th': { bgcolor: '#f8fafc', fontWeight: 700 }, '& tbody tr:nth-of-type(even)': { bgcolor: '#fcfcfd' } }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Clave</TableCell>
+                      <TableCell>Número</TableCell>
+                      <TableCell>ICCID</TableCell>
+                      {entradaActiva && <TableCell align="center" className="no-print">Acc.</TableCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {chipsLista.map((c) => (
+                      <TableRow key={c.clave}>
+                        <TableCell sx={{ fontWeight: 600, color: '#f97316' }}>{c.clave}</TableCell>
+                        <TableCell>{c.numero}</TableCell>
+                        <TableCell>{c.iccid}</TableCell>
+                        {entradaActiva && (
+                          <TableCell align="center" className="no-print">
+                            <IconButton
+                              size="small"
+                              title={`Quitar paquete ${c.paquete}`}
+                              onClick={() => setChipsLista((prev) => prev.filter((x) => x.paquete !== c.paquete))}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+              )}
 
             </Box>
           )}
@@ -1576,6 +1697,34 @@ const EntradaMercancia = () => {
                           <TableCell>{e.imei}</TableCell>
                           <TableCell>{e.clave}</TableCell>
                           <TableCell>{e.producto}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+
+              {chipsDetalle.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                    Chips ({chipsDetalle.length} chip{chipsDetalle.length !== 1 ? "s" : ""}, {new Set(chipsDetalle.map((c) => c.paquete)).size} paquete{new Set(chipsDetalle.map((c) => c.paquete)).size !== 1 ? "s" : ""})
+                  </Typography>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Clave</TableCell>
+                        <TableCell>Número</TableCell>
+                        <TableCell>ICCID</TableCell>
+                        <TableCell>Estatus</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {chipsDetalle.map((c) => (
+                        <TableRow key={c.clave}>
+                          <TableCell>{c.clave}</TableCell>
+                          <TableCell>{c.numero}</TableCell>
+                          <TableCell>{c.iccid}</TableCell>
+                          <TableCell>{c.estatus}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
