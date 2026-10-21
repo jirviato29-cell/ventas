@@ -531,6 +531,10 @@ const Navbar = () => {
                     <ListItemIcon sx={drawerIconSx}><MoveToInboxIcon /></ListItemIcon>
                     <ListItemText primary="Entrada de Mercancía" />
                   </ListItemButton>
+                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario/control-chips")}>
+                    <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
+                    <ListItemText primary="Control de Chips" />
+                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/equipos_telcel")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                     <ListItemText primary="Equipos Telcel" />

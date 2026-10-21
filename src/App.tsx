@@ -28,6 +28,7 @@ import SeleccionCadena from "./pages/SeleccionCadena";
 import TelcelPage from "./pages/TelcelPage";
 import CLineasPage from "./pages/CLineasPage";
 import EntradaMercancia from './pages/EntradaMercancia';
+import ControlChips from './pages/ControlChips';
 import DireccionPage from './pages/DireccionPage';
 import QuienTienePage from './pages/QuienTienePage';
 import AsistenciaPage from './pages/AsistenciaPage';
@@ -109,6 +110,7 @@ const App: React.FC = () => {
     { path: '/telcel', element: <RutaProtegida><TelcelPage /></RutaProtegida> },
     { path: '/clineas', element: <RutaProtegida><CLineasPage /></RutaProtegida> },
     { path: '/entrada-mercancia', element: <RutaProtegida><EntradaMercancia/></RutaProtegida> },
+    { path: '/inventario/control-chips', element: <RutaProtegida><ControlChips /></RutaProtegida> },
     { path: '/direccion', element: <RutaProtegida><DireccionPage /></RutaProtegida> },
     { path: '/quien-tiene', element: <RutaProtegida><QuienTienePage /></RutaProtegida> },
     { path: '/asistencia', element: <RutaProtegida><AsistenciaPage /></RutaProtegida> },
