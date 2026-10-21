@@ -107,15 +107,43 @@ const TablaTicket = ({ rows }: { rows: TicketRow[] }) => (
   </table>
 );
 
+interface TicketChip { paquete: string; clave: string; }
+
+// Agrupa los chips por paquete respetando el orden en que llegan (por posición).
+const paquetesTicket = (chips: TicketChip[]) => {
+  const grupos: { paquete: string; claves: string[] }[] = [];
+  chips.forEach((c) => {
+    const g = grupos.find((x) => x.paquete === c.paquete);
+    if (g) g.claves.push(c.clave);
+    else grupos.push({ paquete: c.paquete, claves: [c.clave] });
+  });
+  return grupos;
+};
+
+const ChipsTicket = ({ chips }: { chips: TicketChip[] }) => {
+  const grupos = paquetesTicket(chips);
+  return (
+    <div style={{ fontSize: "13pt", fontWeight: 700, fontFamily: "Arial, Helvetica, sans-serif", marginTop: 4, marginBottom: 8 }}>
+      {grupos.map((g) => (
+        <div key={g.paquete}>
+          CHIPS {g.claves[0]} AL {g.claves[g.claves.length - 1]} : {g.claves.length} {g.claves.length === 1 ? "CHIP" : "CHIPS"}
+        </div>
+      ))}
+      {grupos.length > 1 && <div style={{ marginTop: 4 }}>TOTAL CHIPS: {chips.length}</div>}
+    </div>
+  );
+};
+
 interface TicketProps {
   folio: string;
   fecha: string;
   moduloNombreStr: string;
   encargadoNombre: string;
   productos: (TicketRow & { tipo_producto?: string })[];
+  chips?: TicketChip[];
 }
 
-const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, productos }: TicketProps) => (
+const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, productos, chips = [] }: TicketProps) => (
   <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", lineHeight: 1.3 }}>
     <div style={{ borderBottom: "2px solid #000", paddingBottom: 6, marginBottom: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -131,7 +159,8 @@ const TicketImpresion = ({ folio, fecha, moduloNombreStr, encargadoNombre, produ
         <img src={logoAto} alt="ATO" style={{ width: 88, height: "auto", display: "block" }} />
       </div>
     </div>
-    <TablaTicket rows={productos} />
+    {chips.length > 0 && <ChipsTicket chips={chips} />}
+    {(chips.length === 0 || productos.length > 0) && <TablaTicket rows={productos} />}
     <div style={{ marginTop: 18, fontSize: "9pt" }}>
       Revisó: _________________________________________
     </div>
@@ -1018,6 +1047,7 @@ const EntradaMercancia = () => {
             moduloNombreStr={entradaDetalle.modulo_nombre}
             encargadoNombre={encargadoDetalle?.nombre_completo ?? "-"}
             productos={entradaDetalle.productos}
+            chips={chipsDetalle}
           />
         </Box>
       )}
@@ -1044,6 +1074,7 @@ const EntradaMercancia = () => {
               moduloNombreStr={moduloNombre}
               encargadoNombre={encargado?.nombre_completo ?? "-"}
               productos={entradaLista}
+              chips={chipsLista}
             />
           </div>
 
@@ -1764,6 +1795,7 @@ const EntradaMercancia = () => {
                 variant="outlined"
                 startIcon={<Print />}
                 onClick={imprimirEntradaDetalle}
+                disabled={cargandoEquiposDetalle}
               >
                 Imprimir
               </Button>
