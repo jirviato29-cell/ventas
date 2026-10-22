@@ -1,9 +1,9 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Box, TextField, Button, Typography, Autocomplete, Alert, Paper,
-  TableContainer, MenuItem, FormControlLabel, FormControl, FormLabel,
-  RadioGroup, Radio, TablePagination, Table, TableHead, TableRow,
+  TableContainer, MenuItem, FormControlLabel,
+  TablePagination, Table, TableHead, TableRow,
   TableCell, TableBody, Divider, Chip, IconButton, Tabs, Tab, useMediaQuery,
   CircularProgress, InputAdornment, Checkbox,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -245,6 +245,12 @@ const FormularioVentaMultiple = () => {
   const [nip, setNip] = useState('');
   const [fechaPorta, setFechaPorta] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
+  // Clave impresa del chip (ej. A16-3): si se valida, fija número e ICCID
+  const [claveChip, setClaveChip] = useState('');
+  const [chipDesdeClave, setChipDesdeClave] = useState(false);
+  const [errorClave, setErrorClave] = useState('');
+  const [buscandoClave, setBuscandoClave] = useState(false);
+  const recargaRef = useRef<HTMLInputElement>(null);
 
   const [telefonoOrigen, setTelefonoOrigen] = useState<'' | 'telcel' | 'libre'>('telcel');
   const [telefonoImei, setTelefonoImei] = useState('');
@@ -287,7 +293,6 @@ const FormularioVentaMultiple = () => {
   const [refrescoAvance, setRefrescoAvance] = useState(0);
   const [totalAccesorios, setTotalAccesorios] = useState(0);
   const [totalTelefonos, setTotalTelefonos] = useState(0);
-  const [cvip, setcvip] = useState<boolean>(false);
   const [paginaAcc, setPaginaAcc] = useState(0);
   const [paginaTel, setPaginaTel] = useState(0);
   const filasPorPagina = 10;
@@ -691,6 +696,37 @@ const FormularioVentaMultiple = () => {
     }
   };
 
+  const liberarClaveChip = () => {
+    setChipDesdeClave(false);
+    setNumero('');
+    setIccid('');
+  };
+
+  const buscarClaveChip = async () => {
+    const clave = claveChip.trim();
+    if (!clave || chipDesdeClave || buscandoClave) return;
+    setBuscandoClave(true);
+    setErrorClave('');
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/chips/clave/${encodeURIComponent(clave)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setTipoChip('Chip Express');
+      setTadDevice(''); setCurp(''); setNip(''); setFechaPorta('');
+      setNumero(res.data.numero || '');
+      setIccid(res.data.iccid || '');
+      setNumeroDuplicado(false);
+      setChipDesdeClave(true);
+      setTimeout(() => recargaRef.current?.focus(), 0);
+    } catch (err: any) {
+      setErrorClave(err?.response?.data?.detail || 'No se pudo validar la clave');
+      liberarClaveChip();
+    } finally {
+      setBuscandoClave(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const esPayJoy = tipoChip === 'Tarjetas PayJoy';
     setRegistrando(true);
@@ -702,9 +738,11 @@ const FormularioVentaMultiple = () => {
           numero_telefono: esPayJoy ? tadDevice : numero,
           monto_recarga: (esPayJoy || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)) ? 0 : parseFloat(recarga),
           telefono_cliente: telefono || null,
-          cvip: esPayJoy ? false : cvip,
+          cvip: false,
           imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
-          iccid: TIPOS_CON_CURP_NIP.includes(tipoChip)
+          iccid: chipDesdeClave
+            ? (iccid || null)
+            : TIPOS_CON_CURP_NIP.includes(tipoChip)
             ? (iccid || null)
             : (tipoChip === 'Boletin 63' && cambioChip ? (iccid || null) : null),
           curp: TIPOS_CON_CURP_NIP.includes(tipoChip) ? (curp || null) : null,
@@ -718,6 +756,7 @@ const FormularioVentaMultiple = () => {
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
       setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
+      setClaveChip(''); setChipDesdeClave(false); setErrorClave('');
       setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
     } catch (err: any) {
@@ -1185,7 +1224,25 @@ const FormularioVentaMultiple = () => {
       {/* ── Chip ── */}
       {(esCadenas || tipoVenta === 'chip') && (
         <>
-          <TextField select label="Chip" value={tipoChip} onChange={(e) => { setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); setFechaPorta(''); }} fullWidth size="small" margin="dense">
+          {!esCadenas && (
+            <TextField
+              label="Clave del chip (ej. A16-3)" value={claveChip} fullWidth size="small" margin="dense"
+              onChange={(e) => {
+                setClaveChip(e.target.value);
+                setErrorClave('');
+                if (chipDesdeClave) liberarClaveChip();
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarClaveChip(); } }}
+              onBlur={buscarClaveChip}
+              error={!!errorClave}
+              helperText={errorClave || (buscandoClave ? 'Buscando…' : '')}
+              InputProps={{ endAdornment: buscandoClave ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
+            />
+          )}
+          <TextField select label="Chip" value={tipoChip} onChange={(e) => {
+            setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); setFechaPorta('');
+            if (chipDesdeClave) { setClaveChip(''); setChipDesdeClave(false); setNumero(''); }
+          }} fullWidth size="small" margin="dense">
             {(rol === null
               ? []
               : esCadenas
@@ -1201,6 +1258,7 @@ const FormularioVentaMultiple = () => {
             <>
               <TextField
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
+                disabled={chipDesdeClave}
                 required={tipoChip === 'Boletin 63' || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)}
                 onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
                 onBlur={() => verificarNumero(numero)}
@@ -1225,7 +1283,7 @@ const FormularioVentaMultiple = () => {
                 />
               )}
               {!(TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)) && (
-                <TextField label="Recarga" type="number" value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
+                <TextField label="Recarga" type="number" inputRef={recargaRef} value={recarga} onChange={(e) => setRecarga(e.target.value)} fullWidth size="small" margin="dense" />
               )}
               {TIPOS_CON_CURP_NIP.includes(tipoChip) && (
                 <>
@@ -1265,13 +1323,6 @@ const FormularioVentaMultiple = () => {
                     )}
                   </>
                 )}
-              <FormControl sx={{ mt: 1 }}>
-                <FormLabel>Cliente VIP</FormLabel>
-                <RadioGroup row value={cvip} onChange={(e) => setcvip(e.target.value === 'true')}>
-                  <FormControlLabel value="true" control={<Radio />} label="Sí" />
-                  <FormControlLabel value="false" control={<Radio />} label="No" />
-                </RadioGroup>
-              </FormControl>
             </>
           )}
           {tipoChip === 'Tarjetas PayJoy' && (
