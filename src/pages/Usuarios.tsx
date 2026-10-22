@@ -3,7 +3,7 @@ import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert, Chip, InputAdornment,
+  Snackbar, Alert, Chip, InputAdornment, CircularProgress,
 } from "@mui/material";
 import { Edit, Delete, Close, AccessTime, Visibility, VisibilityOff } from "@mui/icons-material";
 import axios from "axios";
@@ -64,6 +64,10 @@ const UsuariosAdmin = () => {
   const [editarPassword, setEditarPassword] = useState(false);
   const [verPassword, setVerPassword] = useState(false);
   const passwordRef = useRef<HTMLInputElement>(null);
+  // Contraseña actual descifrada por el backend (undefined = aún no se pide)
+  const [passwordActual, setPasswordActual] = useState<string | null | undefined>(undefined);
+  const [avisoPassword, setAvisoPassword] = useState("");
+  const [cargandoPassword, setCargandoPassword] = useState(false);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -128,6 +132,8 @@ const UsuariosAdmin = () => {
     });
     setEditarPassword(false);
     setVerPassword(false);
+    setPasswordActual(undefined);
+    setAvisoPassword("");
     setDialogAbierto(true);
   };
 
@@ -137,16 +143,50 @@ const UsuariosAdmin = () => {
     setForm(formVacio);
     setEditarPassword(false);
     setVerPassword(false);
+    setPasswordActual(undefined);
+    setAvisoPassword("");
   };
 
   const alternarEditarPassword = () => {
     setForm((f) => ({ ...f, password: "" }));
     setVerPassword(false);
+    setAvisoPassword("");
     if (editarPassword) {
       setEditarPassword(false);
     } else {
       setEditarPassword(true);
       setTimeout(() => passwordRef.current?.focus(), 0);
+    }
+  };
+
+  const alternarVerPassword = async () => {
+    // Con el lápiz activo el ojito solo muestra lo que se escribe
+    if (editarPassword || verPassword) {
+      setVerPassword((v) => !v);
+      return;
+    }
+    if (passwordActual) {
+      setVerPassword(true);
+      return;
+    }
+    if (editandoId === null) return;
+    setCargandoPassword(true);
+    setAvisoPassword("");
+    try {
+      const res = await axios.get(
+        `https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${editandoId}/password`,
+        config
+      );
+      setPasswordActual(res.data.password ?? null);
+      if (res.data.password) {
+        setVerPassword(true);
+      } else {
+        setAvisoPassword("Sin contraseña visible: asígnale una nueva con el lápiz");
+      }
+    } catch (err: any) {
+      setAvisoPassword(err.response?.data?.detail || "No se pudo obtener la contraseña");
+    } finally {
+      setCargandoPassword(false);
     }
   };
 
@@ -485,26 +525,27 @@ const UsuariosAdmin = () => {
           </TextField>
 
           <TextField
-            label="Nueva contraseña"
-            type={verPassword ? "text" : "password"}
+            label="Contraseña"
+            type={!editarPassword || verPassword ? "text" : "password"}
             name="nueva_contrasena_usuario"
             autoComplete="new-password"
-            value={form.password}
+            value={editarPassword ? form.password : (verPassword && passwordActual ? passwordActual : "••••••••")}
             onChange={(e) => setF("password", e.target.value)}
             disabled={!editarPassword}
             inputRef={passwordRef}
             fullWidth
             margin="normal"
             size="small"
-            placeholder={editarPassword ? "Escribe la nueva contraseña" : "Clic en el lápiz para cambiarla"}
+            placeholder={editarPassword ? "Escribe la nueva contraseña" : undefined}
+            helperText={avisoPassword || undefined}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  {editarPassword && (
-                    <IconButton size="small" onClick={() => setVerPassword((v) => !v)} aria-label="Mostrar u ocultar contraseña">
-                      {verPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                    </IconButton>
-                  )}
+                  <IconButton size="small" onClick={alternarVerPassword} disabled={cargandoPassword} aria-label="Mostrar u ocultar contraseña">
+                    {cargandoPassword
+                      ? <CircularProgress size={16} />
+                      : verPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </IconButton>
                   <IconButton size="small" onClick={alternarEditarPassword} aria-label={editarPassword ? "Cancelar cambio de contraseña" : "Cambiar contraseña"}>
                     {editarPassword ? <Close fontSize="small" /> : <Edit fontSize="small" />}
                   </IconButton>
