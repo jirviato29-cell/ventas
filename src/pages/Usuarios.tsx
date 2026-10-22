@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert, Chip,
+  Snackbar, Alert, Chip, InputAdornment,
 } from "@mui/material";
-import { Edit, Delete, Close, AccessTime } from "@mui/icons-material";
+import { Edit, Delete, Close, AccessTime, Visibility, VisibilityOff } from "@mui/icons-material";
 import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
@@ -59,6 +59,11 @@ const UsuariosAdmin = () => {
   const [horarioOpen, setHorarioOpen] = useState(false);
   const [horarioUserId, setHorarioUserId] = useState<number | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  // La contraseña solo se edita tras dar clic en el lápiz, para que el
+  // autollenado del navegador no la cambie sin querer al guardar.
+  const [editarPassword, setEditarPassword] = useState(false);
+  const [verPassword, setVerPassword] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -121,6 +126,8 @@ const UsuariosAdmin = () => {
       tienda_id: u.tienda?.id?.toString() ?? "",
       asegurado: !!u.asegurado,
     });
+    setEditarPassword(false);
+    setVerPassword(false);
     setDialogAbierto(true);
   };
 
@@ -128,6 +135,19 @@ const UsuariosAdmin = () => {
     setDialogAbierto(false);
     setEditandoId(null);
     setForm(formVacio);
+    setEditarPassword(false);
+    setVerPassword(false);
+  };
+
+  const alternarEditarPassword = () => {
+    setForm((f) => ({ ...f, password: "" }));
+    setVerPassword(false);
+    if (editarPassword) {
+      setEditarPassword(false);
+    } else {
+      setEditarPassword(true);
+      setTimeout(() => passwordRef.current?.focus(), 0);
+    }
   };
 
   const guardarCambios = async () => {
@@ -145,7 +165,7 @@ const UsuariosAdmin = () => {
       if (form.username) payload.username = form.username;
       if (form.rol) payload.rol = form.rol;
       if (form.modulo_id) payload.modulo_id = parseInt(form.modulo_id);
-      if (form.password) payload.password = form.password;
+      if (editarPassword && form.password) payload.password = form.password;
       payload.tienda_id = form.tienda_id ? parseInt(form.tienda_id) : null;
       payload.asegurado = form.asegurado;
 
@@ -466,13 +486,31 @@ const UsuariosAdmin = () => {
 
           <TextField
             label="Nueva contraseña"
-            type="password"
+            type={verPassword ? "text" : "password"}
+            name="nueva_contrasena_usuario"
+            autoComplete="new-password"
             value={form.password}
             onChange={(e) => setF("password", e.target.value)}
+            disabled={!editarPassword}
+            inputRef={passwordRef}
             fullWidth
             margin="normal"
             size="small"
-            placeholder="Dejar vacío para no cambiar"
+            placeholder={editarPassword ? "Escribe la nueva contraseña" : "Clic en el lápiz para cambiarla"}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  {editarPassword && (
+                    <IconButton size="small" onClick={() => setVerPassword((v) => !v)} aria-label="Mostrar u ocultar contraseña">
+                      {verPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  )}
+                  <IconButton size="small" onClick={alternarEditarPassword} aria-label={editarPassword ? "Cancelar cambio de contraseña" : "Cambiar contraseña"}>
+                    {editarPassword ? <Close fontSize="small" /> : <Edit fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
 
           <TextField

@@ -1,9 +1,11 @@
 ﻿import React, { useEffect, useState } from "react";
 import {
   Box, Button, Container, MenuItem, TextField, Typography, Alert, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, InputAdornment,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import HorarioDialog from "../components/HorarioDialog";
@@ -13,6 +15,7 @@ import { DiaTrabajo } from "../Types";
 const CrearUsuario = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [verPassword, setVerPassword] = useState(false);
   const [rol, setRol] = useState("");
   const [modulo, setModulo] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -114,6 +117,7 @@ const CrearUsuario = () => {
       setNombreCompleto("");
       setUsername("");
       setPassword("");
+      setVerPassword(false);
       setRol("");
       setModulo("");
       setIsAdmin(false);
@@ -156,11 +160,22 @@ const CrearUsuario = () => {
         />
         <TextField
           label="Contraseña"
-          type="password"
+          type={verPassword ? "text" : "password"}
+          autoComplete="new-password"
+          required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           fullWidth
           margin="normal"
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={() => setVerPassword((v) => !v)} aria-label="Mostrar u ocultar contraseña">
+                  {verPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
         />
 
         <TextField
@@ -325,7 +340,7 @@ const CrearUsuario = () => {
         </Dialog>
 
         <Box mt={2}>
-          <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>
+          <Button variant="contained" color="primary" onClick={handleSubmit} disabled={!password} fullWidth>
             Crear Usuario
           </Button>
         </Box>
