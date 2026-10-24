@@ -978,7 +978,7 @@ const FormularioVentaMultiple = () => {
     if (!imei) return;
     try {
       const res = await axios.get(
-        `/api/equipos_telcel/?estatus=surtido`,
+        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
         config
       );
       const lista = res.data || [];
@@ -1011,7 +1011,7 @@ const FormularioVentaMultiple = () => {
     if (!imei) return;
     try {
       const res = await axios.get(
-        `/api/equipos_telcel/?estatus=surtido`,
+        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
         config
       );
       const lista = res.data || [];
