@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 const AZUL = "#0d2b5e";
 const NARANJA = "#f57c00";

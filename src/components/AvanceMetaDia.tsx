@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, LinearProgress, Paper, Typography } from '@mui/material';
 import axios from 'axios';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 // Esta semana corre como simulacion, con el equipo ya enterado del modelo.
 // El pago real arranca el 15 de septiembre: ese dia se quita la leyenda

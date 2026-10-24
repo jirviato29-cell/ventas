@@ -13,7 +13,9 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 import { Modulo } from "../Types";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
+// Directo a Render, sin pasar por Vercel: /aplicar puede tardar más de los 120 s del rewrite.
+const RENDER_DIRECTO = "https://ato-appservidor-nvxt.onrender.com";
 const headSx = { py: "4px", px: "6px", fontSize: 13, fontWeight: 700 };
 const cellSx = { py: "2px", px: "6px", fontSize: 13 };
 
@@ -393,7 +395,7 @@ const ConteosFisicos = () => {
         conteo_imei_completo: conteoCompleto,
         dar_de_baja_faltantes: darDeBajaFaltantes,
       };
-      const r = await axios.post(`${BASE}/conteos-fisicos/aplicar`, body, config);
+      const r = await axios.post(`${RENDER_DIRECTO}/conteos-fisicos/aplicar`, body, config);
       const d = r.data;
       setExitoMsg(
         `✅ ${d.folio} aplicado — ${d.productos_actualizados} actualizados, ` +

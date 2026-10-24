@@ -3,7 +3,7 @@ import { Box, CircularProgress, Container, Typography } from '@mui/material';
 import axios from 'axios';
 import RecibosPanel from '../components/RecibosPanel';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 interface Modulo {
   id: number;

@@ -7,7 +7,9 @@ import {
 import axios from "axios";
 import * as XLSX from "xlsx";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
+// Directo a Render, sin pasar por Vercel: la carga puede tardar más de los 120 s del rewrite.
+const RENDER_DIRECTO = "https://ato-appservidor-nvxt.onrender.com";
 
 const infoClasificacionVenta = (clasificacion: string | null | undefined): { label: string; color: string } | null => {
   if (clasificacion === "linea_nueva") return { label: "Línea nueva", color: "#1976d2" };
@@ -138,7 +140,7 @@ const EquiposTelcel = () => {
 
     try {
       const res = await axios.post(
-        `${BASE}/equipos_telcel/upload/`,
+        `${RENDER_DIRECTO}/equipos_telcel/upload/`,
         formData,
         {
           headers: {

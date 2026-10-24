@@ -25,7 +25,7 @@ import PrintIcon from "@mui/icons-material/Print";
 import axios from "axios";
 import MetasCadenasResumen from "../components/MetasCadenasResumen";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 

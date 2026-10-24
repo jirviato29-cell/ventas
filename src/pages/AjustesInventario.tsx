@@ -8,7 +8,7 @@ import {
 import axios from "axios";
 import { AjusteInventario, Modulo } from "../Types";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
 
 interface FilaInventario {
   clave: string;

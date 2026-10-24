@@ -10,7 +10,7 @@ import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 const roles = ["admin", "encargado", "asesor", "contador", "check"];
 
@@ -76,7 +76,7 @@ const UsuariosAdmin = () => {
 
   const cargarModulos = async () => {
     try {
-      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/modulos`, config);
+      const res = await axios.get(`/api/registro/modulos`, config);
       setModulos(res.data);
     } catch {
       console.error("Error al cargar módulos");
@@ -98,7 +98,7 @@ const UsuariosAdmin = () => {
 
   const cargarUsuarios = async () => {
     try {
-      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios`, config);
+      const res = await axios.get(`/api/registro/usuarios`, config);
       setUsuarios(res.data);
     } catch {
       alert("Error al cargar usuarios");
@@ -174,7 +174,7 @@ const UsuariosAdmin = () => {
     setAvisoPassword("");
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${editandoId}/password`,
+        `/api/registro/usuarios/${editandoId}/password`,
         config
       );
       setPasswordActual(res.data.password ?? null);
@@ -210,7 +210,7 @@ const UsuariosAdmin = () => {
       payload.asegurado = form.asegurado;
 
       await axios.put(
-        `https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${editandoId}`,
+        `/api/registro/usuarios/${editandoId}`,
         payload,
         config
       );
@@ -224,7 +224,7 @@ const UsuariosAdmin = () => {
   const eliminarUsuario = async (id: number) => {
     if (!window.confirm("¿Estás seguro de eliminar este usuario?")) return;
     try {
-      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios/${id}`, config);
+      await axios.delete(`/api/registro/usuarios/${id}`, config);
       cargarUsuarios();
     } catch (err: any) {
       alert(err.response?.data?.detail || "Error al eliminar usuario");
@@ -256,7 +256,7 @@ const UsuariosAdmin = () => {
       await Promise.all(
         afectados.map((p) =>
           axios.put(
-            `https://ato-appservidor-nvxt.onrender.com/admin/usuarios/${p.id}/horario`,
+            `/api/admin/usuarios/${p.id}/horario`,
             { horario_semanal: horario, dia_descanso: diaDescanso || null },
             config
           )

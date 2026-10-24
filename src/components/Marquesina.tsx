@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 const Marquesina: React.FC = () => {
   const [texto, setTexto] = useState('');

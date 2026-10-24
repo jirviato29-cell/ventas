@@ -9,7 +9,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 
-const BASE = 'https://ato-appservidor-nvxt.onrender.com';
+const BASE = '/api';
 
 interface ProductoCatalogo {
   clave: string;

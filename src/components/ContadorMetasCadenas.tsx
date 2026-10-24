@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, LinearProgress, Paper, Typography } from '@mui/material';
 import axios from 'axios';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 // Misma paleta que AvanceMetaDia (accesorios) para que las dos franjas se lean igual.
 const DORADO = '#eab308';

@@ -30,7 +30,7 @@ const ChipsRechazados = () => {
       params.solo_incubadora = true;
 
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
+        `/api/ventas/venta_chips`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params,
@@ -50,7 +50,7 @@ const ChipsRechazados = () => {
   useEffect(() => {
     if (rolToken !== "admin") return;
     axios
-      .get(`https://ato-appservidor-nvxt.onrender.com/registro/usuarios`, {
+      .get(`/api/registro/usuarios`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((r) => setUsuarios(r.data))
@@ -60,7 +60,7 @@ const ChipsRechazados = () => {
 const validarChip = async (id: number, comision_manual?: number) => {
   try {
     await axios.put(
-      `https://ato-appservidor-nvxt.onrender.com/ventas/validar_chip_incubadora/${id}`,
+      `/api/ventas/validar_chip_incubadora/${id}`,
       { comision_manual }, // 🔥 importante
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +77,7 @@ const validarChip = async (id: number, comision_manual?: number) => {
 
 const eliminarChip = async (id: number) => {
     try {
-      await axios.delete(`https://ato-appservidor-nvxt.onrender.com/ventas/eliminar_chip/${id}`, {
+      await axios.delete(`/api/ventas/eliminar_chip/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRechazados(prev => prev.filter(c => c.id !== id));

@@ -88,7 +88,7 @@ const Kardex = () => {
     if (producto) params.limit = 100000; // histórico completo en modo saldo
 
     const res = await axios.get(
-      `https://ato-appservidor-nvxt.onrender.com/kardex/kardex`,
+      `/api/kardex/kardex`,
       { ...config, params }
     );
 
@@ -101,7 +101,7 @@ const Kardex = () => {
         const paramsEx: any = { producto };
         if (moduloId) paramsEx.modulo_id = moduloId; // admin manda modulo; encargado lo deja al backend
         const resEx = await axios.get(
-          `https://ato-appservidor-nvxt.onrender.com/kardex/existencia`,
+          `/api/kardex/existencia`,
           { ...config, params: paramsEx }
         );
         setExistenciaActual(resEx.data?.existencia ?? null);
@@ -122,7 +122,7 @@ const Kardex = () => {
 
   const cargarModulos = async () => {
   const res = await axios.get(
-    `https://ato-appservidor-nvxt.onrender.com/registro/modulos`,
+    `/api/registro/modulos`,
     config
   );
   setModulos(res.data);
@@ -130,7 +130,7 @@ const Kardex = () => {
 
   const cargarProductosCatalogo = async () => {
     const res = await axios.get(
-      `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`,
+      `/api/inventario/inventario/general`,
       config
     );
     setProductosCatalogo(res.data);

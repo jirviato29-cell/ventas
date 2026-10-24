@@ -22,7 +22,7 @@ import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcComision } from '../utils/calcComision';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 interface VentaRecibo {
   id: number;

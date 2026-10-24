@@ -21,7 +21,7 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const PURPLE = "#7C3AED";

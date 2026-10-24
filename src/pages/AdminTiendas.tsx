@@ -11,7 +11,7 @@ import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import AddIcon from "@mui/icons-material/Add";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 type Tienda = {
   id: number; nombre: string; activo: boolean;

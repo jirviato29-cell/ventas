@@ -329,7 +329,7 @@ const FormularioVentaMultiple = () => {
   // ── Fetches ──────────────────────────────────────────────────────────────
   const fetchVentas = async () => {
     try {
-      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas`, {
+      const res = await axios.get(`/api/ventas/ventas`, {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           fecha: fecha || undefined,
@@ -344,14 +344,14 @@ const FormularioVentaMultiple = () => {
 
   const fetchCatalogoComisiones = async () => {
     try {
-      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/comisiones/comisiones`, config);
+      const res = await axios.get(`/api/comisiones/comisiones`, config);
       setCatalogoComisiones(res.data);
     } catch (err) { console.error(err); }
   };
 
   const fetchMisVentas = async (fecha: string) => {
     try {
-      const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas`, {
+      const res = await axios.get(`/api/ventas/ventas`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { fecha },
       });
@@ -362,7 +362,7 @@ const FormularioVentaMultiple = () => {
   const fetchComisionesPorFecha = async (fecha: string) => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/comisiones/ciclo_por_fechas`,
+        `/api/comisiones/ciclo_por_fechas`,
         { ...config, params: { inicio: fecha, fin: fecha } },
       );
       setComisionesMisVentas(res.data);
@@ -376,7 +376,7 @@ const FormularioVentaMultiple = () => {
   const fetchChipsDelDia = async () => {
     try {
       const res = await axios.get<VentaChip[]>(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
+        `/api/ventas/venta_chips`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const usuario = localStorage.getItem('usuario') || '';
@@ -392,7 +392,7 @@ const FormularioVentaMultiple = () => {
   const fetchMisActivaciones = async (fecha: string) => {
     try {
       const res = await axios.get<VentaChip[]>(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
+        `/api/ventas/venta_chips`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const usuario = localStorage.getItem('usuario') || '';
@@ -407,7 +407,7 @@ const FormularioVentaMultiple = () => {
   const fetchNominaChips = async (inicio: string, fin: string) => {
     try {
       const res = await axios.get<VentaChip[]>(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
+        `/api/ventas/venta_chips`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const usr = localStorage.getItem('usuario') || '';
@@ -423,7 +423,7 @@ const FormularioVentaMultiple = () => {
     const hoy = new Date().toLocaleDateString('en-CA');
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/comisiones/ciclo_por_fechas`,
+        `/api/comisiones/ciclo_por_fechas`,
         { ...config, params: { inicio: hoy, fin: hoy } },
       );
       setComisionesHoy(res.data);
@@ -450,7 +450,7 @@ const FormularioVentaMultiple = () => {
     const fetchProductos = async () => {
       try {
         const res = await axios.get(
-          `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/general`,
+          `/api/inventario/inventario/general`,
           config,
         );
         setProductos(res.data);
@@ -467,13 +467,13 @@ const FormularioVentaMultiple = () => {
       try {
         if (token) {
           const resUser = await axios.get<Usuario>(
-            `https://ato-appservidor-nvxt.onrender.com/auth/usuarios/me`,
+            `/api/auth/usuarios/me`,
             { headers: { Authorization: `Bearer ${token}` } },
           );
           setUser(resUser.data);
           setRol(resUser.data.rol);
           const resModulos = await axios.get(
-            `https://ato-appservidor-nvxt.onrender.com/registro/modulos`,
+            `/api/registro/modulos`,
             { headers: { Authorization: `Bearer ${token}` } },
           );
           setModulos(resModulos.data);
@@ -561,7 +561,7 @@ const FormularioVentaMultiple = () => {
         }));
       try {
         const resEf = await axios.post(
-          `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
+          `/api/ventas/ventas/multiples`,
           { productos: makeItems(pctEf, false), telefono_cliente: telefono, metodo_pago: 'efectivo' },
           config,
         );
@@ -570,7 +570,7 @@ const FormularioVentaMultiple = () => {
         let okTa = true;
         try {
           await axios.post(
-            `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
+            `/api/ventas/ventas/multiples`,
             { productos: makeItems(pctTa, true), telefono_cliente: telefono, metodo_pago: 'tarjeta', folio: folioCompartido },
             config,
           );
@@ -609,7 +609,7 @@ const FormularioVentaMultiple = () => {
 
     try {
       const res = await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/multiples`,
+        `/api/ventas/ventas/multiples`,
         { productos: carrito, telefono_cliente: telefono, metodo_pago: metodoPago },
         config,
       );
@@ -641,7 +641,7 @@ const FormularioVentaMultiple = () => {
   const cancelarVenta = async (id: number) => {
     if (!window.confirm('¿Estás seguro de cancelar esta venta?')) return;
     try {
-      await axios.put(`https://ato-appservidor-nvxt.onrender.com/ventas/ventas/${id}/cancelar`, {}, config);
+      await axios.put(`/api/ventas/ventas/${id}/cancelar`, {}, config);
       alert('Venta cancelada');
       fetchVentas();
       setRefrescoAvance((n) => n + 1);
@@ -667,7 +667,7 @@ const FormularioVentaMultiple = () => {
     }
     try {
       await axios.patch(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/ventas/${editPrecioVenta.id}/precio`,
+        `/api/ventas/ventas/${editPrecioVenta.id}/precio`,
         { nuevo_precio: nuevo },
         config,
       );
@@ -682,7 +682,7 @@ const FormularioVentaMultiple = () => {
     if (!num.trim()) return;
     setVerificandoNumero(true);
     setNumeroDuplicado(false);
-    const url = `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips/verificar_numero/${encodeURIComponent(num)}`;
+    const url = `/api/ventas/venta_chips/verificar_numero/${encodeURIComponent(num)}`;
     console.log("[verificarNumero] URL:", url);
     try {
       const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -709,7 +709,7 @@ const FormularioVentaMultiple = () => {
     setErrorClave('');
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/chips/clave/${encodeURIComponent(clave)}`,
+        `/api/inventario/inventario/chips/clave/${encodeURIComponent(clave)}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setTipoChip('Chip Express');
@@ -732,7 +732,7 @@ const FormularioVentaMultiple = () => {
     setRegistrando(true);
     try {
       await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/venta_chips`,
+        `/api/ventas/venta_chips`,
         {
           tipo_chip: tipoChip,
           numero_telefono: esPayJoy ? tadDevice : numero,
@@ -818,7 +818,7 @@ const FormularioVentaMultiple = () => {
       }
       try {
         const resEf = await axios.post(
-          `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
+          `/api/ventas/ventas`,
           { productos: [{ ...productoBase, precio_unitario: ef, skip_comision: false }], metodo_pago: 'efectivo', telefono_cliente: telefono?.trim() || '' },
           config,
         );
@@ -827,7 +827,7 @@ const FormularioVentaMultiple = () => {
         let okTa = true;
         try {
           await axios.post(
-            `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
+            `/api/ventas/ventas`,
             { productos: [{ ...productoBase, imei: null, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', telefono_cliente: telefono?.trim() || '', folio: folioCompartido },
             config,
           );
@@ -866,7 +866,7 @@ const FormularioVentaMultiple = () => {
 
     try {
       const res = await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/ventas`,
+        `/api/ventas/ventas`,
         { productos: [{ ...productoBase, precio_unitario: p }], metodo_pago: metodoPago, telefono_cliente: telefono?.trim() || '' },
         config,
       );
@@ -949,7 +949,7 @@ const FormularioVentaMultiple = () => {
         monto_inicial_efectivo: planPagoInicial && planMetodoPagoInicial === 'dividido' ? parseFloat(planMontoDividido.efectivo) : 0,
         monto_inicial_tarjeta: planPagoInicial && planMetodoPagoInicial === 'dividido' ? parseFloat(planMontoDividido.tarjeta) : 0,
       };
-      await axios.post('https://ato-appservidor-nvxt.onrender.com/planes-tarifarios', payload, config);
+      await axios.post('/api/planes-tarifarios', payload, config);
       setMensaje({ tipo: 'success', texto: 'Plan registrado correctamente' });
       resetPlan();
       setRefrescoAvance((n) => n + 1);
@@ -965,7 +965,7 @@ const FormularioVentaMultiple = () => {
     setBuscando(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/buscar?query=${encodeURIComponent(texto)}`,
+        `/api/inventario/buscar?query=${encodeURIComponent(texto)}`,
         config,
       );
       setOpcionesTelefonos(res.data);
@@ -978,7 +978,7 @@ const FormularioVentaMultiple = () => {
     if (!imei) return;
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
+        `/api/equipos_telcel/?estatus=surtido`,
         config
       );
       const lista = res.data || [];
@@ -1011,7 +1011,7 @@ const FormularioVentaMultiple = () => {
     if (!imei) return;
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/?estatus=surtido`,
+        `/api/equipos_telcel/?estatus=surtido`,
         config
       );
       const lista = res.data || [];

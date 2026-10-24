@@ -8,7 +8,7 @@ import axios from 'axios';
 type Fila = { modulo: string; valor: number };
 type Data = { actualizado: string; accesorios: Fila[]; telefonos: Fila[]; planes: Fila[]; accesorios_mes?: Fila[]; telefonos_mes?: Fila[] };
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 const COLORS = {
   acc: { main: '#7c3aed', light: '#ede9fe', banner: 'linear-gradient(90deg, #fb923c 0%, #f97316 60%, #ea580c 100%)', accent: '#f97316' },

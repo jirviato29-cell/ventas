@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, CircularProgress, Collapse, Grid, Paper, Typography } from '@mui/material';
 import axios from 'axios';
 
-const API = 'https://ato-appservidor-nvxt.onrender.com';
+const API = '/api';
 
 // Misma paleta que ContadorMetasCadenas: claro = subidas, fuerte = validadas.
 const DORADO = '#eab308';

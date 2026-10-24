@@ -14,7 +14,7 @@ import * as XLSX from "xlsx";
 import { obtenerRolDesdeToken } from "../components/Token";
 import { calcularComision } from "../data/comisionesTabulador";
 
-const BASE   = "https://ato-appservidor-nvxt.onrender.com";
+const BASE   = "/api";
 const headSx = { py: "4px", px: "6px", fontSize: 13, fontWeight: 700 };
 const cellSx = { py: "2px", px: "6px", fontSize: 13 };
 const stickyHeadSx = { ...headSx, position: "sticky" as const, right: 0, background: "#fff", zIndex: 3, boxShadow: "-4px 0 6px -4px rgba(0,0,0,0.15)" };

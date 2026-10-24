@@ -7,7 +7,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const FONT = "Inter, system-ui, -apple-system, sans-serif";
 
 interface MarcaDia { hora: string; foto_url: string | null; dentro_de_zona: boolean | null; }

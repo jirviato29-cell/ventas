@@ -6,7 +6,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 

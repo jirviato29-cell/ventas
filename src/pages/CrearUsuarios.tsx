@@ -45,7 +45,7 @@ const CrearUsuario = () => {
     const cfg = { headers: { Authorization: `Bearer ${localToken}` } };
     const fetchModulos = async () => {
       try {
-        const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/modulos`, cfg);
+        const res = await axios.get(`/api/registro/modulos`, cfg);
         setModulos(res.data);
       } catch {
         console.error("Error al cargar módulos");
@@ -53,7 +53,7 @@ const CrearUsuario = () => {
     };
     const fetchTiendas = async () => {
       try {
-        const res = await axios.get(`https://ato-appservidor-nvxt.onrender.com/registro/tiendas`, cfg);
+        const res = await axios.get(`/api/registro/tiendas`, cfg);
         setTiendas(res.data);
       } catch {
         console.error("Error al cargar tiendas");
@@ -76,7 +76,7 @@ const CrearUsuario = () => {
     }
     try {
       const res = await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/registro/tiendas`,
+        `/api/registro/tiendas`,
         { nombre },
         config
       );
@@ -95,7 +95,7 @@ const CrearUsuario = () => {
   const handleSubmit = async () => {
     try {
       await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/registro/registro`,
+        `/api/registro/registro`,
         {
           nombre_completo: nombreCompleto,
           username,

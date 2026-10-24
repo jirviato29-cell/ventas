@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 // Rutas donde NO se muestra el modal (si no, no podria hacer check-in)
 const RUTAS_LIBRES = ["/mi-asistencia", "/checkin", "/asistencia"];

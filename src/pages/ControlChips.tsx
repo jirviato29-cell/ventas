@@ -19,7 +19,7 @@ import {
 import { Search, SimCard } from "@mui/icons-material";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 interface ChipControl {
   clave: string;

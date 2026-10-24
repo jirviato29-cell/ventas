@@ -8,7 +8,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import axios from "axios";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
 
 const AltaImeis = () => {
   const [modulos, setModulos] = useState<any[]>([]);

@@ -8,7 +8,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import axios from 'axios';
 import { obtenerRolDesdeToken } from '../components/Token';
 
-const BASE = 'https://ato-appservidor-nvxt.onrender.com';
+const BASE = '/api';
 
 interface ProductoCatalogo {
   clave: string;

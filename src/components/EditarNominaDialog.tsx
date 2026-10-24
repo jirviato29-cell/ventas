@@ -21,7 +21,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import AddIcon from "@mui/icons-material/Add";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const ORANGE = "#f97316";

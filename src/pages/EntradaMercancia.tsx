@@ -247,7 +247,7 @@ const EntradaMercancia = () => {
   const cargarModulos = async () => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/registro/modulos`,
+        `/api/registro/modulos`,
         config
       );
       setModulos(res.data);
@@ -279,7 +279,7 @@ const EntradaMercancia = () => {
       if (mod) params.modulo_id = mod as number;
 
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas`,
+        `/api/inventario/inventario/entradas`,
         { params, ...config }
       );
       setHistorialResultados(res.data);
@@ -319,7 +319,7 @@ const EntradaMercancia = () => {
     setEncargado(null);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/modulos/${moduloId}/encargado`,
+        `/api/modulos/${moduloId}/encargado`,
         config
       );
       setEncargado(res.data);
@@ -366,7 +366,7 @@ const EntradaMercancia = () => {
     try {
       setLoadingBusqueda(true);
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-autocomplete`,
+        `/api/inventario/inventario/buscar-autocomplete`,
         { params: { modulo_id: moduloSeleccionado, q: texto }, ...config }
       );
       const textoBusqueda = texto.toLowerCase();
@@ -384,7 +384,7 @@ const EntradaMercancia = () => {
   const obtenerExistenciaModulo = async (clave: string) => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
+        `/api/inventario/inventario/modulo/${moduloSeleccionado}/existencia`,
         { params: { clave }, ...config }
       );
       return res.data.existencia_actual;
@@ -438,7 +438,7 @@ const EntradaMercancia = () => {
     setBuscandoImei(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/buscar-imei/${imei}`,
+        `/api/equipos_telcel/buscar-imei/${imei}`,
         config
       );
       const eq = res.data;
@@ -477,7 +477,7 @@ const EntradaMercancia = () => {
     setBuscandoPaquete(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/chips/paquete/${encodeURIComponent(paquete)}`,
+        `/api/inventario/inventario/chips/paquete/${encodeURIComponent(paquete)}`,
         config
       );
       const nuevos: ChipEntrada[] = (res.data.chips || []).map((c: any) => ({
@@ -513,7 +513,7 @@ const EntradaMercancia = () => {
         paquetes_chips: Array.from(new Set(chipsLista.map((c) => c.paquete))),
       };
       const res = await axios.post(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entrada_mercancia`,
+        `/api/inventario/inventario/entrada_mercancia`,
         payload,
         config
       );
@@ -525,7 +525,7 @@ const EntradaMercancia = () => {
         if (imeisSurtidos.length > 0) {
           try {
             await axios.post(
-              `https://ato-appservidor-nvxt.onrender.com/equipos_telcel/marcar-surtidos`,
+              `/api/equipos_telcel/marcar-surtidos`,
               { imeis: imeisSurtidos, modulo_id: moduloSeleccionado, folio: res.data.folio },
               config
             );
@@ -555,7 +555,7 @@ const EntradaMercancia = () => {
     let enc: EncargadoInfo | null = null;
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/modulos/${entradaDetalle.modulo_id}/encargado`,
+        `/api/modulos/${entradaDetalle.modulo_id}/encargado`,
         config
       );
       enc = res.data ?? null;
@@ -582,7 +582,7 @@ const EntradaMercancia = () => {
     setCargandoEquiposDetalle(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaId}`,
+        `/api/inventario/inventario/entradas/${entradaId}`,
         config
       );
       setEquiposDetalle(res.data.equipos || []);
@@ -600,7 +600,7 @@ const EntradaMercancia = () => {
   const cargarCurrentUser = async () => {
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/auth/usuarios/me`,
+        `/api/auth/usuarios/me`,
         config
       );
       setCurrentUser(res.data);
@@ -616,7 +616,7 @@ const EntradaMercancia = () => {
     setEliminandoEntrada(true);
     try {
       await axios.delete(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `/api/inventario/inventario/entradas/${entradaDetalle.id}`,
         config
       );
       setModalConfirmEliminar(false);
@@ -646,7 +646,7 @@ const EntradaMercancia = () => {
     setErrorDetalle(null);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`,
+        `/api/inventario/inventario/entradas/${entradaDetalle.id}`,
         config
       );
       const productos = res.data.productos as Array<{
@@ -690,7 +690,7 @@ const EntradaMercancia = () => {
     try {
       setEditLoadingBusqueda(true);
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/buscar-autocomplete`,
+        `/api/inventario/inventario/buscar-autocomplete`,
         { params: { q: texto }, ...config }
       );
       setEditOpciones(res.data);
@@ -737,7 +737,7 @@ const EntradaMercancia = () => {
     setGuardandoEdicion(true);
     setErrorEditar(null);
     const payload = { productos: editProductos.map((p) => ({ producto_id: p.producto_id, cantidad: p.cantidad })) };
-    const url = `https://ato-appservidor-nvxt.onrender.com/inventario/inventario/entradas/${entradaDetalle.id}`;
+    const url = `/api/inventario/inventario/entradas/${entradaDetalle.id}`;
     try {
       await axios.put(url, payload, config);
       setModalEditar(false);

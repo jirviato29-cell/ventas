@@ -18,7 +18,7 @@ import {
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 interface RankingRow {

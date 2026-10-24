@@ -8,7 +8,7 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 const FONT = "Inter, system-ui, sans-serif";
 

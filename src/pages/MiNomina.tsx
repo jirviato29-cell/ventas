@@ -17,7 +17,7 @@ import SmartphoneIcon from "@mui/icons-material/Smartphone";
 import SimCardIcon from "@mui/icons-material/SimCard";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 const ORANGE = "#f97316";

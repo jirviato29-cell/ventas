@@ -19,7 +19,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import axios from "axios";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 

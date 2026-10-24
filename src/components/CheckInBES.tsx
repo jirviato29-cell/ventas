@@ -14,7 +14,7 @@ import axios from "axios";
 
 import SemanaBES from "./SemanaBES";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 

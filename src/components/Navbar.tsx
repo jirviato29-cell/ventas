@@ -103,7 +103,7 @@ const Navbar = () => {
   const cerrarSesion = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`https://ato-appservidor-nvxt.onrender.com/asistencias/logout`, {
+      const res = await fetch(`/api/asistencias/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

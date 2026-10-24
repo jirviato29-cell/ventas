@@ -16,7 +16,7 @@ import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
 const CLAVE_ACCESO = "12022907";
 
 type TipoGasto = "personal" | "iglesia" | "prestamos";

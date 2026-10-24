@@ -5,7 +5,7 @@ import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 import RankingModulos from "../components/RankingModulos";
 
-const BASE = "https://ato-appservidor-nvxt.onrender.com";
+const BASE = "/api";
 
 interface Modulo {
   id: number;

@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` });
 
 const hoy = () => new Date().toISOString().slice(0, 10);

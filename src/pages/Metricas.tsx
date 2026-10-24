@@ -51,7 +51,7 @@ const Metricas = () => {
 
   const [ventasModulo, setVentasModulo] = useState<any[]>([]);
 
-  const API = "https://ato-appservidor-nvxt.onrender.com";
+  const API = "/api";
 
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [modulos, setModulos] = useState<any[]>([]);

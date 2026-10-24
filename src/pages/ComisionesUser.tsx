@@ -64,7 +64,7 @@ const ComisionesUsuario = () => {
     setCargando(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/comisiones/comisiones/ciclo`,
+        `/api/comisiones/comisiones/ciclo`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setData(res.data);
@@ -85,7 +85,7 @@ const ComisionesUsuario = () => {
     setCargando(true);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/comisiones/ciclo_por_fechas`,
+        `/api/comisiones/ciclo_por_fechas`,
         { params, headers: { Authorization: `Bearer ${token}` } }
       );
       setData(res.data);

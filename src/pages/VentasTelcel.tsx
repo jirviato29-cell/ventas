@@ -23,7 +23,7 @@ const VentasTelcel = () => {
     if (fImei) params.append("imei", fImei);
     try {
       const res = await axios.get(
-        `https://ato-appservidor-nvxt.onrender.com/ventas/ventas_telcel?${params.toString()}`,
+        `/api/ventas/ventas_telcel?${params.toString()}`,
         config
       );
       setVentas(res.data);

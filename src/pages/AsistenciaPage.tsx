@@ -41,7 +41,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import axios from "axios";
 import * as XLSX from "xlsx";
 
-const API = "https://ato-appservidor-nvxt.onrender.com";
+const API = "/api";
 
 // Filtro de módulos en Registros: Cadenas vs ATO
 const MODULO_CADENAS_ID = 7;
