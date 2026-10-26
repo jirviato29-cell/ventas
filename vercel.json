@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/api/:path*/", "destination": "https://ato-appservidor-nvxt.onrender.com/:path*/" },
     { "source": "/api/:path*", "destination": "https://ato-appservidor-nvxt.onrender.com/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
