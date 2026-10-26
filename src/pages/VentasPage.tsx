@@ -245,6 +245,11 @@ const FormularioVentaMultiple = () => {
   const [nip, setNip] = useState('');
   const [fechaPorta, setFechaPorta] = useState('');
   const [cambioChip, setCambioChip] = useState(false);
+  const [marca, setMarca] = useState('');
+  const [modelo, setModelo] = useState('');
+  const [precioEquipo, setPrecioEquipo] = useState('');
+  // Cadenas: en estos chips se vende un equipo y se captura marca, modelo y precio.
+  const pideEquipo = esCadenas && (tipoChip === 'Activacion' || tipoChip === 'Boletin 63');
   // Clave impresa del chip (ej. A16-3): si se valida, fija número e ICCID
   const [claveChip, setClaveChip] = useState('');
   const [chipDesdeClave, setChipDesdeClave] = useState(false);
@@ -751,11 +756,15 @@ const FormularioVentaMultiple = () => {
           // pasar por Date, que desplazaria el dia por zona horaria.
           fecha_portabilidad: TIPOS_CON_FECHA_PORTA.includes(tipoChip) ? (fechaPorta || null) : null,
           cambio_chip: tipoChip === 'Boletin 63' ? cambioChip : false,
+          marca: pideEquipo ? marca.trim() : null,
+          modelo: pideEquipo ? modelo.trim() : null,
+          precio: pideEquipo ? parseFloat(precioEquipo) : null,
         },
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
       setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
+      setMarca(''); setModelo(''); setPrecioEquipo('');
       setClaveChip(''); setChipDesdeClave(false); setErrorClave('');
       setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); fetchChipsDelDia(); }
@@ -1241,6 +1250,7 @@ const FormularioVentaMultiple = () => {
           )}
           <TextField select label="Chip" value={tipoChip} onChange={(e) => {
             setTipoChip(e.target.value); setTadDevice(''); setIccid(''); setCurp(''); setNip(''); setFechaPorta('');
+            setMarca(''); setModelo(''); setPrecioEquipo('');
             if (chipDesdeClave) { setClaveChip(''); setChipDesdeClave(false); setNumero(''); }
           }} fullWidth size="small" margin="dense">
             {(rol === null
@@ -1323,6 +1333,32 @@ const FormularioVentaMultiple = () => {
                     )}
                   </>
                 )}
+              {pideEquipo && (
+                <>
+                  <TextField
+                    label="Marca" value={marca} fullWidth size="small" margin="dense"
+                    required
+                    error={!marca.trim()}
+                    helperText={!marca.trim() ? 'Obligatorio para este chip' : ''}
+                    onChange={(e) => setMarca(e.target.value)}
+                  />
+                  <TextField
+                    label="Modelo" value={modelo} fullWidth size="small" margin="dense"
+                    required
+                    error={!modelo.trim()}
+                    helperText={!modelo.trim() ? 'Obligatorio para este chip' : ''}
+                    onChange={(e) => setModelo(e.target.value)}
+                  />
+                  <TextField
+                    label="Precio" value={precioEquipo} fullWidth size="small" margin="dense"
+                    required
+                    error={!precioEquipo.trim()}
+                    helperText={!precioEquipo.trim() ? 'Obligatorio para este chip' : ''}
+                    inputProps={{ inputMode: 'decimal' }}
+                    onChange={(e) => { const v = e.target.value; if (/^\d*\.?\d*$/.test(v)) setPrecioEquipo(v); }}
+                  />
+                </>
+              )}
             </>
           )}
           {tipoChip === 'Tarjetas PayJoy' && (
@@ -1338,7 +1374,7 @@ const FormularioVentaMultiple = () => {
                   : TIPOS_CON_FECHA_PORTA.includes(tipoChip)
                     ? (!numero || !fechaPorta || numeroDuplicado || verificandoNumero)
                     : (!numero || !recarga || numeroDuplicado || verificandoNumero || (tipoChip === 'Boletin 63' && !imei))
-            )}
+            ) || (pideEquipo && (!marca.trim() || !modelo.trim() || !(parseFloat(precioEquipo) > 0)))}
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
         </>
