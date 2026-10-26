@@ -52,11 +52,17 @@ const COMISION_POR_TIPO: Record<string, number> = {
   "Tarjetas PayJoy":      50,
 };
 
+// Grupo por la primera letra de la clave del empleado: "C..." = Cadenas, "A..." = ATO
+type Grupo = "" | "C" | "A";
+const perteneceAGrupo = (username: string | undefined | null, grupo: Grupo): boolean =>
+  grupo === "" || (username ?? "").trim().toUpperCase().startsWith(grupo);
+
 const ChipsAdmin = () => {
   const [chips, setChips]                     = useState<VentaChip[]>([]);
   const [usuarios, setUsuarios]               = useState<Usuario[]>([]);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<number | null>(null);
   const [tipoSeleccionado, setTipoSeleccionado] = useState<string>("");
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState<Grupo>("");
   const token = localStorage.getItem("token");
   const rol   = obtenerRolDesdeToken();
   const [chipsAsesor, setChipsAsesor] = useState<VentaChip[]>([]);
@@ -150,6 +156,14 @@ const ChipsAdmin = () => {
     new Set(chips.map((c) => c.tipo_chip).filter(Boolean))
   ).sort();
 
+  const usuariosDelGrupo = usuarios.filter((u) => perteneceAGrupo(u.username, grupoSeleccionado));
+
+  const cambiarGrupo = (grupo: Grupo) => {
+    setGrupoSeleccionado(grupo);
+    const empleado = usuarios.find((u) => u.id === empleadoSeleccionado);
+    if (empleado && !perteneceAGrupo(empleado.username, grupo)) setEmpleadoSeleccionado(null);
+  };
+
   return (
     <Box sx={{ mt: 2 }}>
       {rol === "admin" && (
@@ -165,9 +179,21 @@ const ChipsAdmin = () => {
                 style={{ fontSize: 14 }}
               >
                 <option value="">(Todos)</option>
-                {usuarios.map((u) => (
+                {usuariosDelGrupo.map((u) => (
                   <option key={u.id} value={u.id}>{u.username}</option>
                 ))}
+              </select>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2">Grupo:</Typography>
+              <select
+                value={grupoSeleccionado}
+                onChange={(e) => cambiarGrupo(e.target.value as Grupo)}
+                style={{ fontSize: 14 }}
+              >
+                <option value="">(Todos)</option>
+                <option value="C">Cadenas (C)</option>
+                <option value="A">ATO (A)</option>
               </select>
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -207,7 +233,11 @@ const ChipsAdmin = () => {
               </TableHead>
               <TableBody>
                 {(() => {
-                  const filtrados = chips.filter((c) => !c.validado && !c.es_incubadora && (tipoSeleccionado === "" || c.tipo_chip === tipoSeleccionado));
+                  const filtrados = chips.filter((c) =>
+                    !c.validado && !c.es_incubadora &&
+                    (tipoSeleccionado === "" || c.tipo_chip === tipoSeleccionado) &&
+                    perteneceAGrupo(c.empleado?.username, grupoSeleccionado)
+                  );
                   const dups = getDuplicados(filtrados);
                   return sortConDuplicados(filtrados, dups).map((chip) => {
                     const esDup = dups.has(chip.numero_telefono);
