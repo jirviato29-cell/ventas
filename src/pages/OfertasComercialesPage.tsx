@@ -4,8 +4,6 @@ import VisorImagen from "../components/VisorImagen";
 
 // Imágenes servidas desde public/ofertas/
 const OFERTAS = [
-  { titulo: "Planes Telcel Libre", src: "/ofertas/planes-telcel-libre.jpg" },
-  { titulo: "Planes Telcel Ultra", src: "/ofertas/planes-telcel-ultra.jpg" },
   { titulo: "Boletín 63", src: "/ofertas/boletin-63.jpg" },
 ];
 
