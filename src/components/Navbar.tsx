@@ -32,6 +32,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -143,6 +144,15 @@ const Navbar = () => {
     rolToken === "encargado" ||
     rolToken === "admin" ||
     rolToken === "direccion";
+
+  // Ofertas comerciales: todos los roles operativos, excepto modulos de Cadenas.
+  const mostrarOfertas =
+    (rolToken === "admin" ||
+      rolToken === "direccion" ||
+      rolToken === "contador" ||
+      rolToken === "encargado" ||
+      rolToken === "asesor") &&
+    !modulo.toLowerCase().includes("cadena");
 
   const navegar = (ruta: string) => {
     navigate(ruta);
@@ -474,6 +484,14 @@ const Navbar = () => {
           {rolToken !== "admin" && !modulo.toLowerCase().includes("cadena") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
               <ListItemText primary="LISTA DE PRECIOS" />
+            </ListItemButton>
+          )}
+
+          {/* ── OFERTAS COMERCIALES: todos los roles, excepto Cadenas ─────────── */}
+          {mostrarOfertas && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ofertas")}>
+              <ListItemIcon sx={drawerIconSx}><LocalOfferIcon /></ListItemIcon>
+              <ListItemText primary="OFERTAS COMERCIALES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 

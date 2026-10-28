@@ -60,6 +60,7 @@ import PantallaTVPage from './pages/PantallaTVPage';
 import PortabilidadesPage from './pages/PortabilidadesPage';
 import MetasPage from './pages/MetasPage';
 import MiPerfil from './pages/MiPerfil';
+import OfertasComercialesPage from './pages/OfertasComercialesPage';
 import CandadoAsistencia from './components/CandadoAsistencia';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -141,6 +142,7 @@ const App: React.FC = () => {
     { path: '/portabilidades', element: <RutaProtegida><PortabilidadesPage /></RutaProtegida> },
     { path: '/metas', element: <RutaProtegida><MetasPage /></RutaProtegida> },
     { path: '/mi-perfil', element: <RutaProtegida><MiPerfil /></RutaProtegida> },
+    { path: '/ofertas', element: <RutaProtegida><OfertasComercialesPage /></RutaProtegida> },
   ]);
 
   return routes;
