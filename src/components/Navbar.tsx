@@ -145,14 +145,13 @@ const Navbar = () => {
     rolToken === "admin" ||
     rolToken === "direccion";
 
-  // Ofertas comerciales: todos los roles operativos, excepto modulos de Cadenas.
+  // Ofertas comerciales: todos los roles operativos, incluido Cadenas.
   const mostrarOfertas =
-    (rolToken === "admin" ||
-      rolToken === "direccion" ||
-      rolToken === "contador" ||
-      rolToken === "encargado" ||
-      rolToken === "asesor") &&
-    !modulo.toLowerCase().includes("cadena");
+    rolToken === "admin" ||
+    rolToken === "direccion" ||
+    rolToken === "contador" ||
+    rolToken === "encargado" ||
+    rolToken === "asesor";
 
   const navegar = (ruta: string) => {
     navigate(ruta);
@@ -487,7 +486,7 @@ const Navbar = () => {
             </ListItemButton>
           )}
 
-          {/* ── OFERTAS COMERCIALES: todos los roles, excepto Cadenas ─────────── */}
+          {/* ── OFERTAS COMERCIALES: todos los roles, incluido Cadenas ─────────── */}
           {mostrarOfertas && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ofertas")}>
               <ListItemIcon sx={drawerIconSx}><LocalOfferIcon /></ListItemIcon>
