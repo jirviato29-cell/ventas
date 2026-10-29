@@ -5,6 +5,10 @@ import VisorImagen from "../components/VisorImagen";
 // Imágenes servidas desde public/ofertas/
 const OFERTAS = [
   { titulo: "Boletín 63", src: "/ofertas/boletin-63.jpg" },
+  { titulo: "Amigo Kit", src: "/ofertas/amigo-kit.jpg" },
+  { titulo: "Paquetes Amigo Sin Límite", src: "/ofertas/paquetes-amigo-sin-limite.jpg" },
+  { titulo: "Paquetes de Internet Amigo", src: "/ofertas/paquetes-internet-amigo.jpg" },
+  { titulo: "Portabilidad", src: "/ofertas/portabilidad.jpg" },
 ];
 
 const OfertasComercialesPage: React.FC = () => {
