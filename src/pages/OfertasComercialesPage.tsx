@@ -9,6 +9,8 @@ const OFERTAS = [
   { titulo: "Paquetes Amigo Sin Límite", src: "/ofertas/paquetes-amigo-sin-limite.jpg" },
   { titulo: "Paquetes de Internet Amigo", src: "/ofertas/paquetes-internet-amigo.jpg" },
   { titulo: "Portabilidad", src: "/ofertas/portabilidad.jpg" },
+  { titulo: "Planes Telcel Libre", src: "/ofertas/planes-telcel-libre.jpg" },
+  { titulo: "Planes Telcel Ultra", src: "/ofertas/planes-telcel-ultra.jpg" },
 ];
 
 const OfertasComercialesPage: React.FC = () => {
