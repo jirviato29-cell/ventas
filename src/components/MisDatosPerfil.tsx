@@ -21,7 +21,8 @@ interface UsuarioApi {
 
 // Una persona = todas sus cuentas con el mismo nombre_englobado (o su username si no tiene)
 interface Persona {
-  clave: string;
+  clave: string; // valor crudo, solo para identificar la selección
+  idVisible: string;
   nombre: string;
   englobado: string | null;
   modulos: string[];
@@ -34,6 +35,9 @@ interface Persona {
 const ROLES_EMPLEADO = ["asesor", "encargado"];
 
 const vacio = (v: string | null | undefined) => !v || !v.trim();
+
+// Solo visual: mayúsculas, sin espacios al inicio/final ni repetidos. No toca la BD.
+const normalizar = (v: string) => v.trim().replace(/\s+/g, " ").toUpperCase();
 
 // Misma regla que Nómina (GET /admin/nomina): sueldo = suma de todas las cuentas;
 // forma de pago y cuentas salen de la primera cuenta (por id) con sueldo > 0.
@@ -50,14 +54,15 @@ const agruparPersonas = (usuarios: UsuarioApi[]): Persona[] => {
     .map(([clave, cuentas]) => {
       const ordenadas = [...cuentas].sort((a, b) => a.id - b.id);
       const principal = ordenadas.find((c) => (c.sueldo_base ?? 0) > 0) ?? ordenadas[0];
-      const nombre = ordenadas.find((c) => !vacio(c.nombre_completo))?.nombre_completo?.trim() ?? "";
+      const nombre = ordenadas.find((c) => !vacio(c.nombre_completo))?.nombre_completo;
       const modulos = Array.from(
         new Set(ordenadas.map((c) => c.modulo?.nombre).filter((m): m is string => !!m))
       );
       return {
         clave,
-        nombre,
-        englobado: ordenadas[0].nombre_englobado,
+        idVisible: normalizar(clave),
+        nombre: nombre ? normalizar(nombre) : "",
+        englobado: ordenadas[0].nombre_englobado ? normalizar(ordenadas[0].nombre_englobado) : null,
         modulos,
         sueldo: ordenadas.reduce((s, c) => s + (c.sueldo_base ?? 0), 0),
         formaPago: principal.forma_pago,
@@ -65,7 +70,7 @@ const agruparPersonas = (usuarios: UsuarioApi[]): Persona[] => {
         clabe: principal.cuenta_interbancaria,
       };
     })
-    .sort((a, b) => (a.nombre || a.clave).localeCompare(b.nombre || b.clave, "es"));
+    .sort((a, b) => (a.nombre || a.idVisible).localeCompare(b.nombre || b.idVisible, "es"));
 };
 
 const iniciales = (nombre: string) =>
@@ -122,7 +127,7 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
         value={persona}
         onChange={(_, p) => onSeleccion(p?.clave ?? null)}
         loading={cargando}
-        getOptionLabel={(p) => (p.nombre ? `${p.nombre} · ${p.clave}` : p.clave)}
+        getOptionLabel={(p) => (p.nombre ? `${p.nombre} · ${p.idVisible}` : p.idVisible)}
         isOptionEqualToValue={(a, b) => a.clave === b.clave}
         noOptionsText="Sin coincidencias"
         loadingText="Cargando…"
@@ -153,7 +158,7 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
         <Paper sx={{ p: { xs: 2, sm: 3 }, maxWidth: 720 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
             <Avatar sx={{ width: 64, height: 64, bgcolor: AZUL, fontSize: 24, fontWeight: 700 }}>
-              {iniciales(persona.nombre || persona.clave)}
+              {iniciales(persona.nombre || persona.idVisible)}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               {vacio(persona.nombre) ? (
