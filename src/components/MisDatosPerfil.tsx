@@ -1,5 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Autocomplete, Avatar, Box, CircularProgress, Paper, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Autocomplete,
+  Avatar,
+  Box,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  Paper,
+  Snackbar,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import axios from "axios";
 
 const API = "/api";
@@ -109,20 +126,62 @@ const antiguedad = (iso: string | null) => {
   return anios === 1 ? "1 año" : `${anios} años`;
 };
 
-const Dato: React.FC<{ etiqueta: string; valor: string | null | undefined; detalle?: string | null }> = ({
-  etiqueta,
-  valor,
-  detalle,
+const NARANJA = "#f97316"; // el de la línea del navbar (theme.ts)
+const GRIS_ETIQUETA = "#64748b";
+const GRIS_VACIO = "#94a3b8";
+const TEXTO = "#1e293b";
+
+const COLOR_FORMA_PAGO: Record<string, string> = {
+  BBVA: "#004481",
+  "Banco Azteca": "#15803d",
+  Kids: NARANJA,
+};
+
+// Área por la primera letra del ID: A = ATO, C = Cadenas
+const areaDeId = (id: string) => (id.startsWith("A") ? "ATO" : id.startsWith("C") ? "Cadenas" : null);
+
+const SinRegistrar: React.FC = () => <Typography sx={{ fontSize: 15, color: GRIS_VACIO }}>Sin registrar</Typography>;
+
+const Etiqueta: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA, fontWeight: 600, mb: 0.5 }}>{children}</Typography>
+);
+
+const Seccion: React.FC<{ titulo: string; icono: React.ReactNode; children: React.ReactNode }> = ({
+  titulo,
+  icono,
+  children,
 }) => (
   <Box>
-    <Typography sx={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{etiqueta}</Typography>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, color: GRIS_VACIO, mb: 2 }}>
+      {icono}
+      <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: GRIS_VACIO }}>{titulo}</Typography>
+    </Box>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2.5 }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+const CampoCopiable: React.FC<{ etiqueta: string; valor: string | null; onCopiar: (v: string) => void }> = ({
+  etiqueta,
+  valor,
+  onCopiar,
+}) => (
+  <Box sx={{ minWidth: 0 }}>
+    <Etiqueta>{etiqueta}</Etiqueta>
     {vacio(valor) ? (
-      <Typography sx={{ fontSize: 15, color: "#94a3b8" }}>Sin registrar</Typography>
+      <SinRegistrar />
     ) : (
-      <>
-        <Typography sx={{ fontSize: 15, color: "#1e293b", wordBreak: "break-all" }}>{valor}</Typography>
-        {detalle && <Typography sx={{ fontSize: 13, color: "#64748b" }}>{detalle}</Typography>}
-      </>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <Typography sx={{ fontFamily: "monospace", fontSize: 15, color: TEXTO, wordBreak: "break-all" }}>
+          {valor}
+        </Typography>
+        <Tooltip title="Copiar">
+          <IconButton size="small" onClick={() => onCopiar(valor!.trim())} aria-label={`Copiar ${etiqueta}`}>
+            <ContentCopyIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
     )}
   </Box>
 );
@@ -136,6 +195,7 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
   const [usuarios, setUsuarios] = useState<UsuarioApi[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -151,6 +211,19 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
 
   const personas = useMemo(() => agruparPersonas(usuarios), [usuarios]);
   const persona = personas.find((p) => p.clave === seleccion) ?? null;
+
+  const copiar = (valor: string) => {
+    navigator.clipboard
+      .writeText(valor)
+      .then(() => setAviso("Copiado"))
+      .catch(() => setAviso("No se pudo copiar"));
+  };
+
+  const area = persona ? areaDeId(persona.englobado ?? persona.idVisible) : null;
+  const anios = persona ? antiguedad(persona.fechaIngreso) : null;
+  const fecha = persona ? fechaCorta(persona.fechaIngreso) : null;
+  const esKids = persona?.formaPago === "Kids";
+  const chipBandaSx = { bgcolor: "rgba(255,255,255,0.18)", color: "#fff", fontWeight: 600 };
 
   return (
     <Box>
@@ -185,47 +258,138 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {!persona ? (
-        <Typography sx={{ color: "#94a3b8", textAlign: "center", py: 6 }}>Elige un empleado</Typography>
+        <Typography sx={{ color: GRIS_VACIO, textAlign: "center", py: 6 }}>Elige un empleado</Typography>
       ) : (
-        <Paper sx={{ p: { xs: 2, sm: 3 }, maxWidth: 720 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: AZUL, fontSize: 24, fontWeight: 700 }}>
+        <Paper elevation={0} sx={{ maxWidth: 720, borderRadius: "12px", boxShadow: "0 4px 20px rgba(15,23,42,0.08)" }}>
+          {/* Encabezado: banda azul; el círculo queda montado sobre su borde inferior */}
+          <Box
+            sx={{
+              position: "relative",
+              borderRadius: "12px 12px 0 0",
+              background: `linear-gradient(135deg, ${AZUL} 0%, #1e3a8a 100%)`,
+              px: { xs: 2, sm: 3 },
+              pt: 3,
+              pb: { xs: 7, sm: 3 },
+              pl: { sm: "128px" },
+              minHeight: { sm: 112 },
+              textAlign: { xs: "center", sm: "left" },
+            }}
+          >
+            <Avatar
+              sx={{
+                position: "absolute",
+                width: 80,
+                height: 80,
+                bottom: -40,
+                left: { xs: "50%", sm: 24 },
+                transform: { xs: "translateX(-50%)", sm: "none" },
+                bgcolor: "#fff",
+                color: AZUL,
+                border: `3px solid ${NARANJA}`,
+                fontSize: 28,
+                fontWeight: 800,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              }}
+            >
               {iniciales(persona.nombre || persona.idVisible)}
             </Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              {vacio(persona.nombre) ? (
-                <Typography sx={{ fontSize: 20, color: "#94a3b8" }}>Sin registrar</Typography>
-              ) : (
-                <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#1e293b" }}>{persona.nombre}</Typography>
-              )}
+
+            {vacio(persona.nombre) ? (
+              <Typography sx={{ fontSize: 22, color: "rgba(255,255,255,0.7)" }}>Sin registrar</Typography>
+            ) : (
+              <Typography sx={{ fontSize: { xs: 20, sm: 24 }, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+                {persona.nombre}
+              </Typography>
+            )}
+
+            <Box
+              sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5, justifyContent: { xs: "center", sm: "flex-start" } }}
+            >
+              <Chip size="small" label={persona.englobado ?? "ID sin registrar"} sx={chipBandaSx} />
+              {area && <Chip size="small" label={area} sx={chipBandaSx} />}
+              {anios && <Chip size="small" label={anios} sx={chipBandaSx} />}
             </Box>
           </Box>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" },
-              gap: 2,
-            }}
-          >
-            <Dato etiqueta="ID" valor={persona.englobado} />
-            <Dato etiqueta={persona.modulos.length > 1 ? "Módulos" : "Módulo"} valor={persona.modulos.join(", ")} />
-            <Dato etiqueta="Sueldo" valor={persona.sueldo > 0 ? formatoDinero(persona.sueldo) : null} />
-            <Dato etiqueta="Forma de pago" valor={persona.formaPago} />
-            {persona.formaPago !== "Kids" && (
-              <>
-                <Dato etiqueta="Número de cuenta" valor={persona.cuenta} />
-                <Dato etiqueta="CLABE" valor={persona.clabe} />
-              </>
-            )}
-            <Dato
-              etiqueta="Fecha de ingreso"
-              valor={fechaCorta(persona.fechaIngreso)}
-              detalle={antiguedad(persona.fechaIngreso)}
-            />
+          {/* Cuerpo */}
+          <Box sx={{ px: { xs: 2, sm: 3 }, pt: 7, pb: 3, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Seccion titulo="TRABAJO" icono={<WorkOutlineIcon sx={{ fontSize: 18 }} />}>
+              <Box>
+                <Etiqueta>{persona.modulos.length > 1 ? "Módulos" : "Módulo"}</Etiqueta>
+                {persona.modulos.length === 0 ? (
+                  <SinRegistrar />
+                ) : (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {persona.modulos.map((m) => (
+                      <Chip key={m} size="small" label={m} variant="outlined" sx={{ color: AZUL, borderColor: AZUL }} />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+              <Box>
+                <Etiqueta>Fecha de ingreso</Etiqueta>
+                {fecha ? (
+                  <>
+                    <Typography sx={{ fontSize: 15, color: TEXTO }}>{fecha}</Typography>
+                    <Typography sx={{ fontSize: 13, color: GRIS_ETIQUETA }}>{anios}</Typography>
+                  </>
+                ) : (
+                  <SinRegistrar />
+                )}
+              </Box>
+            </Seccion>
+
+            <Divider />
+
+            <Seccion titulo="PAGO" icono={<PaymentsOutlinedIcon sx={{ fontSize: 18 }} />}>
+              <Box>
+                <Etiqueta>Sueldo</Etiqueta>
+                {persona.sueldo > 0 ? (
+                  <Typography sx={{ fontSize: 28, fontWeight: 800, color: TEXTO, lineHeight: 1.1 }}>
+                    {formatoDinero(persona.sueldo)}
+                  </Typography>
+                ) : (
+                  <SinRegistrar />
+                )}
+              </Box>
+              <Box>
+                <Etiqueta>Forma de pago</Etiqueta>
+                {vacio(persona.formaPago) ? (
+                  <SinRegistrar />
+                ) : (
+                  <Chip
+                    size="small"
+                    label={persona.formaPago}
+                    sx={{
+                      bgcolor: COLOR_FORMA_PAGO[persona.formaPago!] ?? "#e2e8f0",
+                      color: COLOR_FORMA_PAGO[persona.formaPago!] ? "#fff" : TEXTO,
+                      fontWeight: 700,
+                    }}
+                  />
+                )}
+              </Box>
+              {esKids ? (
+                <Typography sx={{ fontSize: 14, color: GRIS_VACIO, gridColumn: { sm: "1 / -1" } }}>
+                  Pago en efectivo (Kids)
+                </Typography>
+              ) : (
+                <>
+                  <CampoCopiable etiqueta="Número de cuenta" valor={persona.cuenta} onCopiar={copiar} />
+                  <CampoCopiable etiqueta="CLABE" valor={persona.clabe} onCopiar={copiar} />
+                </>
+              )}
+            </Seccion>
           </Box>
         </Paper>
       )}
+
+      <Snackbar
+        open={aviso !== null}
+        autoHideDuration={2000}
+        onClose={() => setAviso(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        message={aviso}
+      />
     </Box>
   );
 };
