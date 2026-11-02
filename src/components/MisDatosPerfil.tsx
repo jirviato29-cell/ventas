@@ -17,6 +17,7 @@ interface UsuarioApi {
   cuenta_clabe: string | null;
   cuenta_interbancaria: string | null;
   nombre_englobado: string | null;
+  fecha_ingreso: string | null; // "YYYY-MM-DD"
 }
 
 // Una persona = todas sus cuentas con el mismo nombre_englobado (o su username si no tiene)
@@ -30,6 +31,7 @@ interface Persona {
   formaPago: string | null;
   cuenta: string | null;
   clabe: string | null;
+  fechaIngreso: string | null;
 }
 
 const ROLES_EMPLEADO = ["asesor", "encargado"];
@@ -40,7 +42,7 @@ const vacio = (v: string | null | undefined) => !v || !v.trim();
 const normalizar = (v: string) => v.trim().replace(/\s+/g, " ").toUpperCase();
 
 // Misma regla que Nómina (GET /admin/nomina): sueldo = suma de todas las cuentas;
-// forma de pago y cuentas salen de la primera cuenta (por id) con sueldo > 0.
+// forma de pago, cuentas y fecha de ingreso salen de la primera cuenta (por id) con sueldo > 0.
 const agruparPersonas = (usuarios: UsuarioApi[]): Persona[] => {
   const grupos = new Map<string, UsuarioApi[]>();
   usuarios
@@ -68,6 +70,7 @@ const agruparPersonas = (usuarios: UsuarioApi[]): Persona[] => {
         formaPago: principal.forma_pago,
         cuenta: principal.cuenta_clabe,
         clabe: principal.cuenta_interbancaria,
+        fechaIngreso: principal.fecha_ingreso,
       };
     })
     .sort((a, b) => (a.nombre || a.idVisible).localeCompare(b.nombre || b.idVisible, "es"));
@@ -84,13 +87,42 @@ const iniciales = (nombre: string) =>
 const formatoDinero = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const Dato: React.FC<{ etiqueta: string; valor: string | null | undefined }> = ({ etiqueta, valor }) => (
+// Se parte el texto a mano: new Date("YYYY-MM-DD") lo toma como UTC y en México daría el día anterior
+const partesFecha = (iso: string | null): [number, number, number] | null => {
+  const m = iso?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+};
+
+const fechaCorta = (iso: string | null) => {
+  const f = partesFecha(iso);
+  return f ? `${String(f[2]).padStart(2, "0")}/${String(f[1]).padStart(2, "0")}/${f[0]}` : null;
+};
+
+const antiguedad = (iso: string | null) => {
+  const f = partesFecha(iso);
+  if (!f) return null;
+  const hoy = new Date();
+  const [anio, mes, dia] = f;
+  let anios = hoy.getFullYear() - anio;
+  if (hoy.getMonth() + 1 < mes || (hoy.getMonth() + 1 === mes && hoy.getDate() < dia)) anios -= 1;
+  if (anios < 1) return "Menos de 1 año";
+  return anios === 1 ? "1 año" : `${anios} años`;
+};
+
+const Dato: React.FC<{ etiqueta: string; valor: string | null | undefined; detalle?: string | null }> = ({
+  etiqueta,
+  valor,
+  detalle,
+}) => (
   <Box>
     <Typography sx={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{etiqueta}</Typography>
     {vacio(valor) ? (
       <Typography sx={{ fontSize: 15, color: "#94a3b8" }}>Sin registrar</Typography>
     ) : (
-      <Typography sx={{ fontSize: 15, color: "#1e293b", wordBreak: "break-all" }}>{valor}</Typography>
+      <>
+        <Typography sx={{ fontSize: 15, color: "#1e293b", wordBreak: "break-all" }}>{valor}</Typography>
+        {detalle && <Typography sx={{ fontSize: 13, color: "#64748b" }}>{detalle}</Typography>}
+      </>
     )}
   </Box>
 );
@@ -186,7 +218,11 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
                 <Dato etiqueta="CLABE" valor={persona.clabe} />
               </>
             )}
-            <Dato etiqueta="Fecha de ingreso" valor="Pendiente" />
+            <Dato
+              etiqueta="Fecha de ingreso"
+              valor={fechaCorta(persona.fechaIngreso)}
+              detalle={antiguedad(persona.fechaIngreso)}
+            />
           </Box>
         </Paper>
       )}
