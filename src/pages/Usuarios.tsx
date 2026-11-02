@@ -1,11 +1,14 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box, Typography, IconButton, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer,
   Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert, Chip, InputAdornment, CircularProgress,
+  Snackbar, Alert, Chip, InputAdornment, CircularProgress, Collapse,
 } from "@mui/material";
-import { Edit, Delete, Close, AccessTime, Visibility, VisibilityOff } from "@mui/icons-material";
+import {
+  Edit, Delete, Close, AccessTime, Visibility, VisibilityOff,
+  KeyboardArrowDown, KeyboardArrowRight, Search,
+} from "@mui/icons-material";
 import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
@@ -30,6 +33,76 @@ interface FormEdicion {
   tienda_id: string;
   asegurado: boolean;
 }
+
+// ── Agrupación visual por persona ────────────────────────────────────
+// Solo cambia cómo se ve la tabla: cada cuenta conserva su módulo, login y ventas.
+
+type EstadoAsegurado = "todas" | "ninguna" | "parcial";
+
+interface PersonaUsuarios {
+  clave: string;
+  id: string; // nombre_englobado normalizado, o el username si no tiene
+  nombre: string;
+  roles: string;
+  asegurado: EstadoAsegurado;
+  modulos: string[];
+  sueldo: number;
+  formaPago: string | null;
+  cuentaClabe: string | null;
+  cuentaInterbancaria: string | null;
+  fechaIngreso: string | null;
+  cuentas: Usuario[];
+  textoBusqueda: string;
+}
+
+// Clave de agrupación: nombre_englobado sin espacios y en mayúsculas
+const claveEnglobado = (u: Usuario) => {
+  const e = (u.nombre_englobado ?? "").replace(/\s+/g, "").toUpperCase();
+  return e || null;
+};
+
+const sinAcentos = (v: string) => v.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+const fechaDDMMAAAA = (iso?: string | null) => {
+  const m = iso?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+};
+
+const agruparPorPersona = (usuarios: Usuario[]): PersonaUsuarios[] => {
+  // Map respeta el orden de inserción: las personas salen en el orden que manda el backend
+  const grupos = new Map<string, Usuario[]>();
+  usuarios.forEach((u) => {
+    const clave = claveEnglobado(u) ?? `__cuenta_${u.id}`;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), u]);
+  });
+
+  return Array.from(grupos.entries()).map(([clave, lista]) => {
+    const cuentas = [...lista].sort((a, b) => a.id - b.id);
+    // Misma regla que Nómina y Mis datos: la principal es la primera (por id) con sueldo > 0
+    const principal = cuentas.find((c) => (c.sueldo_base ?? 0) > 0) ?? cuentas[0];
+    const nombre = (cuentas.find((c) => (c.nombre_completo ?? "").trim())?.nombre_completo ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+    const id = claveEnglobado(cuentas[0]) ?? cuentas[0].username;
+    const aseguradas = cuentas.filter((c) => c.asegurado).length;
+    return {
+      clave,
+      id,
+      nombre,
+      roles: Array.from(new Set(cuentas.map((c) => c.rol))).join(", "),
+      asegurado: aseguradas === cuentas.length ? "todas" : aseguradas === 0 ? "ninguna" : "parcial",
+      modulos: Array.from(new Set(cuentas.map((c) => c.modulo?.nombre).filter((m): m is string => !!m))),
+      sueldo: cuentas.reduce((s, c) => s + (c.sueldo_base ?? 0), 0),
+      formaPago: principal.forma_pago ?? null,
+      cuentaClabe: principal.cuenta_clabe ?? null,
+      cuentaInterbancaria: principal.cuenta_interbancaria ?? null,
+      fechaIngreso: principal.fecha_ingreso ?? null,
+      cuentas,
+      textoBusqueda: sinAcentos([nombre, id, ...cuentas.map((c) => c.username)].join(" ")),
+    };
+  });
+};
 
 const formVacio: FormEdicion = {
   nombre_completo: "",
@@ -68,6 +141,14 @@ const UsuariosAdmin = () => {
   const [passwordActual, setPasswordActual] = useState<string | null | undefined>(undefined);
   const [avisoPassword, setAvisoPassword] = useState("");
   const [cargandoPassword, setCargandoPassword] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
+
+  const personas = useMemo(() => agruparPorPersona(usuarios), [usuarios]);
+  const personasVisibles = useMemo(() => {
+    const q = sinAcentos(busqueda.trim());
+    return q ? personas.filter((p) => p.textoBusqueda.includes(q)) : personas;
+  }, [personas, busqueda]);
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -295,106 +376,194 @@ const UsuariosAdmin = () => {
     <Box sx={{ mt: 4, px: 2 }}>
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
 
-      <Box sx={{ mb: 1.5 }}>
-        <Chip
-          size="small"
-          color={usuarios.filter((u) => u.asegurado).length === usuarios.length ? "success" : "warning"}
-          label={`Asegurados: ${usuarios.filter((u) => u.asegurado).length} de ${usuarios.length}`}
-        />
-      </Box>
+      {(() => {
+        const aseguradas = personas.filter((p) => p.asegurado === "todas").length;
+        return (
+          <Box sx={{ mb: 1.5, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5 }}>
+            <Chip
+              size="small"
+              color={aseguradas === personas.length ? "success" : "warning"}
+              label={`Asegurados: ${aseguradas} de ${personas.length}`}
+            />
+            <TextField
+              size="small"
+              placeholder="Buscar por nombre, ID o usuario"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              sx={{ width: { xs: "100%", sm: 320 } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        );
+      })()}
 
       <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
         <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1150 }}>
           <colgroup>
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "11%" }} />
+            <col style={{ width: "3%" }} />
             <col style={{ width: "9%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "8%" }} />
           </colgroup>
           <TableHead>
             <TableRow>
+              <TableCell />
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>ID</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Nombre completo</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Rol</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Asegurado</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Módulo</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo base</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Módulos</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Englobado</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Jornada (h)</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Acciones</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Fecha de ingreso</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuentas</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {usuarios.map((u) => (
-              <TableRow key={u.id}>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{u.username}</TableCell>
-                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-word" }}>
-                  {u.nombre_completo || "-"}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{u.rol}</TableCell>
-                <TableCell align="center" sx={{ fontSize: "0.75rem" }}>
-                  {u.asegurado ? (
-                    <span style={{ color: "#2e7d32", fontWeight: 700 }}>✓</span>
-                  ) : (
-                    <span style={{ color: "#c62828", fontWeight: 700 }}>✗</span>
-                  )}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {u.modulo?.nombre || "-"}
-                  {u.tienda && (
-                    <div style={{ fontSize: "0.65rem", color: "#888", marginTop: 2 }}>
-                      {u.tienda.nombre}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>{u.forma_pago || "-"}</TableCell>
-                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
-                  {u.cuenta_clabe || "-"}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
-                  {u.cuenta_interbancaria || "-"}
-                </TableCell>
-                <TableCell sx={{ fontSize: "0.75rem" }}>
-                  {u.nombre_englobado || "-"}
-                </TableCell>
-                <TableCell sx={{ py: "2px", px: "4px" }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<AccessTime sx={{ fontSize: "13px !important" }} />}
-                    onClick={() => abrirHorario(u.id)}
-                    sx={{ fontSize: 11, py: "2px", px: "5px", minWidth: 0, whiteSpace: "nowrap" }}
+            {personasVisibles.map((p) => {
+              const abierto = abiertos.has(p.clave);
+              const alternar = () =>
+                setAbiertos((prev) => {
+                  const nuevo = new Set(prev);
+                  if (nuevo.has(p.clave)) nuevo.delete(p.clave);
+                  else nuevo.add(p.clave);
+                  return nuevo;
+                });
+              return (
+                <React.Fragment key={p.clave}>
+                  <TableRow
+                    hover
+                    onClick={alternar}
+                    sx={{ cursor: "pointer", "& > td": { borderBottom: abierto ? "none" : undefined } }}
                   >
-                    {u.jornada_fija != null && Number(u.jornada_fija) > 0
-                      ? `${u.jornada_fija}h`
-                      : "—"}
-                  </Button>
-                </TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
-                    <Edit fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => eliminarUsuario(u.id)}>
-                    <Delete fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-            {usuarios.length === 0 && (
+                    <TableCell sx={{ px: "4px" }}>
+                      <IconButton
+                        size="small"
+                        aria-label={abierto ? "Ocultar cuentas" : "Ver cuentas"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alternar();
+                        }}
+                      >
+                        {abierto ? <KeyboardArrowDown fontSize="small" /> : <KeyboardArrowRight fontSize="small" />}
+                      </IconButton>
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700, wordBreak: "break-word" }}>{p.id}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-word" }}>{p.nombre || "-"}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-word" }}>{p.roles}</TableCell>
+                    <TableCell align="center" sx={{ fontSize: "0.75rem" }}>
+                      {p.asegurado === "todas" ? (
+                        <span style={{ color: "#2e7d32", fontWeight: 700 }}>✓</span>
+                      ) : p.asegurado === "ninguna" ? (
+                        <span style={{ color: "#c62828", fontWeight: 700 }}>✗</span>
+                      ) : (
+                        <span style={{ color: "#ea580c", fontWeight: 700, whiteSpace: "nowrap" }}>⚠ parcial</span>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem" }}>
+                      {p.modulos.length === 0 ? (
+                        "-"
+                      ) : (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {p.modulos.map((m) => (
+                            <Chip key={m} label={m} size="small" sx={{ height: 20, fontSize: "0.7rem" }} />
+                          ))}
+                        </Box>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(p.sueldo)}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem" }}>{p.formaPago || "-"}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>{p.cuentaClabe || "-"}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
+                      {p.cuentaInterbancaria || "-"}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem" }}>{fechaDDMMAAAA(p.fechaIngreso) ?? "-"}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                      {p.cuentas.length} {p.cuentas.length === 1 ? "cuenta" : "cuentas"}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Detalle: una fila por cuenta, con editar y borrar de siempre */}
+                  <TableRow>
+                    <TableCell colSpan={12} sx={{ p: 0, borderBottom: abierto ? undefined : "none" }}>
+                      <Collapse in={abierto} timeout="auto" unmountOnExit>
+                        <Box sx={{ bgcolor: "#f8fafc", px: 2, py: 1.5, pl: 6 }}>
+                          <Table size="small" sx={{ maxWidth: 760 }}>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Usuario</TableCell>
+                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Módulo</TableCell>
+                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Sueldo</TableCell>
+                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Jornada (h)</TableCell>
+                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Acciones</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {p.cuentas.map((u) => (
+                                <TableRow key={u.id}>
+                                  <TableCell sx={{ fontSize: "0.75rem" }}>{u.username}</TableCell>
+                                  <TableCell sx={{ fontSize: "0.75rem" }}>
+                                    {u.modulo?.nombre || "-"}
+                                    {u.tienda && (
+                                      <div style={{ fontSize: "0.65rem", color: "#888", marginTop: 2 }}>
+                                        {u.tienda.nombre}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
+                                  <TableCell sx={{ py: "2px", px: "4px" }}>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<AccessTime sx={{ fontSize: "13px !important" }} />}
+                                      onClick={() => abrirHorario(u.id)}
+                                      sx={{ fontSize: 11, py: "2px", px: "5px", minWidth: 0, whiteSpace: "nowrap" }}
+                                    >
+                                      {u.jornada_fija != null && Number(u.jornada_fija) > 0
+                                        ? `${u.jornada_fija}h`
+                                        : "—"}
+                                    </Button>
+                                  </TableCell>
+                                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                    <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" color="error" onClick={() => eliminarUsuario(u.id)}>
+                                      <Delete fontSize="small" />
+                                    </IconButton>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              );
+            })}
+            {personasVisibles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} align="center">No hay usuarios</TableCell>
+                <TableCell colSpan={12} align="center">
+                  {usuarios.length === 0 ? "No hay usuarios" : "Sin coincidencias"}
+                </TableCell>
               </TableRow>
             )}
           </TableBody>

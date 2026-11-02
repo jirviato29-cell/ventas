@@ -113,6 +113,7 @@ export interface Usuario {
     cadena?: { id: number; codigo: string; nombre: string } | null;
   } | null;
   asegurado?: boolean;
+  fecha_ingreso?: string | null; // "YYYY-MM-DD"
 }
 
 
