@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Alert, Box, Button, Container, Paper, Snackbar, Typography } from "@mui/material";
+import { Alert, Box, Button, Container, Paper, Snackbar, Tab, Tabs, Typography } from "@mui/material";
 import { Navigate } from "react-router-dom";
 import { obtenerRolDesdeToken } from "../components/Token";
+import MisDatosPerfil from "../components/MisDatosPerfil";
 
 const AZUL = "#0A2878";
 const ROJO_FONDO = "#FDE2E2";
@@ -194,6 +195,8 @@ const MiPerfil = () => {
   const rol = obtenerRolDesdeToken();
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
+  const [pestana, setPestana] = useState(0);
+  const [empleadoSel, setEmpleadoSel] = useState<string | null>(null);
   const hoy = hoyLocal();
   const primerDisponible = primerDiaDisponible(hoy);
 
@@ -264,66 +267,92 @@ const MiPerfil = () => {
 
   return (
     <Container sx={{ mt: 4, mb: 6 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 3 }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
         Mi Perfil
       </Typography>
 
-      <Typography variant="h6" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
-        Vacaciones
-      </Typography>
-
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
-          gap: 2,
-        }}
+      <Tabs
+        value={pestana}
+        onChange={(_, v) => setPestana(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        TabIndicatorProps={{ sx: { bgcolor: AZUL } }}
+        sx={{ mb: 3, borderBottom: "1px solid #e2e8f0" }}
       >
-        {MESES_VACACIONES.map(({ anio, mes }) => (
-          <MesCalendario
-            key={`${anio}-${mes}`}
-            anio={anio}
-            mes={mes}
-            hoy={hoy}
-            primerDisponible={primerDisponible}
-            seleccionadas={seleccionadas}
-            onToggle={toggleDia}
+        {/* El azul va en el indicador y en cada Tab para ganarle al naranja del tema */}
+        {["Mis datos", "Selección de vacaciones", "Mis solicitudes"].map((texto) => (
+          <Tab
+            key={texto}
+            label={texto}
+            sx={{ textTransform: "none", fontWeight: 600, "&.Mui-selected": { color: AZUL } }}
           />
         ))}
-      </Box>
+      </Tabs>
 
-      <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
-        {[
-          { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
-          { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
-          { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
-        ].map(({ texto, fondo, borde }) => (
-          <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-            <Box sx={{ width: 14, height: 14, borderRadius: "3px", bgcolor: fondo, border: `1px solid ${borde}` }} />
-            <Typography sx={{ fontSize: 12, color: "#64748b" }}>{texto}</Typography>
+      {pestana === 0 && <MisDatosPerfil seleccion={empleadoSel} onSeleccion={setEmpleadoSel} />}
+
+      {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
+      {pestana === 1 && (
+        <>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
+            {MESES_VACACIONES.map(({ anio, mes }) => (
+              <MesCalendario
+                key={`${anio}-${mes}`}
+                anio={anio}
+                mes={mes}
+                hoy={hoy}
+                primerDisponible={primerDisponible}
+                seleccionadas={seleccionadas}
+                onToggle={toggleDia}
+              />
+            ))}
           </Box>
-        ))}
-      </Box>
 
-      <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
-        <Typography sx={{ fontWeight: 700, color: AZUL }}>
-          {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
-        </Typography>
-        {bloques.map((b) => (
-          <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-            {textoBloque(b)}
-          </Typography>
-        ))}
-        <Button
-          variant="outlined"
-          size="small"
-          disabled={total === 0}
-          onClick={() => setSeleccionadas(new Set())}
-          sx={{ mt: 1.5 }}
-        >
-          Limpiar selección
-        </Button>
-      </Paper>
+          <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
+            {[
+              { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
+              { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
+              { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
+            ].map(({ texto, fondo, borde }) => (
+              <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                <Box sx={{ width: 14, height: 14, borderRadius: "3px", bgcolor: fondo, border: `1px solid ${borde}` }} />
+                <Typography sx={{ fontSize: 12, color: "#64748b" }}>{texto}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
+            <Typography sx={{ fontWeight: 700, color: AZUL }}>
+              {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
+            </Typography>
+            {bloques.map((b) => (
+              <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
+                {textoBloque(b)}
+              </Typography>
+            ))}
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={total === 0}
+              onClick={() => setSeleccionadas(new Set())}
+              sx={{ mt: 1.5 }}
+            >
+              Limpiar selección
+            </Button>
+          </Paper>
+        </>
+      )}
+
+      {pestana === 2 && (
+        <Typography sx={{ color: "#94a3b8", textAlign: "center", py: 6 }}>Próximamente</Typography>
+      )}
 
       <Snackbar
         open={aviso !== null}
