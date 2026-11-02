@@ -12,6 +12,7 @@ import {
 import axios from "axios";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
+import EditarPersonaDialog from "../components/EditarPersonaDialog";
 
 const API = "/api";
 
@@ -41,6 +42,7 @@ type EstadoAsegurado = "todas" | "ninguna" | "parcial";
 
 interface PersonaUsuarios {
   clave: string;
+  tieneEnglobado: boolean;
   id: string; // nombre_englobado normalizado, o el username si no tiene
   nombre: string;
   roles: string;
@@ -88,6 +90,7 @@ const agruparPorPersona = (usuarios: Usuario[]): PersonaUsuarios[] => {
     const aseguradas = cuentas.filter((c) => c.asegurado).length;
     return {
       clave,
+      tieneEnglobado: !clave.startsWith("__cuenta_"),
       id,
       nombre,
       roles: Array.from(new Set(cuentas.map((c) => c.rol))).join(", "),
@@ -143,6 +146,10 @@ const UsuariosAdmin = () => {
   const [cargandoPassword, setCargandoPassword] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
+  // "Editar acceso": el diálogo de siempre, pero solo usuario, contraseña y módulo/tienda
+  const [modoAcceso, setModoAcceso] = useState(false);
+  // Copia fija de las cuentas al abrir "Editar persona" (no cambia si la tabla se recarga)
+  const [cuentasPersona, setCuentasPersona] = useState<Usuario[] | null>(null);
 
   const personas = useMemo(() => agruparPorPersona(usuarios), [usuarios]);
   const personasVisibles = useMemo(() => {
@@ -193,7 +200,8 @@ const UsuariosAdmin = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const abrirDialog = (u: Usuario) => {
+  const abrirDialog = (u: Usuario, acceso = false) => {
+    setModoAcceso(acceso);
     setEditandoId(u.id);
     setForm({
       nombre_completo: u.nombre_completo ?? "",
@@ -220,6 +228,7 @@ const UsuariosAdmin = () => {
 
   const cerrarDialog = () => {
     setDialogAbierto(false);
+    setModoAcceso(false);
     setEditandoId(null);
     setForm(formVacio);
     setEditarPassword(false);
@@ -273,6 +282,23 @@ const UsuariosAdmin = () => {
 
   const guardarCambios = async () => {
     if (editandoId === null) return;
+    if (modoAcceso) {
+      // Solo acceso: los datos de la persona se editan desde "Editar persona"
+      try {
+        const payload: Record<string, unknown> = {};
+        if (form.username) payload.username = form.username;
+        if (form.modulo_id) payload.modulo_id = parseInt(form.modulo_id);
+        if (editarPassword && form.password) payload.password = form.password;
+        payload.tienda_id = form.tienda_id ? parseInt(form.tienda_id) : null;
+        await axios.put(`/api/registro/usuarios/${editandoId}`, payload, config);
+        cerrarDialog();
+        cargarUsuarios();
+        setSavedMsg("Acceso actualizado");
+      } catch (err: any) {
+        alert(err.response?.data?.detail || "Error al editar el acceso");
+      }
+      return;
+    }
     try {
       const payload: Record<string, unknown> = {
         nombre_completo: form.nombre_completo || null,
@@ -494,8 +520,22 @@ const UsuariosAdmin = () => {
                       {p.cuentaInterbancaria || "-"}
                     </TableCell>
                     <TableCell sx={{ fontSize: "0.75rem" }}>{fechaDDMMAAAA(p.fechaIngreso) ?? "-"}</TableCell>
-                    <TableCell sx={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                    <TableCell sx={{ fontSize: "0.75rem", whiteSpace: "nowrap", py: 0 }}>
                       {p.cuentas.length} {p.cuentas.length === 1 ? "cuenta" : "cuentas"}
+                      <IconButton
+                        size="small"
+                        color="info"
+                        aria-label="Editar persona"
+                        sx={{ ml: 0.5 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Sin englobado (Zadmin, ZIsrael…): la edición completa de siempre
+                          if (p.tieneEnglobado) setCuentasPersona(p.cuentas);
+                          else abrirDialog(p.cuentas[0]);
+                        }}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
 
@@ -541,7 +581,12 @@ const UsuariosAdmin = () => {
                                     </Button>
                                   </TableCell>
                                   <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                    <IconButton size="small" color="info" onClick={() => abrirDialog(u)}>
+                                    <IconButton
+                                      size="small"
+                                      color="info"
+                                      aria-label={p.tieneEnglobado ? "Editar acceso" : "Editar usuario"}
+                                      onClick={() => abrirDialog(u, p.tieneEnglobado)}
+                                    >
                                       <Edit fontSize="small" />
                                     </IconButton>
                                     <IconButton size="small" color="error" onClick={() => eliminarUsuario(u.id)}>
@@ -573,7 +618,7 @@ const UsuariosAdmin = () => {
       {/* ── Dialog de edición ─────────────────────────────────────────── */}
       <Dialog open={dialogAbierto} onClose={cerrarDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ pr: 6 }}>
-          Editar usuario
+          {modoAcceso ? `Editar acceso · ${form.username}` : "Editar usuario"}
           <IconButton
             onClick={cerrarDialog}
             size="small"
@@ -584,6 +629,7 @@ const UsuariosAdmin = () => {
         </DialogTitle>
 
         <DialogContent dividers>
+          {!modoAcceso && (
           <TextField
             label="Nombre completo"
             value={form.nombre_completo}
@@ -592,6 +638,7 @@ const UsuariosAdmin = () => {
             margin="normal"
             size="small"
           />
+          )}
 
           <TextField
             label="Nombre de usuario"
@@ -602,6 +649,7 @@ const UsuariosAdmin = () => {
             size="small"
           />
 
+          {!modoAcceso && (
           <TextField
             select
             label="Rol"
@@ -615,6 +663,7 @@ const UsuariosAdmin = () => {
               <MenuItem key={r} value={r}>{r}</MenuItem>
             ))}
           </TextField>
+          )}
 
           {form.rol !== "admin" && (
             <TextField
@@ -632,6 +681,10 @@ const UsuariosAdmin = () => {
             </TextField>
           )}
 
+          {(!modoAcceso ||
+            !!form.cadena_id ||
+            (modulos.find((m) => m.id.toString() === form.modulo_id)?.nombre ?? "").toLowerCase().includes("cadena")) && (
+          <>
           <TextField
             select
             label="Cadena"
@@ -668,7 +721,11 @@ const UsuariosAdmin = () => {
                 <MenuItem key={t.id} value={t.id.toString()}>{t.nombre}</MenuItem>
               ))}
           </TextField>
+          </>
+          )}
 
+          {!modoAcceso && (
+          <>
           <TextField
             select
             label="Admin"
@@ -692,6 +749,8 @@ const UsuariosAdmin = () => {
             <MenuItem value="si">Sí</MenuItem>
             <MenuItem value="no">No</MenuItem>
           </TextField>
+          </>
+          )}
 
           <TextField
             label="Contraseña"
@@ -723,6 +782,8 @@ const UsuariosAdmin = () => {
             }}
           />
 
+          {!modoAcceso && (
+          <>
           <TextField
             label="Sueldo base"
             type="number"
@@ -780,6 +841,8 @@ const UsuariosAdmin = () => {
             size="small"
             placeholder="Ej. A21-KATIA (igual en todos los perfiles del grupo)"
           />
+          </>
+          )}
         </DialogContent>
 
         <DialogActions>
@@ -787,6 +850,16 @@ const UsuariosAdmin = () => {
           <Button variant="contained" onClick={guardarCambios}>Guardar</Button>
         </DialogActions>
       </Dialog>
+
+      {cuentasPersona && (
+        <EditarPersonaDialog
+          open
+          cuentas={cuentasPersona}
+          onClose={() => setCuentasPersona(null)}
+          onGuardado={(msg) => setSavedMsg(msg)}
+          onRecargar={cargarUsuarios}
+        />
+      )}
 
       <HorarioDialog
         open={horarioOpen}
