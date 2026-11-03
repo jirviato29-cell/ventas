@@ -116,6 +116,17 @@ interface PromotorConUbicacion {
   radio_metros_promotor: number;
 }
 
+interface TiendaConUbicacion {
+  id: number;
+  nombre: string;
+  activo: boolean;
+  latitud: number | null;
+  longitud: number | null;
+  radio_metros: number | null;
+}
+
+type CampoUbicacionTienda = "latitud" | "longitud" | "radio_metros";
+
 interface UsuarioBasico {
   id: number;
   username: string;
@@ -1423,6 +1434,172 @@ const TabPromotores: React.FC = () => {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// TAB CONFIGURAR TIENDAS (admin)
+// La asistencia de promotores de Cadenas se valida contra la tienda asignada
+// (usuarios.tienda_id). Si la tienda no tiene coords, se usan las del promotor.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const TabTiendas: React.FC = () => {
+  const [tiendas, setTiendas] = useState<TiendaConUbicacion[]>([]);
+  const [edicion, setEdicion] = useState<Record<number, Partial<Record<CampoUbicacionTienda, number | null>>>>({});
+  const [guardando, setGuardando] = useState<number | null>(null);
+  const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    axios.get<TiendaConUbicacion[]>(`${API}/registro/tiendas`, { headers: authH() })
+      .then(({ data }) => setTiendas(data.filter((t) => t.activo)))
+      .catch(() => setSnack({ msg: "No se pudieron cargar las tiendas", sev: "error" }))
+      .finally(() => setCargando(false));
+  }, []);
+
+  const campo = (id: number, field: CampoUbicacionTienda): number | "" => {
+    const editado = edicion[id];
+    if (editado && field in editado) return editado[field] ?? "";
+    return tiendas.find((t) => t.id === id)?.[field] ?? "";
+  };
+
+  const setField = (id: number, field: CampoUbicacionTienda, val: string) =>
+    setEdicion((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: val === "" ? null : Number(val) },
+    }));
+
+  const usarMiUbicacion = (id: number) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        setEdicion((prev) => ({
+          ...prev,
+          [id]: { ...prev[id], latitud: pos.coords.latitude, longitud: pos.coords.longitude },
+        })),
+      () => setSnack({ msg: "No se pudo obtener la ubicación", sev: "error" })
+    );
+  };
+
+  const guardar = async (id: number) => {
+    const data = edicion[id];
+    if (!data) return;
+    const tienda = tiendas.find((t) => t.id === id);
+    const body = {
+      latitud: "latitud" in data ? data.latitud ?? null : tienda?.latitud ?? null,
+      longitud: "longitud" in data ? data.longitud ?? null : tienda?.longitud ?? null,
+      radio_metros: ("radio_metros" in data ? data.radio_metros : tienda?.radio_metros) ?? 100,
+    };
+    setGuardando(id);
+    try {
+      await axios.put(`${API}/registro/tiendas/${id}`, body, { headers: authH() });
+      setSnack({ msg: "Guardado correctamente", sev: "success" });
+      setTiendas((prev) => prev.map((t) => (t.id === id ? { ...t, ...body } : t)));
+      setEdicion((prev) => {
+        const { [id]: _omit, ...resto } = prev;
+        return resto;
+      });
+    } catch {
+      setSnack({ msg: "Error al guardar", sev: "error" });
+    } finally {
+      setGuardando(null);
+    }
+  };
+
+  const q = busqueda.trim().toLowerCase();
+  const filtradas = tiendas.filter((t) => t.nombre.toLowerCase().includes(q));
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" mb={1}>
+        La asistencia de cada promotor de Cadenas se valida contra la tienda que tiene asignada.
+        Si la tienda no tiene coordenadas, se usan las configuradas en el promotor.
+      </Typography>
+      <TextField
+        size="small"
+        placeholder="Buscar tienda…"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        sx={{ mb: 2, width: 320 }}
+      />
+      <TableContainer component={Paper} elevation={1}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: "#f8fafc" }}>
+              {["Tienda","Latitud","Longitud","Radio (m)","Acciones"].map((h) => (
+                <TableCell key={h} sx={{ fontWeight: 700, color: "#FF6600" }}>{h}</TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {cargando && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                  <CircularProgress size={24} />
+                </TableCell>
+              </TableRow>
+            )}
+            {!cargando && filtradas.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ color: "#94a3b8", py: 3 }}>
+                  Sin tiendas encontradas
+                </TableCell>
+              </TableRow>
+            )}
+            {filtradas.map((t) => (
+              <TableRow key={t.id}>
+                <TableCell sx={{ fontWeight: 600 }}>{t.nombre}</TableCell>
+                <TableCell>
+                  <TextField
+                    size="small" type="number" sx={{ width: 130 }}
+                    value={campo(t.id, "latitud")}
+                    onChange={(e) => setField(t.id, "latitud", e.target.value)}
+                    inputProps={{ step: "0.000001" }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small" type="number" sx={{ width: 130 }}
+                    value={campo(t.id, "longitud")}
+                    onChange={(e) => setField(t.id, "longitud", e.target.value)}
+                    inputProps={{ step: "0.000001" }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small" type="number" sx={{ width: 90 }}
+                    value={campo(t.id, "radio_metros")}
+                    onChange={(e) => setField(t.id, "radio_metros", e.target.value)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Box display="flex" gap={1}>
+                    <Button
+                      size="small" variant="contained"
+                      disabled={guardando === t.id || !edicion[t.id]}
+                      onClick={() => guardar(t.id)}
+                      sx={{ bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" } }}
+                    >
+                      {guardando === t.id ? <CircularProgress size={16} /> : "GUARDAR"}
+                    </Button>
+                    <Button
+                      size="small" variant="outlined" startIcon={<LocationOnIcon />}
+                      onClick={() => usarMiUbicacion(t.id)}
+                    >
+                      Mi ubicación
+                    </Button>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack(null)}>
+        <Alert severity={snack?.sev} onClose={() => setSnack(null)}>{snack?.msg}</Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 // TAB ALERTAS (admin)
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -2007,6 +2184,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Registros" />
         <Tab label="Configurar Módulos" />
         <Tab label="Configurar Promotores" />
+        <Tab label="Configurar Tiendas" />
         <Tab label="Alertas" />
         <Tab label="Acumulado semanal" />
         <Tab label="Quién faltó" />
@@ -2022,9 +2200,17 @@ const VistaAdmin: React.FC = () => {
           <TabPromotores />
         </Box>
       )}
-      {tab === 3 && <TabAlertas />}
-      {tab === 4 && <TabAcumulado />}
-      {tab === 5 && <TabAnomalias />}
+      {tab === 3 && (
+        <Box>
+          <Typography variant="h6" fontWeight={600} mb={2}>
+            Configura la ubicación de cada tienda de Cadenas
+          </Typography>
+          <TabTiendas />
+        </Box>
+      )}
+      {tab === 4 && <TabAlertas />}
+      {tab === 5 && <TabAcumulado />}
+      {tab === 6 && <TabAnomalias />}
     </Box>
   );
 };
