@@ -289,15 +289,22 @@ const minutosMX = (iso: string): number | null => {
   return isNaN(h) || isNaN(m) ? null : (h % 24) * 60 + m;
 };
 
-// Horas efectivas: si llegó ANTES de la entrada de su horario, esos minutos no cuentan.
-// Si llegó tarde o no hay turno ese día (descanso / sin horario), las horas quedan igual.
-// La salida no se recorta. Sin check-out (horas = 0) queda igual.
+// Si llegó 60 min o más antes de su entrada, cubrió turno: se cuenta desde el check-in.
+const MIN_ANTICIPO_CUBRE_TURNO = 60;
+
+// Horas efectivas cuando el día tiene horario (turno):
+//  - llegó tarde                         → desde el check-in (horas completas)
+//  - llegó < 60 min antes de la entrada  → desde la entrada del horario (no se pagan esos minutos)
+//  - llegó ≥ 60 min antes de la entrada  → desde el check-in (cubrió turno, se paga completo)
+// Descanso / sin horario → horas completas. La salida no se recorta. Sin check-out (horas = 0) queda igual.
 const horasEfectivas = (horas: number, entradaISO: string | null, hor: HorarioDelDia | null): number => {
   if (!hor || hor.tipo !== "turno" || !entradaISO || horas <= 0) return horas;
   const llegada = minutosMX(entradaISO);
   const inicio = horaAMinutos(hor.entrada);
   if (llegada === null || inicio === null || llegada >= inicio) return horas;
-  return Math.max(0, horas - (inicio - llegada) / 60);
+  const anticipo = inicio - llegada;
+  if (anticipo >= MIN_ANTICIPO_CUBRE_TURNO) return horas;
+  return Math.max(0, horas - anticipo / 60);
 };
 
 const LineaHorario: React.FC<{ hor: HorarioDelDia | null }> = ({ hor }) => {
