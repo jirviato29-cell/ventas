@@ -276,7 +276,7 @@ const colorHorasVsHorario = (horas: number, hor: HorarioDelDia | null): string |
 const LineaHorario: React.FC<{ hor: HorarioDelDia | null }> = ({ hor }) => {
   if (!hor) return null;
   return (
-    <Box sx={{ fontSize: 9, color: "#94a3b8", whiteSpace: "nowrap", mt: 0.25 }}>
+    <Box sx={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", mt: 0.25 }}>
       {hor.tipo === "descanso" ? "Hor: descanso" : `Hor: ${hor.entrada}–${hor.salida}`}
     </Box>
   );
@@ -2005,7 +2005,7 @@ const TabAcumulado: React.FC = () => {
 
   const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo", "$ Pago"];
 
-  const cellBase = { py: "10px", px: "6px", fontSize: 11, whiteSpace: "nowrap" as const };
+  const cellBase = { py: "10px", px: "8px", fontSize: 14, whiteSpace: "nowrap" as const };
   const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
   const stickyLeft = { position: "sticky" as const, left: 0, zIndex: 1 };
 
@@ -2050,7 +2050,7 @@ const TabAcumulado: React.FC = () => {
           elevation={1}
           sx={{ overflowX: "auto" }}
         >
-          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1010 }}>
+          <Table size="small" sx={{ tableLayout: "fixed", width: "100%", minWidth: 1530 }}>
             <TableHead>
               <TableRow>
                 {COLS.map((h) => (
@@ -2060,13 +2060,13 @@ const TabAcumulado: React.FC = () => {
                     sx={{
                       ...cellBase,
                       ...stickyHead,
-                      ...(h === "Empleado" ? { ...stickyLeft, zIndex: 3, width: 140 } : {}),
-                      ...(["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].includes(h) ? { width: 76 } : {}),
-                      ...( h === "Total h" ? { width: 60 } : {}),
-                      ...( h === "Jornada" ? { width: 68 } : {}),
-                      ...( h === "H. Extra" ? { width: 64 } : {}),
-                      ...( h === "Redondeo" ? { width: 72 } : {}),
-                      ...( h === "$ Pago" ? { width: 72 } : {}),
+                      ...(h === "Empleado" ? { ...stickyLeft, zIndex: 3, width: 170 } : {}),
+                      // Días sin ancho fijo: se reparten el espacio restante (mín. 120 px por minWidth de la tabla)
+                      ...( h === "Total h" ? { width: 90 } : {}),
+                      ...( h === "Jornada" ? { width: 90 } : {}),
+                      ...( h === "H. Extra" ? { width: 120 } : {}),
+                      ...( h === "Redondeo" ? { width: 110 } : {}),
+                      ...( h === "$ Pago" ? { width: 110 } : {}),
                       fontWeight: 700,
                       color: "#FF6600",
                       borderBottom: "2px solid #e2e8f0",
@@ -2091,7 +2091,7 @@ const TabAcumulado: React.FC = () => {
                         ...stickyLeft,
                         bgcolor: rowBg,
                         fontWeight: 600,
-                        width: 140,
+                        width: 170,
                         boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                       }}
                     >
@@ -2103,29 +2103,29 @@ const TabAcumulado: React.FC = () => {
                       const hor = horarioDelDia(horarioGrupo, diaKey);
                       const colorHoras = dia ? colorHorasVsHorario(dia.horas, hor) : undefined;
                       return (
-                        <TableCell key={diaKey} align="center" sx={{ ...cellBase, width: 76 }}>
+                        <TableCell key={diaKey} align="center" sx={{ ...cellBase, minWidth: 120 }}>
                           {dia ? (
                             <Box lineHeight={1.3}>
                               {!dia.multiple && (
-                                <Box sx={{ fontSize: 10, whiteSpace: "nowrap", color: "#1e293b" }}>
+                                <Box sx={{ fontSize: 13, whiteSpace: "nowrap", color: "#1e293b" }}>
                                   {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
                                 </Box>
                               )}
-                              <Box sx={{ fontSize: 10, color: colorHoras ?? "#64748b" }}>
+                              <Box sx={{ fontSize: 14, fontWeight: 700, color: colorHoras ?? "#64748b" }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
                               <LineaHorario hor={hor} />
                             </Box>
                           ) : grupo.descansos.includes(diaKey) ? (
                             <>
-                              <Box sx={{ fontSize: 10, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
+                              <Box sx={{ fontSize: 13, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
                                 DESCANSO
                               </Box>
                               <LineaHorario hor={hor} />
                             </>
                           ) : (
                             <>
-                              <Box sx={{ fontSize: 11, color: "#94a3b8" }}>Falta</Box>
+                              <Box sx={{ fontSize: 13, color: "#94a3b8" }}>Falta</Box>
                               <LineaHorario hor={hor} />
                             </>
                           )}
@@ -2133,20 +2133,20 @@ const TabAcumulado: React.FC = () => {
                       );
                     })}
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 60, fontWeight: 700 }}>
+                    <TableCell align="center" sx={{ ...cellBase, width: 90, fontWeight: 700 }}>
                       {grupo.total_horas.toFixed(2)}h
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 68 }}>
+                    <TableCell align="center" sx={{ ...cellBase, width: 90 }}>
                       {grupo.jornada != null
-                        ? <Box sx={{ fontSize: 11 }}>{grupo.jornada}h</Box>
-                        : <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                        ? <Box sx={{ fontSize: 14 }}>{grupo.jornada}h</Box>
+                        : <Box sx={{ fontSize: 14, color: "#94a3b8" }}>—</Box>
                       }
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 80, p: "2px 4px" }}>
+                    <TableCell align="center" sx={{ ...cellBase, width: 120, p: "2px 4px" }}>
                       {grupo.horas_extra == null ? (
-                        <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>
+                        <Box sx={{ fontSize: 14, color: "#94a3b8" }}>—</Box>
                       ) : (
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.3 }}>
                           <TextField
@@ -2157,30 +2157,30 @@ const TabAcumulado: React.FC = () => {
                               const val = parseFloat(e.target.value);
                               if (!isNaN(val)) setHorasExtraEdit((prev) => ({ ...prev, [grupo.key]: val }));
                             }}
-                            inputProps={{ step: "0.01", style: { fontSize: 11, padding: "3px 6px" } }}
+                            inputProps={{ step: "0.01", style: { fontSize: 14, padding: "4px 6px" } }}
                             sx={{
-                              width: 72,
+                              width: 96,
                               "& .MuiOutlinedInput-root": heEditada(grupo.key)
                                 ? { "& fieldset": { borderColor: "#3b82f6", borderWidth: 2 } }
                                 : {},
                             }}
                           />
-                          {heEditada(grupo.key) && <span style={{ fontSize: 9 }}>✏️</span>}
+                          {heEditada(grupo.key) && <span style={{ fontSize: 11 }}>✏️</span>}
                         </Box>
                       )}
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
+                    <TableCell align="center" sx={{ ...cellBase, width: 110, p: "2px 4px" }}>
                       {(() => {
                         const heEfectivo = getHE(grupo.key, grupo.horas_extra);
                         if (grupo.jornada == null) {
-                          return <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>;
+                          return <Box sx={{ fontSize: 14, color: "#94a3b8" }}>—</Box>;
                         }
                         if (heEfectivo !== null && heEfectivo >= 0) {
                           return (
                             <Box
                               sx={{
-                                fontSize: 11,
+                                fontSize: 14,
                                 fontWeight: 700,
                                 color: redondearHorasExtra(heEfectivo) > 0 ? "#16a34a" : undefined,
                               }}
@@ -2200,21 +2200,21 @@ const TabAcumulado: React.FC = () => {
                             }
                             inputProps={{
                               step: "0.01",
-                              style: { fontSize: 11, padding: "3px 6px", color: "#ef4444" },
+                              style: { fontSize: 14, padding: "4px 6px", color: "#ef4444" },
                             }}
-                            sx={{ width: 68 }}
+                            sx={{ width: 90 }}
                           />
                         );
                       })()}
                     </TableCell>
 
-                    <TableCell align="center" sx={{ ...cellBase, width: 72, p: "2px 4px" }}>
+                    <TableCell align="center" sx={{ ...cellBase, width: 110, p: "2px 4px" }}>
                       {(() => {
                         const he = getHE(grupo.key, grupo.horas_extra);
                         const jornada = grupo.jornada;
                         const sueldo = grupo.sueldo_base;
                         if (jornada == null || jornada === 0 || sueldo === 0 || he == null) {
-                          return <Box sx={{ fontSize: 11, color: "#94a3b8" }}>—</Box>;
+                          return <Box sx={{ fontSize: 14, color: "#94a3b8" }}>—</Box>;
                         }
                         const valorRed = he >= 0
                           ? redondearHorasExtra(he)
@@ -2223,7 +2223,7 @@ const TabAcumulado: React.FC = () => {
                         const color = pago > 0 ? "#16a34a" : pago < 0 ? "#ef4444" : undefined;
                         const prefix = pago > 0 ? "+" : pago < 0 ? "-" : "";
                         return (
-                          <Box sx={{ fontSize: 11, fontWeight: 700, color }}>
+                          <Box sx={{ fontSize: 14, fontWeight: 700, color }}>
                             {prefix}${Math.abs(pago).toFixed(2)}
                           </Box>
                         );
@@ -2290,7 +2290,7 @@ const VistaAdmin: React.FC = () => {
   const [tab, setTab] = useState(0);
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
+    <Box sx={{ maxWidth: tab === 5 ? "none" : 1200, mx: "auto", p: 3 }}>
       <Typography variant="h4" fontWeight={700} color="primary" gutterBottom>
         REGISTRO DE ASISTENCIA — Administración
       </Typography>
