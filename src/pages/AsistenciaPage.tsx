@@ -213,6 +213,7 @@ interface GrupoAcumulado {
   horas_extra: number | null;
   sueldo_base: number;
   descansos: string[];
+  modulos: string; // módulos (o tienda si es Cadenas) de sus cuentas, separados por " · "
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -271,6 +272,29 @@ const colorHorasVsHorario = (horas: number, hor: HorarioDelDia | null): string |
   if (horas < hor.programadas - 0.25) return "#c62828";
   if (horas > hor.programadas + 0.5) return "#1565c0";
   return "#2e7d32";
+};
+
+// Minutos desde medianoche (hora de México) de un timestamp ISO del check-in
+const minutosMX = (iso: string): number | null => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const partes = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Mexico_City", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const h = Number(partes.find((x) => x.type === "hour")?.value);
+  const m = Number(partes.find((x) => x.type === "minute")?.value);
+  return isNaN(h) || isNaN(m) ? null : (h % 24) * 60 + m;
+};
+
+// Horas efectivas: si llegó ANTES de la entrada de su horario, esos minutos no cuentan.
+// Si llegó tarde o no hay turno ese día (descanso / sin horario), las horas quedan igual.
+// La salida no se recorta. Sin check-out (horas = 0) queda igual.
+const horasEfectivas = (horas: number, entradaISO: string | null, hor: HorarioDelDia | null): number => {
+  if (!hor || hor.tipo !== "turno" || !entradaISO || horas <= 0) return horas;
+  const llegada = minutosMX(entradaISO);
+  const inicio = horaAMinutos(hor.entrada);
+  if (llegada === null || inicio === null || llegada >= inicio) return horas;
+  return Math.max(0, horas - (inicio - llegada) / 60);
 };
 
 const LineaHorario: React.FC<{ hor: HorarioDelDia | null }> = ({ hor }) => {
@@ -1796,16 +1820,29 @@ const TabAcumulado: React.FC = () => {
   const [cicloSnack, setCicloSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
   // usuario_id → horario_semanal (solo cuentas con horario). Si la carga falla queda vacío → sin horario.
   const [horariosPorUsuario, setHorariosPorUsuario] = useState<Map<number, DiaTrabajo[]>>(() => new Map());
+  // usuario_id → módulo a mostrar (o nombre de la tienda si el módulo es Cadenas)
+  const [moduloPorUsuario, setModuloPorUsuario] = useState<Map<number, string>>(() => new Map());
 
   useEffect(() => {
     axios
-      .get<{ id: number; horario_semanal?: DiaTrabajo[] | null }[]>(`${API}/registro/usuarios`, { headers: authH() })
+      .get<{
+        id: number;
+        horario_semanal?: DiaTrabajo[] | null;
+        modulo?: { nombre?: string | null } | null;
+        tienda?: { nombre?: string | null } | null;
+      }[]>(`${API}/registro/usuarios`, { headers: authH() })
       .then(({ data }) => {
         const mapa = new Map<number, DiaTrabajo[]>();
+        const modulos = new Map<number, string>();
         data.forEach((u) => {
           if (Array.isArray(u.horario_semanal) && u.horario_semanal.length > 0) mapa.set(u.id, u.horario_semanal);
+          const mod = (u.modulo?.nombre ?? "").trim();
+          const tienda = (u.tienda?.nombre ?? "").trim();
+          const etiqueta = mod.toLowerCase().includes("cadenas") && tienda ? tienda : mod;
+          if (etiqueta) modulos.set(u.id, etiqueta);
         });
         setHorariosPorUsuario(mapa);
+        setModuloPorUsuario(modulos);
       })
       .catch(() => {});
   }, []);
@@ -1845,7 +1882,10 @@ const TabAcumulado: React.FC = () => {
       jornadas: number[];
       sueldos: number[];
       nombre_completo: string;
-      diasAgg: Record<string, { horas: number; count: number; entrada: string | null; salida: string | null }>;
+      diasAgg: Record<string, {
+        horas: number; count: number; entrada: string | null; salida: string | null;
+        crudos: { horas: number; entrada: string | null }[];
+      }>;
       descansos: Set<string>;
     };
     const map = new Map<string, Acc>();
@@ -1872,12 +1912,13 @@ const TabAcumulado: React.FC = () => {
 
       for (const [dk, dia] of Object.entries(f.dias)) {
         if (!g.diasAgg[dk]) {
-          g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null };
+          g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, crudos: [] };
         }
         if (dia) {
           const d = g.diasAgg[dk];
           d.horas += dia.horas;
           d.count += 1;
+          d.crudos.push({ horas: dia.horas, entrada: dia.entrada });
           if (d.count === 1) {
             d.entrada = dia.entrada;
             d.salida = dia.salida;
@@ -1901,14 +1942,20 @@ const TabAcumulado: React.FC = () => {
         const jornada = g.jornadas[0] > 0 ? g.jornadas[0] : null;
         let total_horas = 0;
         const dias: Record<string, DiaCelda | null> = {};
+        // Horario de la primera cuenta del grupo que tenga horario_semanal con datos
+        const idConHorario = g.ids.find((id) => horariosPorUsuario.has(id));
+        const horario = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
 
         for (const [dk, d] of Object.entries(g.diasAgg)) {
           if (d.count === 0) {
             dias[dk] = null;
           } else {
-            total_horas += d.horas;
+            // Sin horario / descanso → horasEfectivas devuelve las horas crudas (igual que antes)
+            const hor = horarioDelDia(horario, dk);
+            const horasDia = d.crudos.reduce((s, c) => s + horasEfectivas(c.horas, c.entrada, hor), 0);
+            total_horas += horasDia;
             dias[dk] = {
-              horas: Math.round(d.horas * 100) / 100,
+              horas: Math.round(horasDia * 100) / 100,
               entrada: d.entrada,
               salida: d.salida,
               multiple: d.count > 1,
@@ -1924,9 +1971,13 @@ const TabAcumulado: React.FC = () => {
 
         const sueldo_base = Math.max(0, ...g.sueldos);
 
-        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos) };
+        const modulos = Array.from(
+          new Set(g.ids.map((id) => moduloPorUsuario.get(id)).filter((m): m is string => !!m))
+        ).join(" · ");
+
+        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos), modulos };
       });
-  }, [filas]);
+  }, [filas, horariosPorUsuario, moduloPorUsuario]);
 
   useEffect(() => {
     const init: Record<string, string> = {};
@@ -2005,7 +2056,7 @@ const TabAcumulado: React.FC = () => {
 
   const COLS = ["Empleado", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Total h", "Jornada", "H. Extra", "Redondeo", "$ Pago"];
 
-  const cellBase = { py: "10px", px: "8px", fontSize: 14, whiteSpace: "nowrap" as const };
+  const cellBase = { py: "10px", px: "8px", fontSize: 14, whiteSpace: "nowrap" as const, border: "1px solid #e2e8f0" };
   const stickyHead = { position: "sticky" as const, top: 0, zIndex: 2, bgcolor: "#f8fafc" };
   const stickyLeft = { position: "sticky" as const, left: 0, zIndex: 1 };
 
@@ -2069,7 +2120,6 @@ const TabAcumulado: React.FC = () => {
                       ...( h === "$ Pago" ? { width: 110 } : {}),
                       fontWeight: 700,
                       color: "#FF6600",
-                      borderBottom: "2px solid #e2e8f0",
                     }}
                   >
                     {h}
@@ -2096,6 +2146,11 @@ const TabAcumulado: React.FC = () => {
                       }}
                     >
                       {grupo.key}
+                      {grupo.modulos && (
+                        <Box sx={{ fontSize: 12, fontWeight: 400, color: "#64748b", whiteSpace: "normal", lineHeight: 1.3, mt: 0.25 }}>
+                          {grupo.modulos}
+                        </Box>
+                      )}
                     </TableCell>
 
                     {diasDelCiclo.map((diaKey) => {
