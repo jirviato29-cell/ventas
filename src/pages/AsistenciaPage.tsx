@@ -127,6 +127,12 @@ interface TiendaConUbicacion {
 
 type CampoUbicacionTienda = "latitud" | "longitud" | "radio_metros";
 
+// Respuesta de GET /registro/garantizados (solo lo que usa TabTiendas)
+interface GarantizadoTienda {
+  tienda_id: number;
+  promotores: { username: string; asegurado: boolean }[];
+}
+
 interface UsuarioBasico {
   id: number;
   username: string;
@@ -1446,12 +1452,28 @@ const TabTiendas: React.FC = () => {
   const [snack, setSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
+  // tienda_id → usernames activos asignados. null = /garantizados falló → se muestran todas.
+  const [promotoresPorTienda, setPromotoresPorTienda] = useState<Record<number, string[]> | null>(null);
 
   useEffect(() => {
-    axios.get<TiendaConUbicacion[]>(`${API}/registro/tiendas`, { headers: authH() })
-      .then(({ data }) => setTiendas(data.filter((t) => t.activo)))
-      .catch(() => setSnack({ msg: "No se pudieron cargar las tiendas", sev: "error" }))
-      .finally(() => setCargando(false));
+    Promise.allSettled([
+      axios.get<TiendaConUbicacion[]>(`${API}/registro/tiendas`, { headers: authH() }),
+      axios.get<GarantizadoTienda[]>(`${API}/registro/garantizados`, { headers: authH() }),
+    ]).then(([resTiendas, resGarant]) => {
+      if (resTiendas.status === "fulfilled") {
+        setTiendas(resTiendas.value.data.filter((t) => t.activo));
+      } else {
+        setSnack({ msg: "No se pudieron cargar las tiendas", sev: "error" });
+      }
+      if (resGarant.status === "fulfilled") {
+        const mapa: Record<number, string[]> = {};
+        resGarant.value.data.forEach((g) => {
+          mapa[g.tienda_id] = (g.promotores ?? []).map((p) => p.username);
+        });
+        setPromotoresPorTienda(mapa);
+      }
+      setCargando(false);
+    });
   }, []);
 
   const campo = (id: number, field: CampoUbicacionTienda): number | "" => {
@@ -1503,7 +1525,15 @@ const TabTiendas: React.FC = () => {
   };
 
   const q = busqueda.trim().toLowerCase();
-  const filtradas = tiendas.filter((t) => t.nombre.toLowerCase().includes(q));
+  const filtradas = tiendas.filter(
+    (t) =>
+      t.nombre.toLowerCase().includes(q) &&
+      // Solo tiendas con al menos 1 usuario activo asignado (si /garantizados falló, todas)
+      (promotoresPorTienda === null || (promotoresPorTienda[t.id]?.length ?? 0) > 0)
+  );
+  const columnas = promotoresPorTienda === null
+    ? ["Tienda","Latitud","Longitud","Radio (m)","Acciones"]
+    : ["Tienda","Promotores","Latitud","Longitud","Radio (m)","Acciones"];
 
   return (
     <Box>
@@ -1522,7 +1552,7 @@ const TabTiendas: React.FC = () => {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: "#f8fafc" }}>
-              {["Tienda","Latitud","Longitud","Radio (m)","Acciones"].map((h) => (
+              {columnas.map((h) => (
                 <TableCell key={h} sx={{ fontWeight: 700, color: "#FF6600" }}>{h}</TableCell>
               ))}
             </TableRow>
@@ -1530,14 +1560,14 @@ const TabTiendas: React.FC = () => {
           <TableBody>
             {cargando && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={columnas.length} align="center" sx={{ py: 3 }}>
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
             )}
             {!cargando && filtradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ color: "#94a3b8", py: 3 }}>
+                <TableCell colSpan={columnas.length} align="center" sx={{ color: "#94a3b8", py: 3 }}>
                   Sin tiendas encontradas
                 </TableCell>
               </TableRow>
@@ -1545,6 +1575,11 @@ const TabTiendas: React.FC = () => {
             {filtradas.map((t) => (
               <TableRow key={t.id}>
                 <TableCell sx={{ fontWeight: 600 }}>{t.nombre}</TableCell>
+                {promotoresPorTienda !== null && (
+                  <TableCell sx={{ maxWidth: 220 }}>
+                    {(promotoresPorTienda[t.id] ?? []).join(", ")}
+                  </TableCell>
+                )}
                 <TableCell>
                   <TextField
                     size="small" type="number" sx={{ width: 130 }}
