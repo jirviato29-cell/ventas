@@ -603,7 +603,6 @@ const UsuariosAdmin = () => {
                               <TableRow>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Usuario</TableCell>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Módulo</TableCell>
-                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Sueldo</TableCell>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Acciones</TableCell>
                               </TableRow>
                             </TableHead>
@@ -619,7 +618,6 @@ const UsuariosAdmin = () => {
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
                                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                                     <IconButton
                                       size="small"
