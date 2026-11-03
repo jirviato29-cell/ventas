@@ -37,6 +37,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CloseIcon from "@mui/icons-material/Close";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -227,6 +228,72 @@ const formatHora24 = (iso: string | null) => {
   });
 };
 
+// ── FotoAsistencia: <img> con lazy-load + reintentos ─────────────────────────
+
+const MAX_REINTENTOS = 2;
+const RETRASO_MS = 1500;
+
+const conIntento = (url: string, intento: number) =>
+  intento === 0 ? url : `${url}${url.includes("?") ? "&" : "?"}r=${intento}`;
+
+const FotoAsistencia: React.FC<{ url: string; size: number; onClick?: () => void }> = ({ url, size, onClick }) => {
+  // Hooks SIEMPRE arriba, sin condicionales
+  const [intento, setIntento] = useState(0);
+  const [fallo, setFallo] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  // Si cambia la URL (nueva búsqueda), reiniciar estado
+  useEffect(() => {
+    setIntento(0);
+    setFallo(false);
+  }, [url]);
+
+  // Limpiar timer al desmontar
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+  }, []);
+
+  const handleError = useCallback(() => {
+    if (intento < MAX_REINTENTOS) {
+      timerRef.current = window.setTimeout(() => setIntento((n) => n + 1), RETRASO_MS * (intento + 1));
+    } else {
+      setFallo(true);
+    }
+  }, [intento]);
+
+  const reintentarManual = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFallo(false);
+    setIntento((n) => n + 1); // nueva ?r=N para saltar caché del error
+  }, []);
+
+  if (fallo) {
+    return (
+      <IconButton
+        size="small"
+        onClick={reintentarManual}
+        title="No cargó la foto. Click para reintentar"
+        sx={{ width: size, height: size, bgcolor: "#f1f5f9", borderRadius: 1, color: "#94a3b8" }}
+      >
+        <PhotoCameraIcon fontSize="small" />
+      </IconButton>
+    );
+  }
+
+  return (
+    <img
+      key={intento}
+      src={conIntento(url, intento)}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={handleError}
+      onClick={onClick}
+      style={{ width: size, height: size, objectFit: "cover", borderRadius: 4, cursor: "pointer", background: "#f1f5f9" }}
+    />
+  );
+};
+
 // ── FotoThumb: miniatura con click para ampliar ───────────────────────────────
 
 const FotoThumb: React.FC<{ url: string | null; size?: number }> = ({ url, size = 40 }) => {
@@ -234,15 +301,10 @@ const FotoThumb: React.FC<{ url: string | null; size?: number }> = ({ url, size 
   if (!url) return <span style={{ color: "#94a3b8" }}>—</span>;
   return (
     <>
-      <img
-        src={url}
-        alt="foto"
-        style={{ width: size, height: size, objectFit: "cover", borderRadius: 4, cursor: "pointer" }}
-        onClick={() => setOpen(true)}
-      />
+      <FotoAsistencia url={url} size={size} onClick={() => setOpen(true)} />
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md">
         <DialogContent sx={{ p: 1 }}>
-          <img src={url} alt="foto grande" style={{ maxWidth: "80vw", maxHeight: "80vh" }} />
+          <img src={url} alt="foto grande" decoding="async" style={{ maxWidth: "80vw", maxHeight: "80vh" }} />
         </DialogContent>
       </Dialog>
     </>
