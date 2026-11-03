@@ -265,13 +265,18 @@ const horarioDelDia = (horario: DiaTrabajo[] | undefined, fechaISO: string): Hor
   return { tipo: "turno", entrada: dia.entrada.slice(0, 5), salida: dia.salida.slice(0, 5), programadas: minutos / 60 };
 };
 
-// Color de las horas trabajadas vs. programadas (undefined = sin horario → como siempre)
-const colorHorasVsHorario = (horas: number, hor: HorarioDelDia | null): string | undefined => {
+// Estilo de las horas trabajadas vs. programadas (undefined = sin horario → como siempre).
+// Se compara en centésimas (2 decimales) para evitar errores de redondeo (5.00 vs 5).
+const AMARILLO_HORAS = { color: "#713f12", bgcolor: "#fde047", padding: "0 4px", borderRadius: "4px", display: "inline-block" };
+const estiloHorasVsHorario = (horas: number, hor: HorarioDelDia | null): Record<string, string> | undefined => {
   if (!hor) return undefined;
-  if (hor.tipo === "descanso") return "#1565c0"; // trabajó en su día de descanso
-  if (horas < hor.programadas - 0.25) return "#c62828";
-  if (horas > hor.programadas + 0.5) return "#1565c0";
-  return "#2e7d32";
+  if (hor.tipo === "descanso") return { color: "#1565c0" }; // trabajó en su día de descanso
+  const h = Math.round(horas * 100);
+  const p = Math.round(hor.programadas * 100);
+  if (h < p - 25) return { color: "#c62828" };   // rojo: menos de programadas − 0.25
+  if (h < p) return AMARILLO_HORAS;               // amarillo: entre programadas − 0.25 y programadas
+  if (h <= p + 50) return { color: "#2e7d32" };  // verde: programadas a programadas + 0.5
+  return { color: "#1565c0" };                    // azul: más de programadas + 0.5
 };
 
 // Minutos desde medianoche (hora de México) de un timestamp ISO del check-in
@@ -2156,7 +2161,7 @@ const TabAcumulado: React.FC = () => {
                     {diasDelCiclo.map((diaKey) => {
                       const dia = grupo.dias[diaKey];
                       const hor = horarioDelDia(horarioGrupo, diaKey);
-                      const colorHoras = dia ? colorHorasVsHorario(dia.horas, hor) : undefined;
+                      const estiloHoras = dia ? estiloHorasVsHorario(dia.horas, hor) : undefined;
                       return (
                         <TableCell key={diaKey} align="center" sx={{ ...cellBase, minWidth: 120 }}>
                           {dia ? (
@@ -2166,7 +2171,7 @@ const TabAcumulado: React.FC = () => {
                                   {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
                                 </Box>
                               )}
-                              <Box sx={{ fontSize: 14, fontWeight: 700, color: colorHoras ?? "#64748b" }}>
+                              <Box sx={{ fontSize: 14, fontWeight: 700, color: "#64748b", ...estiloHoras }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
                               <LineaHorario hor={hor} />
