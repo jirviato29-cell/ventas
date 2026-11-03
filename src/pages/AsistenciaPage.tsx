@@ -267,14 +267,12 @@ const horarioDelDia = (horario: DiaTrabajo[] | undefined, fechaISO: string): Hor
 
 // Estilo de las horas trabajadas vs. programadas (undefined = sin horario → como siempre).
 // Se compara en centésimas (2 decimales) para evitar errores de redondeo (5.00 vs 5).
-const AMARILLO_HORAS = { color: "#713f12", bgcolor: "#fde047", padding: "0 4px", borderRadius: "4px", display: "inline-block" };
 const estiloHorasVsHorario = (horas: number, hor: HorarioDelDia | null): Record<string, string> | undefined => {
   if (!hor) return undefined;
   if (hor.tipo === "descanso") return { color: "#1565c0" }; // trabajó en su día de descanso
   const h = Math.round(horas * 100);
   const p = Math.round(hor.programadas * 100);
-  if (h < p - 25) return { color: "#c62828" };   // rojo: menos de programadas − 0.25
-  if (h < p) return AMARILLO_HORAS;               // amarillo: entre programadas − 0.25 y programadas
+  if (h < p) return { color: "#c62828" };        // rojo: menos de programadas (cualquier cantidad)
   if (h <= p + 50) return { color: "#2e7d32" };  // verde: programadas a programadas + 0.5
   return { color: "#1565c0" };                    // azul: más de programadas + 0.5
 };
