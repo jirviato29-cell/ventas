@@ -214,6 +214,7 @@ interface GrupoAcumulado {
   sueldo_base: number;
   descansos: string[];
   modulos: string; // módulos (o tienda si es Cadenas) de sus cuentas, separados por " · "
+  horarios: Record<string, HorarioDelDia | null>; // horario aplicado a cada día (incluye la regla 'rola')
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -254,7 +255,7 @@ const horaAMinutos = (h: string): number | null => {
 };
 
 type HorarioDelDia =
-  | { tipo: "descanso" }
+  | { tipo: "descanso"; rola?: boolean }
   | { tipo: "turno"; entrada: string; salida: string; programadas: number };
 
 const horarioDelDia = (horario: DiaTrabajo[] | undefined, fechaISO: string): HorarioDelDia | null => {
@@ -269,6 +270,34 @@ const horarioDelDia = (horario: DiaTrabajo[] | undefined, fechaISO: string): Hor
   if (ini === null || fin === null) return null;
   const minutos = fin >= ini ? fin - ini : fin + 24 * 60 - ini; // turno que cruza medianoche
   return { tipo: "turno", entrada: dia.entrada.slice(0, 5), salida: dia.salida.slice(0, 5), programadas: minutos / 60 };
+};
+
+// dia_descanso = 'rola': descansa sábado O domingo (rotando). Resuelve el horario de esos dos días.
+//  - Horario de fin de semana = el del sábado si tiene turno; si no, el del domingo.
+//  - Trabajó solo uno → ese día es turno normal; el otro es descanso (rola).
+//  - Trabajó los dos  → sábado turno normal; domingo trabajado en descanso (horas completas, azul).
+//  - No trabajó ninguno → sábado turno (Falta); domingo descanso (rola).
+//    Si el sábado tiene DESCANSO registrado en el sistema, se respeta y el domingo queda como turno (Falta).
+const resolverFinDeSemanaRola = (
+  horario: DiaTrabajo[] | undefined,
+  sabado: string | undefined,
+  domingo: string | undefined,
+  trabajo: (dk: string) => boolean,
+  descansoRegistrado: (dk: string) => boolean,
+): Record<string, HorarioDelDia | null> | null => {
+  if (!horario || !sabado || !domingo) return null;
+  const hSab = horarioDelDia(horario, sabado);
+  const hDom = horarioDelDia(horario, domingo);
+  const turnoFin = hSab?.tipo === "turno" ? hSab : hDom?.tipo === "turno" ? hDom : null;
+  if (!turnoFin) return null; // sin turno de fin de semana en su horario → como hoy
+  const descansoRola: HorarioDelDia = { tipo: "descanso", rola: true };
+  const tSab = trabajo(sabado);
+  const tDom = trabajo(domingo);
+  if (tSab && !tDom) return { [sabado]: turnoFin, [domingo]: descansoRola };
+  if (!tSab && tDom) return { [sabado]: descansoRola, [domingo]: turnoFin };
+  if (tSab && tDom) return { [sabado]: turnoFin, [domingo]: descansoRola };
+  if (descansoRegistrado(sabado)) return { [sabado]: hSab, [domingo]: turnoFin };
+  return { [sabado]: turnoFin, [domingo]: descansoRola };
 };
 
 // Estilo de las horas trabajadas vs. programadas (undefined = sin horario → como siempre).
@@ -317,7 +346,9 @@ const LineaHorario: React.FC<{ hor: HorarioDelDia | null }> = ({ hor }) => {
   if (!hor) return null;
   return (
     <Box sx={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", mt: 0.25 }}>
-      {hor.tipo === "descanso" ? "Hor: descanso" : `Hor: ${hor.entrada}–${hor.salida}`}
+      {hor.tipo === "descanso"
+        ? `Hor: descanso${hor.rola ? " (rola)" : ""}`
+        : `Hor: ${hor.entrada}–${hor.salida}`}
     </Box>
   );
 };
@@ -1838,20 +1869,25 @@ const TabAcumulado: React.FC = () => {
   const [horariosPorUsuario, setHorariosPorUsuario] = useState<Map<number, DiaTrabajo[]>>(() => new Map());
   // usuario_id → módulo a mostrar (o nombre de la tienda si el módulo es Cadenas)
   const [moduloPorUsuario, setModuloPorUsuario] = useState<Map<number, string>>(() => new Map());
+  // usuario_id → true si su dia_descanso es 'rola' (descansa sábado o domingo, rotando)
+  const [rolaPorUsuario, setRolaPorUsuario] = useState<Map<number, boolean>>(() => new Map());
 
   useEffect(() => {
     axios
       .get<{
         id: number;
         horario_semanal?: DiaTrabajo[] | null;
+        dia_descanso?: string | null;
         modulo?: { nombre?: string | null } | null;
         tienda?: { nombre?: string | null } | null;
       }[]>(`${API}/registro/usuarios`, { headers: authH() })
       .then(({ data }) => {
         const mapa = new Map<number, DiaTrabajo[]>();
         const modulos = new Map<number, string>();
+        const rola = new Map<number, boolean>();
         data.forEach((u) => {
           if (Array.isArray(u.horario_semanal) && u.horario_semanal.length > 0) mapa.set(u.id, u.horario_semanal);
+          if ((u.dia_descanso ?? "").trim().toLowerCase() === "rola") rola.set(u.id, true);
           const mod = (u.modulo?.nombre ?? "").trim();
           const tienda = (u.tienda?.nombre ?? "").trim();
           const etiqueta = mod.toLowerCase().includes("cadenas") && tienda ? tienda : mod;
@@ -1859,6 +1895,7 @@ const TabAcumulado: React.FC = () => {
         });
         setHorariosPorUsuario(mapa);
         setModuloPorUsuario(modulos);
+        setRolaPorUsuario(rola);
       })
       .catch(() => {});
   }, []);
@@ -1962,12 +1999,28 @@ const TabAcumulado: React.FC = () => {
         const idConHorario = g.ids.find((id) => horariosPorUsuario.has(id));
         const horario = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
 
+        // Horario aplicado a cada día. Con dia_descanso 'rola' (misma cuenta del horario),
+        // sábado y domingo se resuelven según qué día trabajó.
+        const horarios: Record<string, HorarioDelDia | null> = {};
+        for (const dk of Object.keys(g.diasAgg)) horarios[dk] = horarioDelDia(horario, dk);
+        if (idConHorario !== undefined && rolaPorUsuario.get(idConHorario)) {
+          const claves = Object.keys(g.diasAgg);
+          const sabado = claves.find((dk) => diaSemanaDeFecha(dk) === "sabado");
+          const domingo = claves.find((dk) => diaSemanaDeFecha(dk) === "domingo");
+          const finDeSemana = resolverFinDeSemanaRola(
+            horario, sabado, domingo,
+            (dk) => (g.diasAgg[dk]?.count ?? 0) > 0,
+            (dk) => g.descansos.has(dk),
+          );
+          if (finDeSemana) Object.assign(horarios, finDeSemana);
+        }
+
         for (const [dk, d] of Object.entries(g.diasAgg)) {
           if (d.count === 0) {
             dias[dk] = null;
           } else {
             // Sin horario / descanso → horasEfectivas devuelve las horas crudas (igual que antes)
-            const hor = horarioDelDia(horario, dk);
+            const hor = horarios[dk] ?? null;
             const horasDia = d.crudos.reduce((s, c) => s + horasEfectivas(c.horas, c.entrada, hor), 0);
             total_horas += horasDia;
             dias[dk] = {
@@ -1991,9 +2044,9 @@ const TabAcumulado: React.FC = () => {
           new Set(g.ids.map((id) => moduloPorUsuario.get(id)).filter((m): m is string => !!m))
         ).join(" · ");
 
-        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos), modulos };
+        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos), modulos, horarios };
       });
-  }, [filas, horariosPorUsuario, moduloPorUsuario]);
+  }, [filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario]);
 
   useEffect(() => {
     const init: Record<string, string> = {};
@@ -2146,9 +2199,6 @@ const TabAcumulado: React.FC = () => {
             <TableBody>
               {grupos.map((grupo, idx) => {
                 const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-                // Horario de la primera cuenta del grupo que tenga horario_semanal con datos
-                const idConHorario = grupo.ids.find((id) => horariosPorUsuario.has(id));
-                const horarioGrupo = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
                 return (
                   <TableRow key={grupo.key} sx={{ bgcolor: rowBg }}>
                     <TableCell
@@ -2171,7 +2221,7 @@ const TabAcumulado: React.FC = () => {
 
                     {diasDelCiclo.map((diaKey) => {
                       const dia = grupo.dias[diaKey];
-                      const hor = horarioDelDia(horarioGrupo, diaKey);
+                      const hor = grupo.horarios[diaKey] ?? null;
                       const estiloHoras = dia ? estiloHorasVsHorario(dia.horas, hor) : undefined;
                       return (
                         <TableCell key={diaKey} align="center" sx={{ ...cellBase, minWidth: 120 }}>
@@ -2191,6 +2241,13 @@ const TabAcumulado: React.FC = () => {
                             <>
                               <Box sx={{ fontSize: 13, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
                                 DESCANSO
+                              </Box>
+                              <LineaHorario hor={hor} />
+                            </>
+                          ) : hor?.tipo === "descanso" && hor.rola ? (
+                            <>
+                              <Box sx={{ fontSize: 13, fontWeight: 700, color: "#0284c7", border: "1px dashed #7dd3fc", borderRadius: 1, py: 0.3 }}>
+                                Descanso
                               </Box>
                               <LineaHorario hor={hor} />
                             </>
