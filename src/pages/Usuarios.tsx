@@ -908,6 +908,11 @@ const UsuariosAdmin = () => {
             ? (usuarios.find((u) => u.id === horarioUserId)?.horario_semanal ?? null)
             : null
         }
+        initialDiaDescanso={
+          horarioUserId !== null
+            ? (usuarios.find((u) => u.id === horarioUserId)?.dia_descanso ?? null)
+            : null
+        }
       />
 
       <Snackbar

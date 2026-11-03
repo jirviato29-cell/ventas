@@ -7,6 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Table,
   TableBody,
   TableCell,
@@ -33,7 +34,10 @@ interface Props {
   onClose: () => void;
   onSave: (horario: DiaTrabajo[], diaDescanso: string, totalHoras: number) => void;
   initialHorario?: DiaTrabajo[] | null;
+  initialDiaDescanso?: string | null; // 'rola' = descansa sábado O domingo (rota)
 }
+
+const MSG_ROLA = "Con descanso rola, captura el horario en sábado o domingo y marca el otro como descanso.";
 
 const DIAS_CONFIG = [
   { dia: "lunes",     label: "Lunes"     },
@@ -61,11 +65,13 @@ const calcHoras = (entrada: Dayjs | null, salida: Dayjs | null, descanso: boolea
   return diffMin > 0 ? diffMin / 60 : 0;
 };
 
-const HorarioDialog: React.FC<Props> = ({ open, onClose, onSave, initialHorario }) => {
+const HorarioDialog: React.FC<Props> = ({ open, onClose, onSave, initialHorario, initialDiaDescanso }) => {
   const [dias, setDias] = useState<DiaState[]>(VACIO);
+  const [rola, setRola] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setRola((initialDiaDescanso ?? "").trim().toLowerCase() === "rola");
     if (initialHorario && initialHorario.length > 0) {
       setDias(
         DIAS_CONFIG.map((cfg) => {
@@ -106,19 +112,29 @@ const HorarioDialog: React.FC<Props> = ({ open, onClose, onSave, initialHorario 
     [dias]
   );
 
+  // Con descanso rola: exactamente uno de sábado/domingo con entrada y salida, y el otro marcado descanso
+  const rolaValido = useMemo(() => {
+    const conHorario = (d?: DiaState) =>
+      !!d && !d.descanso && !!d.entrada?.isValid() && !!d.salida?.isValid();
+    const sab = dias.find((d) => d.dia === "sabado");
+    const dom = dias.find((d) => d.dia === "domingo");
+    return (conHorario(sab) && !!dom?.descanso) || (conHorario(dom) && !!sab?.descanso);
+  }, [dias]);
+
   const updDia = (i: number, patch: Partial<DiaState>) =>
     setDias((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
 
   const limpiar = () => setDias(VACIO);
 
   const handleSave = () => {
+    if (rola && !rolaValido) return;
     const horario: DiaTrabajo[] = dias.map((d) => ({
       dia: d.dia,
       entrada: d.descanso ? null : (d.entrada?.isValid() ? d.entrada.format("HH:mm") : null),
       salida:  d.descanso ? null : (d.salida?.isValid()  ? d.salida.format("HH:mm")  : null),
       descanso: d.descanso,
     }));
-    const diaDescanso = dias.find((d) => d.descanso)?.dia ?? "";
+    const diaDescanso = rola ? "rola" : (dias.find((d) => d.descanso)?.dia ?? "");
     onSave(horario, diaDescanso, totalHoras);
   };
 
@@ -202,6 +218,19 @@ const HorarioDialog: React.FC<Props> = ({ open, onClose, onSave, initialHorario 
             </TableBody>
           </Table>
 
+          <FormControlLabel
+            sx={{ mt: 1.5 }}
+            control={
+              <Checkbox size="small" checked={rola} onChange={(e) => setRola(e.target.checked)} />
+            }
+            label="Descanso rola (sábado o domingo)"
+          />
+          {rola && !rolaValido && (
+            <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+              {MSG_ROLA}
+            </Typography>
+          )}
+
           <Box display="flex" justifyContent="flex-end" alignItems="center" mt={2} gap={1}>
             <Typography variant="h6" fontWeight={700}>Total semanal:</Typography>
             <Typography variant="h6" fontWeight={700} color="#FF6600">
@@ -217,7 +246,7 @@ const HorarioDialog: React.FC<Props> = ({ open, onClose, onSave, initialHorario 
           <Button onClick={onClose}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={errores.some(Boolean)}
+            disabled={errores.some(Boolean) || (rola && !rolaValido)}
             onClick={handleSave}
             sx={{ bgcolor: "#16a34a", "&:hover": { bgcolor: "#15803d" } }}
           >
