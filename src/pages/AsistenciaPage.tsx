@@ -41,6 +41,7 @@ import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
 import axios from "axios";
 import * as XLSX from "xlsx";
+import { DiaTrabajo } from "../Types";
 
 const API = "/api";
 
@@ -223,6 +224,62 @@ const redondearHorasExtra = (horas: number): number => {
   if (minutos <= 29) return enteros;
   if (minutos <= 50) return enteros + 0.5;
   return enteros + 1;
+};
+
+// ── Horario programado (Acumulado semanal) ───────────────────────────────────
+
+const DIAS_HORARIO = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+
+// "Miércoles" / "miercoles" / "SÁBADO" → "miercoles" / "sabado"
+const normalizarDia = (v: string) =>
+  v.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+
+// "YYYY-MM-DD" → "lunes" … "domingo" (fecha local, sin desfase de zona)
+const diaSemanaDeFecha = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return DIAS_HORARIO[new Date(y, m - 1, d).getDay()];
+};
+
+// "HH:MM" o "HH:MM:SS" → minutos desde medianoche
+const horaAMinutos = (h: string): number | null => {
+  const m = h.match(/^(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
+type HorarioDelDia =
+  | { tipo: "descanso" }
+  | { tipo: "turno"; entrada: string; salida: string; programadas: number };
+
+const horarioDelDia = (horario: DiaTrabajo[] | undefined, fechaISO: string): HorarioDelDia | null => {
+  if (!horario) return null;
+  const nombre = diaSemanaDeFecha(fechaISO);
+  const dia = horario.find((d) => normalizarDia(d.dia ?? "") === nombre);
+  if (!dia) return null;
+  if (dia.descanso) return { tipo: "descanso" };
+  if (!dia.entrada || !dia.salida) return null;
+  const ini = horaAMinutos(dia.entrada);
+  const fin = horaAMinutos(dia.salida);
+  if (ini === null || fin === null) return null;
+  const minutos = fin >= ini ? fin - ini : fin + 24 * 60 - ini; // turno que cruza medianoche
+  return { tipo: "turno", entrada: dia.entrada.slice(0, 5), salida: dia.salida.slice(0, 5), programadas: minutos / 60 };
+};
+
+// Color de las horas trabajadas vs. programadas (undefined = sin horario → como siempre)
+const colorHorasVsHorario = (horas: number, hor: HorarioDelDia | null): string | undefined => {
+  if (!hor) return undefined;
+  if (hor.tipo === "descanso") return "#1565c0"; // trabajó en su día de descanso
+  if (horas < hor.programadas - 0.25) return "#c62828";
+  if (horas > hor.programadas + 0.5) return "#1565c0";
+  return "#2e7d32";
+};
+
+const LineaHorario: React.FC<{ hor: HorarioDelDia | null }> = ({ hor }) => {
+  if (!hor) return null;
+  return (
+    <Box sx={{ fontSize: 9, color: "#94a3b8", whiteSpace: "nowrap", mt: 0.25 }}>
+      {hor.tipo === "descanso" ? "Hor: descanso" : `Hor: ${hor.entrada}–${hor.salida}`}
+    </Box>
+  );
 };
 
 const formatHora = (iso: string | null) => {
@@ -1737,6 +1794,21 @@ const TabAcumulado: React.FC = () => {
   const [etiqueta, setEtiqueta] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cicloSnack, setCicloSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
+  // usuario_id → horario_semanal (solo cuentas con horario). Si la carga falla queda vacío → sin horario.
+  const [horariosPorUsuario, setHorariosPorUsuario] = useState<Map<number, DiaTrabajo[]>>(() => new Map());
+
+  useEffect(() => {
+    axios
+      .get<{ id: number; horario_semanal?: DiaTrabajo[] | null }[]>(`${API}/registro/usuarios`, { headers: authH() })
+      .then(({ data }) => {
+        const mapa = new Map<number, DiaTrabajo[]>();
+        data.forEach((u) => {
+          if (Array.isArray(u.horario_semanal) && u.horario_semanal.length > 0) mapa.set(u.id, u.horario_semanal);
+        });
+        setHorariosPorUsuario(mapa);
+      })
+      .catch(() => {});
+  }, []);
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
     if (!cicloInicio) return;
@@ -2008,6 +2080,9 @@ const TabAcumulado: React.FC = () => {
             <TableBody>
               {grupos.map((grupo, idx) => {
                 const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+                // Horario de la primera cuenta del grupo que tenga horario_semanal con datos
+                const idConHorario = grupo.ids.find((id) => horariosPorUsuario.has(id));
+                const horarioGrupo = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
                 return (
                   <TableRow key={grupo.key} sx={{ bgcolor: rowBg }}>
                     <TableCell
@@ -2025,6 +2100,8 @@ const TabAcumulado: React.FC = () => {
 
                     {diasDelCiclo.map((diaKey) => {
                       const dia = grupo.dias[diaKey];
+                      const hor = horarioDelDia(horarioGrupo, diaKey);
+                      const colorHoras = dia ? colorHorasVsHorario(dia.horas, hor) : undefined;
                       return (
                         <TableCell key={diaKey} align="center" sx={{ ...cellBase, width: 76 }}>
                           {dia ? (
@@ -2034,16 +2111,23 @@ const TabAcumulado: React.FC = () => {
                                   {formatHora24(dia.entrada)} ▶ {formatHora24(dia.salida)}
                                 </Box>
                               )}
-                              <Box sx={{ fontSize: 10, color: "#64748b" }}>
+                              <Box sx={{ fontSize: 10, color: colorHoras ?? "#64748b" }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
+                              <LineaHorario hor={hor} />
                             </Box>
                           ) : grupo.descansos.includes(diaKey) ? (
-                            <Box sx={{ fontSize: 10, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
-                              DESCANSO
-                            </Box>
+                            <>
+                              <Box sx={{ fontSize: 10, fontWeight: 700, color: "#0284c7", background: "#e0f2fe", borderRadius: 1, py: 0.3 }}>
+                                DESCANSO
+                              </Box>
+                              <LineaHorario hor={hor} />
+                            </>
                           ) : (
-                            <Box sx={{ fontSize: 11, color: "#94a3b8" }}>Falta</Box>
+                            <>
+                              <Box sx={{ fontSize: 11, color: "#94a3b8" }}>Falta</Box>
+                              <LineaHorario hor={hor} />
+                            </>
                           )}
                         </TableCell>
                       );
