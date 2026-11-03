@@ -51,6 +51,8 @@ interface PersonaUsuarios {
   asegurado: EstadoAsegurado;
   modulos: string[];
   sueldo: number;
+  jornada: number;
+  principalId: number;
   formaPago: string | null;
   cuentaClabe: string | null;
   cuentaInterbancaria: string | null;
@@ -90,6 +92,11 @@ const agruparPorPersona = (usuarios: Usuario[]): PersonaUsuarios[] => {
       .toUpperCase();
     const id = claveEnglobado(cuentas[0]) ?? cuentas[0].username;
     const aseguradas = cuentas.filter((c) => c.asegurado).length;
+    // Jornada de la persona: la de la cuenta principal; si es 0, la mayor de sus cuentas (no se suman)
+    const jornadaPrincipal = Number(principal.jornada_fija ?? 0) || 0;
+    const jornada = jornadaPrincipal > 0
+      ? jornadaPrincipal
+      : Math.max(0, ...cuentas.map((c) => Number(c.jornada_fija ?? 0) || 0));
     return {
       clave,
       tieneEnglobado: !clave.startsWith("__cuenta_"),
@@ -99,6 +106,8 @@ const agruparPorPersona = (usuarios: Usuario[]): PersonaUsuarios[] => {
       asegurado: aseguradas === cuentas.length ? "todas" : aseguradas === 0 ? "ninguna" : "parcial",
       modulos: Array.from(new Set(cuentas.map((c) => c.modulo?.nombre).filter((m): m is string => !!m))),
       sueldo: cuentas.reduce((s, c) => s + (c.sueldo_base ?? 0), 0),
+      jornada,
+      principalId: principal.id,
       formaPago: principal.forma_pago ?? null,
       cuentaClabe: principal.cuenta_clabe ?? null,
       cuentaInterbancaria: principal.cuenta_interbancaria ?? null,
@@ -459,7 +468,7 @@ const UsuariosAdmin = () => {
       })()}
 
       <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
-        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1150 }}>
+        <Table size="small" sx={{ tableLayout: "fixed", minWidth: 1230 }}>
           <colgroup>
             <col style={{ width: "3%" }} />
             <col style={{ width: "9%" }} />
@@ -468,6 +477,7 @@ const UsuariosAdmin = () => {
             <col style={{ width: "6%" }} />
             <col style={{ width: "10%" }} />
             <col style={{ width: "8%" }} />
+            <col style={{ width: "7%" }} />
             <col style={{ width: "8%" }} />
             <col style={{ width: "9%" }} />
             <col style={{ width: "9%" }} />
@@ -483,6 +493,7 @@ const UsuariosAdmin = () => {
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Asegurado</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Módulos</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Jornada (h)</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
@@ -543,6 +554,20 @@ const UsuariosAdmin = () => {
                       )}
                     </TableCell>
                     <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(p.sueldo)}</TableCell>
+                    <TableCell sx={{ py: "2px", px: "4px" }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AccessTime sx={{ fontSize: "13px !important" }} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirHorario(p.principalId);
+                        }}
+                        sx={{ fontSize: 11, py: "2px", px: "5px", minWidth: 0, whiteSpace: "nowrap" }}
+                      >
+                        {p.jornada > 0 ? `${p.jornada}h` : "—"}
+                      </Button>
+                    </TableCell>
                     <TableCell sx={{ fontSize: "0.75rem" }}>{p.formaPago || "-"}</TableCell>
                     <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>{p.cuentaClabe || "-"}</TableCell>
                     <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
@@ -570,7 +595,7 @@ const UsuariosAdmin = () => {
 
                   {/* Detalle: una fila por cuenta, con editar y borrar de siempre */}
                   <TableRow>
-                    <TableCell colSpan={12} sx={{ p: 0, borderBottom: abierto ? undefined : "none" }}>
+                    <TableCell colSpan={13} sx={{ p: 0, borderBottom: abierto ? undefined : "none" }}>
                       <Collapse in={abierto} timeout="auto" unmountOnExit>
                         <Box sx={{ bgcolor: "#f8fafc", px: 2, py: 1.5, pl: 6 }}>
                           <Table size="small" sx={{ maxWidth: 760 }}>
@@ -579,7 +604,6 @@ const UsuariosAdmin = () => {
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Usuario</TableCell>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Módulo</TableCell>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Sueldo</TableCell>
-                                <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Jornada (h)</TableCell>
                                 <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>Acciones</TableCell>
                               </TableRow>
                             </TableHead>
@@ -596,19 +620,6 @@ const UsuariosAdmin = () => {
                                     )}
                                   </TableCell>
                                   <TableCell sx={{ fontSize: "0.75rem" }}>{fmtMoneda(u.sueldo_base)}</TableCell>
-                                  <TableCell sx={{ py: "2px", px: "4px" }}>
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      startIcon={<AccessTime sx={{ fontSize: "13px !important" }} />}
-                                      onClick={() => abrirHorario(u.id)}
-                                      sx={{ fontSize: 11, py: "2px", px: "5px", minWidth: 0, whiteSpace: "nowrap" }}
-                                    >
-                                      {u.jornada_fija != null && Number(u.jornada_fija) > 0
-                                        ? `${u.jornada_fija}h`
-                                        : "—"}
-                                    </Button>
-                                  </TableCell>
                                   <TableCell sx={{ whiteSpace: "nowrap" }}>
                                     <IconButton
                                       size="small"
@@ -635,7 +646,7 @@ const UsuariosAdmin = () => {
             })}
             {personasVisibles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} align="center">
+                <TableCell colSpan={13} align="center">
                   {usuarios.length === 0 ? "No hay usuarios" : "Sin coincidencias"}
                 </TableCell>
               </TableRow>
