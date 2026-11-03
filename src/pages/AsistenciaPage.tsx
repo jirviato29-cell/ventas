@@ -227,6 +227,12 @@ const redondearHorasExtra = (horas: number): number => {
   return enteros + 1;
 };
 
+// H. Extra negativa: misma regla sobre el valor absoluto, con signo negativo (sin "-0")
+const redondearHorasNegativas = (horas: number): number => {
+  const r = redondearHorasExtra(Math.abs(horas));
+  return r === 0 ? 0 : -r;
+};
+
 // ── Horario programado (Acumulado semanal) ───────────────────────────────────
 
 const DIAS_HORARIO = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
@@ -1993,7 +1999,7 @@ const TabAcumulado: React.FC = () => {
     const init: Record<string, string> = {};
     grupos.forEach((g) => {
       if (g.horas_extra !== null && g.horas_extra < 0) {
-        init[g.key] = String(g.horas_extra);
+        init[g.key] = String(redondearHorasNegativas(g.horas_extra));
       }
     });
     setDescuentosEdit(init);
@@ -2020,7 +2026,7 @@ const TabAcumulado: React.FC = () => {
         if (he !== null && jornada !== null && jornada > 0 && sueldo > 0) {
           valorRed = he >= 0
             ? redondearHorasExtra(he)
-            : parseFloat(descuentosEdit[g.key] || String(he));
+            : parseFloat(descuentosEdit[g.key] || String(redondearHorasNegativas(he)));
           pago = (sueldo / jornada) * valorRed;
         }
         return {
@@ -2283,7 +2289,7 @@ const TabAcumulado: React.FC = () => {
                         }
                         const valorRed = he >= 0
                           ? redondearHorasExtra(he)
-                          : parseFloat(descuentosEdit[grupo.key] || String(he));
+                          : parseFloat(descuentosEdit[grupo.key] || String(redondearHorasNegativas(he)));
                         const pago = (sueldo / jornada) * valorRed;
                         const color = pago > 0 ? "#16a34a" : pago < 0 ? "#ef4444" : undefined;
                         const prefix = pago > 0 ? "+" : pago < 0 ? "-" : "";
