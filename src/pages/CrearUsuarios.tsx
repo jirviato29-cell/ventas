@@ -7,12 +7,14 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { obtenerRolDesdeToken } from "../components/Token";
 import HorarioDialog from "../components/HorarioDialog";
 import { DiaTrabajo } from "../Types";
 
 
 const CrearUsuario = () => {
+  const esAdmin = obtenerRolDesdeToken() === "admin";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
@@ -41,6 +43,7 @@ const CrearUsuario = () => {
   };
 
   useEffect(() => {
+    if (!esAdmin) return;
     const localToken = localStorage.getItem("token");
     const cfg = { headers: { Authorization: `Bearer ${localToken}` } };
     const fetchModulos = async () => {
@@ -61,7 +64,7 @@ const CrearUsuario = () => {
     };
     fetchModulos();
     fetchTiendas();
-  }, []);
+  }, [esAdmin]);
 
   const mostrarCuentas = formaPago === "BBVA" || formaPago === "Banco Azteca";
 
@@ -113,26 +116,15 @@ const CrearUsuario = () => {
         },
         config
       );
-      setMensaje({ tipo: "success", texto: "Usuario creado correctamente" });
-      setNombreCompleto("");
-      setUsername("");
-      setPassword("");
-      setVerPassword(false);
-      setRol("");
-      setModulo("");
-      setIsAdmin(false);
-      setFormaPago("");
-      setCuentaClabe("");
-      setCuentaInterbancaria("");
-      setNombreEnglobado("");
-      setJornadaFija(0);
-      setHorarioLocal([]);
-      setTiendaId("");
+      // Éxito: regresa al panel y el panel muestra el aviso
+      navigate("/usuarios", { state: { mensaje: "Usuario creado correctamente" } });
     } catch (err: any) {
       const detalle = err?.response?.data?.detail || "Error al crear usuario";
       setMensaje({ tipo: "error", texto: detalle });
     }
   };
+
+  if (!esAdmin) return <Navigate to="/" replace />;
 
   return (
     <Container sx={{ mt: 4 }}>
@@ -344,14 +336,14 @@ const CrearUsuario = () => {
             Crear Usuario
           </Button>
         </Box>
-        <Button 
-  variant="outlined" 
-  color="secondary" 
-  sx={{ mt: 2, ml: 1 }}
-  onClick={() => navigate("/usuarios/admin")}
->
-  Ver usuarios
-</Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          sx={{ mt: 2 }}
+          onClick={() => navigate("/usuarios")}
+        >
+          ← Regresar
+        </Button>
       </Paper>
     </Container>
   );

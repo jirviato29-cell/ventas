@@ -7,9 +7,11 @@ import {
 } from "@mui/material";
 import {
   Edit, Delete, Close, AccessTime, Visibility, VisibilityOff,
-  KeyboardArrowDown, KeyboardArrowRight, Search,
+  KeyboardArrowDown, KeyboardArrowRight, Search, Add,
 } from "@mui/icons-material";
 import axios from "axios";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { obtenerRolDesdeToken } from "../components/Token";
 import { DiaTrabajo, Usuario } from "../Types";
 import HorarioDialog from "../components/HorarioDialog";
 import EditarPersonaDialog from "../components/EditarPersonaDialog";
@@ -125,6 +127,9 @@ const formVacio: FormEdicion = {
 };
 
 const UsuariosAdmin = () => {
+  const esAdmin = obtenerRolDesdeToken() === "admin";
+  const navigate = useNavigate();
+  const location = useLocation();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [modulos, setModulos] = useState<{ id: number; nombre: string }[]>([]);
   const [cadenas, setCadenas] = useState<any[]>([]);
@@ -134,7 +139,10 @@ const UsuariosAdmin = () => {
   const [form, setForm] = useState<FormEdicion>(formVacio);
   const [horarioOpen, setHorarioOpen] = useState(false);
   const [horarioUserId, setHorarioUserId] = useState<number | null>(null);
-  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  // Mensaje que manda "Crear Nuevo Usuario" al regresar con éxito
+  const [savedMsg, setSavedMsg] = useState<string | null>(
+    () => (location.state as { mensaje?: string } | null)?.mensaje ?? null
+  );
   // La contraseña solo se edita tras dar clic en el lápiz, para que el
   // autollenado del navegador no la cambie sin querer al guardar.
   const [editarPassword, setEditarPassword] = useState(false);
@@ -194,6 +202,11 @@ const UsuariosAdmin = () => {
   };
 
   useEffect(() => {
+    if (!esAdmin) return;
+    // Limpia el mensaje del historial para que no reaparezca al recargar
+    if ((location.state as { mensaje?: string } | null)?.mensaje) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
     cargarUsuarios();
     cargarModulos();
     cargarCadenasYTiendas();
@@ -398,6 +411,8 @@ const UsuariosAdmin = () => {
   const fmtMoneda = (v?: number | null) =>
     `$${(v ?? 0).toFixed(2)}`;
 
+  if (!esAdmin) return <Navigate to="/" replace />;
+
   return (
     <Box sx={{ mt: 4, px: 2 }}>
       <Typography variant="h5" gutterBottom>Gestión de Usuarios</Typography>
@@ -425,6 +440,20 @@ const UsuariosAdmin = () => {
                 ),
               }}
             />
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => navigate("/usuarios/nuevo")}
+              sx={{
+                ml: { sm: "auto" },
+                width: { xs: "100%", sm: "auto" },
+                bgcolor: "#f97316",
+                fontWeight: 700,
+                "&:hover": { bgcolor: "#ea580c" },
+              }}
+            >
+              Nuevo usuario
+            </Button>
           </Box>
         );
       })()}

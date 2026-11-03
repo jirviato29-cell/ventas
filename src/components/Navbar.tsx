@@ -310,7 +310,6 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/corte">Cortes</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/traspasos/admin">Traspasos</Button>
-                  <Button sx={navBtnSx} component={Link} to="/usuarios">Usuarios</Button>
                   {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
                   <Button sx={navBtnSx} component={Link} to="/inventario">Inventario</Button>
                   */}
@@ -692,10 +691,6 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/traspasos/admin")}>
                 <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
                 <ListItemText primary="Traspasos" />
-              </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/usuarios")}>
-                <ListItemIcon sx={drawerIconSx}><PeopleIcon /></ListItemIcon>
-                <ListItemText primary="Usuarios" />
               </ListItemButton>
               {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario")}>

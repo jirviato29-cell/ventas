@@ -89,8 +89,10 @@ const App: React.FC = () => {
     { path: '/comisiones/usuario', element: <RutaProtegida><ComisionesUser /></RutaProtegida> },
     { path: '/traspasos', element: <RutaProtegida><TraspasosPage /></RutaProtegida> },
     { path: '/traspasos/admin', element: <RutaProtegida><TraspasosAdmin /></RutaProtegida> },
-    { path: '/usuarios', element: <RutaProtegida><CrearUsuario /></RutaProtegida> },
-    { path: '/usuarios/admin', element: <RutaProtegida><UsuariosAdmin /></RutaProtegida> },
+    { path: '/usuarios', element: <RutaProtegida><UsuariosAdmin /></RutaProtegida> },
+    { path: '/usuarios/nuevo', element: <RutaProtegida><CrearUsuario /></RutaProtegida> },
+    // Ruta vieja del panel: se conserva para marcadores e historial
+    { path: '/usuarios/admin', element: <Navigate to="/usuarios" replace /> },
     { path: '/tiendas/admin', element: <RutaProtegida><AdminTiendas /></RutaProtegida> },
     { path: '/inventario', element: <RutaProtegida><InventarioAdmin /></RutaProtegida> },
     { path: '/inventario/modulo', element: <RutaProtegida><InventarioPorModulo /></RutaProtegida> },
