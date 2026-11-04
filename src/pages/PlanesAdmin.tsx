@@ -231,7 +231,7 @@ const PlanesAdmin = () => {
     "Cuenta": p.cuenta ?? "",
     "Pago inicial": p.pago_inicial ? "Sí" : "No",
     "Monto PI": p.monto_pago_inicial ?? 0,
-    "Comisión": calcularComision(p.categoria, p.clasificacion, p.tipo_plan) ?? "",
+    "Comisión": calcularComision(p.categoria, p.clasificacion, p.tipo_plan, p.fecha) ?? "",
     "Contrato": p.contrato_listo ? "LISTO" : "PENDIENTE",
     "Pagado": p.pagado ? "PAGADO" : "PENDIENTE",
     "Fecha pago": p.fecha_pago ?? "",
@@ -281,7 +281,7 @@ const PlanesAdmin = () => {
       <TableCell sx={cellSx}>{nil(p.monto_pago_inicial)}</TableCell>
       <TableCell sx={cellSx}>
         {(() => {
-          const c = calcularComision(p.categoria, p.clasificacion, p.tipo_plan);
+          const c = calcularComision(p.categoria, p.clasificacion, p.tipo_plan, p.fecha);
           return c != null ? `$${c}` : "-";
         })()}
       </TableCell>
