@@ -38,8 +38,8 @@ interface UsuarioApi {
 }
 
 // Una persona = todas sus cuentas con el mismo nombre_englobado (o su username si no tiene)
-interface Persona {
-  clave: string; // valor crudo, solo para identificar la selección
+export interface Persona {
+  clave: string; // englobado (o username) sin espacios al inicio/final y en mayúsculas
   idVisible: string;
   nombre: string;
   englobado: string | null;
@@ -65,7 +65,8 @@ const agruparPersonas = (usuarios: UsuarioApi[]): Persona[] => {
   usuarios
     .filter((u) => ROLES_EMPLEADO.includes(u.rol))
     .forEach((u) => {
-      const clave = u.nombre_englobado || u.username;
+      // Sin espacios sobrantes y en mayúsculas para que " a17-regina" y "A17-REGINA" sean una sola opción
+      const clave = (u.nombre_englobado?.trim() || u.username).trim().toUpperCase();
       grupos.set(clave, [...(grupos.get(clave) ?? []), u]);
     });
 
@@ -186,18 +187,15 @@ const CampoCopiable: React.FC<{ etiqueta: string; valor: string | null; onCopiar
   </Box>
 );
 
-interface Props {
-  seleccion: string | null;
-  onSeleccion: (clave: string | null) => void;
-}
-
-const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
+// Empleados (asesor/encargado) agrupados por persona. Lo usan "Mis datos" y "Selección de vacaciones".
+// activo = false no pide nada (la página la abre alguien que no es admin y lo va a redirigir).
+export const usePersonas = (activo = true) => {
   const [usuarios, setUsuarios] = useState<UsuarioApi[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(activo);
   const [error, setError] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!activo) return;
     let vivo = true;
     axios
       .get<UsuarioApi[]>(`${API}/registro/usuarios`, { headers: authH() })
@@ -207,9 +205,63 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [activo]);
 
   const personas = useMemo(() => agruparPersonas(usuarios), [usuarios]);
+  return { personas, cargando, error };
+};
+
+interface SelectorProps {
+  personas: Persona[];
+  cargando: boolean;
+  seleccion: string | null;
+  onSeleccion: (clave: string | null) => void;
+}
+
+// Una opción por persona: "NOMBRE · ID"
+export const SelectorEmpleado: React.FC<SelectorProps> = ({ personas, cargando, seleccion, onSeleccion }) => {
+  const persona = personas.find((p) => p.clave === seleccion) ?? null;
+  return (
+    <Autocomplete
+      options={personas}
+      value={persona}
+      onChange={(_, p) => onSeleccion(p?.clave ?? null)}
+      loading={cargando}
+      getOptionLabel={(p) => (p.nombre ? `${p.nombre} · ${p.idVisible}` : p.idVisible)}
+      isOptionEqualToValue={(a, b) => a.clave === b.clave}
+      noOptionsText="Sin coincidencias"
+      loadingText="Cargando…"
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label="Empleado"
+          size="small"
+          InputProps={{
+            ...params.InputProps,
+            endAdornment: (
+              <>
+                {cargando && <CircularProgress size={18} />}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
+        />
+      )}
+      sx={{ maxWidth: 480, mb: 3 }}
+    />
+  );
+};
+
+interface Props {
+  personas: Persona[];
+  cargando: boolean;
+  error: string | null;
+  seleccion: string | null;
+  onSeleccion: (clave: string | null) => void;
+}
+
+const MisDatosPerfil: React.FC<Props> = ({ personas, cargando, error, seleccion, onSeleccion }) => {
+  const [aviso, setAviso] = useState<string | null>(null);
   const persona = personas.find((p) => p.clave === seleccion) ?? null;
 
   const copiar = (valor: string) => {
@@ -227,33 +279,7 @@ const MisDatosPerfil: React.FC<Props> = ({ seleccion, onSeleccion }) => {
 
   return (
     <Box>
-      <Autocomplete
-        options={personas}
-        value={persona}
-        onChange={(_, p) => onSeleccion(p?.clave ?? null)}
-        loading={cargando}
-        getOptionLabel={(p) => (p.nombre ? `${p.nombre} · ${p.idVisible}` : p.idVisible)}
-        isOptionEqualToValue={(a, b) => a.clave === b.clave}
-        noOptionsText="Sin coincidencias"
-        loadingText="Cargando…"
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Empleado"
-            size="small"
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {cargando && <CircularProgress size={18} />}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-        sx={{ maxWidth: 480, mb: 3 }}
-      />
+      <SelectorEmpleado personas={personas} cargando={cargando} seleccion={seleccion} onSeleccion={onSeleccion} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

@@ -1,8 +1,21 @@
-import React, { useState } from "react";
-import { Alert, Box, Button, Container, Paper, Snackbar, Tab, Tabs, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Container,
+  Paper,
+  Snackbar,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
 import { Navigate } from "react-router-dom";
+import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
-import MisDatosPerfil from "../components/MisDatosPerfil";
+import MisDatosPerfil, { SelectorEmpleado, usePersonas } from "../components/MisDatosPerfil";
 
 const AZUL = "#0A2878";
 const ROJO_FONDO = "#FDE2E2";
@@ -26,15 +39,9 @@ const PERIODOS_BLOQUEADOS = [
 const periodoBloqueado = (clave: string) =>
   PERIODOS_BLOQUEADOS.find((p) => clave >= p.inicio && clave <= p.fin);
 
-// Meses del calendario de vacaciones (mes en base 0, como Date)
-const MESES_VACACIONES = [
-  { anio: 2026, mes: 9 },
-  { anio: 2026, mes: 10 },
-  { anio: 2026, mes: 11 },
-  { anio: 2027, mes: 0 },
-  { anio: 2027, mes: 1 },
-  { anio: 2027, mes: 2 },
-];
+// Meses del calendario de vacaciones (mes en base 0, como Date): de enero 2026 a marzo 2027.
+// Los meses pasados sirven para ver las vacaciones que ya se tomaron.
+const MESES_VACACIONES = Array.from({ length: 15 }, (_, i) => ({ anio: 2026 + Math.floor(i / 12), mes: i % 12 }));
 
 const NOMBRES_MES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -58,6 +65,66 @@ const sumarDias = (clave: string, n: number) => {
   const [anio, mes, dia] = clave.split("-").map(Number);
   return new Date(Date.UTC(anio, mes - 1, dia + n)).toISOString().slice(0, 10);
 };
+
+// Periodos de vacaciones guardados (GET /api/vacaciones?clave=...)
+type EstadoVacacion = "solicitada" | "autorizada" | "rechazada" | "tomada";
+
+interface VacacionApi {
+  id: number;
+  clave: string;
+  fecha_inicio: string; // "YYYY-MM-DD"
+  fecha_fin: string;
+  dias: number | null;
+  estado: string | null;
+  origen: string | null;
+  nota: string | null;
+}
+
+interface EstiloVacacion {
+  texto: string;
+  fondo: string;
+  borde: string;
+  color: string;
+  tachado?: boolean;
+}
+
+const ESTILO_VACACION: Record<EstadoVacacion, EstiloVacacion> = {
+  tomada: { texto: "Tomada", fondo: "#DCFCE7", borde: "#16A34A", color: "#15803D" },
+  autorizada: { texto: "Autorizada", fondo: "#DBEAFE", borde: "#60A5FA", color: "#1D4ED8" },
+  solicitada: { texto: "Solicitada", fondo: "#FEF9C3", borde: "#EAB308", color: "#A16207" },
+  rechazada: { texto: "Rechazada", fondo: "#E2E8F0", borde: "#94A3B8", color: "#475569", tachado: true },
+};
+
+// Si dos periodos caen en el mismo día, se pinta el estado más firme
+const PRIORIDAD_VACACION: EstadoVacacion[] = ["tomada", "autorizada", "solicitada", "rechazada"];
+
+const estadoVacacion = (estado: string | null): EstadoVacacion | null => {
+  const e = estado?.trim().toLowerCase();
+  return e && e in ESTILO_VACACION ? (e as EstadoVacacion) : null;
+};
+
+// Día YYYY-MM-DD → estado de vacaciones que le toca (ambos extremos del periodo incluidos)
+const diasDeVacaciones = (periodos: VacacionApi[]) => {
+  const mapa = new Map<string, EstadoVacacion>();
+  periodos.forEach((p) => {
+    const estado = estadoVacacion(p.estado);
+    const inicio = p.fecha_inicio?.slice(0, 10);
+    const fin = p.fecha_fin?.slice(0, 10);
+    if (!estado || !inicio || !fin || fin < inicio) return;
+    // Tope por si viene un rango mal capturado
+    for (let d = inicio, n = 0; d <= fin && n < 400; d = sumarDias(d, 1), n++) {
+      const previo = mapa.get(d);
+      if (!previo || PRIORIDAD_VACACION.indexOf(estado) < PRIORIDAD_VACACION.indexOf(previo)) mapa.set(d, estado);
+    }
+  });
+  return mapa;
+};
+
+// "2026-02-10" → "10/02/2026"
+const fechaCorta = (clave: string) => `${clave.slice(8, 10)}/${clave.slice(5, 7)}/${clave.slice(0, 4)}`;
+
+const textoDias = (dias: number | null) =>
+  dias == null ? "—" : `${Number(dias).toLocaleString("es-MX")} ${Number(dias) === 1 ? "día" : "días"}`;
 
 // Las vacaciones se piden con anticipación: el primer día elegible es hoy + 31 días
 const DIAS_ANTICIPACION = 31;
@@ -113,10 +180,11 @@ interface MesProps {
   hoy: string;
   primerDisponible: string;
   seleccionadas: Set<string>;
+  vacaciones: Map<string, EstadoVacacion>;
   onToggle: (clave: string) => void;
 }
 
-const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, seleccionadas, onToggle }) => {
+const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, seleccionadas, vacaciones, onToggle }) => {
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
   // getDay(): 0 = domingo; lo pasamos a 0 = lunes
   const huecosInicio = (new Date(anio, mes, 1).getDay() + 6) % 7;
@@ -152,6 +220,9 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, s
           const marcado = seleccionadas.has(clave);
           // Un día no disponible queda gris aunque caiga en un periodo bloqueado
           const bloqueado = !noDisponible && !!periodoBloqueado(clave);
+          // Vacaciones del empleado elegido: le ganan al gris y al rojo; solo la selección actual va encima
+          const vac = marcado ? undefined : vacaciones.get(clave);
+          const estiloVac = vac ? ESTILO_VACACION[vac] : null;
 
           return (
             <Box
@@ -160,6 +231,7 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, s
               type="button"
               disabled={pasado}
               aria-disabled={bloqueado || sinAnticipacion || undefined}
+              title={estiloVac ? `Vacaciones: ${estiloVac.texto.toLowerCase()}` : undefined}
               onClick={() => onToggle(clave)}
               sx={{
                 aspectRatio: "1 / 1",
@@ -172,12 +244,29 @@ const MesCalendario: React.FC<MesProps> = ({ anio, mes, hoy, primerDisponible, s
                 fontFamily: "inherit",
                 p: 0,
                 cursor: pasado ? "default" : bloqueado || sinAnticipacion ? "not-allowed" : "pointer",
-                border: esHoy ? `2px solid ${AZUL}` : "1px solid #e2e8f0",
-                bgcolor: marcado ? AZUL : bloqueado ? ROJO_FONDO : noDisponible ? "#f1f5f9" : "#fff",
-                color: marcado ? "#fff" : bloqueado ? ROJO_TEXTO : noDisponible ? "#cbd5e1" : "#1e293b",
+                border: esHoy ? `2px solid ${AZUL}` : `1px solid ${estiloVac ? estiloVac.borde : "#e2e8f0"}`,
+                bgcolor: marcado
+                  ? AZUL
+                  : estiloVac
+                  ? estiloVac.fondo
+                  : bloqueado
+                  ? ROJO_FONDO
+                  : noDisponible
+                  ? "#f1f5f9"
+                  : "#fff",
+                color: marcado
+                  ? "#fff"
+                  : estiloVac
+                  ? estiloVac.color
+                  : bloqueado
+                  ? ROJO_TEXTO
+                  : noDisponible
+                  ? "#cbd5e1"
+                  : "#1e293b",
+                textDecoration: estiloVac?.tachado ? "line-through" : undefined,
                 transition: "background-color 0.15s ease",
                 // Solo con mouse: en celular el hover se queda pegado tras tocar
-                "@media (hover: hover)": !noDisponible && !marcado && !bloqueado
+                "@media (hover: hover)": !noDisponible && !marcado && !bloqueado && !estiloVac
                   ? { "&:hover": { bgcolor: "rgba(10,40,120,0.08)" } }
                   : undefined,
               }}
@@ -197,7 +286,34 @@ const MiPerfil = () => {
   const [aviso, setAviso] = useState<string | null>(null);
   const [pestana, setPestana] = useState(0);
   const [empleadoSel, setEmpleadoSel] = useState<string | null>(null);
+  const { personas, cargando: cargandoPersonas, error: errorPersonas } = usePersonas(rol === "admin");
+  const [periodos, setPeriodos] = useState<VacacionApi[]>([]);
+  const [cargandoVac, setCargandoVac] = useState(false);
+  const [errorVac, setErrorVac] = useState<string | null>(null);
   const hoy = hoyLocal();
+
+  // Vacaciones del empleado elegido; sin empleado el calendario queda como siempre
+  useEffect(() => {
+    setPeriodos([]);
+    setErrorVac(null);
+    setCargandoVac(false);
+    if (!empleadoSel || rol !== "admin") return;
+    let vivo = true;
+    setCargandoVac(true);
+    axios
+      .get<VacacionApi[]>("/api/vacaciones", {
+        params: { clave: empleadoSel },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+      })
+      .then((r) => vivo && setPeriodos(r.data))
+      .catch(() => vivo && setErrorVac("No se pudieron cargar las vacaciones."))
+      .finally(() => vivo && setCargandoVac(false));
+    return () => {
+      vivo = false;
+    };
+  }, [empleadoSel, rol]);
+
+  const diasVacaciones = useMemo(() => diasDeVacaciones(periodos), [periodos]);
   const primerDisponible = primerDiaDisponible(hoy);
 
   const toggleDia = (clave: string) => {
@@ -290,11 +406,27 @@ const MiPerfil = () => {
         ))}
       </Tabs>
 
-      {pestana === 0 && <MisDatosPerfil seleccion={empleadoSel} onSeleccion={setEmpleadoSel} />}
+      {pestana === 0 && (
+        <MisDatosPerfil
+          personas={personas}
+          cargando={cargandoPersonas}
+          error={errorPersonas}
+          seleccion={empleadoSel}
+          onSeleccion={setEmpleadoSel}
+        />
+      )}
 
       {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
       {pestana === 1 && (
         <>
+          <SelectorEmpleado
+            personas={personas}
+            cargando={cargandoPersonas}
+            seleccion={empleadoSel}
+            onSeleccion={setEmpleadoSel}
+          />
+          {errorPersonas && <Alert severity="error" sx={{ mb: 2 }}>{errorPersonas}</Alert>}
+
           <Box
             sx={{
               display: "grid",
@@ -310,6 +442,7 @@ const MiPerfil = () => {
                 hoy={hoy}
                 primerDisponible={primerDisponible}
                 seleccionadas={seleccionadas}
+                vacaciones={diasVacaciones}
                 onToggle={toggleDia}
               />
             ))}
@@ -320,13 +453,88 @@ const MiPerfil = () => {
               { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
               { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
               { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
-            ].map(({ texto, fondo, borde }) => (
+              ...PRIORIDAD_VACACION.map((e) => ({
+                texto: `Vacaciones ${ESTILO_VACACION[e].texto.toLowerCase()}`,
+                fondo: ESTILO_VACACION[e].fondo,
+                borde: ESTILO_VACACION[e].borde,
+                tachado: ESTILO_VACACION[e].tachado,
+              })),
+            ].map(({ texto, fondo, borde, tachado }: { texto: string; fondo: string; borde: string; tachado?: boolean }) => (
               <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                <Box sx={{ width: 14, height: 14, borderRadius: "3px", bgcolor: fondo, border: `1px solid ${borde}` }} />
+                <Box
+                  sx={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: "3px",
+                    bgcolor: fondo,
+                    border: `1px solid ${borde}`,
+                    // Rayita diagonal: el tachado de las rechazadas
+                    backgroundImage: tachado
+                      ? `linear-gradient(to top right, transparent 44%, ${borde} 44%, ${borde} 56%, transparent 56%)`
+                      : undefined,
+                  }}
+                />
                 <Typography sx={{ fontSize: 12, color: "#64748b" }}>{texto}</Typography>
               </Box>
             ))}
           </Box>
+
+          {empleadoSel && (
+            <Paper sx={{ mt: 2, p: 2 }}>
+              <Typography sx={{ fontWeight: 700, color: "#1e293b", mb: 1 }}>Periodos de vacaciones</Typography>
+              {cargandoVac ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : errorVac ? (
+                <Alert severity="error">{errorVac}</Alert>
+              ) : periodos.length === 0 ? (
+                <Typography sx={{ fontSize: 14, color: "#94a3b8" }}>Sin periodos registrados.</Typography>
+              ) : (
+                periodos.map((p) => {
+                  const e = estadoVacacion(p.estado);
+                  const estilo = e ? ESTILO_VACACION[e] : null;
+                  const inicio = p.fecha_inicio.slice(0, 10);
+                  const fin = p.fecha_fin.slice(0, 10);
+                  return (
+                    <Box
+                      key={p.id}
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        columnGap: 1.5,
+                        rowGap: 0.5,
+                        py: 1,
+                        borderTop: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b", minWidth: { sm: 190 } }}>
+                        {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
+                      </Typography>
+                      <Typography sx={{ fontSize: 14, color: "#475569", minWidth: 64 }}>{textoDias(p.dias)}</Typography>
+                      <Chip
+                        size="small"
+                        label={estilo?.texto ?? p.estado ?? "Sin estado"}
+                        sx={{
+                          fontWeight: 600,
+                          bgcolor: estilo?.fondo ?? "#f1f5f9",
+                          color: estilo?.color ?? "#475569",
+                          border: `1px solid ${estilo?.borde ?? "#e2e8f0"}`,
+                          textDecoration: estilo?.tachado ? "line-through" : undefined,
+                        }}
+                      />
+                      {p.nota && p.nota.trim() && (
+                        <Typography sx={{ fontSize: 13, color: "#64748b", flexBasis: { xs: "100%", sm: "auto" } }}>
+                          {p.nota}
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })
+              )}
+            </Paper>
+          )}
 
           <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
             <Typography sx={{ fontWeight: 700, color: AZUL }}>
