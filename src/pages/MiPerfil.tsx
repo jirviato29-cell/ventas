@@ -9,6 +9,12 @@ import {
   Paper,
   Snackbar,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tabs,
   Typography,
 } from "@mui/material";
@@ -39,9 +45,17 @@ const PERIODOS_BLOQUEADOS = [
 const periodoBloqueado = (clave: string) =>
   PERIODOS_BLOQUEADOS.find((p) => clave >= p.inicio && clave <= p.fin);
 
-// Meses del calendario de vacaciones (mes en base 0, como Date): de enero 2026 a marzo 2027.
-// Los meses pasados sirven para ver las vacaciones que ya se tomaron.
-const MESES_VACACIONES = Array.from({ length: 15 }, (_, i) => ({ anio: 2026 + Math.floor(i / 12), mes: i % 12 }));
+// Meses del calendario de vacaciones (mes en base 0, como Date): el mes actual y los 5 siguientes.
+// Lo ya tomado en meses pasados no sale en el calendario, solo en la tabla de periodos.
+const MESES_CALENDARIO = 6;
+const mesesCalendario = (hoy: string) => {
+  const anio = Number(hoy.slice(0, 4));
+  const mes = Number(hoy.slice(5, 7)) - 1;
+  return Array.from({ length: MESES_CALENDARIO }, (_, i) => ({
+    anio: anio + Math.floor((mes + i) / 12),
+    mes: (mes + i) % 12,
+  }));
+};
 
 const NOMBRES_MES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -125,6 +139,14 @@ const fechaCorta = (clave: string) => `${clave.slice(8, 10)}/${clave.slice(5, 7)
 
 const textoDias = (dias: number | null) =>
   dias == null ? "—" : `${Number(dias).toLocaleString("es-MX")} ${Number(dias) === 1 ? "día" : "días"}`;
+
+// Suma los días de los periodos con ese estado
+const totalDias = (periodos: VacacionApi[], estado: EstadoVacacion) =>
+  periodos.reduce((suma, p) => (estadoVacacion(p.estado) === estado ? suma + Number(p.dias ?? 0) : suma), 0);
+
+const BORDE_TABLA = "#e2e8f0";
+const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
+const celdaSx = { fontSize: 14, borderRight: `1px solid ${BORDE_TABLA}`, "&:last-of-type": { borderRight: 0 } };
 
 // Las vacaciones se piden con anticipación: el primer día elegible es hoy + 31 días
 const DIAS_ANTICIPACION = 31;
@@ -314,6 +336,14 @@ const MiPerfil = () => {
   }, [empleadoSel, rol]);
 
   const diasVacaciones = useMemo(() => diasDeVacaciones(periodos), [periodos]);
+  // Tabla: de la más reciente a la más vieja
+  const periodosTabla = useMemo(
+    () =>
+      [...periodos].sort((a, b) =>
+        a.fecha_inicio === b.fecha_inicio ? b.id - a.id : b.fecha_inicio.localeCompare(a.fecha_inicio)
+      ),
+    [periodos]
+  );
   const primerDisponible = primerDiaDisponible(hoy);
 
   const toggleDia = (clave: string) => {
@@ -434,7 +464,7 @@ const MiPerfil = () => {
               gap: 2,
             }}
           >
-            {MESES_VACACIONES.map(({ anio, mes }) => (
+            {mesesCalendario(hoy).map(({ anio, mes }) => (
               <MesCalendario
                 key={`${anio}-${mes}`}
                 anio={anio}
@@ -480,60 +510,95 @@ const MiPerfil = () => {
           </Box>
 
           {empleadoSel && (
-            <Paper sx={{ mt: 2, p: 2 }}>
+            <Box sx={{ mt: 2 }}>
               <Typography sx={{ fontWeight: 700, color: "#1e293b", mb: 1 }}>Periodos de vacaciones</Typography>
-              {cargandoVac ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : errorVac ? (
-                <Alert severity="error">{errorVac}</Alert>
-              ) : periodos.length === 0 ? (
-                <Typography sx={{ fontSize: 14, color: "#94a3b8" }}>Sin periodos registrados.</Typography>
-              ) : (
-                periodos.map((p) => {
-                  const e = estadoVacacion(p.estado);
-                  const estilo = e ? ESTILO_VACACION[e] : null;
-                  const inicio = p.fecha_inicio.slice(0, 10);
-                  const fin = p.fecha_fin.slice(0, 10);
-                  return (
-                    <Box
-                      key={p.id}
-                      sx={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        columnGap: 1.5,
-                        rowGap: 0.5,
-                        py: 1,
-                        borderTop: "1px solid #f1f5f9",
-                      }}
-                    >
-                      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b", minWidth: { sm: 190 } }}>
-                        {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
-                      </Typography>
-                      <Typography sx={{ fontSize: 14, color: "#475569", minWidth: 64 }}>{textoDias(p.dias)}</Typography>
-                      <Chip
-                        size="small"
-                        label={estilo?.texto ?? p.estado ?? "Sin estado"}
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: estilo?.fondo ?? "#f1f5f9",
-                          color: estilo?.color ?? "#475569",
-                          border: `1px solid ${estilo?.borde ?? "#e2e8f0"}`,
-                          textDecoration: estilo?.tachado ? "line-through" : undefined,
-                        }}
-                      />
-                      {p.nota && p.nota.trim() && (
-                        <Typography sx={{ fontSize: 13, color: "#64748b", flexBasis: { xs: "100%", sm: "auto" } }}>
-                          {p.nota}
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })
-              )}
-            </Paper>
+              {errorVac && <Alert severity="error" sx={{ mb: 1 }}>{errorVac}</Alert>}
+              {/* En celular la tabla se desliza de lado en lugar de cortarse */}
+              <TableContainer
+                component={Paper}
+                sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
+              >
+                <Table size="small" sx={{ minWidth: 560 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
+                      <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
+                      <TableCell align="center" sx={celdaEncabezadoSx}>Estado</TableCell>
+                      <TableCell sx={celdaEncabezadoSx}>Nota del Excel</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {cargandoVac ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                          <CircularProgress size={24} />
+                        </TableCell>
+                      </TableRow>
+                    ) : periodosTabla.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 3, fontSize: 14, color: "#94a3b8" }}>
+                          Sin periodos registrados
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      periodosTabla.map((p) => {
+                        const e = estadoVacacion(p.estado);
+                        const estilo = e ? ESTILO_VACACION[e] : null;
+                        const inicio = p.fecha_inicio.slice(0, 10);
+                        const fin = p.fecha_fin.slice(0, 10);
+                        return (
+                          <TableRow
+                            key={p.id}
+                            sx={{
+                              "&:nth-of-type(odd)": { bgcolor: "#fff" },
+                              "&:nth-of-type(even)": { bgcolor: "#f8fafc" },
+                              "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
+                            }}
+                          >
+                            <TableCell sx={{ ...celdaSx, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>
+                              {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
+                            </TableCell>
+                            <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
+                              {textoDias(p.dias)}
+                            </TableCell>
+                            <TableCell align="center" sx={celdaSx}>
+                              <Chip
+                                size="small"
+                                label={estilo?.texto ?? p.estado ?? "Sin estado"}
+                                sx={{
+                                  fontWeight: 600,
+                                  bgcolor: estilo?.fondo ?? "#f1f5f9",
+                                  color: estilo?.color ?? "#475569",
+                                  border: `1px solid ${estilo?.borde ?? BORDE_TABLA}`,
+                                  textDecoration: estilo?.tachado ? "line-through" : undefined,
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ ...celdaSx, fontSize: 13, color: "#64748b" }}>
+                              {p.nota?.trim() || "—"}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                    {!cargandoVac && periodosTabla.length > 0 && (
+                      <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+                        <TableCell sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}>
+                          Totales
+                        </TableCell>
+                        <TableCell
+                          colSpan={3}
+                          sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}
+                        >
+                          Tomados: {textoDias(totalDias(periodosTabla, "tomada"))} · Autorizados:{" "}
+                          {textoDias(totalDias(periodosTabla, "autorizada"))}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
           )}
 
           <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
