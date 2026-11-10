@@ -478,6 +478,14 @@ const Navbar = () => {
 
         <List disablePadding>
 
+          {/* ── REGISTRAR VENTA: primero del menú (mismos roles que antes) ── */}
+          {(rolToken === "admin" || rolToken === "encargado" || rolToken === "asesor") && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
+              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
+              <ListItemText primary="Registrar venta" />
+            </ListItemButton>
+          )}
+
           {rolToken !== "admin" && !modulo.toLowerCase().includes("cadena") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
               <ListItemText primary="LISTA DE PRECIOS" />
@@ -503,10 +511,6 @@ const Navbar = () => {
               </ListItemButton>
               <Collapse in={ventasOpen} timeout="auto" unmountOnExit>
                 <List disablePadding>
-                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas")}>
-                    <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
-                    <ListItemText primary="Registrar venta" />
-                  </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/chips")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                     <ListItemText primary="Chips" />
@@ -719,10 +723,6 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
                 <ListItemText primary="Traspasos" />
               </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
-                <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
-                <ListItemText primary="Registrar venta" />
-              </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                 <ListItemText primary="Comisiones" />
@@ -762,10 +762,6 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
                 <ListItemText primary="Mi Nómina" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 600 }} />
-              </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
-                <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
-                <ListItemText primary="Registrar venta" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
