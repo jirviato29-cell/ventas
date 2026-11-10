@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useRoutes, Navigate } from 'react-router-dom';
 import { cerrarSesionForzado, tokenExpirado, msHastaExpiracion } from './utils/sesion';
+import { obtenerRolDesdeToken } from './components/Token';
 import LoginPage from './pages/LoginPages';
 import VentasPage from './pages/VentasPage';
 import ComisionesPage from './pages/ComisionesPage';
@@ -82,6 +83,10 @@ const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children })
   return <CandadoAsistencia>{children}</CandadoAsistencia>;
 };
 
+// Pantallas exclusivas de admin: cualquier otro rol se manda a /ventas.
+const SoloAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) =>
+  obtenerRolDesdeToken() === 'admin' ? children : <Navigate to="/ventas" replace />;
+
 const App: React.FC = () => {
   const routes = useRoutes([
     { path: '/', element: <LoginPage /> },
@@ -140,7 +145,7 @@ const App: React.FC = () => {
     { path: '/recibos', element: <RutaProtegida><RecibosPage /></RutaProtegida> },
     { path: '/checkin', element: <RutaProtegida><CheckinPage /></RutaProtegida> },
     { path: '/gastos', element: <RutaProtegida><GastosPage /></RutaProtegida> },
-    { path: '/equipos_telcel', element: <RutaProtegida><EquiposTelcel /></RutaProtegida> },
+    { path: '/equipos_telcel', element: <RutaProtegida><SoloAdmin><EquiposTelcel /></SoloAdmin></RutaProtegida> },
     { path: '/pantalla-tv', element: <RutaProtegida><PantallaTVPage /></RutaProtegida> },
     { path: '/portabilidades', element: <RutaProtegida><PortabilidadesPage /></RutaProtegida> },
     { path: '/metas', element: <RutaProtegida><MetasPage /></RutaProtegida> },

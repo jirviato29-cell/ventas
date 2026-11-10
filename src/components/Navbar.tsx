@@ -753,10 +753,7 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                 <ListItemText primary="INVENTARIO" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/equipos_telcel")}>
-                <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                <ListItemText primary="EQUIPOS TELCEL" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
+              {/* EQUIPOS TELCEL: solo admin (se quitó de encargado el 2026-11-10) */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                 <ListItemText primary="CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
