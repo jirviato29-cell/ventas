@@ -7,6 +7,7 @@ import {
   TableCell, TableBody, Divider, Chip, IconButton, Tabs, Tab, useMediaQuery,
   CircularProgress, InputAdornment, Checkbox,
   Dialog, DialogTitle, DialogContent, DialogActions,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
@@ -24,6 +25,7 @@ import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '.
 import { useNavigate } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
 import { imprimirTicket } from '../utils/imprimirTicket';
+import { calcularPromos, etiquetaPromo, normClave, PromoActiva } from '../utils/promosBuenFin';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import RankingModulos from '../components/RankingModulos';
@@ -327,6 +329,9 @@ const FormularioVentaMultiple = () => {
   const [editPrecioVenta, setEditPrecioVenta] = useState<Venta | null>(null);
   const [editPrecioValor, setEditPrecioValor] = useState('');
   const [editPrecioError, setEditPrecioError] = useState('');
+  // Promos Buen Fin
+  const [promosActivas, setPromosActivas] = useState<PromoActiva[]>([]);
+  const [promoSel, setPromoSel] = useState<null | '3X2' | '2DA30'>(null);
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -490,6 +495,21 @@ const FormularioVentaMultiple = () => {
     fetchUserAndModulos();
   }, []);
 
+  // Promos Buen Fin: si falla o no hay, queda [] sin mostrar error. Cadenas no aplica.
+  useEffect(() => {
+    if (esCadenas) { setPromosActivas([]); return; }
+    axios.get<PromoActiva[]>(
+      `/api/promociones/activas`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } },
+    )
+      .then((res) => setPromosActivas(
+        Array.isArray(res.data)
+          ? res.data.map((p) => ({ codigo: String(p.codigo).trim().toUpperCase(), nombre: p.nombre, claves: p.claves ?? [] }))
+          : [],
+      ))
+      .catch(() => setPromosActivas([]));
+  }, [esCadenas]);
+
   // Para asesor: auto-cargar fecha de hoy y comisiones
   useEffect(() => {
     if (rol === 'asesor') {
@@ -530,9 +550,59 @@ const FormularioVentaMultiple = () => {
   }, [tabAsesor, nominaCicloIdx, rol]);
 
   // ── Acciones ─────────────────────────────────────────────────────────────
+  // ── Promos Buen Fin (valores derivados, sin hooks) ─────────────────────
+  const promosBoton = (['3X2', '2DA30'] as const).filter((c) => promosActivas.some((p) => p.codigo === c));
+  const fundas30 = promosActivas.find((p) => p.codigo === 'FUNDAS30');
+  const promoParaProducto = (clave: string): string | null => {
+    if (promoSel && promosBoton.includes(promoSel)) return promoSel;
+    if (fundas30 && clave && fundas30.claves.some((c) => normClave(c) === normClave(clave))) return 'FUNDAS30';
+    return null;
+  };
+  const precioInventario = (clave: string): number | null =>
+    productos.find((p) => normClave(p.clave) === normClave(clave))?.precio ?? null;
+  const promoProductoActual = producto ? promoParaProducto(productoClave) : null;
+  const carritoConPromo = carrito.some((p) => !!p.promocion);
+  const vistaPromo = calcularPromos(carrito);
+
+  // Renglones del ticket: con promo usa los renglones ya partidos por precio
+  // (precios del backend si la respuesta coincide); sin promo, igual que siempre.
+  const productosTicket = (respuesta: any) => {
+    if (!carritoConPromo) {
+      return carrito.map(p => ({
+        nombre: (p as any).producto || p.nombre,
+        cantidad: p.cantidad,
+        precio_unitario: p.precio_unitario,
+      }));
+    }
+    const filas = Array.isArray(respuesta) && respuesta.length === vistaPromo.renglones.length ? respuesta : null;
+    return vistaPromo.renglones.map((r, i) => ({
+      nombre: carrito[r.idx].producto || carrito[r.idx].nombre,
+      cantidad: filas ? Number(filas[i].cantidad) : r.cantidad,
+      precio_unitario: filas ? Number(filas[i].precio_unitario) : r.precio_unitario,
+      precio_original: r.precio_original,
+      promocion: r.promocion ? etiquetaPromo(r.promocion) : null,
+    }));
+  };
+
   const agregarAlCarrito = () => {
     if (!producto || precio === null || cantidad <= 0) return;
-    setCarrito([...carrito, { producto, clave: productoClave, cantidad, precio_unitario: precio, id: 0, nombre: '', tipo_producto: 'accesorios' }]);
+    const promo = promoParaProducto(productoClave);
+    let precioFinal = precio;
+    if (promo) {
+      const codigoEnCarrito = carrito.find((p) => p.promocion)?.promocion;
+      if (codigoEnCarrito && codigoEnCarrito !== promo) {
+        setMensaje({ tipo: 'error', texto: `No se pueden combinar promociones: el carrito ya trae ${etiquetaPromo(codigoEnCarrito)} y este producto entraría con ${etiquetaPromo(promo)}.` });
+        return;
+      }
+      const pInv = precioInventario(productoClave);
+      if (pInv === null) {
+        setMensaje({ tipo: 'error', texto: `No se encontró el precio de inventario de ${producto}; no se puede aplicar la promoción.` });
+        return;
+      }
+      precioFinal = pInv;
+      if (metodoPago === 'dividido') { setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' }); }
+    }
+    setCarrito([...carrito, { producto, clave: productoClave, cantidad, precio_unitario: precioFinal, id: 0, nombre: '', tipo_producto: 'accesorios', ...(promo ? { promocion: promo } : {}) }]);
     setProducto('');
     setProductoClave('');
     setCantidad(1);
@@ -543,7 +613,16 @@ const FormularioVentaMultiple = () => {
     if (carrito.length === 0) return;
     const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
 
+    if (vistaPromo.bloquea) {
+      setMensaje({ tipo: 'error', texto: vistaPromo.avisos[0] });
+      return;
+    }
+
     if (metodoPago === 'dividido') {
+      if (carritoConPromo) {
+        setMensaje({ tipo: 'error', texto: 'Las promociones no aplican con pago dividido.' });
+        return;
+      }
       const ef = parseFloat(montoDividido.efectivo);
       const ta = parseFloat(montoDividido.tarjeta);
       if (isNaN(ef) || ef <= 0 || isNaN(ta) || ta <= 0) {
@@ -620,13 +699,10 @@ const FormularioVentaMultiple = () => {
       );
       const folioVenta = res?.data?.[0]?.folio;
       setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
+      const ticketProds = productosTicket(res?.data);
       imprimirTicket({
-        productos: carrito.map(p => ({
-          nombre: (p as any).producto || p.nombre,
-          cantidad: p.cantidad,
-          precio_unitario: p.precio_unitario,
-        })),
-        total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
+        productos: ticketProds,
+        total: ticketProds.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
         metodoPago,
         montoDividido,
         telefono,
@@ -636,6 +712,7 @@ const FormularioVentaMultiple = () => {
         vendedor: localStorage.getItem('usuario') || '',
       });
       setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+      setPromoSel(null);
       setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
     } catch (err: any) {
@@ -1104,6 +1181,23 @@ const FormularioVentaMultiple = () => {
         </Grid>
       )}
 
+      {/* ── Promos Buen Fin (solo si hay 3X2 / 2DA30 activas) ── */}
+      {!esCadenas && tipoVenta === 'accesorio' && promosBoton.length > 0 && (
+        <ToggleButtonGroup
+          exclusive fullWidth size="small" value={promoSel}
+          onChange={(_, v: '3X2' | '2DA30' | null) => setPromoSel(v)}
+          sx={{ mb: 1 }}
+        >
+          {promosBoton.map((c) => (
+            <ToggleButton key={c} value={c}
+              sx={{ textTransform: 'none', fontWeight: 700, py: 0.4, fontSize: 12.5,
+                '&.Mui-selected, &.Mui-selected:hover': { bgcolor: '#fff7ed', color: '#ea580c', borderColor: '#f97316' } }}>
+              {etiquetaPromo(c)}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      )}
+
       {/* ── Accesorio ── */}
       {!esCadenas && tipoVenta === 'accesorio' && (
         <>
@@ -1136,7 +1230,10 @@ const FormularioVentaMultiple = () => {
             renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="dense" />}
           />
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} size="small" margin="dense" sx={{ flex: 1 }} />
+            {promoProductoActual
+              ? <TextField label="Precio Unitario" type="number" value={precioInventario(productoClave) ?? ''} disabled
+                  helperText={`Precio de inventario · ${etiquetaPromo(promoProductoActual)}`} size="small" margin="dense" sx={{ flex: 1 }} />
+              : <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} size="small" margin="dense" sx={{ flex: 1 }} />}
             <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} size="small" margin="dense" sx={{ width: 110 }} />
           </Box>
           <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
@@ -1153,15 +1250,33 @@ const FormularioVentaMultiple = () => {
                   <Typography sx={{ fontSize: 12 }}>No hay productos agregados</Typography>
                 </Box>
               )
-              : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => (
-                  <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
-                    {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
-                  </li>
-                ))}</ul>}
+              : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => {
+                  const original = p.precio_unitario * p.cantidad;
+                  const conDescuento = vistaPromo.renglones
+                    .filter((r) => r.idx === i)
+                    .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+                  return (
+                    <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
+                      {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
+                      {p.promocion && (
+                        <>
+                          <Chip label={etiquetaPromo(p.promocion)} size="small"
+                            sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 700, bgcolor: '#fff7ed', color: '#ea580c' }} />
+                          {conDescuento < original - 0.005
+                            ? <> <s style={{ color: '#94a3b8' }}>${original.toFixed(2)}</s> <b>${conDescuento.toFixed(2)}</b></>
+                            : <> <b>${original.toFixed(2)}</b></>}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}</ul>}
           </Box>
+          {vistaPromo.avisos.map((a) => (
+            <Alert key={a} severity="warning" sx={{ mt: 0.5, py: 0, fontSize: 12.5 }}>{a}</Alert>
+          ))}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 0.5, mt: 0.5 }}>
             <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
-            <Typography sx={{ fontWeight: 800, fontSize: 17 }}>${carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0).toFixed(2)}</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 17 }}>${vistaPromo.total.toFixed(2)}</Typography>
           </Box>
           <Divider sx={{ my: 0.5 }} />
           <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
@@ -1171,7 +1286,9 @@ const FormularioVentaMultiple = () => {
             helperText={carrito.length > 0 && !metodoPago ? 'Selecciona el método de pago' : ''}>
             <MenuItem value="efectivo">Efectivo 💵</MenuItem>
             <MenuItem value="tarjeta">Tarjeta 💳</MenuItem>
-            <MenuItem value="dividido">Dividido 💳💵</MenuItem>
+            <MenuItem value="dividido" disabled={carritoConPromo}>
+              {carritoConPromo ? 'Dividido — No aplica con promociones' : 'Dividido 💳💵'}
+            </MenuItem>
           </TextField>
           {metodoPago === 'dividido' && carrito.length > 0 && (() => {
             const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
@@ -1223,7 +1340,7 @@ const FormularioVentaMultiple = () => {
               </Box>
             );
           })()}
-          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago}
+          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
             sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
             Registrar Venta
           </Button>

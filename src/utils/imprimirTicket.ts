@@ -2,6 +2,8 @@ interface ProductoTicket {
   nombre: string;
   cantidad: number;
   precio_unitario: number;
+  precio_original?: number | null; // si viene con promocion: precio antes del descuento
+  promocion?: string | null;       // etiqueta de la promo para el ticket
 }
 
 interface TicketData {
@@ -84,6 +86,7 @@ export function imprimirTicket(data: TicketData): void {
   ${data.clasificacion ? `<div class="clasif">${data.clasificacion}</div>` : ''}
   ${data.productos.map((p) => `
     <div class="prod-nombre">${p.nombre}</div>
+    ${p.promocion ? `<div class="prod-detalle">${p.cantidad} x <s>${fmt(p.precio_original ?? p.precio_unitario)}</s> ${fmt(p.precio_unitario)} · PROMO ${p.promocion}</div>` : ''}
     <div class="prod-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
   `).join('<div style="height:5px"></div>')}
   <div class="div"></div>

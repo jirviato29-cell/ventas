@@ -162,6 +162,7 @@ export interface ProductoEnVenta {
   cantidad: number;
   precio_unitario: number;
   tipo_producto: "accesorios" | "telefono";
+  promocion?: string;
 }
 
 export interface VentaChip {
