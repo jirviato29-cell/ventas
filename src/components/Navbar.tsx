@@ -744,6 +744,12 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                 <ListItemText primary="Corte" />
               </ListItemButton>
+              {!modulo.toLowerCase().includes("cadena") && (
+                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
+                  <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
+                  <ListItemText primary="¿CÓMO VAN?" primaryTypographyProps={{ fontWeight: 700 }} />
+                </ListItemButton>
+              )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
@@ -774,6 +780,12 @@ const Navbar = () => {
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                   <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                   <ListItemText primary="Corte" />
+                </ListItemButton>
+              )}
+              {!modulo.toLowerCase().includes("cadena") && (
+                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
+                  <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
+                  <ListItemText primary="¿CÓMO VAN?" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               {!modulo.toLowerCase().includes("cadena") && (

@@ -28,7 +28,6 @@ import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcularPromos, etiquetaPromo, normClave, PromoActiva } from '../utils/promosBuenFin';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
-import RankingModulos from '../components/RankingModulos';
 import AvanceMetaDia from '../components/AvanceMetaDia';
 import ContadorMetasCadenas from '../components/ContadorMetasCadenas';
 import MiCheckinSemana from '../components/MiCheckinSemana';
@@ -295,7 +294,6 @@ const FormularioVentaMultiple = () => {
   const nombreModuloActual = (user?.modulo?.nombre || moduloLocal || '').trim().toLowerCase();
   const imeiObligatorio = !user?.is_admin && MODULOS_IMEI_OBLIGATORIO.includes(nombreModuloActual);
   const navigate = useNavigate();
-  const [rankingSel, setRankingSel] = useState<'accesorios' | 'telefonos' | 'planes'>('accesorios');
   // Sube tras cada venta registrada para que AvanceMetaDia recargue al instante.
   const [refrescoAvance, setRefrescoAvance] = useState(0);
   const [totalAccesorios, setTotalAccesorios] = useState(0);
@@ -2171,36 +2169,13 @@ const FormularioVentaMultiple = () => {
               )}
             </>
           ) : (
-            <Grid container spacing={2}>
+            <Grid container spacing={2} justifyContent="center">
               {(rol as string) !== 'admin' && (
                 <Grid item xs={12} md={5}>
                   {formulario}
                 </Grid>
               )}
-              {!esCadenas && (
-                <Grid item xs={12} md={7}>
-                  {/* Selector de ranking: una sola tarjeta, se elige cuál ver */}
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-                    {([
-                      { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
-                      { v: 'telefonos',  t: 'Teléfonos',  icono: <SmartphoneIcon fontSize="small" /> },
-                      { v: 'planes',     t: 'Planes',     icono: <DescriptionIcon fontSize="small" /> },
-                    ] as const).map((op) => (
-                      <Button
-                        key={op.v}
-                        size="small"
-                        startIcon={op.icono}
-                        variant={rankingSel === op.v ? 'contained' : 'outlined'}
-                        onClick={() => setRankingSel(op.v)}
-                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
-                      >
-                        {op.t}
-                      </Button>
-                    ))}
-                  </Box>
-                  <RankingModulos solo={rankingSel} />
-                </Grid>
-              )}
+              {/* El ranking de módulos se movió a la página ¿CÓMO VAN? (/como-van) */}
               <Grid item xs={12}>
                 {false && (
             <>
@@ -3069,38 +3044,15 @@ const FormularioVentaMultiple = () => {
 
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
-    <Grid container spacing={2} sx={{ mt: 0 }}>
-      {/* Columna 1: formulario (3/4) */}
+    <Grid container spacing={2} justifyContent="center" sx={{ mt: 0 }}>
+      {/* Formulario centrado; el ranking vive en ¿CÓMO VAN? */}
       {(rol as string) !== 'admin' && (
         <Grid item xs={12} md={9} sx={{ minWidth: 0 }}>
           {formulario}
         </Grid>
       )}
 
-      {/* Columna 2: un solo panel de ranking con selector (1/4) */}
-      {!esCadenas && (
-        <Grid item xs={12} md={3} sx={{ minWidth: 0 }}>
-          <Box sx={{ display: 'flex', gap: 1, mb: 0.75, flexWrap: 'wrap' }}>
-            {([
-              { v: 'accesorios', t: 'Accesorios', icono: <HeadphonesIcon fontSize="small" /> },
-              { v: 'telefonos',  t: 'Teléfonos',  icono: <SmartphoneIcon fontSize="small" /> },
-              { v: 'planes',     t: 'Planes',     icono: <DescriptionIcon fontSize="small" /> },
-            ] as const).map((op) => (
-              <Button
-                key={op.v}
-                size="small"
-                startIcon={op.icono}
-                variant={rankingSel === op.v ? 'contained' : 'outlined'}
-                onClick={() => setRankingSel(op.v)}
-                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
-              >
-                {op.t}
-              </Button>
-            ))}
-          </Box>
-          <RankingModulos solo={rankingSel} />
-        </Grid>
-      )}
+      {/* El ranking de módulos se movió a la página ¿CÓMO VAN? (/como-van) */}
 
       {/* Fila completa: ventas del día + comisiones (encargado) */}
       {(rol as string) === 'encargado' && (

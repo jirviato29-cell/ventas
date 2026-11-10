@@ -61,6 +61,7 @@ import PortabilidadesPage from './pages/PortabilidadesPage';
 import MetasPage from './pages/MetasPage';
 import MiPerfil from './pages/MiPerfil';
 import OfertasComercialesPage from './pages/OfertasComercialesPage';
+import ComoVanPage from './pages/ComoVanPage';
 import CandadoAsistencia from './components/CandadoAsistencia';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -145,6 +146,7 @@ const App: React.FC = () => {
     { path: '/metas', element: <RutaProtegida><MetasPage /></RutaProtegida> },
     { path: '/mi-perfil', element: <RutaProtegida><MiPerfil /></RutaProtegida> },
     { path: '/ofertas', element: <RutaProtegida><OfertasComercialesPage /></RutaProtegida> },
+    { path: '/como-van', element: <RutaProtegida><ComoVanPage /></RutaProtegida> },
   ]);
 
   return routes;
