@@ -32,6 +32,8 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import PercentIcon from "@mui/icons-material/Percent";
 import TodayIcon from "@mui/icons-material/Today";
 import HistoryIcon from "@mui/icons-material/History";
@@ -480,8 +482,8 @@ const Navbar = () => {
           {/* ── REGISTRAR VENTA: primero del menú (mismos roles que antes) ── */}
           {(rolToken === "admin" || rolToken === "encargado" || rolToken === "asesor") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
-              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
-              <ListItemText primary="Registrar venta" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemIcon sx={drawerIconSx}><PointOfSaleIcon /></ListItemIcon>
+              <ListItemText primary="REGISTRAR VENTA" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
@@ -489,8 +491,8 @@ const Navbar = () => {
           {/* Admin: página /recibos (todos los módulos). Encargado y asesor (no Cadenas): pestaña en /ventas. */}
           {(rolToken === "admin" || rolToken === "encargado" || (rolToken === "asesor" && !modulo.toLowerCase().includes("cadena"))) && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar(rolToken === "admin" ? "/recibos" : "/ventas?tab=tickets")}>
-              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>🧾</span></ListItemIcon>
-              <ListItemText primary="Tickets de venta" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
+              <ListItemText primary="TICKETS DE VENTA" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
@@ -498,14 +500,14 @@ const Navbar = () => {
           {/* El asesor de Cadenas tiene "MIS ACTIVACIONES" en sus pestañas dentro de este menú. */}
           {(rolToken === "encargado" || (rolToken === "asesor" && !modulo.toLowerCase().includes("cadena"))) && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=mis-ventas")}>
-              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>📋</span></ListItemIcon>
-              <ListItemText primary="Mis ventas" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemIcon sx={drawerIconSx}><AssignmentIcon /></ListItemIcon>
+              <ListItemText primary="MIS VENTAS" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
           {rolToken !== "admin" && !modulo.toLowerCase().includes("cadena") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
-              <ListItemText primary="LISTA DE PRECIOS" />
+              <ListItemText primary="LISTA DE PRECIOS" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
@@ -530,21 +532,21 @@ const Navbar = () => {
                 <List disablePadding>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/chips")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                    <ListItemText primary="Chips" />
+                    <ListItemText primary="CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/lista-precios")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                    <ListItemText primary="Lista de Precios" />
+                    <ListItemText primary="LISTA DE PRECIOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   {/* OCULTO para admin - los Cortes los llevan contador y direccion.
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/corte")}>
                     <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
-                    <ListItemText primary="Cortes" />
+                    <ListItemText primary="CORTES" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   */}
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/telefonos")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                    <ListItemText primary="Teléfonos" />
+                    <ListItemText primary="TELÉFONOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                 </List>
               </Collapse>
@@ -560,43 +562,43 @@ const Navbar = () => {
                   {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                    <ListItemText primary="Inventario" />
+                    <ListItemText primary="INVENTARIO" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   */}
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/entrada-mercancia")}>
                     <ListItemIcon sx={drawerIconSx}><MoveToInboxIcon /></ListItemIcon>
-                    <ListItemText primary="Entrada de Mercancía" />
+                    <ListItemText primary="ENTRADA DE MERCANCÍA" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario/control-chips")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                    <ListItemText primary="Control de Chips" />
+                    <ListItemText primary="CONTROL DE CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/equipos_telcel")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                    <ListItemText primary="Equipos Telcel" />
+                    <ListItemText primary="EQUIPOS TELCEL" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/telefonos/alta-imeis")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                    <ListItemText primary="Dar de alta IMEIs" />
+                    <ListItemText primary="DAR DE ALTA IMEIS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/traspasos/admin")}>
                     <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
-                    <ListItemText primary="Traspasos" />
+                    <ListItemText primary="TRASPASOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/kardex")}>
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
-                    <ListItemText primary="Kardex" />
+                    <ListItemText primary="KARDEX" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   {rolToken === "admin" && (
                     <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/conteos-fisicos")}>
                       <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                      <ListItemText primary="Conteos Físicos" />
+                      <ListItemText primary="CONTEOS FÍSICOS" primaryTypographyProps={{ fontWeight: 700 }} />
                     </ListItemButton>
                   )}
                   {rolToken === "admin" && (
                     <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/inventario/productos")}>
                       <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                      <ListItemText primary="Productos" />
+                      <ListItemText primary="PRODUCTOS" primaryTypographyProps={{ fontWeight: 700 }} />
                     </ListItemButton>
                   )}
                 </List>
@@ -612,47 +614,47 @@ const Navbar = () => {
                 <List disablePadding>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/usuarios")}>
                     <ListItemIcon sx={drawerIconSx}><PeopleIcon /></ListItemIcon>
-                    <ListItemText primary="Usuarios" />
+                    <ListItemText primary="USUARIOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/comisiones")}>
                     <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                    <ListItemText primary="Comisiones" />
+                    <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/metas")}>
                     <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
-                    <ListItemText primary="Metas" />
+                    <ListItemText primary="METAS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/metricas")}>
                     <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
-                    <ListItemText primary="Métricas" />
+                    <ListItemText primary="MÉTRICAS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/modulos")}>
                     <ListItemIcon sx={drawerIconSx}><AdminPanelSettingsIcon /></ListItemIcon>
-                    <ListItemText primary="Gestión de Módulos" />
+                    <ListItemText primary="GESTIÓN DE MÓDULOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/tiendas/admin")}>
                     <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                    <ListItemText primary="Tiendas (Cadenas)" />
+                    <ListItemText primary="TIENDAS (CADENAS)" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/cadenas")}>
                     <ListItemIcon sx={drawerIconSx}><StorefrontIcon /></ListItemIcon>
-                    <ListItemText primary="Cadenas" />
+                    <ListItemText primary="CADENAS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/ventas-cadenas")}>
                     <ListItemIcon sx={drawerIconSx}><TrendingUpIcon /></ListItemIcon>
-                    <ListItemText primary="Ventas Cadenas" />
+                    <ListItemText primary="VENTAS CADENAS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/planes")}>
                     <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
-                    <ListItemText primary="Planes" />
+                    <ListItemText primary="PLANES" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/presion")}>
                     <ListItemIcon sx={drawerIconSx}><BoltIcon /></ListItemIcon>
-                    <ListItemText primary="Presión" />
+                    <ListItemText primary="PRESIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/gastos")}>
                     <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>
-                    <ListItemText primary="Gastos" />
+                    <ListItemText primary="GASTOS" primaryTypographyProps={{ fontWeight: 700 }} />
                   </ListItemButton>
                 </List>
               </Collapse>
@@ -698,25 +700,25 @@ const Navbar = () => {
             <>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
-                <ListItemText primary="Cortes" />
+                <ListItemText primary="CORTES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                <ListItemText primary="Comisiones" />
+                <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/traspasos/admin")}>
                 <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
-                <ListItemText primary="Traspasos" />
+                <ListItemText primary="TRASPASOS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* OCULTO - pantalla vieja de inventario, generaba confusion. Usar Entrada de Mercancia / Productos.
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                <ListItemText primary="Inventario" />
+                <ListItemText primary="INVENTARIO" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                <ListItemText primary="Chips" />
+                <ListItemText primary="CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
             </>
           )}
@@ -726,51 +728,51 @@ const Navbar = () => {
             <>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/kardex")}>
                 <ListItemIcon sx={drawerIconSx}><ListAltIcon /></ListItemIcon>
-                <ListItemText primary="Kardex" />
+                <ListItemText primary="KARDEX" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
-                <ListItemText primary="Mi Nómina" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 600 }} />
+                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/traspasos")}>
                 <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
-                <ListItemText primary="Traspasos" />
+                <ListItemText primary="TRASPASOS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                <ListItemText primary="Comisiones" />
+                <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
               {rolToken === "encargado" && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
                   <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
-                  <ListItemText primary="Tasas de comisión" />
+                  <ListItemText primary="TASAS DE COMISIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario/modulo")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                <ListItemText primary="Inventario" />
+                <ListItemText primary="INVENTARIO" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/equipos_telcel")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                <ListItemText primary="Equipos Telcel" />
+                <ListItemText primary="EQUIPOS TELCEL" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                <ListItemText primary="Chips" />
+                <ListItemText primary="CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
-                <ListItemText primary="Corte" />
+                <ListItemText primary="CORTE" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* Antes pestañas de arriba del encargado */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=resumen")}>
                 <ListItemIcon sx={drawerIconSx}><TodayIcon /></ListItemIcon>
-                <ListItemText primary="Resumen del día" />
+                <ListItemText primary="RESUMEN DEL DÍA" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=historial")}>
                 <ListItemIcon sx={drawerIconSx}><HistoryIcon /></ListItemIcon>
-                <ListItemText primary="Historial" />
+                <ListItemText primary="HISTORIAL" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
@@ -790,27 +792,27 @@ const Navbar = () => {
             <>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
-                <ListItemText primary="Mi Nómina" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 600 }} />
+                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                <ListItemText primary="Comisiones" />
+                <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
                   <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
-                  <ListItemText primary="Tasas de comisión" />
+                  <ListItemText primary="TASAS DE COMISIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
-                <ListItemText primary="Chips" />
+                <ListItemText primary="CHIPS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                   <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
-                  <ListItemText primary="Corte" />
+                  <ListItemText primary="CORTE" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               {!modulo.toLowerCase().includes("cadena") && (
@@ -833,7 +835,7 @@ const Navbar = () => {
             <>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/direccion")}>
                 <ListItemIcon sx={{ ...drawerIconSx, color: "#f97316" }}><ContentCutIcon /></ListItemIcon>
-                <ListItemText primary="Cortes" primaryTypographyProps={{ color: "#f97316", fontWeight: 700 }} />
+                <ListItemText primary="CORTES" primaryTypographyProps={{ color: "#f97316", fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/recargas")}>
                 <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
@@ -857,7 +859,7 @@ const Navbar = () => {
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/metas")}>
                 <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
-                <ListItemText primary="Metas" primaryTypographyProps={{ fontWeight: 700 }} />
+                <ListItemText primary="METAS" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
             </>
           )}
@@ -935,7 +937,7 @@ const Navbar = () => {
             onClick={() => { setDrawerOpen(false); cerrarSesion(); }}
           >
             <ListItemIcon sx={{ ...drawerIconSx, color: "#dc2626" }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Cerrar sesión" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="CERRAR SESIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
 
         </List>
