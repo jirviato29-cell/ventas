@@ -1722,9 +1722,14 @@ const FormularioVentaMultiple = () => {
   // ── Diseño nuevo de "Registrar venta" (solo módulos en MODULOS_DISENO_NUEVO) ──
   // Mismos estados, handlers y llamadas al backend que el diseño actual; solo
   // cambia el acomodo. Valores derivados, sin hooks.
+  // /auth/usuarios/me no trae el módulo; el login solo guarda su nombre en
+  // localStorage 'modulo'. El id se busca por nombre en /registro/modulos.
+  const moduloIdActual: number | null = user?.modulo?.id
+    ?? modulos.find((m) => String(m?.nombre ?? '').trim().toLowerCase() === nombreModuloActual)?.id
+    ?? null;
   const disenoNuevo = !esCadenas
     && localStorage.getItem('rol') !== 'admin'
-    && usaDisenoNuevo(user?.modulo?.id);
+    && usaDisenoNuevo(moduloIdActual);
 
   const AZUL = '#1e3a8a';
   const AZUL_OSCURO = '#172554';
