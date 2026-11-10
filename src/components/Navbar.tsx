@@ -276,7 +276,7 @@ const Navbar = () => {
                     <MenuItem component={Link} to="/admin/cadenas">Cadenas</MenuItem>
                     <MenuItem component={Link} to="/admin/planes">Planes</MenuItem>
                     <MenuItem component={Link} to="/admin/presion">Presión</MenuItem>
-                    <MenuItem component={Link} to="/recibos">Recibos</MenuItem>
+                    <MenuItem component={Link} to="/recibos">🧾 Tickets de venta</MenuItem>
                     <MenuItem component={Link} to="/gastos">Gastos</MenuItem>
                   </Menu>
 
@@ -482,7 +482,16 @@ const Navbar = () => {
           {(rolToken === "admin" || rolToken === "encargado" || rolToken === "asesor") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
               <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
-              <ListItemText primary="Registrar venta" />
+              <ListItemText primary="Registrar venta" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── TICKETS DE VENTA (antes Recibos): mismos usuarios que veían Recibos ── */}
+          {/* Admin: página /recibos (todos los módulos). Encargado y asesor (no Cadenas): pestaña en /ventas. */}
+          {(rolToken === "admin" || rolToken === "encargado" || (rolToken === "asesor" && !modulo.toLowerCase().includes("cadena"))) && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar(rolToken === "admin" ? "/recibos" : "/ventas?tab=tickets")}>
+              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>🧾</span></ListItemIcon>
+              <ListItemText primary="Tickets de venta" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
@@ -632,10 +641,6 @@ const Navbar = () => {
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/admin/presion")}>
                     <ListItemIcon sx={drawerIconSx}><BoltIcon /></ListItemIcon>
                     <ListItemText primary="Presión" />
-                  </ListItemButton>
-                  <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/recibos")}>
-                    <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
-                    <ListItemText primary="Recibos" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/gastos")}>
                     <ListItemIcon sx={drawerIconSx}><PaymentsIcon /></ListItemIcon>

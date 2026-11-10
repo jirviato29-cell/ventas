@@ -22,7 +22,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
 import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcularPromos, etiquetaPromo, normClave, PromoActiva } from '../utils/promosBuenFin';
@@ -308,6 +308,14 @@ const FormularioVentaMultiple = () => {
   const [comisionesHoy, setComisionesHoy] = useState<any>(null);
   const [sinCiclo, setSinCiclo] = useState(false);
   const [tabAsesor, setTabAsesor] = useState(0);
+  // Menú lateral: /ventas?tab=tickets abre directo "🧾 TICKETS DE VENTA" (pestaña 1);
+  // /ventas sin parámetro regresa a "💰 REGISTRAR VENTA". El asesor de Cadenas no tiene esa pestaña.
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  useEffect(() => {
+    const tieneTickets = !(rol === 'asesor' && esCadenas);
+    setTabAsesor(tabParam === 'tickets' && tieneTickets ? 1 : 0);
+  }, [tabParam, esCadenas, rol]);
   // Ranura donde se proyectan las pestañas (Ticket, Recibos, ...).
   // Solo el asesor de Cadenas las manda al Drawer; asesor normal y encargado
   // (incluido el encargado de Cadenas) siguen en la franja del navbar.
@@ -2063,7 +2071,7 @@ const FormularioVentaMultiple = () => {
           {!esCadenas && (
             <Tab
               value={1}
-              label="RECIBOS"
+              label="🧾 TICKETS DE VENTA"
               sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
             />
           )}
@@ -3002,7 +3010,7 @@ const FormularioVentaMultiple = () => {
           sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
-          label="RECIBOS"
+          label="🧾 TICKETS DE VENTA"
           sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
