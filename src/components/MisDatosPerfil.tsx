@@ -21,7 +21,7 @@ import axios from "axios";
 
 const API = "/api";
 const AZUL = "#0A2878";
-const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
+export const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` });
 
 interface UsuarioApi {
   id: number;
@@ -216,10 +216,19 @@ interface SelectorProps {
   cargando: boolean;
   seleccion: string | null;
   onSeleccion: (clave: string | null) => void;
+  etiqueta?: string;
+  margenInferior?: number;
 }
 
 // Una opción por persona: "NOMBRE · ID"
-export const SelectorEmpleado: React.FC<SelectorProps> = ({ personas, cargando, seleccion, onSeleccion }) => {
+export const SelectorEmpleado: React.FC<SelectorProps> = ({
+  personas,
+  cargando,
+  seleccion,
+  onSeleccion,
+  etiqueta = "Empleado",
+  margenInferior = 3,
+}) => {
   const persona = personas.find((p) => p.clave === seleccion) ?? null;
   return (
     <Autocomplete
@@ -234,7 +243,7 @@ export const SelectorEmpleado: React.FC<SelectorProps> = ({ personas, cargando, 
       renderInput={(params) => (
         <TextField
           {...params}
-          label="Empleado"
+          label={etiqueta}
           size="small"
           InputProps={{
             ...params.InputProps,
@@ -247,7 +256,7 @@ export const SelectorEmpleado: React.FC<SelectorProps> = ({ personas, cargando, 
           }}
         />
       )}
-      sx={{ maxWidth: 480, mb: 3 }}
+      sx={{ maxWidth: 480, mb: margenInferior }}
     />
   );
 };
