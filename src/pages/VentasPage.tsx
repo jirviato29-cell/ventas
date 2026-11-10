@@ -23,6 +23,7 @@ import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
+import { usaDisenoNuevo } from '../data/modulosDisenoNuevo';
 import { imprimirTicket } from '../utils/imprimirTicket';
 import { calcularPromos, etiquetaPromo, normClave, PromoActiva } from '../utils/promosBuenFin';
 import { calcComision } from '../utils/calcComision';
@@ -1148,52 +1149,9 @@ const FormularioVentaMultiple = () => {
       ? <ContadorMetasCadenas refrescar={refrescoAvance} usuarioId={user?.id} />
       : <AvanceMetaDia refrescar={refrescoAvance} />;
 
-  const formulario = localStorage.getItem('rol') !== 'admin' ? (
-    <Paper sx={{ borderRadius: 2, p: 0, overflow: 'hidden' }}>
-      <Box sx={{ px: 2, py: 0.7 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
-          {esCadenas ? 'Activaciones' : 'Registrar Venta'}
-        </Typography>
-      </Box>
-
-      <Box sx={{ borderTop: '1px solid #eef0f3' }} />
-
-      <Box sx={{ px: 2, pt: 1, pb: 2 }}>
-      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.2 }}>{mensaje.texto}</Alert>}
-
-      {!esCadenas && (
-        <Grid container spacing={0.8} sx={{ mb: 1, mt: 0.5 }}>
-          {[
-            { v: 'accesorio', label: 'Accesorio', icon: <HeadphonesIcon />, color: '#7c3aed' },
-            { v: 'chip',      label: 'Chip',      icon: <SimCardIcon />,    color: '#16a34a' },
-            { v: 'telefono',  label: 'Teléfono',  icon: <SmartphoneIcon />, color: '#0891b2' },
-            { v: 'plan',      label: 'Plan',      icon: <DescriptionIcon />, color: '#d97706' },
-          ].map((t) => (
-            <Grid item xs={3} key={t.v}>
-              <Box
-                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen('telcel'); }}
-                sx={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4,
-                  py: 0.8, px: 0.3, borderRadius: 2, cursor: 'pointer', fontWeight: 600,
-                  fontSize: { xs: 11, sm: 12.5 }, whiteSpace: 'nowrap',
-                  border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e5e7eb',
-                  bgcolor: tipoVenta === t.v ? '#f5f3ff' : '#fff',
-                  color: tipoVenta === t.v ? '#7c3aed' : '#374151',
-                  transition: 'all .15s',
-                  userSelect: 'none',
-                  '&:hover': { borderColor: '#7c3aed' },
-                }}
-              >
-                <Box component="span" sx={{ color: t.color, display: 'flex', '& svg': { fontSize: 18 } }}>{t.icon}</Box>
-                {t.label}
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* ── Promos Buen Fin (solo si hay 3X2 / 2DA30 activas) ── */}
-      {!esCadenas && tipoVenta === 'accesorio' && promosBoton.length > 0 && (
+  // ── Piezas del formulario compartidas por el diseño actual y el nuevo (BO) ──
+  // Solo JSX: la lógica vive en los handlers de arriba; cada diseño las acomoda distinto.
+  const botonesPromo = (
         <ToggleButtonGroup
           exclusive fullWidth size="small" value={promoSel}
           onChange={(_, v: '3X2' | '2DA30' | null) => setPromoSel(v)}
@@ -1207,11 +1165,8 @@ const FormularioVentaMultiple = () => {
             </ToggleButton>
           ))}
         </ToggleButtonGroup>
-      )}
-
-      {/* ── Accesorio ── */}
-      {!esCadenas && tipoVenta === 'accesorio' && (
-        <>
+  );
+  const selectorProducto = (
           <Autocomplete<InventarioGeneral>
             size="small"
             options={productos
@@ -1240,68 +1195,14 @@ const FormularioVentaMultiple = () => {
             }}
             renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="dense" />}
           />
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {promoProductoActual
-              ? <TextField label="Precio Unitario" type="number" value={precioInventario(productoClave) ?? ''} disabled
-                  helperText={`Precio de inventario · ${etiquetaPromo(promoProductoActual)}`} size="small" margin="dense" sx={{ flex: 1 }} />
-              : <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} size="small" margin="dense" sx={{ flex: 1 }} />}
-            <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} size="small" margin="dense" sx={{ width: 110 }} />
-          </Box>
-          <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
-            sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.7, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
-            Agregar al Carrito
-          </Button>
-          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth size="small" margin="dense" />
-          <Box mt={0.5}>
-            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Carrito</Typography>
-            {carrito.length === 0
-              ? (
-                <Box sx={{ textAlign: 'center', py: 0.5, color: '#9ca3af' }}>
-                  <ShoppingBagIcon sx={{ fontSize: 26, color: '#cbd5e1', mb: 0.2 }} />
-                  <Typography sx={{ fontSize: 12 }}>No hay productos agregados</Typography>
-                </Box>
-              )
-              : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => {
-                  const original = p.precio_unitario * p.cantidad;
-                  const conDescuento = vistaPromo.renglones
-                    .filter((r) => r.idx === i)
-                    .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
-                  return (
-                    <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
-                      {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
-                      {p.promocion && (
-                        <>
-                          <Chip label={etiquetaPromo(p.promocion)} size="small"
-                            sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 700, bgcolor: '#fff7ed', color: '#ea580c' }} />
-                          {conDescuento < original - 0.005
-                            ? <> <s style={{ color: '#94a3b8' }}>${original.toFixed(2)}</s> <b>${conDescuento.toFixed(2)}</b></>
-                            : <> <b>${original.toFixed(2)}</b></>}
-                        </>
-                      )}
-                    </li>
-                  );
-                })}</ul>}
-          </Box>
-          {vistaPromo.avisos.map((a) => (
+  );
+  const avisosPromo = 
+          vistaPromo.avisos.map((a) => (
             <Alert key={a} severity="warning" sx={{ mt: 0.5, py: 0, fontSize: 12.5 }}>{a}</Alert>
-          ))}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 0.5, mt: 0.5 }}>
-            <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
-            <Typography sx={{ fontWeight: 800, fontSize: 17 }}>${vistaPromo.total.toFixed(2)}</Typography>
-          </Box>
-          <Divider sx={{ my: 0.5 }} />
-          <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
-            onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-            fullWidth size="small" margin="dense" required
-            error={carrito.length > 0 && !metodoPago}
-            helperText={carrito.length > 0 && !metodoPago ? 'Selecciona el método de pago' : ''}>
-            <MenuItem value="efectivo">Efectivo 💵</MenuItem>
-            <MenuItem value="tarjeta">Tarjeta 💳</MenuItem>
-            <MenuItem value="dividido" disabled={carritoConPromo}>
-              {carritoConPromo ? 'Dividido — No aplica con promociones' : 'Dividido 💳💵'}
-            </MenuItem>
-          </TextField>
-          {metodoPago === 'dividido' && carrito.length > 0 && (() => {
+          ))
+  ;
+  const divididoCarrito = 
+          metodoPago === 'dividido' && carrito.length > 0 && (() => {
             const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
             const efRaw = parseFloat(montoDividido.efectivo);
             const taRaw = parseFloat(montoDividido.tarjeta);
@@ -1350,16 +1251,9 @@ const FormularioVentaMultiple = () => {
                 )}
               </Box>
             );
-          })()}
-          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
-            sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
-            Registrar Venta
-          </Button>
-        </>
-      )}
-
-      {/* ── Chip ── */}
-      {(esCadenas || tipoVenta === 'chip') && (
+          })()
+  ;
+  const bloqueChip = (
         <>
           {!esCadenas && (
             <TextField
@@ -1506,13 +1400,9 @@ const FormularioVentaMultiple = () => {
             sx={{ mt: 2 }}
           >Registrar Venta de Chip</Button>
         </>
-      )}
-
-      {/* ── Teléfono ── */}
-      {!esCadenas && tipoVenta === 'telefono' && (
-        <>
-          {telefonoOrigen !== '' && (
-          <>
+  );
+  const telefonoEquipo = (
+    <>
           <TextField
             label={imeiObligatorio ? "IMEI (obligatorio)" : "IMEI (opcional)"}
             value={telefonoImei}
@@ -1579,14 +1469,10 @@ const FormularioVentaMultiple = () => {
               renderInput={(params) => <TextField {...params} label="Teléfono (marca + modelo)" fullWidth size="small" margin="dense" />}
             />
           )}
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
-              <MenuItem value="Contado">Contado</MenuItem>
-              <MenuItem value="Pajoy">Pajoy</MenuItem>
-              <MenuItem value="Paguitos">Paguitos</MenuItem>
-            </TextField>
-            <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
-          </Box>
+    </>
+  );
+  const telefonoClasifNumero = (
+    <>
           {imeiObligatorio && telefonoEstadoAct && reglaClasificacion(telefonoEstadoAct).leyenda && (
             <Typography variant="body2" sx={{ display: 'block', mt: 1, fontWeight: 600, color: '#1565c0' }}>
               {reglaClasificacion(telefonoEstadoAct).leyenda}
@@ -1620,15 +1506,10 @@ const FormularioVentaMultiple = () => {
             required={imeiObligatorio}
             error={imeiObligatorio && !Chip_casado.trim()}
           />
-          <Divider sx={{ my: 2 }} />
-          <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
-            onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-            fullWidth size="small" margin="dense" required>
-            <MenuItem value="efectivo">💵 Efectivo</MenuItem>
-            <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
-            <MenuItem value="dividido">Dividido 💳💵</MenuItem>
-          </TextField>
-          {metodoPago === 'dividido' && telefonoPrecio && Number(telefonoPrecio) > 0 && (() => {
+    </>
+  );
+  const divididoTelefono = 
+          metodoPago === 'dividido' && telefonoPrecio && Number(telefonoPrecio) > 0 && (() => {
             const total = Number(telefonoPrecio);
             const efRaw = parseFloat(montoDividido.efectivo);
             const taRaw = parseFloat(montoDividido.tarjeta);
@@ -1660,17 +1541,9 @@ const FormularioVentaMultiple = () => {
                 </Typography>
               </Box>
             );
-          })()}
-          <Button variant="contained" color="secondary" fullWidth onClick={registrarVentaTelefono}
-            disabled={!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago} sx={{ mt: 2 }}>
-            Registrar Venta Teléfono
-          </Button>
-          </>
-          )}
-        </>
-      )}
-
-      {!esCadenas && tipoVenta === 'plan' && (
+          })()
+  ;
+  const bloquePlan = (
         <>
           <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField select label="Tipo de plan" value={planTipo}
@@ -1844,10 +1717,499 @@ const FormularioVentaMultiple = () => {
             Registrar Plan
           </Button>
         </>
+  );
+
+  // ── Diseño nuevo de "Registrar venta" (solo módulos en MODULOS_DISENO_NUEVO) ──
+  // Mismos estados, handlers y llamadas al backend que el diseño actual; solo
+  // cambia el acomodo. Valores derivados, sin hooks.
+  const disenoNuevo = !esCadenas
+    && localStorage.getItem('rol') !== 'admin'
+    && usaDisenoNuevo(user?.modulo?.id);
+
+  const AZUL = '#1e3a8a';
+  const AZUL_OSCURO = '#172554';
+  const tituloSeccion = (texto: string) => (
+    <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: '#64748b', mb: 1 }}>{texto}</Typography>
+  );
+  const elegirTipoVenta = (v: 'accesorio' | 'chip' | 'telefono' | 'plan') => {
+    setTipoVenta(v); setMensaje(null); setTelefonoOrigen('telcel');
+  };
+  const botonOpcion = (activo: boolean, disabled = false) => ({
+    flex: 1, minWidth: 0, textTransform: 'none', fontWeight: 700, fontSize: 13, py: 0.8, borderRadius: 2,
+    border: activo ? `2px solid ${AZUL}` : '1px solid #e5e7eb',
+    bgcolor: activo ? '#eff6ff' : '#fff',
+    color: disabled ? '#9ca3af' : activo ? AZUL : '#374151',
+    '&:hover': { bgcolor: activo ? '#eff6ff' : '#f8fafc', borderColor: AZUL },
+  });
+
+  const esVentaCarrito = tipoVenta === 'accesorio';
+  const esVentaTelefono = tipoVenta === 'telefono';
+  const precioMostrado = promoProductoActual ? precioInventario(productoClave) : precio;
+  const totalAgregar = (precioMostrado ?? 0) * (Number.isFinite(cantidad) ? cantidad : 0);
+  const totalCarritoBruto = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
+  const articulosCarrito = carrito.reduce((a, p) => a + (Number.isFinite(p.cantidad) ? p.cantidad : 0), 0);
+  const precioTelefonoNum = Number(telefonoPrecio) || 0;
+  const nombreTelefono = `${telefonoMarca} ${telefonoModelo}`.trim();
+
+  // Mismas validaciones que el diseño actual, en texto para el asesor.
+  const sumaDividida = (m: { efectivo: string; tarjeta: string }, total: number) => {
+    const ef = parseFloat(m.efectivo);
+    const ta = parseFloat(m.tarjeta);
+    return !isNaN(ef) && ef > 0 && !isNaN(ta) && ta > 0 && Math.abs(ef + ta - total) < 0.01;
+  };
+  const ayudaRegistrar = esVentaCarrito
+    ? carrito.length === 0 ? 'Agrega al menos un producto al carrito.'
+      : vistaPromo.bloquea ? vistaPromo.avisos[0]
+      : !metodoPago ? 'Elige cómo paga el cliente.'
+      : metodoPago === 'dividido' && !sumaDividida(montoDividido, totalCarritoBruto) ? 'Efectivo y tarjeta deben sumar el total.'
+      : 'Todo listo: registra la venta.'
+    : !nombreTelefono ? (imeiObligatorio ? 'Captura el IMEI y presiona Enter para cargar el equipo.' : 'Elige el teléfono (marca + modelo).')
+      : !telefonoPrecio ? 'Captura el precio del teléfono.'
+      : !telefonoTipo_venta ? 'Elige el tipo de venta.'
+      : !metodoPago ? 'Elige cómo paga el cliente.'
+      : metodoPago === 'dividido' && !sumaDividida(montoDividido, precioTelefonoNum) ? 'Efectivo y tarjeta deben sumar el precio.'
+      : 'Todo listo: registra la venta.';
+  const puedeRegistrar = esVentaCarrito
+    ? !(carrito.length === 0 || !metodoPago || vistaPromo.bloquea)
+    : !(!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago);
+  const pasoActual = esVentaCarrito
+    ? (carrito.length === 0 ? 1 : !metodoPago ? 2 : 3)
+    : esVentaTelefono
+      ? (!nombreTelefono || !telefonoPrecio ? 1 : !metodoPago || !telefonoTipo_venta ? 2 : 3)
+      : 1;
+
+  const formularioNuevo = disenoNuevo ? (
+    <Box>
+      {/* Encabezado + pasos */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 1.5, mb: 2 }}>
+        <Box>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 24 }, color: '#0f172a', lineHeight: 1.2 }}>Registrar venta</Typography>
+          <Typography sx={{ fontSize: 13.5, color: '#64748b', mt: 0.3 }}>
+            Agrega productos al carrito, captura al cliente y elige cómo paga.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
+          {['Productos', 'Cliente', 'Pago'].map((t, i) => {
+            const n = i + 1;
+            const activo = n === pasoActual;
+            const hecho = n < pasoActual;
+            return (
+              <React.Fragment key={t}>
+                {i > 0 && <Box sx={{ color: '#cbd5e1', fontSize: 12 }}>·</Box>}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                  <Box sx={{
+                    width: 22, height: 22, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                    fontSize: 12, fontWeight: 800,
+                    bgcolor: activo || hecho ? AZUL : '#e2e8f0', color: activo || hecho ? '#fff' : '#64748b',
+                  }}>{n}</Box>
+                  <Typography sx={{ fontSize: 13, fontWeight: activo ? 800 : 600, color: activo ? AZUL : '#64748b' }}>{t}</Typography>
+                </Box>
+              </React.Fragment>
+            );
+          })}
+        </Box>
+      </Box>
+
+      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.5 }}>{mensaje.texto}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.15fr 1fr' }, gap: 2, alignItems: 'start' }}>
+        {/* ── Columna izquierda: ¿qué vendes? ── */}
+        <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
+          {tituloSeccion('1 · ¿QUÉ VENDES?')}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1, mb: 1.5 }}>
+            {([
+              { v: 'accesorio', label: 'Accesorio', sub: 'Al carrito',         icon: <HeadphonesIcon />,  color: '#7c3aed' },
+              { v: 'telefono',  label: 'Teléfono',  sub: 'Con IMEI',           icon: <SmartphoneIcon />,  color: '#0891b2' },
+              { v: 'plan',      label: 'Plan',      sub: 'Plan tarifario',     icon: <DescriptionIcon />, color: '#d97706' },
+              { v: 'chip',      label: 'Chip',      sub: 'Venta por separado', icon: <SimCardIcon />,     color: '#16a34a' },
+            ] as const).map((t) => {
+              const activo = tipoVenta === t.v;
+              return (
+                <Box key={t.v} role="button" tabIndex={0}
+                  onClick={() => elegirTipoVenta(t.v)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegirTipoVenta(t.v); } }}
+                  sx={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 0.3,
+                    py: 1.2, px: 0.5, borderRadius: 2.5, cursor: 'pointer', userSelect: 'none', transition: 'all .15s',
+                    border: activo ? `2px solid ${AZUL}` : '1px solid #e5e7eb',
+                    bgcolor: activo ? '#eff6ff' : '#fff',
+                    '&:hover': { borderColor: AZUL },
+                  }}>
+                  <Box sx={{ color: t.color, display: 'flex', '& svg': { fontSize: 26 } }}>{t.icon}</Box>
+                  <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: activo ? AZUL : '#0f172a' }}>{t.label}</Typography>
+                  <Typography sx={{ fontSize: 11, color: '#64748b', lineHeight: 1.2 }}>{t.sub}</Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {esVentaCarrito && (
+            <>
+              {promosBoton.length > 0 && <Box sx={{ mb: 1.5 }}>{botonesPromo}</Box>}
+              {tituloSeccion('PRODUCTO')}
+              {selectorProducto}
+              <Box sx={{ mt: 1.5, p: 1.5, border: '1px solid #e2e8f0', borderRadius: 2.5, bgcolor: '#f8fafc' }}>
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <Box sx={{ flex: '1 1 140px' }}>
+                    {promoProductoActual
+                      ? <TextField label="Precio unitario" type="number" value={precioInventario(productoClave) ?? ''} disabled fullWidth
+                          helperText={`Precio de inventario · ${etiquetaPromo(promoProductoActual)}`} size="small" sx={{ bgcolor: '#fff' }} />
+                      : <TextField label="Precio unitario" type="number" value={precio ?? ''} fullWidth size="small" sx={{ bgcolor: '#fff' }}
+                          onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} />}
+                  </Box>
+                  <Box sx={{ flex: '0 0 auto' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: 2, bgcolor: '#fff', height: 40 }}>
+                      <IconButton size="small" aria-label="Quitar uno" disabled={!(cantidad > 1)}
+                        onClick={() => setCantidad((c) => Math.max(1, (Number.isFinite(c) ? c : 1) - 1))}>
+                        <Typography sx={{ fontWeight: 800, fontSize: 18, lineHeight: 1, width: 18 }}>−</Typography>
+                      </IconButton>
+                      <Box component="input" type="number" aria-label="Cantidad"
+                        value={Number.isFinite(cantidad) ? cantidad : ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCantidad(parseInt(e.target.value))}
+                        sx={{ width: 44, border: 0, outline: 0, textAlign: 'center', fontWeight: 800, fontSize: 15, bgcolor: 'transparent',
+                          MozAppearance: 'textfield', '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', m: 0 } }} />
+                      <IconButton size="small" aria-label="Agregar uno"
+                        onClick={() => setCantidad((c) => (Number.isFinite(c) ? c : 0) + 1)}>
+                        <Typography sx={{ fontWeight: 800, fontSize: 18, lineHeight: 1, width: 18 }}>+</Typography>
+                      </IconButton>
+                    </Box>
+                    <Typography sx={{ fontSize: 11, color: '#64748b', textAlign: 'center', mt: 0.3 }}>Cantidad</Typography>
+                  </Box>
+                </Box>
+                <Button variant="contained" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || !(cantidad > 0)}
+                  sx={{ mt: 1.5, borderRadius: 2, bgcolor: AZUL, fontWeight: 800, py: 1, textTransform: 'none', fontSize: 14, boxShadow: 'none',
+                    '&:hover': { bgcolor: AZUL_OSCURO, boxShadow: 'none' } }}>
+                  + Agregar al carrito · ${fmt(totalAgregar)}
+                </Button>
+              </Box>
+            </>
+          )}
+
+          {esVentaTelefono && telefonoOrigen !== '' && (
+            <>
+              {tituloSeccion('TELÉFONO')}
+              {telefonoEquipo}
+              <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)}
+                fullWidth size="small" margin="dense" />
+              {telefonoClasifNumero}
+            </>
+          )}
+
+          {tipoVenta === 'chip' && bloqueChip}
+          {tipoVenta === 'plan' && bloquePlan}
+        </Paper>
+
+        {/* ── Columna derecha: carrito + cliente y pago ── */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          {(esVentaCarrito || esVentaTelefono) ? (
+            <>
+              <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {tituloSeccion('2 · CARRITO')}
+                  <Chip size="small" sx={{ fontWeight: 700, mb: 1, bgcolor: '#eff6ff', color: AZUL }}
+                    label={esVentaCarrito
+                      ? `${articulosCarrito} artículo${articulosCarrito === 1 ? '' : 's'}`
+                      : `${nombreTelefono ? 1 : 0} artículo${nombreTelefono ? '' : 's'}`} />
+                </Box>
+
+                {esVentaCarrito && (carrito.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 2, color: '#9ca3af' }}>
+                    <ShoppingBagIcon sx={{ fontSize: 30, color: '#cbd5e1' }} />
+                    <Typography sx={{ fontSize: 12.5 }}>No hay productos agregados</Typography>
+                  </Box>
+                ) : (
+                  <Box>
+                    {carrito.map((p, i) => {
+                      const original = p.precio_unitario * p.cantidad;
+                      const conDescuento = vistaPromo.renglones
+                        .filter((r) => r.idx === i)
+                        .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+                      return (
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.8, borderBottom: '1px solid #f1f5f9' }}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0f172a', wordBreak: 'break-word' }}>
+                              {p.clave ? `${p.clave} - ` : ''}{p.producto}
+                            </Typography>
+                            <Typography component="div" sx={{ fontSize: 12, color: '#64748b' }}>
+                              {p.cantidad} × ${p.precio_unitario.toFixed(2)}
+                              {p.promocion && (
+                                <Chip label={etiquetaPromo(p.promocion)} size="small"
+                                  sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 700, bgcolor: '#fff7ed', color: '#ea580c' }} />
+                              )}
+                            </Typography>
+                          </Box>
+                          <Typography sx={{ fontSize: 13.5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                            {p.promocion && conDescuento < original - 0.005
+                              ? <><s style={{ color: '#94a3b8' }}>${original.toFixed(2)}</s><br /><b>${conDescuento.toFixed(2)}</b></>
+                              : <b>${original.toFixed(2)}</b>}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ))}
+                {esVentaCarrito && avisosPromo}
+
+                {esVentaTelefono && (nombreTelefono ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.8, borderBottom: '1px solid #f1f5f9' }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{nombreTelefono}</Typography>
+                      <Typography sx={{ fontSize: 12, color: '#64748b' }}>1 × ${precioTelefonoNum.toFixed(2)}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: 13.5, fontWeight: 700 }}>${precioTelefonoNum.toFixed(2)}</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 2, color: '#9ca3af' }}>
+                    <SmartphoneIcon sx={{ fontSize: 30, color: '#cbd5e1' }} />
+                    <Typography sx={{ fontSize: 12.5 }}>Captura el teléfono a la izquierda</Typography>
+                  </Box>
+                ))}
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: AZUL_OSCURO, color: '#fff', borderRadius: 2, px: 2, py: 1, mt: 1.2 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>TOTAL</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: 20 }}>
+                    ${(esVentaCarrito ? vistaPromo.total : precioTelefonoNum).toFixed(2)}
+                  </Typography>
+                </Box>
+              </Paper>
+
+              <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
+                {tituloSeccion('3 · CLIENTE Y PAGO')}
+                <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)}
+                  fullWidth size="small" type="tel" />
+
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#334155', mt: 1.5, mb: 0.8 }}>¿Cómo paga el cliente?</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {([
+                    { v: 'efectivo', t: '💵 Efectivo' },
+                    { v: 'tarjeta',  t: '💳 Tarjeta' },
+                    { v: 'dividido', t: '💳💵 Dividido' },
+                  ] as const).map((m) => {
+                    const bloqueado = m.v === 'dividido' && esVentaCarrito && carritoConPromo;
+                    return (
+                      <Button key={m.v} disabled={bloqueado}
+                        onClick={() => { setMetodoPago(m.v); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
+                        sx={botonOpcion(metodoPago === m.v, bloqueado)}>
+                        {m.t}
+                      </Button>
+                    );
+                  })}
+                </Box>
+                {esVentaCarrito && carritoConPromo && (
+                  <Typography sx={{ fontSize: 11.5, color: '#64748b', mt: 0.5 }}>Dividido no aplica con promociones.</Typography>
+                )}
+                {(esVentaCarrito ? divididoCarrito : divididoTelefono) && (
+                  <Box sx={{ mt: 1 }}>{esVentaCarrito ? divididoCarrito : divididoTelefono}</Box>
+                )}
+
+                {esVentaTelefono && (
+                  <>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#334155', mt: 1.5, mb: 0.8 }}>Tipo de venta</Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {([
+                        { v: 'Contado',  t: 'Contado' },
+                        { v: 'Paguitos', t: 'Paguitos' },
+                        { v: 'Pajoy',    t: 'PayJoy' },
+                      ] as const).map((tv) => (
+                        <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonOpcion(telefonoTipo_venta === tv.v)}>
+                          {tv.t}
+                        </Button>
+                      ))}
+                    </Box>
+                  </>
+                )}
+
+                <Button variant="contained" fullWidth disabled={!puedeRegistrar}
+                  onClick={esVentaCarrito ? enviarCarrito : registrarVentaTelefono}
+                  sx={{ mt: 2, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 1.2, fontSize: 15, textTransform: 'uppercase', boxShadow: 'none',
+                    '&:hover': { bgcolor: '#ea580c', boxShadow: 'none' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
+                  Registrar venta
+                </Button>
+                <Typography sx={{ fontSize: 12, color: puedeRegistrar ? '#16a34a' : '#64748b', textAlign: 'center', mt: 0.8 }}>
+                  {ayudaRegistrar}
+                </Typography>
+              </Paper>
+            </>
+          ) : (
+            <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
+              {tituloSeccion(tipoVenta === 'chip' ? 'CHIP · VENTA POR SEPARADO' : 'PLAN · VENTA POR SEPARADO')}
+              <Typography sx={{ fontSize: 13, color: '#475569' }}>
+                {tipoVenta === 'chip' ? 'El chip' : 'El plan'} se registra con su propio botón a la izquierda y no se mezcla con el carrito.
+              </Typography>
+              {carrito.length > 0 && (
+                <Alert severity="info" sx={{ mt: 1.5, fontSize: 12.5 }}>
+                  Tienes {articulosCarrito} artículo{articulosCarrito === 1 ? '' : 's'} en el carrito. Regresa a <b>Accesorio</b> para cobrarlos.
+                </Alert>
+              )}
+            </Paper>
+          )}
+        </Box>
+      </Box>
+
+      {/* Meta / bolsa diaria: debajo de todo en el diseño nuevo */}
+      {franjaAvance && <Box sx={{ mt: 2 }}>{franjaAvance}</Box>}
+    </Box>
+  ) : null;
+
+  const formularioActual = localStorage.getItem('rol') !== 'admin' ? (
+    <Paper sx={{ borderRadius: 2, p: 0, overflow: 'hidden' }}>
+      <Box sx={{ px: 2, py: 0.7 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+          {esCadenas ? 'Activaciones' : 'Registrar Venta'}
+        </Typography>
+      </Box>
+
+      <Box sx={{ borderTop: '1px solid #eef0f3' }} />
+
+      <Box sx={{ px: 2, pt: 1, pb: 2 }}>
+      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.2 }}>{mensaje.texto}</Alert>}
+
+      {!esCadenas && (
+        <Grid container spacing={0.8} sx={{ mb: 1, mt: 0.5 }}>
+          {[
+            { v: 'accesorio', label: 'Accesorio', icon: <HeadphonesIcon />, color: '#7c3aed' },
+            { v: 'chip',      label: 'Chip',      icon: <SimCardIcon />,    color: '#16a34a' },
+            { v: 'telefono',  label: 'Teléfono',  icon: <SmartphoneIcon />, color: '#0891b2' },
+            { v: 'plan',      label: 'Plan',      icon: <DescriptionIcon />, color: '#d97706' },
+          ].map((t) => (
+            <Grid item xs={3} key={t.v}>
+              <Box
+                onClick={() => { setTipoVenta(t.v as any); setMensaje(null); setTelefonoOrigen('telcel'); }}
+                sx={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4,
+                  py: 0.8, px: 0.3, borderRadius: 2, cursor: 'pointer', fontWeight: 600,
+                  fontSize: { xs: 11, sm: 12.5 }, whiteSpace: 'nowrap',
+                  border: tipoVenta === t.v ? '2px solid #7c3aed' : '1px solid #e5e7eb',
+                  bgcolor: tipoVenta === t.v ? '#f5f3ff' : '#fff',
+                  color: tipoVenta === t.v ? '#7c3aed' : '#374151',
+                  transition: 'all .15s',
+                  userSelect: 'none',
+                  '&:hover': { borderColor: '#7c3aed' },
+                }}
+              >
+                <Box component="span" sx={{ color: t.color, display: 'flex', '& svg': { fontSize: 18 } }}>{t.icon}</Box>
+                {t.label}
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
       )}
+
+      {/* ── Promos Buen Fin (solo si hay 3X2 / 2DA30 activas) ── */}
+      {!esCadenas && tipoVenta === 'accesorio' && promosBoton.length > 0 && botonesPromo}
+
+      {/* ── Accesorio ── */}
+      {!esCadenas && tipoVenta === 'accesorio' && (
+        <>
+          {selectorProducto}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {promoProductoActual
+              ? <TextField label="Precio Unitario" type="number" value={precioInventario(productoClave) ?? ''} disabled
+                  helperText={`Precio de inventario · ${etiquetaPromo(promoProductoActual)}`} size="small" margin="dense" sx={{ flex: 1 }} />
+              : <TextField label="Precio Unitario" type="number" value={precio ?? ''} onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} size="small" margin="dense" sx={{ flex: 1 }} />}
+            <TextField label="Cantidad" type="number" value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} size="small" margin="dense" sx={{ width: 110 }} />
+          </Box>
+          <Button variant="outlined" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || cantidad <= 0}
+            sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.7, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
+            Agregar al Carrito
+          </Button>
+          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth size="small" margin="dense" />
+          <Box mt={0.5}>
+            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Carrito</Typography>
+            {carrito.length === 0
+              ? (
+                <Box sx={{ textAlign: 'center', py: 0.5, color: '#9ca3af' }}>
+                  <ShoppingBagIcon sx={{ fontSize: 26, color: '#cbd5e1', mb: 0.2 }} />
+                  <Typography sx={{ fontSize: 12 }}>No hay productos agregados</Typography>
+                </Box>
+              )
+              : <ul style={{ paddingLeft: 16, margin: 0 }}>{carrito.map((p, i) => {
+                  const original = p.precio_unitario * p.cantidad;
+                  const conDescuento = vistaPromo.renglones
+                    .filter((r) => r.idx === i)
+                    .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+                  return (
+                    <li key={i} style={{ marginBottom: 2, fontSize: 13 }}>
+                      {p.clave ? `${p.clave} - ` : ''}{p.producto} — {p.cantidad} × ${p.precio_unitario.toFixed(2)}
+                      {p.promocion && (
+                        <>
+                          <Chip label={etiquetaPromo(p.promocion)} size="small"
+                            sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 700, bgcolor: '#fff7ed', color: '#ea580c' }} />
+                          {conDescuento < original - 0.005
+                            ? <> <s style={{ color: '#94a3b8' }}>${original.toFixed(2)}</s> <b>${conDescuento.toFixed(2)}</b></>
+                            : <> <b>${original.toFixed(2)}</b></>}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}</ul>}
+          </Box>
+          {avisosPromo}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#f8fafc', borderRadius: 2, px: 2, py: 0.5, mt: 0.5 }}>
+            <Typography sx={{ fontWeight: 700, color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>TOTAL</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 17 }}>${vistaPromo.total.toFixed(2)}</Typography>
+          </Box>
+          <Divider sx={{ my: 0.5 }} />
+          <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
+            onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
+            fullWidth size="small" margin="dense" required
+            error={carrito.length > 0 && !metodoPago}
+            helperText={carrito.length > 0 && !metodoPago ? 'Selecciona el método de pago' : ''}>
+            <MenuItem value="efectivo">Efectivo 💵</MenuItem>
+            <MenuItem value="tarjeta">Tarjeta 💳</MenuItem>
+            <MenuItem value="dividido" disabled={carritoConPromo}>
+              {carritoConPromo ? 'Dividido — No aplica con promociones' : 'Dividido 💳💵'}
+            </MenuItem>
+          </TextField>
+          {divididoCarrito}
+          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
+            sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
+            Registrar Venta
+          </Button>
+        </>
+      )}
+
+      {/* ── Chip ── */}
+      {(esCadenas || tipoVenta === 'chip') && bloqueChip}
+
+      {/* ── Teléfono ── */}
+      {!esCadenas && tipoVenta === 'telefono' && (
+        <>
+          {telefonoOrigen !== '' && (
+          <>
+          {telefonoEquipo}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField select label="Tipo" value={telefonoTipo_venta} onChange={(e) => setTelefonoTipo_venta(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }}>
+              <MenuItem value="Contado">Contado</MenuItem>
+              <MenuItem value="Pajoy">Pajoy</MenuItem>
+              <MenuItem value="Paguitos">Paguitos</MenuItem>
+            </TextField>
+            <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)} fullWidth size="small" margin="dense" sx={{ flex: 1 }} />
+          </Box>
+          {telefonoClasifNumero}
+          <Divider sx={{ my: 2 }} />
+          <TextField select label="¿Cómo paga el cliente?" value={metodoPago}
+            onChange={(e) => { setMetodoPago(e.target.value); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
+            fullWidth size="small" margin="dense" required>
+            <MenuItem value="efectivo">💵 Efectivo</MenuItem>
+            <MenuItem value="tarjeta">💳 Tarjeta</MenuItem>
+            <MenuItem value="dividido">Dividido 💳💵</MenuItem>
+          </TextField>
+          {divididoTelefono}
+          <Button variant="contained" color="secondary" fullWidth onClick={registrarVentaTelefono}
+            disabled={!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago} sx={{ mt: 2 }}>
+            Registrar Venta Teléfono
+          </Button>
+          </>
+          )}
+        </>
+      )}
+
+      {!esCadenas && tipoVenta === 'plan' && bloquePlan}
       </Box>
     </Paper>
   ) : null;
+  const formulario = disenoNuevo ? formularioNuevo : formularioActual;
 
   // ════════════════════════════════════════════════════════════════════════════
   // VISTA ADMIN
@@ -2104,7 +2466,7 @@ const FormularioVentaMultiple = () => {
         </Tabs>
         , tabsSlot)}
 
-        {franjaAvance}
+        {!disenoNuevo && franjaAvance}
 
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
@@ -2184,7 +2546,7 @@ const FormularioVentaMultiple = () => {
           ) : (
             <Grid container spacing={2} justifyContent="center">
               {(rol as string) !== 'admin' && (
-                <Grid item xs={12} md={5}>
+                <Grid item xs={12} md={disenoNuevo ? 12 : 5}>
                   {formulario}
                 </Grid>
               )}
@@ -2999,14 +3361,14 @@ const FormularioVentaMultiple = () => {
       {/* ── Pestañas del encargado proyectadas DENTRO del navbar ── */}
       {/* Pestañas de encargado: ahora están en el menú lateral (/ventas?tab=...). */}
 
-    {franjaAvance}
+    {!disenoNuevo && franjaAvance}
 
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
     <Grid container spacing={2} justifyContent="center" sx={{ mt: 0 }}>
       {/* Formulario centrado; el ranking vive en ¿CÓMO VAN? */}
       {(rol as string) !== 'admin' && (
-        <Grid item xs={12} md={9} sx={{ minWidth: 0 }}>
+        <Grid item xs={12} md={disenoNuevo ? 12 : 9} sx={{ minWidth: 0 }}>
           {formulario}
         </Grid>
       )}
