@@ -32,6 +32,9 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import PercentIcon from "@mui/icons-material/Percent";
+import TodayIcon from "@mui/icons-material/Today";
+import HistoryIcon from "@mui/icons-material/History";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
@@ -198,11 +201,7 @@ const Navbar = () => {
             )}
           </Box>
 
-          {/* Ranura donde la página proyecta sus pestañas (Ticket, Recibos, ...) */}
-          <Box
-            id="navbar-tabs-slot"
-            sx={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}
-          />
+          {/* Sin pestañas en la barra superior: toda la navegación vive en el menú lateral (☰). */}
 
           {false && (
             <Box display="flex" alignItems="center" gap={0.5}>
@@ -495,6 +494,15 @@ const Navbar = () => {
             </ListItemButton>
           )}
 
+          {/* ── MIS VENTAS (antes pestaña de arriba): encargado y asesor (no Cadenas) ── */}
+          {/* El asesor de Cadenas tiene "MIS ACTIVACIONES" en sus pestañas dentro de este menú. */}
+          {(rolToken === "encargado" || (rolToken === "asesor" && !modulo.toLowerCase().includes("cadena"))) && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=mis-ventas")}>
+              <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>📋</span></ListItemIcon>
+              <ListItemText primary="Mis ventas" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
           {rolToken !== "admin" && !modulo.toLowerCase().includes("cadena") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/lista-precios")}>
               <ListItemText primary="LISTA DE PRECIOS" />
@@ -732,6 +740,13 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                 <ListItemText primary="Comisiones" />
               </ListItemButton>
+              {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
+              {rolToken === "encargado" && (
+                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
+                  <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
+                  <ListItemText primary="Tasas de comisión" />
+                </ListItemButton>
+              )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario/modulo")}>
                 <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
                 <ListItemText primary="Inventario" />
@@ -747,6 +762,15 @@ const Navbar = () => {
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/corte")}>
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                 <ListItemText primary="Corte" />
+              </ListItemButton>
+              {/* Antes pestañas de arriba del encargado */}
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=resumen")}>
+                <ListItemIcon sx={drawerIconSx}><TodayIcon /></ListItemIcon>
+                <ListItemText primary="Resumen del día" />
+              </ListItemButton>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=historial")}>
+                <ListItemIcon sx={drawerIconSx}><HistoryIcon /></ListItemIcon>
+                <ListItemText primary="Historial" />
               </ListItemButton>
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
@@ -772,6 +796,13 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
                 <ListItemText primary="Comisiones" />
               </ListItemButton>
+              {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
+              {!modulo.toLowerCase().includes("cadena") && (
+                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
+                  <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
+                  <ListItemText primary="Tasas de comisión" />
+                </ListItemButton>
+              )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
                 <ListItemText primary="Chips" />

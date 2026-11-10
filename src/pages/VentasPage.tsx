@@ -13,7 +13,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import SimCardIcon from '@mui/icons-material/SimCard';
 import DescriptionIcon from '@mui/icons-material/Description';
 import HeadphonesIcon from '@mui/icons-material/Headphones';
@@ -211,6 +210,11 @@ function getEstadoChip(c: VentaChip): { label: string; color: string } {
   return                       { label: 'Esperando validación', color: '#64748b' };
 }
 
+// Navegación desde el menú lateral: /ventas?tab=<clave> abre la pestaña interna.
+// Los números difieren entre la vista de asesor y la de encargado.
+const TABS_ASESOR: Record<string, number> = { tickets: 1, 'mis-ventas': 2, tasas: 3 };
+const TABS_ENCARGADO: Record<string, number> = { tickets: 1, 'mis-ventas': 2, tasas: 4, resumen: 5, historial: 6 };
+
 const FormularioVentaMultiple = () => {
   const moduloLocal = localStorage.getItem('modulo') || '';
   const esCadenas = moduloLocal.toLowerCase().includes('cadena');
@@ -308,21 +312,22 @@ const FormularioVentaMultiple = () => {
   const [comisionesHoy, setComisionesHoy] = useState<any>(null);
   const [sinCiclo, setSinCiclo] = useState(false);
   const [tabAsesor, setTabAsesor] = useState(0);
-  // Menú lateral: /ventas?tab=tickets abre directo "🧾 TICKETS DE VENTA" (pestaña 1);
-  // /ventas sin parámetro regresa a "💰 REGISTRAR VENTA". El asesor de Cadenas no tiene esa pestaña.
+  // Menú lateral: /ventas?tab=<clave> abre la pestaña (ver TABS_ASESOR / TABS_ENCARGADO);
+  // /ventas sin parámetro regresa a "💰 REGISTRAR VENTA". El asesor de Cadenas navega con
+  // sus pestañas dentro del menú lateral, no con parámetros.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   useEffect(() => {
-    const tieneTickets = !(rol === 'asesor' && esCadenas);
-    setTabAsesor(tabParam === 'tickets' && tieneTickets ? 1 : 0);
+    if (rol === 'asesor' && esCadenas) { setTabAsesor(0); return; }
+    const mapa = rol === 'asesor' ? TABS_ASESOR : TABS_ENCARGADO;
+    setTabAsesor((tabParam && mapa[tabParam]) || 0);
   }, [tabParam, esCadenas, rol]);
-  // Ranura donde se proyectan las pestañas (Ticket, Recibos, ...).
-  // Solo el asesor de Cadenas las manda al Drawer; asesor normal y encargado
-  // (incluido el encargado de Cadenas) siguen en la franja del navbar.
+  // Ya no hay pestañas en la barra superior: toda la navegación está en el menú lateral.
+  // Solo el asesor de Cadenas proyecta sus pestañas dentro del menú lateral (Drawer).
   const tabsEnDrawer = rol === 'asesor' && esCadenas;
   const [tabsSlot, setTabsSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setTabsSlot(document.getElementById(tabsEnDrawer ? 'drawer-tabs-slot' : 'navbar-tabs-slot'));
+    setTabsSlot(tabsEnDrawer ? document.getElementById('drawer-tabs-slot') : null);
   }, [tabsEnDrawer]);
   const [misVentasFecha, setMisVentasFecha] = useState(HOY);
   const [misVentasData, setMisVentasData] = useState<Venta[]>([]);
@@ -2992,59 +2997,7 @@ const FormularioVentaMultiple = () => {
   return (
     <Box sx={{ mt: 0.25, px: { xs: 1, sm: 2 }, maxWidth: '100%', overflowX: 'hidden' }}>
       {/* ── Pestañas del encargado proyectadas DENTRO del navbar ── */}
-      {tabsSlot && createPortal(
-      <Tabs
-        value={tabAsesor}
-        onChange={(_, v) => { if (v === 3) { navigate('/corte'); return; } setTabAsesor(v); }}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{
-          minHeight: 44,
-          '& .MuiTab-root': { color: '#cbd5e1', minHeight: 44 },
-          '& .MuiTabs-scrollButtons': { color: '#cbd5e1' },
-        }}
-        TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
-      >
-        <Tab
-          label="💰 REGISTRAR VENTA"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        <Tab
-          label="🧾 TICKETS DE VENTA"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        <Tab
-          label="MIS VENTAS"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        <Tab
-          icon={<AssessmentIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
-          iconPosition="start"
-          label="CORTE"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' }, color: '#f97316' }}
-        />
-        <Tab
-          icon={<MonetizationOnIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
-          iconPosition="start"
-          label="COMISIONES"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        <Tab
-          label="RESUMEN DEL DÍA"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        <Tab
-          label="HISTORIAL"
-          sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-        />
-        {!esCadenas && (
-          <Tab
-            label="ASISTENCIA"
-            sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
-          />
-        )}
-      </Tabs>
-      , tabsSlot)}
+      {/* Pestañas de encargado: ahora están en el menú lateral (/ventas?tab=...). */}
 
     {franjaAvance}
 
