@@ -4,7 +4,6 @@ import {
   IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
   Divider, Collapse,
 } from "@mui/material";
-import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import MenuIcon from "@mui/icons-material/Menu";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -218,7 +217,7 @@ const Navbar = () => {
                     open={Boolean(anchorVentas)}
                     onClose={() => closeMenu(setAnchorVentas)}
                   >
-                    <MenuItem component={Link} to="/ventas"><ConfirmationNumberIcon fontSize="small" sx={{ mr: 0.5, verticalAlign: 'middle' }} />Ticket</MenuItem>
+                    <MenuItem component={Link} to="/ventas">💰 Registrar venta</MenuItem>
                     <MenuItem component={Link} to="/ventas/chips">Chips</MenuItem>
                     {/* OCULTO para admin - los Cortes los llevan contador y direccion.
                     <MenuItem component={Link} to="/corte">Cortes</MenuItem>
@@ -322,7 +321,7 @@ const Navbar = () => {
                   <Button sx={navBtnSx} component={Link} to="/kardex">Kardex</Button>
                   <Button sx={{ ...navBtnSx, color: "#a78bfa" }} component={Link} to="/mi-nomina">Mi Nómina</Button>
                   <Button sx={navBtnSx} component={Link} to="/traspasos">Traspasos</Button>
-                  <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
+                  <Button sx={navBtnSx} component={Link} to="/ventas">💰 Registrar venta</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones/usuario">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/inventario/modulo">Inventario</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
@@ -334,7 +333,7 @@ const Navbar = () => {
               {rolToken === "asesor" && (
                 <>
                   <Button sx={{ ...navBtnSx, color: "#a78bfa" }} component={Link} to="/mi-nomina">Mi Nómina</Button>
-                  <Button sx={navBtnSx} component={Link} to="/ventas" startIcon={<ConfirmationNumberIcon />}>Ticket</Button>
+                  <Button sx={navBtnSx} component={Link} to="/ventas">💰 Registrar venta</Button>
                   <Button sx={navBtnSx} component={Link} to="/comisiones/usuario">Comisiones</Button>
                   <Button sx={navBtnSx} component={Link} to="/ventas/chips">Chips</Button>
                   {!modulo.toLowerCase().includes("cadena") && (
@@ -505,8 +504,8 @@ const Navbar = () => {
               <Collapse in={ventasOpen} timeout="auto" unmountOnExit>
                 <List disablePadding>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas")}>
-                    <ListItemIcon sx={drawerIconSx}><ConfirmationNumberIcon /></ListItemIcon>
-                    <ListItemText primary="Ticket" />
+                    <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
+                    <ListItemText primary="Registrar venta" />
                   </ListItemButton>
                   <ListItemButton sx={{ ...drawerItemSx, pl: 6 }} onClick={() => navegar("/ventas/chips")}>
                     <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
@@ -721,8 +720,8 @@ const Navbar = () => {
                 <ListItemText primary="Traspasos" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
-                <ListItemIcon sx={drawerIconSx}><ConfirmationNumberIcon /></ListItemIcon>
-                <ListItemText primary="Ticket" />
+                <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
+                <ListItemText primary="Registrar venta" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
@@ -765,8 +764,8 @@ const Navbar = () => {
                 <ListItemText primary="Mi Nómina" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 600 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
-                <ListItemIcon sx={drawerIconSx}><ConfirmationNumberIcon /></ListItemIcon>
-                <ListItemText primary="Ticket" />
+                <ListItemIcon sx={drawerIconSx}><span style={{ fontSize: 20, lineHeight: 1 }}>💰</span></ListItemIcon>
+                <ListItemText primary="Registrar venta" />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>

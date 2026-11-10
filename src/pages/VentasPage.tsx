@@ -2055,9 +2055,9 @@ const FormularioVentaMultiple = () => {
         >
           <Tab
             value={0}
-            icon={<ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
+            icon={esCadenas ? <ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} /> : undefined}
             iconPosition="start"
-            label={esCadenas ? 'CAPTURA' : 'TICKET'}
+            label={esCadenas ? 'CAPTURA' : '💰 REGISTRAR VENTA'}
             sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
           />
           {!esCadenas && (
@@ -2998,9 +2998,7 @@ const FormularioVentaMultiple = () => {
         TabIndicatorProps={{ style: { backgroundColor: '#f97316' } }}
       >
         <Tab
-          icon={<ConfirmationNumberIcon sx={{ fontSize: { xs: 14, sm: 18 } }} />}
-          iconPosition="start"
-          label="TICKET"
+          label="💰 REGISTRAR VENTA"
           sx={{ fontWeight: 700, minHeight: 36, fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, '&.Mui-selected': { color: '#f97316' } }}
         />
         <Tab
