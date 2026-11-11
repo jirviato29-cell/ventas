@@ -1721,7 +1721,7 @@ const FormularioVentaMultiple = () => {
 
   // ── Diseño nuevo de "Registrar venta" (solo módulos en MODULOS_DISENO_NUEVO) ──
   // Mismos estados, handlers y llamadas al backend que el diseño actual; solo
-  // cambia el acomodo. Valores derivados, sin hooks.
+  // cambia el acomodo y el estilo. Valores derivados, sin hooks.
   // /auth/usuarios/me no trae el módulo; el login solo guarda su nombre en
   // localStorage 'modulo'. El id se busca por nombre en /registro/modulos.
   const moduloIdActual: number | null = user?.modulo?.id
@@ -1731,30 +1731,106 @@ const FormularioVentaMultiple = () => {
     && localStorage.getItem('rol') !== 'admin'
     && usaDisenoNuevo(moduloIdActual);
 
-  const AZUL = '#1e3a8a';
-  const AZUL_OSCURO = '#172554';
-  const tituloSeccion = (texto: string) => (
-    <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: '#64748b', mb: 1 }}>{texto}</Typography>
+  // Paleta y tipografía del diseño nuevo (solo esta sección).
+  const FUENTE_NUEVA = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
+  const NAVY = '#0f1f3d';
+  const AZUL_FOCO = '#2563eb';
+  const NARANJA = '#f97316';
+  const GRIS_ETIQUETA = '#5b6b85';
+  const BORDE_CAMPO = '#e1e6f0';
+  const FONDO_CAMPO = '#f8f9fc';
+  const TIPOS_NUEVO = {
+    accesorio: { label: 'Accesorio', sub: 'Al carrito',         color: '#7c3aed', fondo: '#ede9fe', borde: '#c4b5fd' },
+    telefono:  { label: 'Teléfono',  sub: 'Con IMEI',           color: '#0891b2', fondo: '#cffafe', borde: '#67e8f9' },
+    plan:      { label: 'Plan',      sub: 'Plan tarifario',     color: '#ea580c', fondo: '#ffedd5', borde: '#fdba74' },
+    chip:      { label: 'Chip',      sub: 'Venta por separado', color: '#16a34a', fondo: '#dcfce7', borde: '#86efac' },
+  } as const;
+  const ORDEN_TIPOS = ['accesorio', 'telefono', 'plan', 'chip'] as const;
+
+  // Íconos de línea (stroke 2.2) por tipo de venta.
+  const iconoTipo = (v: keyof typeof TIPOS_NUEVO, size = 22) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {v === 'accesorio' && (<>
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" />
+        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+      </>)}
+      {v === 'telefono' && (<>
+        <rect x="5" y="2" width="14" height="20" rx="2.5" />
+        <path d="M11 18h2" />
+      </>)}
+      {v === 'plan' && <path d="M4 20v-3M9.33 20v-7M14.67 20V9M20 20V4" />}
+      {v === 'chip' && (<>
+        <path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+        <rect x="8" y="11" width="8" height="7" rx="1.2" />
+      </>)}
+    </svg>
   );
-  const elegirTipoVenta = (v: 'accesorio' | 'chip' | 'telefono' | 'plan') => {
-    setTipoVenta(v); setMensaje(null); setTelefonoOrigen('telcel');
+
+  const tarjetaSx = {
+    bgcolor: '#fff', borderRadius: '24px', p: { xs: '22px', sm: '24px' },
+    boxShadow: '0 2px 12px rgba(15,27,51,.06)', minWidth: 0,
   };
-  const botonOpcion = (activo: boolean, disabled = false) => ({
-    flex: 1, minWidth: 0, textTransform: 'none', fontWeight: 700, fontSize: 13, py: 0.8, borderRadius: 2,
-    border: activo ? `2px solid ${AZUL}` : '1px solid #e5e7eb',
-    bgcolor: activo ? '#eff6ff' : '#fff',
-    color: disabled ? '#9ca3af' : activo ? AZUL : '#374151',
-    '&:hover': { bgcolor: activo ? '#eff6ff' : '#f8fafc', borderColor: AZUL },
+  const tituloTarjeta = (texto: string) => (
+    <Typography sx={{ fontSize: 15, fontWeight: 800, color: NAVY }}>{texto}</Typography>
+  );
+  const etiqueta = (texto: string) => (
+    <Typography sx={{ fontSize: 13, fontWeight: 700, color: GRIS_ETIQUETA, mb: '6px' }}>{texto}</Typography>
+  );
+  const aviso = (texto: React.ReactNode, key?: string) => (
+    <Box key={key} sx={{ bgcolor: '#fff7ed', color: '#9a3412', borderRadius: '14px', px: '14px', py: '12px', fontSize: 13, fontWeight: 600, mt: 1.5 }}>
+      {texto}
+    </Box>
+  );
+  const botonSegmento = (activo: boolean, color = AZUL_FOCO) => ({
+    height: 44, minWidth: 0, borderRadius: '12px', border: 0, fontSize: 14, fontWeight: 800, textTransform: 'none',
+    bgcolor: activo ? color : 'transparent', color: activo ? '#fff' : '#334155',
+    boxShadow: activo ? `0 6px 14px -6px ${color}` : 'none',
+    '&:hover': { bgcolor: activo ? color : '#e8ecf4' },
+    '&.Mui-disabled': { color: '#b4bccb', bgcolor: 'transparent' },
   });
+  const segmentado = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', bgcolor: '#f3f5fb', borderRadius: '16px', p: '5px' };
+  const botonGrande = (habilitado: boolean, color: string, alto: number, fuente: number) => ({
+    height: alto, borderRadius: '999px', fontSize: fuente, fontWeight: 800, textTransform: 'none',
+    bgcolor: color, color: '#fff', boxShadow: habilitado ? `0 10px 22px -10px ${color}` : 'none',
+    '&:hover': { bgcolor: color, filter: 'brightness(.95)', boxShadow: `0 10px 22px -10px ${color}` },
+    '&.Mui-disabled': { bgcolor: '#eceff4', color: '#9aa5b8', boxShadow: 'none' },
+  });
+  // Estilo de campos MUI dentro de la sección: etiqueta arriba, 52px, radio 16.
+  const camposSx = {
+    '& .MuiFormLabel-root.MuiInputLabel-root': {
+      position: 'relative', transform: 'none', maxWidth: 'none', whiteSpace: 'normal',
+      fontSize: 13, fontWeight: 700, color: GRIS_ETIQUETA, mb: '6px', lineHeight: 1.3,
+    },
+    '& .MuiFormLabel-root.MuiInputLabel-root.Mui-error': { color: '#dc2626' },
+    '& .MuiOutlinedInput-root': {
+      minHeight: 52, borderRadius: '16px', bgcolor: FONDO_CAMPO, fontSize: 15, fontWeight: 600,
+      transition: 'background-color .15s',
+    },
+    '& .MuiOutlinedInput-root.Mui-focused': { bgcolor: '#fff' },
+    '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': { top: 0, border: `1.5px solid ${BORDE_CAMPO}`, borderRadius: '16px' },
+    '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#cbd3e1' },
+    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: AZUL_FOCO, borderWidth: '1.5px' },
+    '& .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline': { borderColor: '#dc2626' },
+    '& .MuiOutlinedInput-root.Mui-disabled': { bgcolor: '#eef1f6' },
+    '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+    '& .MuiOutlinedInput-input': { outline: 'none' },
+    '& .MuiSelect-icon': { right: 12, color: GRIS_ETIQUETA },
+    '& .MuiFormHelperText-root': { fontWeight: 600, mx: 0.5 },
+  };
 
   const esVentaCarrito = tipoVenta === 'accesorio';
   const esVentaTelefono = tipoVenta === 'telefono';
+  const colorTipoActual = TIPOS_NUEVO[tipoVenta].color;
   const precioMostrado = promoProductoActual ? precioInventario(productoClave) : precio;
   const totalAgregar = (precioMostrado ?? 0) * (Number.isFinite(cantidad) ? cantidad : 0);
   const totalCarritoBruto = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
   const articulosCarrito = carrito.reduce((a, p) => a + (Number.isFinite(p.cantidad) ? p.cantidad : 0), 0);
   const precioTelefonoNum = Number(telefonoPrecio) || 0;
   const nombreTelefono = `${telefonoMarca} ${telefonoModelo}`.trim();
+  const articulosMostrados = esVentaCarrito ? articulosCarrito : (nombreTelefono ? 1 : 0);
+  const puedeAgregar = !!producto && precio !== null && cantidad > 0;
 
   // Mismas validaciones que el diseño actual, en texto para el asesor.
   const sumaDividida = (m: { efectivo: string; tarjeta: string }, total: number) => {
@@ -1777,282 +1853,284 @@ const FormularioVentaMultiple = () => {
   const puedeRegistrar = esVentaCarrito
     ? !(carrito.length === 0 || !metodoPago || vistaPromo.bloquea)
     : !(!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago);
-  const pasoActual = esVentaCarrito
-    ? (carrito.length === 0 ? 1 : !metodoPago ? 2 : 3)
-    : esVentaTelefono
-      ? (!nombreTelefono || !telefonoPrecio ? 1 : !metodoPago || !telefonoTipo_venta ? 2 : 3)
-      : 1;
 
   const formularioNuevo = disenoNuevo ? (
-    <Box>
-      {/* Encabezado + pasos */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 1.5, mb: 2 }}>
-        <Box>
-          <Typography sx={{ fontWeight: 800, fontSize: { xs: 20, sm: 24 }, color: '#0f172a', lineHeight: 1.2 }}>Registrar venta</Typography>
-          <Typography sx={{ fontSize: 13.5, color: '#64748b', mt: 0.3 }}>
-            Agrega productos al carrito, captura al cliente y elige cómo paga.
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
-          {['Productos', 'Cliente', 'Pago'].map((t, i) => {
-            const n = i + 1;
-            const activo = n === pasoActual;
-            const hecho = n < pasoActual;
-            return (
-              <React.Fragment key={t}>
-                {i > 0 && <Box sx={{ color: '#cbd5e1', fontSize: 12 }}>·</Box>}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                  <Box sx={{
-                    width: 22, height: 22, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                    fontSize: 12, fontWeight: 800,
-                    bgcolor: activo || hecho ? AZUL : '#e2e8f0', color: activo || hecho ? '#fff' : '#64748b',
-                  }}>{n}</Box>
-                  <Typography sx={{ fontSize: 13, fontWeight: activo ? 800 : 600, color: activo ? AZUL : '#64748b' }}>{t}</Typography>
-                </Box>
-              </React.Fragment>
-            );
-          })}
+    <Box sx={{
+      fontFamily: FUENTE_NUEVA, bgcolor: '#f3f5fb', borderRadius: '28px', p: { xs: '14px', sm: '22px' },
+      '& .MuiTypography-root, & .MuiButtonBase-root, & .MuiInputBase-root, & .MuiFormLabel-root, & .MuiFormHelperText-root, & .MuiAlert-message, & .MuiChip-label, & .MuiFormControlLabel-label': { fontFamily: 'inherit' },
+      ...camposSx,
+    }}>
+      {/* Encabezado */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: '18px' }}>
+        <Typography sx={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', whiteSpace: 'nowrap', color: NAVY, lineHeight: 1.15 }}>
+          Registrar venta
+        </Typography>
+        <Box component="span" sx={{ bgcolor: '#fff1e6', color: '#ea580c', fontSize: 12, fontWeight: 800, px: '12px', py: '5px', borderRadius: '999px' }}>
+          Nueva
         </Box>
       </Box>
 
-      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: 1.5 }}>{mensaje.texto}</Alert>}
+      {mensaje && <Alert severity={mensaje.tipo} sx={{ mb: '18px', borderRadius: '14px' }}>{mensaje.texto}</Alert>}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.15fr 1fr' }, gap: 2, alignItems: 'start' }}>
-        {/* ── Columna izquierda: ¿qué vendes? ── */}
-        <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
-          {tituloSeccion('1 · ¿QUÉ VENDES?')}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1, mb: 1.5 }}>
-            {([
-              { v: 'accesorio', label: 'Accesorio', sub: 'Al carrito',         icon: <HeadphonesIcon />,  color: '#7c3aed' },
-              { v: 'telefono',  label: 'Teléfono',  sub: 'Con IMEI',           icon: <SmartphoneIcon />,  color: '#0891b2' },
-              { v: 'plan',      label: 'Plan',      sub: 'Plan tarifario',     icon: <DescriptionIcon />, color: '#d97706' },
-              { v: 'chip',      label: 'Chip',      sub: 'Venta por separado', icon: <SimCardIcon />,     color: '#16a34a' },
-            ] as const).map((t) => {
-              const activo = tipoVenta === t.v;
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'flex-start' }}>
+        {/* ── Izquierda: ¿qué vendes? ── */}
+        <Box sx={{ ...tarjetaSx, flex: '1 1 560px' }}>
+          {tituloTarjeta('¿Qué vendes?')}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', mt: 1.5 }}>
+            {ORDEN_TIPOS.map((v) => {
+              const t = TIPOS_NUEVO[v];
+              const activo = tipoVenta === v;
+              const elegir = () => { setTipoVenta(v); setMensaje(null); setTelefonoOrigen('telcel'); };
               return (
-                <Box key={t.v} role="button" tabIndex={0}
-                  onClick={() => elegirTipoVenta(t.v)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegirTipoVenta(t.v); } }}
+                <Box key={v} role="button" tabIndex={0} aria-pressed={activo}
+                  onClick={elegir}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir(); } }}
                   sx={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 0.3,
-                    py: 1.2, px: 0.5, borderRadius: 2.5, cursor: 'pointer', userSelect: 'none', transition: 'all .15s',
-                    border: activo ? `2px solid ${AZUL}` : '1px solid #e5e7eb',
-                    bgcolor: activo ? '#eff6ff' : '#fff',
-                    '&:hover': { borderColor: AZUL },
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '14px', textAlign: 'left',
+                    p: '16px', borderRadius: '20px', border: '2px solid', cursor: 'pointer', userSelect: 'none',
+                    transition: 'transform .15s, box-shadow .15s, background-color .15s',
+                    bgcolor: activo ? t.color : t.fondo,
+                    borderColor: activo ? t.color : t.borde,
+                    transform: activo ? 'translateY(-2px)' : 'none',
+                    boxShadow: activo ? `0 10px 22px -8px ${t.color}` : 'none',
+                    outline: 'none',
+                    '&:focus-visible': { boxShadow: `0 0 0 3px ${AZUL_FOCO}55` },
                   }}>
-                  <Box sx={{ color: t.color, display: 'flex', '& svg': { fontSize: 26 } }}>{t.icon}</Box>
-                  <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: activo ? AZUL : '#0f172a' }}>{t.label}</Typography>
-                  <Typography sx={{ fontSize: 11, color: '#64748b', lineHeight: 1.2 }}>{t.sub}</Typography>
+                  <Box sx={{
+                    width: 42, height: 42, borderRadius: '14px', display: 'grid', placeItems: 'center',
+                    bgcolor: activo ? '#fff' : t.color, color: activo ? t.color : '#fff',
+                  }}>{iconoTipo(v)}</Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 16, fontWeight: 800, color: activo ? '#fff' : t.color, lineHeight: 1.2 }}>{t.label}</Typography>
+                    <Typography sx={{ fontSize: 12, color: activo ? 'rgba(255,255,255,.85)' : '#334155', mt: '2px' }}>{t.sub}</Typography>
+                  </Box>
                 </Box>
               );
             })}
           </Box>
 
           {esVentaCarrito && (
-            <>
-              {promosBoton.length > 0 && <Box sx={{ mb: 1.5 }}>{botonesPromo}</Box>}
-              {tituloSeccion('PRODUCTO')}
+            <Box sx={{ mt: 2.5 }}>
+              {promosBoton.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                  {promosBoton.map((c) => {
+                    const activa = promoSel === c;
+                    return (
+                      <Box key={c} component="button" type="button" aria-pressed={activa}
+                        onClick={() => setPromoSel(activa ? null : c)}
+                        sx={{
+                          fontFamily: 'inherit', cursor: 'pointer', borderRadius: '999px', px: '16px', py: '8px',
+                          fontSize: 13, fontWeight: 800, color: NAVY,
+                          border: `1.5px solid ${activa ? '#fbbf24' : BORDE_CAMPO}`, bgcolor: activa ? '#fbbf24' : '#fff',
+                        }}>
+                        {etiquetaPromo(c)}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
               {selectorProducto}
-              <Box sx={{ mt: 1.5, p: 1.5, border: '1px solid #e2e8f0', borderRadius: 2.5, bgcolor: '#f8fafc' }}>
-                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  <Box sx={{ flex: '1 1 140px' }}>
-                    {promoProductoActual
-                      ? <TextField label="Precio unitario" type="number" value={precioInventario(productoClave) ?? ''} disabled fullWidth
-                          helperText={`Precio de inventario · ${etiquetaPromo(promoProductoActual)}`} size="small" sx={{ bgcolor: '#fff' }} />
-                      : <TextField label="Precio unitario" type="number" value={precio ?? ''} fullWidth size="small" sx={{ bgcolor: '#fff' }}
-                          onChange={(e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))} />}
-                  </Box>
-                  <Box sx={{ flex: '0 0 auto' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: 2, bgcolor: '#fff', height: 40 }}>
-                      <IconButton size="small" aria-label="Quitar uno" disabled={!(cantidad > 1)}
-                        onClick={() => setCantidad((c) => Math.max(1, (Number.isFinite(c) ? c : 1) - 1))}>
-                        <Typography sx={{ fontWeight: 800, fontSize: 18, lineHeight: 1, width: 18 }}>−</Typography>
-                      </IconButton>
-                      <Box component="input" type="number" aria-label="Cantidad"
-                        value={Number.isFinite(cantidad) ? cantidad : ''}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCantidad(parseInt(e.target.value))}
-                        sx={{ width: 44, border: 0, outline: 0, textAlign: 'center', fontWeight: 800, fontSize: 15, bgcolor: 'transparent',
-                          MozAppearance: 'textfield', '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', m: 0 } }} />
-                      <IconButton size="small" aria-label="Agregar uno"
-                        onClick={() => setCantidad((c) => (Number.isFinite(c) ? c : 0) + 1)}>
-                        <Typography sx={{ fontWeight: 800, fontSize: 18, lineHeight: 1, width: 18 }}>+</Typography>
-                      </IconButton>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', mt: 1 }}>
+                <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <TextField label="Precio unitario" type="number" fullWidth size="small" margin="dense"
+                    value={promoProductoActual ? (precioInventario(productoClave) ?? '') : (precio ?? '')}
+                    disabled={!!promoProductoActual}
+                    helperText={promoProductoActual ? `Precio de inventario · ${etiquetaPromo(promoProductoActual)}` : undefined}
+                    onChange={promoProductoActual ? undefined : (e) => setPrecio(e.target.value === '' ? null : Number(e.target.value))}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
+                    sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
+                </Box>
+                <Box sx={{ flex: '0 1 auto', mt: '8px' }}>
+                  {etiqueta('Cantidad')}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', height: 52, boxSizing: 'border-box', px: '5px', borderRadius: '16px', bgcolor: FONDO_CAMPO, border: `1.5px solid ${BORDE_CAMPO}` }}>
+                    <Box component="button" type="button" aria-label="Quitar uno" disabled={!(cantidad > 1)}
+                      onClick={() => setCantidad((c) => Math.max(1, (Number.isFinite(c) ? c : 1) - 1))}
+                      sx={{ width: 40, height: 40, borderRadius: '12px', border: 0, bgcolor: '#fff', color: NAVY, fontSize: 20, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 1px 3px rgba(15,27,51,.08)', '&:disabled': { opacity: 0.45, cursor: 'default' } }}>
+                      −
                     </Box>
-                    <Typography sx={{ fontSize: 11, color: '#64748b', textAlign: 'center', mt: 0.3 }}>Cantidad</Typography>
+                    <Box component="input" type="number" aria-label="Cantidad"
+                      value={Number.isFinite(cantidad) ? cantidad : ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCantidad(parseInt(e.target.value))}
+                      sx={{ width: 48, border: 0, outline: 0, textAlign: 'center', fontFamily: 'inherit', fontWeight: 800, fontSize: 17, color: NAVY, bgcolor: 'transparent',
+                        MozAppearance: 'textfield', '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { WebkitAppearance: 'none', m: 0 } }} />
+                    <Box component="button" type="button" aria-label="Agregar uno"
+                      onClick={() => setCantidad((c) => (Number.isFinite(c) ? c : 0) + 1)}
+                      sx={{ width: 40, height: 40, borderRadius: '12px', border: 0, bgcolor: NAVY, color: '#fff', fontSize: 20, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      +
+                    </Box>
                   </Box>
                 </Box>
-                <Button variant="contained" fullWidth onClick={agregarAlCarrito} disabled={!producto || precio === null || !(cantidad > 0)}
-                  sx={{ mt: 1.5, borderRadius: 2, bgcolor: AZUL, fontWeight: 800, py: 1, textTransform: 'none', fontSize: 14, boxShadow: 'none',
-                    '&:hover': { bgcolor: AZUL_OSCURO, boxShadow: 'none' } }}>
-                  + Agregar al carrito · ${fmt(totalAgregar)}
-                </Button>
               </Box>
-            </>
+              <Button fullWidth onClick={agregarAlCarrito} disabled={!puedeAgregar}
+                sx={{ ...botonGrande(puedeAgregar, colorTipoActual, 56, 16), mt: 2.5 }}>
+                Agregar al carrito · ${fmt(totalAgregar)}
+              </Button>
+            </Box>
           )}
 
           {esVentaTelefono && telefonoOrigen !== '' && (
-            <>
-              {tituloSeccion('TELÉFONO')}
+            <Box sx={{ mt: 2 }}>
               {telefonoEquipo}
               <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)}
-                fullWidth size="small" margin="dense" />
+                fullWidth size="small" margin="dense"
+                InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
+                sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
               {telefonoClasifNumero}
-            </>
+              {imeiObligatorio && !telefonoImei.trim() && aviso('El IMEI es obligatorio en este módulo: captúralo y presiona Enter para cargar el equipo.')}
+            </Box>
           )}
 
-          {tipoVenta === 'chip' && bloqueChip}
-          {tipoVenta === 'plan' && bloquePlan}
-        </Paper>
+          {tipoVenta === 'chip' && <Box sx={{ mt: 2 }}>{bloqueChip}</Box>}
+          {tipoVenta === 'plan' && <Box sx={{ mt: 2 }}>{bloquePlan}</Box>}
+        </Box>
 
-        {/* ── Columna derecha: carrito + cliente y pago ── */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        {/* ── Derecha: carrito + cliente y pago ── */}
+        <Box sx={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {(esVentaCarrito || esVentaTelefono) ? (
             <>
-              <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {tituloSeccion('2 · CARRITO')}
-                  <Chip size="small" sx={{ fontWeight: 700, mb: 1, bgcolor: '#eff6ff', color: AZUL }}
-                    label={esVentaCarrito
-                      ? `${articulosCarrito} artículo${articulosCarrito === 1 ? '' : 's'}`
-                      : `${nombreTelefono ? 1 : 0} artículo${nombreTelefono ? '' : 's'}`} />
+              <Box sx={tarjetaSx}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
+                  {tituloTarjeta('Carrito')}
+                  <Box component="span" sx={{ bgcolor: NAVY, color: '#fff', fontSize: 12, fontWeight: 800, px: '10px', py: '4px', borderRadius: '999px', whiteSpace: 'nowrap' }}>
+                    {articulosMostrados} artículo{articulosMostrados === 1 ? '' : 's'}
+                  </Box>
                 </Box>
 
-                {esVentaCarrito && (carrito.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', py: 2, color: '#9ca3af' }}>
-                    <ShoppingBagIcon sx={{ fontSize: 30, color: '#cbd5e1' }} />
-                    <Typography sx={{ fontSize: 12.5 }}>No hay productos agregados</Typography>
+                {articulosMostrados === 0 ? (
+                  <Box sx={{ border: `2px dashed ${BORDE_CAMPO}`, borderRadius: '18px', textAlign: 'center', py: 3, px: 2 }}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: NAVY }}>Tu carrito está vacío</Typography>
+                    <Typography sx={{ fontSize: 12.5, color: GRIS_ETIQUETA, mt: '2px' }}>Elige qué vendes y agrégalo</Typography>
                   </Box>
                 ) : (
-                  <Box>
-                    {carrito.map((p, i) => {
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {esVentaCarrito && carrito.map((p, i) => {
                       const original = p.precio_unitario * p.cantidad;
                       const conDescuento = vistaPromo.renglones
                         .filter((r) => r.idx === i)
                         .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
                       return (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.8, borderBottom: '1px solid #f1f5f9' }}>
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.2, bgcolor: FONDO_CAMPO, borderRadius: '16px', p: '10px' }}>
+                          <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO.accesorio.color, color: '#fff' }}>
+                            {iconoTipo('accesorio', 19)}
+                          </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0f172a', wordBreak: 'break-word' }}>
+                            <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: NAVY, wordBreak: 'break-word', lineHeight: 1.25 }}>
                               {p.clave ? `${p.clave} - ` : ''}{p.producto}
                             </Typography>
-                            <Typography component="div" sx={{ fontSize: 12, color: '#64748b' }}>
+                            <Typography component="div" sx={{ fontSize: 12, color: GRIS_ETIQUETA }}>
                               {p.cantidad} × ${p.precio_unitario.toFixed(2)}
                               {p.promocion && (
                                 <Chip label={etiquetaPromo(p.promocion)} size="small"
-                                  sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 700, bgcolor: '#fff7ed', color: '#ea580c' }} />
+                                  sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 800, bgcolor: '#fef3c7', color: '#92400e' }} />
                               )}
                             </Typography>
                           </Box>
-                          <Typography sx={{ fontSize: 13.5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                          <Typography component="div" sx={{ fontSize: 14, whiteSpace: 'nowrap', textAlign: 'right', color: NAVY }}>
                             {p.promocion && conDescuento < original - 0.005
-                              ? <><s style={{ color: '#94a3b8' }}>${original.toFixed(2)}</s><br /><b>${conDescuento.toFixed(2)}</b></>
+                              ? <><s style={{ color: '#94a3b8', fontSize: 12 }}>${original.toFixed(2)}</s><br /><b>${conDescuento.toFixed(2)}</b></>
                               : <b>${original.toFixed(2)}</b>}
                           </Typography>
+                          <Box component="button" type="button" aria-label="Quitar del carrito"
+                            onClick={() => setCarrito(carrito.filter((_, j) => j !== i))}
+                            sx={{ width: 30, height: 30, flexShrink: 0, borderRadius: '10px', border: 0, bgcolor: '#fff', color: '#dc2626', fontSize: 16, fontWeight: 800, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit', boxShadow: '0 1px 3px rgba(15,27,51,.08)' }}>
+                            ×
+                          </Box>
                         </Box>
                       );
                     })}
+                    {esVentaTelefono && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, bgcolor: FONDO_CAMPO, borderRadius: '16px', p: '10px' }}>
+                        <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO.telefono.color, color: '#fff' }}>
+                          {iconoTipo('telefono', 19)}
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: NAVY }}>{nombreTelefono}</Typography>
+                          <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA }}>1 × ${precioTelefonoNum.toFixed(2)}</Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: NAVY }}>${precioTelefonoNum.toFixed(2)}</Typography>
+                      </Box>
+                    )}
                   </Box>
-                ))}
-                {esVentaCarrito && avisosPromo}
+                )}
+                {esVentaCarrito && vistaPromo.avisos.map((a) => aviso(a, a))}
 
-                {esVentaTelefono && (nombreTelefono ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.8, borderBottom: '1px solid #f1f5f9' }}>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{nombreTelefono}</Typography>
-                      <Typography sx={{ fontSize: 12, color: '#64748b' }}>1 × ${precioTelefonoNum.toFixed(2)}</Typography>
-                    </Box>
-                    <Typography sx={{ fontSize: 13.5, fontWeight: 700 }}>${precioTelefonoNum.toFixed(2)}</Typography>
+                <Box sx={{ position: 'relative', overflow: 'hidden', bgcolor: NAVY, borderRadius: '18px', px: '20px', py: '18px', mt: 2 }}>
+                  <Box sx={{ position: 'absolute', right: -30, top: -30, width: 110, height: 110, borderRadius: '50%', bgcolor: NARANJA }} />
+                  <Box sx={{ position: 'relative' }}>
+                    <Typography sx={{ fontSize: 14, color: '#c3cbe0', fontWeight: 600 }}>Total</Typography>
+                    <Typography sx={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.5px' }}>
+                      ${fmt(esVentaCarrito ? vistaPromo.total : precioTelefonoNum)}
+                    </Typography>
                   </Box>
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 2, color: '#9ca3af' }}>
-                    <SmartphoneIcon sx={{ fontSize: 30, color: '#cbd5e1' }} />
-                    <Typography sx={{ fontSize: 12.5 }}>Captura el teléfono a la izquierda</Typography>
-                  </Box>
-                ))}
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: AZUL_OSCURO, color: '#fff', borderRadius: 2, px: 2, py: 1, mt: 1.2 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>TOTAL</Typography>
-                  <Typography sx={{ fontWeight: 800, fontSize: 20 }}>
-                    ${(esVentaCarrito ? vistaPromo.total : precioTelefonoNum).toFixed(2)}
-                  </Typography>
                 </Box>
-              </Paper>
+              </Box>
 
-              <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
-                {tituloSeccion('3 · CLIENTE Y PAGO')}
+              <Box sx={tarjetaSx}>
+                {tituloTarjeta('Cliente y pago')}
                 <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)}
-                  fullWidth size="small" type="tel" />
+                  fullWidth size="small" margin="dense" type="tel" />
 
-                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#334155', mt: 1.5, mb: 0.8 }}>¿Cómo paga el cliente?</Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {([
-                    { v: 'efectivo', t: '💵 Efectivo' },
-                    { v: 'tarjeta',  t: '💳 Tarjeta' },
-                    { v: 'dividido', t: '💳💵 Dividido' },
-                  ] as const).map((m) => {
-                    const bloqueado = m.v === 'dividido' && esVentaCarrito && carritoConPromo;
-                    return (
-                      <Button key={m.v} disabled={bloqueado}
+                <Box sx={{ mt: 1.5 }}>
+                  {etiqueta('¿Cómo paga el cliente?')}
+                  <Box sx={segmentado}>
+                    {([
+                      { v: 'efectivo', t: 'Efectivo' },
+                      { v: 'tarjeta',  t: 'Tarjeta' },
+                      { v: 'dividido', t: 'Dividido' },
+                    ] as const).map((m) => (
+                      <Button key={m.v} disabled={m.v === 'dividido' && esVentaCarrito && carritoConPromo}
                         onClick={() => { setMetodoPago(m.v); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
-                        sx={botonOpcion(metodoPago === m.v, bloqueado)}>
+                        sx={botonSegmento(metodoPago === m.v)}>
                         {m.t}
                       </Button>
-                    );
-                  })}
+                    ))}
+                  </Box>
+                  {esVentaCarrito && carritoConPromo && (
+                    <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA, mt: 0.75 }}>Dividido no aplica con promociones.</Typography>
+                  )}
                 </Box>
-                {esVentaCarrito && carritoConPromo && (
-                  <Typography sx={{ fontSize: 11.5, color: '#64748b', mt: 0.5 }}>Dividido no aplica con promociones.</Typography>
-                )}
                 {(esVentaCarrito ? divididoCarrito : divididoTelefono) && (
-                  <Box sx={{ mt: 1 }}>{esVentaCarrito ? divididoCarrito : divididoTelefono}</Box>
+                  <Box sx={{ mt: 1.5 }}>{esVentaCarrito ? divididoCarrito : divididoTelefono}</Box>
                 )}
 
                 {esVentaTelefono && (
-                  <>
-                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#334155', mt: 1.5, mb: 0.8 }}>Tipo de venta</Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ mt: 1.5 }}>
+                    {etiqueta('Tipo de venta')}
+                    <Box sx={segmentado}>
                       {([
                         { v: 'Contado',  t: 'Contado' },
                         { v: 'Paguitos', t: 'Paguitos' },
                         { v: 'Pajoy',    t: 'PayJoy' },
                       ] as const).map((tv) => (
-                        <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonOpcion(telefonoTipo_venta === tv.v)}>
+                        <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonSegmento(telefonoTipo_venta === tv.v)}>
                           {tv.t}
                         </Button>
                       ))}
                     </Box>
-                  </>
+                  </Box>
                 )}
 
-                <Button variant="contained" fullWidth disabled={!puedeRegistrar}
+                <Button fullWidth disabled={!puedeRegistrar}
                   onClick={esVentaCarrito ? enviarCarrito : registrarVentaTelefono}
-                  sx={{ mt: 2, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 1.2, fontSize: 15, textTransform: 'uppercase', boxShadow: 'none',
-                    '&:hover': { bgcolor: '#ea580c', boxShadow: 'none' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
+                  sx={{ ...botonGrande(puedeRegistrar, NARANJA, 60, 17), mt: 2.5, boxShadow: puedeRegistrar ? `0 12px 26px -10px ${NARANJA}` : 'none' }}>
                   Registrar venta
                 </Button>
-                <Typography sx={{ fontSize: 12, color: puedeRegistrar ? '#16a34a' : '#64748b', textAlign: 'center', mt: 0.8 }}>
+                <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA, textAlign: 'center', mt: 1 }}>
                   {ayudaRegistrar}
                 </Typography>
-              </Paper>
+              </Box>
             </>
           ) : (
-            <Paper sx={{ borderRadius: 3, p: { xs: 1.5, sm: 2 } }}>
-              {tituloSeccion(tipoVenta === 'chip' ? 'CHIP · VENTA POR SEPARADO' : 'PLAN · VENTA POR SEPARADO')}
-              <Typography sx={{ fontSize: 13, color: '#475569' }}>
-                {tipoVenta === 'chip' ? 'El chip' : 'El plan'} se registra con su propio botón a la izquierda y no se mezcla con el carrito.
+            <Box sx={tarjetaSx}>
+              {tituloTarjeta('Venta por separado')}
+              <Typography sx={{ fontSize: 13, color: GRIS_ETIQUETA, mt: 1 }}>
+                {tipoVenta === 'chip' ? 'El chip' : 'El plan'} se registra con su propio botón y no se mezcla con el carrito.
               </Typography>
-              {carrito.length > 0 && (
-                <Alert severity="info" sx={{ mt: 1.5, fontSize: 12.5 }}>
-                  Tienes {articulosCarrito} artículo{articulosCarrito === 1 ? '' : 's'} en el carrito. Regresa a <b>Accesorio</b> para cobrarlos.
-                </Alert>
-              )}
-            </Paper>
+              {carrito.length > 0 && aviso(<>Tienes {articulosCarrito} artículo{articulosCarrito === 1 ? '' : 's'} en el carrito. Regresa a <b>Accesorio</b> para cobrarlos.</>)}
+            </Box>
           )}
         </Box>
       </Box>
-
-      {/* Meta / bolsa diaria: debajo de todo en el diseño nuevo */}
-      {franjaAvance && <Box sx={{ mt: 2 }}>{franjaAvance}</Box>}
     </Box>
   ) : null;
 
@@ -2471,7 +2549,7 @@ const FormularioVentaMultiple = () => {
         </Tabs>
         , tabsSlot)}
 
-        {!disenoNuevo && franjaAvance}
+        {franjaAvance}
 
         {/* ── Tab TICKET ── */}
         {tabAsesor === 0 && (
@@ -3366,7 +3444,7 @@ const FormularioVentaMultiple = () => {
       {/* ── Pestañas del encargado proyectadas DENTRO del navbar ── */}
       {/* Pestañas de encargado: ahora están en el menú lateral (/ventas?tab=...). */}
 
-    {!disenoNuevo && franjaAvance}
+    {franjaAvance}
 
     {/* ── Tab TICKET ── */}
     {tabAsesor === 0 && (
