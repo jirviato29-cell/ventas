@@ -2081,6 +2081,8 @@ const FormularioVentaMultiple = () => {
                   ] as const).map((tv) => (
                     <Button key={tv.v} sx={botonSegmento(telefonoTipo_venta === tv.v)}
                       onClick={() => {
+                        // Paguitos / PayJoy: el asesor escribe el precio, se vacía al cambiar.
+                        if (tv.v !== 'Contado' && tv.v !== telefonoTipo_venta) setTelefonoPrecio('');
                         setTelefonoTipo_venta(tv.v);
                         llenarPrecioContado(telefonoClave, `${telefonoMarca} ${telefonoModelo}`, tv.v);
                       }}>
