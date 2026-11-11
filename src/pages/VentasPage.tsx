@@ -269,7 +269,7 @@ const FormularioVentaMultiple = () => {
   const [telefonoClasificacion, setTelefonoClasificacion] = useState<'' | 'linea_nueva' | 'boletin_63' | 'chip_ato' | 'chip_promo'>('');
   const [telefonoMarca, setTelefonoMarca] = useState('');
   const [telefonoModelo, setTelefonoModelo] = useState('');
-  const [, setTelefonoClave] = useState('');
+  const [telefonoClave, setTelefonoClave] = useState('');
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
@@ -581,6 +581,16 @@ const FormularioVentaMultiple = () => {
   };
   const precioInventario = (clave: string): number | null =>
     productos.find((p) => normClave(p.clave) === normClave(clave))?.precio ?? null;
+  // Diseño nuevo: venta de contado → el precio del teléfono se llena con el
+  // precio de lista del inventario (por clave; si no hay clave, por nombre).
+  // El asesor lo puede seguir editando. En el diseño actual no hace nada.
+  const llenarPrecioContado = (clave: string, nombre: string, tipo: string) => {
+    if (!disenoNuevoRef.current || tipo !== 'Contado' || !nombre.trim()) return;
+    const lista = (clave ? precioInventario(clave) : null)
+      ?? productos.find((p) => String(p.producto ?? '').trim().toLowerCase() === nombre.trim().toLowerCase())?.precio
+      ?? null;
+    if (lista != null && lista > 0) setTelefonoPrecio(String(lista));
+  };
   const promoProductoActual = producto ? promoParaProducto(productoClave) : null;
   const carritoConPromo = carrito.some((p) => !!p.promocion);
   const vistaPromo = calcularPromos(carrito);
@@ -1188,6 +1198,7 @@ const FormularioVentaMultiple = () => {
       setTelefonoMarca(parts[0] || '');
       setTelefonoModelo(parts.slice(1).join(' ') || '');
       setTelefonoClave(eq.clave || '');
+      llenarPrecioContado(eq.clave || '', String(eq.producto), telefonoTipo_venta);
       const nuevoEstado = estadoEquipo(eq);
       setTelefonoEstadoAct(nuevoEstado);
       setTelefonoClasificacion((prev) =>
@@ -1554,6 +1565,7 @@ const FormularioVentaMultiple = () => {
                   setTelefonoMarca(parts[0] || '');
                   setTelefonoModelo(parts.slice(1).join(' ') || '');
                   setTelefonoClave(obj.clave ?? '');
+                  llenarPrecioContado(obj.clave ?? '', obj.producto, telefonoTipo_venta);
                 } else {
                   setTelefonoMarca('');
                   setTelefonoModelo('');
@@ -2059,13 +2071,7 @@ const FormularioVentaMultiple = () => {
 
           {esVentaTelefono && telefonoOrigen !== '' && (
             <Box sx={{ mt: 2 }}>
-              {telefonoEquipo}
-              <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)}
-                fullWidth size="small" margin="dense"
-                InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
-                sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
-              {telefonoClasifNumero}
-              <Box sx={{ mt: 1.5 }}>
+              <Box sx={{ mb: 1 }}>
                 {etiqueta('Tipo de venta')}
                 <Box sx={segmentado}>
                   {([
@@ -2073,12 +2079,22 @@ const FormularioVentaMultiple = () => {
                     { v: 'Paguitos', t: 'Paguitos' },
                     { v: 'Pajoy',    t: 'PayJoy' },
                   ] as const).map((tv) => (
-                    <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonSegmento(telefonoTipo_venta === tv.v)}>
+                    <Button key={tv.v} sx={botonSegmento(telefonoTipo_venta === tv.v)}
+                      onClick={() => {
+                        setTelefonoTipo_venta(tv.v);
+                        llenarPrecioContado(telefonoClave, `${telefonoMarca} ${telefonoModelo}`, tv.v);
+                      }}>
                       {tv.t}
                     </Button>
                   ))}
                 </Box>
               </Box>
+              {telefonoEquipo}
+              <TextField label="Precio" type="number" value={telefonoPrecio} onChange={(e) => setTelefonoPrecio(e.target.value)}
+                fullWidth size="small" margin="dense"
+                InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
+                sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
+              {telefonoClasifNumero}
               {imeiObligatorio && !telefonoImei.trim() && aviso('El IMEI es obligatorio en este módulo: captúralo y presiona Enter para cargar el equipo.')}
               {telefonoEnCarrito && aviso('Ya hay un teléfono en el carrito: solo se permite 1 por ticket. Quítalo con la × para cambiarlo.')}
               <Button fullWidth onClick={agregarTelefonoAlCarrito} disabled={!puedeAgregarTelefono}
