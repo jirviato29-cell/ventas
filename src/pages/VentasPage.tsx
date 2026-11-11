@@ -654,6 +654,8 @@ const FormularioVentaMultiple = () => {
           precio_unitario: Math.round(item.precio_unitario * pct * 100) / 100,
           tipo_producto: item.tipo_producto,
           skip_comision: skip,
+          // La parte en tarjeta no vuelve a descontar inventario: ya salió en la de efectivo.
+          skip_inventario: skip,
         }));
       try {
         const resEf = await axios.post(
