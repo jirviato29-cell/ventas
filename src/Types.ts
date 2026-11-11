@@ -163,6 +163,11 @@ export interface ProductoEnVenta {
   precio_unitario: number;
   tipo_producto: "accesorios" | "telefono";
   promocion?: string;
+  // Solo renglones de teléfono (diseño nuevo de Registrar venta)
+  imei?: string | null;
+  chip_casado?: string | null;
+  clasificacion?: string | null;
+  tipo_venta?: string;
 }
 
 export interface VentaChip {

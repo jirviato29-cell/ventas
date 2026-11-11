@@ -561,6 +561,15 @@ const FormularioVentaMultiple = () => {
     }
   }, [tabAsesor, nominaCicloIdx, rol]);
 
+  // Diseño nuevo: el error rojo se borra solo en cuanto el asesor corrige algo
+  // (carrito, pago o datos del teléfono). El ref se llena más abajo con disenoNuevo.
+  const disenoNuevoRef = useRef(false);
+  useEffect(() => {
+    if (!disenoNuevoRef.current) return;
+    setMensaje((m) => (m?.tipo === 'error' ? null : m));
+  }, [carrito, montoDividido, metodoPago, producto, precio, cantidad,
+      telefonoImei, telefonoMarca, telefonoModelo, telefonoPrecio, telefonoTipo_venta, telefonoClasificacion, Chip_casado]);
+
   // ── Acciones ─────────────────────────────────────────────────────────────
   // ── Promos Buen Fin (valores derivados, sin hooks) ─────────────────────
   const promosBoton = (['3X2', '2DA30'] as const).filter((c) => promosActivas.some((p) => p.codigo === c));
@@ -866,29 +875,22 @@ const FormularioVentaMultiple = () => {
     }
   };
 
-  const registrarVentaTelefono = async () => {
-    if (imeiObligatorio && !telefonoImei.trim()) {
-      setMensaje({ tipo: 'error', texto: 'El IMEI es obligatorio en este módulo.' });
-      return;
-    }
-    if (imeiObligatorio && (!telefonoMarca || !telefonoModelo)) {
-      setMensaje({ tipo: 'error', texto: 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.' });
-      return;
-    }
-    if (imeiObligatorio && !telefonoClasificacion) {
-      setMensaje({ tipo: 'error', texto: 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.' });
-      return;
-    }
-    if (imeiObligatorio && !Chip_casado.trim()) {
-      setMensaje({ tipo: 'error', texto: 'El Número es obligatorio en este módulo.' });
-      return;
-    }
-    if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) {
-      setMensaje({ tipo: 'error', texto: 'Faltan datos del teléfono.' });
-      return;
-    }
+  // Validaciones del teléfono, compartidas por los dos diseños. null = todo bien.
+  const validarTelefono = (): string | null => {
+    if (imeiObligatorio && !telefonoImei.trim()) return 'El IMEI es obligatorio en este módulo.';
+    if (imeiObligatorio && (!telefonoMarca || !telefonoModelo)) return 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.';
+    if (imeiObligatorio && !telefonoClasificacion) return 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.';
+    if (imeiObligatorio && !Chip_casado.trim()) return 'El Número es obligatorio en este módulo.';
+    if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) return 'Faltan datos del teléfono.';
     const p = Number(telefonoPrecio);
-    if (isNaN(p) || p <= 0) { setMensaje({ tipo: 'error', texto: 'Precio inválido.' }); return; }
+    if (isNaN(p) || p <= 0) return 'Precio inválido.';
+    return null;
+  };
+
+  const registrarVentaTelefono = async () => {
+    const errorTelefono = validarTelefono();
+    if (errorTelefono) { setMensaje({ tipo: 'error', texto: errorTelefono }); return; }
+    const p = Number(telefonoPrecio);
     const productoBase = {
       producto: `${telefonoMarca} ${telefonoModelo}`,
       cantidad: 1, tipo_producto: 'telefono', tipo_venta: telefonoTipo_venta,
@@ -995,6 +997,96 @@ const FormularioVentaMultiple = () => {
       if (Array.isArray(err?.response?.data?.detail)) msg = err.response.data.detail.map((e: any) => e.msg).join(' | ');
       else if (typeof err?.response?.data?.detail === 'string') msg = err.response.data.detail;
       setMensaje({ tipo: 'error', texto: msg });
+    }
+  };
+
+  // ── Diseño nuevo: el teléfono va al carrito junto con los accesorios ──
+  const telefonoEnCarrito = carrito.some((p) => p.tipo_producto === 'telefono');
+
+  const agregarTelefonoAlCarrito = () => {
+    if (telefonoEnCarrito) {
+      setMensaje({ tipo: 'error', texto: 'Solo se permite 1 teléfono por ticket. Quita el que está en el carrito para cambiarlo.' });
+      return;
+    }
+    const errorTelefono = validarTelefono();
+    if (errorTelefono) { setMensaje({ tipo: 'error', texto: errorTelefono }); return; }
+    setCarrito([...carrito, {
+      id: 0, nombre: '', clave: '',
+      producto: `${telefonoMarca} ${telefonoModelo}`,
+      cantidad: 1,
+      precio_unitario: Number(telefonoPrecio),
+      tipo_producto: 'telefono',
+      imei: telefonoImei.trim() || null,
+      chip_casado: Chip_casado.trim() || null,
+      clasificacion: telefonoClasificacion || null,
+      tipo_venta: telefonoTipo_venta,
+    }]);
+    setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
+    setTelefonoPrecio(''); setChip_casado(''); setTelefonoImei(''); setTelefonoClasificacion('');
+    setTelefonoEstadoAct(''); setTelefonoOrigen('telcel');
+  };
+
+  // Un solo POST con accesorios y teléfono; si es dividido, el backend parte cada renglón.
+  const enviarCarritoNuevo = async () => {
+    if (carrito.length === 0) return;
+    if (vistaPromo.bloquea) { setMensaje({ tipo: 'error', texto: vistaPromo.avisos[0] }); return; }
+    if (!metodoPago) { setMensaje({ tipo: 'error', texto: 'Elige cómo paga el cliente.' }); return; }
+
+    let pagoDividido: { efectivo: number; tarjeta: number } | null = null;
+    if (metodoPago === 'dividido') {
+      if (carritoConPromo) {
+        setMensaje({ tipo: 'error', texto: 'Las promociones no aplican con pago dividido.' });
+        return;
+      }
+      const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
+      const ef = parseFloat(montoDividido.efectivo);
+      const ta = parseFloat(montoDividido.tarjeta);
+      if (isNaN(ef) || ef <= 0 || isNaN(ta) || ta <= 0) {
+        setMensaje({ tipo: 'error', texto: 'Ambos montos deben ser mayores a $0.' });
+        return;
+      }
+      if (Math.abs(ef + ta - totalCarrito) > 0.01) {
+        setMensaje({ tipo: 'error', texto: `La suma ($${(ef + ta).toFixed(2)}) no coincide con el total del carrito ($${totalCarrito.toFixed(2)}).` });
+        return;
+      }
+      pagoDividido = { efectivo: ef, tarjeta: ta };
+    }
+
+    try {
+      const res = await axios.post(
+        `/api/ventas/ventas/multiples`,
+        {
+          productos: carrito,
+          telefono_cliente: telefono?.trim() || '',
+          metodo_pago: metodoPago,
+          ...(pagoDividido ? { pago_dividido: pagoDividido } : {}),
+        },
+        config,
+      );
+      const folioVenta = res?.data?.[0]?.folio;
+      const ticketProds = productosTicket(res?.data);
+      const hayAccesorios = carrito.some((p) => p.tipo_producto !== 'telefono');
+      setMensaje({ tipo: 'success', texto: 'Venta registrada con éxito.' });
+      imprimirTicket({
+        productos: ticketProds,
+        total: ticketProds.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
+        metodoPago,
+        montoDividido,
+        telefono,
+        folio: folioVenta,
+        clasificacion: telefonoEnCarrito ? (hayAccesorios ? 'Accesorios y Teléfono' : 'Telefono') : 'Accesorios',
+        modulo: user?.modulo?.nombre || moduloLocal || '',
+        vendedor: localStorage.getItem('usuario') || '',
+      });
+      setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+      setPromoSel(null);
+      setRefrescoAvance((n) => n + 1);
+      if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      const texto = Array.isArray(detail) ? detail.map((e: any) => e.msg).join(' | ')
+        : typeof detail === 'string' ? detail : 'Error al registrar la venta.';
+      setMensaje({ tipo: 'error', texto });
     }
   };
 
@@ -1732,6 +1824,7 @@ const FormularioVentaMultiple = () => {
   const disenoNuevo = !esCadenas
     && localStorage.getItem('rol') !== 'admin'
     && usaDisenoNuevo(moduloIdActual);
+  disenoNuevoRef.current = disenoNuevo;
 
   // Paleta y tipografía del diseño nuevo (solo esta sección).
   const FUENTE_NUEVA = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
@@ -1830,9 +1923,9 @@ const FormularioVentaMultiple = () => {
   const totalCarritoBruto = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
   const articulosCarrito = carrito.reduce((a, p) => a + (Number.isFinite(p.cantidad) ? p.cantidad : 0), 0);
   const precioTelefonoNum = Number(telefonoPrecio) || 0;
-  const nombreTelefono = `${telefonoMarca} ${telefonoModelo}`.trim();
-  const articulosMostrados = esVentaCarrito ? articulosCarrito : (nombreTelefono ? 1 : 0);
   const puedeAgregar = !!producto && precio !== null && cantidad > 0;
+  const puedeAgregarTelefono = !telefonoEnCarrito && !!telefonoMarca && !!telefonoModelo
+    && precioTelefonoNum > 0 && !!telefonoTipo_venta;
 
   // Mismas validaciones que el diseño actual, en texto para el asesor.
   const sumaDividida = (m: { efectivo: string; tarjeta: string }, total: number) => {
@@ -1840,21 +1933,15 @@ const FormularioVentaMultiple = () => {
     const ta = parseFloat(m.tarjeta);
     return !isNaN(ef) && ef > 0 && !isNaN(ta) && ta > 0 && Math.abs(ef + ta - total) < 0.01;
   };
-  const ayudaRegistrar = esVentaCarrito
-    ? carrito.length === 0 ? 'Agrega al menos un producto al carrito.'
-      : vistaPromo.bloquea ? vistaPromo.avisos[0]
-      : !metodoPago ? 'Elige cómo paga el cliente.'
-      : metodoPago === 'dividido' && !sumaDividida(montoDividido, totalCarritoBruto) ? 'Efectivo y tarjeta deben sumar el total.'
-      : 'Todo listo: registra la venta.'
-    : !nombreTelefono ? (imeiObligatorio ? 'Captura el IMEI y presiona Enter para cargar el equipo.' : 'Elige el teléfono (marca + modelo).')
-      : !telefonoPrecio ? 'Captura el precio del teléfono.'
-      : !telefonoTipo_venta ? 'Elige el tipo de venta.'
-      : !metodoPago ? 'Elige cómo paga el cliente.'
-      : metodoPago === 'dividido' && !sumaDividida(montoDividido, precioTelefonoNum) ? 'Efectivo y tarjeta deben sumar el precio.'
-      : 'Todo listo: registra la venta.';
-  const puedeRegistrar = esVentaCarrito
-    ? !(carrito.length === 0 || !metodoPago || vistaPromo.bloquea)
-    : !(!telefonoMarca || !telefonoModelo || !telefonoTipo_venta || !telefonoPrecio || !metodoPago);
+  // Accesorios y teléfono se cobran juntos: un solo carrito y un solo pago.
+  const ayudaRegistrar = carrito.length === 0
+    ? (esVentaTelefono ? 'Agrega el teléfono al carrito.' : 'Agrega al menos un producto al carrito.')
+    : vistaPromo.bloquea ? vistaPromo.avisos[0]
+    : !metodoPago ? 'Elige cómo paga el cliente.'
+    : metodoPago === 'dividido' && !sumaDividida(montoDividido, totalCarritoBruto) ? 'Efectivo y tarjeta deben sumar el total.'
+    : 'Todo listo: registra la venta.';
+  const puedeRegistrar = carrito.length > 0 && !!metodoPago && !vistaPromo.bloquea;
+  const etiquetaTipoVentaTel: Record<string, string> = { Contado: 'Contado', Paguitos: 'Paguitos', Pajoy: 'PayJoy' };
 
   const formularioNuevo = disenoNuevo ? (
     <Box sx={{
@@ -1978,7 +2065,26 @@ const FormularioVentaMultiple = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
                 sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
               {telefonoClasifNumero}
+              <Box sx={{ mt: 1.5 }}>
+                {etiqueta('Tipo de venta')}
+                <Box sx={segmentado}>
+                  {([
+                    { v: 'Contado',  t: 'Contado' },
+                    { v: 'Paguitos', t: 'Paguitos' },
+                    { v: 'Pajoy',    t: 'PayJoy' },
+                  ] as const).map((tv) => (
+                    <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonSegmento(telefonoTipo_venta === tv.v)}>
+                      {tv.t}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
               {imeiObligatorio && !telefonoImei.trim() && aviso('El IMEI es obligatorio en este módulo: captúralo y presiona Enter para cargar el equipo.')}
+              {telefonoEnCarrito && aviso('Ya hay un teléfono en el carrito: solo se permite 1 por ticket. Quítalo con la × para cambiarlo.')}
+              <Button fullWidth onClick={agregarTelefonoAlCarrito} disabled={!puedeAgregarTelefono}
+                sx={{ ...botonGrande(puedeAgregarTelefono, colorTipoActual, 56, 16), mt: 2.5 }}>
+                Agregar al carrito{precioTelefonoNum > 0 ? ` · $${fmt(precioTelefonoNum)}` : ''}
+              </Button>
             </Box>
           )}
 
@@ -1994,26 +2100,27 @@ const FormularioVentaMultiple = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
                   {tituloTarjeta('Carrito')}
                   <Box component="span" sx={{ bgcolor: NAVY, color: '#fff', fontSize: 12, fontWeight: 800, px: '10px', py: '4px', borderRadius: '999px', whiteSpace: 'nowrap' }}>
-                    {articulosMostrados} artículo{articulosMostrados === 1 ? '' : 's'}
+                    {articulosCarrito} artículo{articulosCarrito === 1 ? '' : 's'}
                   </Box>
                 </Box>
 
-                {articulosMostrados === 0 ? (
+                {carrito.length === 0 ? (
                   <Box sx={{ border: `2px dashed ${BORDE_CAMPO}`, borderRadius: '18px', textAlign: 'center', py: 3, px: 2 }}>
                     <Typography sx={{ fontSize: 14, fontWeight: 800, color: NAVY }}>Tu carrito está vacío</Typography>
                     <Typography sx={{ fontSize: 12.5, color: GRIS_ETIQUETA, mt: '2px' }}>Elige qué vendes y agrégalo</Typography>
                   </Box>
                 ) : (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {esVentaCarrito && carrito.map((p, i) => {
+                    {carrito.map((p, i) => {
                       const original = p.precio_unitario * p.cantidad;
                       const conDescuento = vistaPromo.renglones
                         .filter((r) => r.idx === i)
                         .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+                      const tipoRenglon = p.tipo_producto === 'telefono' ? 'telefono' : 'accesorio';
                       return (
                         <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.2, bgcolor: FONDO_CAMPO, borderRadius: '16px', p: '10px' }}>
-                          <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO.accesorio.color, color: '#fff' }}>
-                            {iconoTipo('accesorio', 19)}
+                          <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO[tipoRenglon].color, color: '#fff' }}>
+                            {iconoTipo(tipoRenglon, 19)}
                           </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: NAVY, wordBreak: 'break-word', lineHeight: 1.25 }}>
@@ -2021,6 +2128,8 @@ const FormularioVentaMultiple = () => {
                             </Typography>
                             <Typography component="div" sx={{ fontSize: 12, color: GRIS_ETIQUETA }}>
                               {p.cantidad} × ${p.precio_unitario.toFixed(2)}
+                              {p.tipo_producto === 'telefono' && p.tipo_venta && ` · ${etiquetaTipoVentaTel[p.tipo_venta] ?? p.tipo_venta}`}
+                              {p.tipo_producto === 'telefono' && p.imei && ` · IMEI ${p.imei}`}
                               {p.promocion && (
                                 <Chip label={etiquetaPromo(p.promocion)} size="small"
                                   sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 800, bgcolor: '#fef3c7', color: '#92400e' }} />
@@ -2040,28 +2149,16 @@ const FormularioVentaMultiple = () => {
                         </Box>
                       );
                     })}
-                    {esVentaTelefono && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, bgcolor: FONDO_CAMPO, borderRadius: '16px', p: '10px' }}>
-                        <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO.telefono.color, color: '#fff' }}>
-                          {iconoTipo('telefono', 19)}
-                        </Box>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: NAVY }}>{nombreTelefono}</Typography>
-                          <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA }}>1 × ${precioTelefonoNum.toFixed(2)}</Typography>
-                        </Box>
-                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: NAVY }}>${precioTelefonoNum.toFixed(2)}</Typography>
-                      </Box>
-                    )}
                   </Box>
                 )}
-                {esVentaCarrito && vistaPromo.avisos.map((a) => aviso(a, a))}
+                {vistaPromo.avisos.map((a) => aviso(a, a))}
 
                 <Box sx={{ position: 'relative', overflow: 'hidden', bgcolor: NAVY, borderRadius: '18px', px: '20px', py: '18px', mt: 2 }}>
                   <Box sx={{ position: 'absolute', right: -30, top: -30, width: 110, height: 110, borderRadius: '50%', bgcolor: NARANJA }} />
                   <Box sx={{ position: 'relative' }}>
                     <Typography sx={{ fontSize: 14, color: '#c3cbe0', fontWeight: 600 }}>Total</Typography>
                     <Typography sx={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.5px' }}>
-                      ${fmt(esVentaCarrito ? vistaPromo.total : precioTelefonoNum)}
+                      ${fmt(vistaPromo.total)}
                     </Typography>
                   </Box>
                 </Box>
@@ -2080,40 +2177,21 @@ const FormularioVentaMultiple = () => {
                       { v: 'tarjeta',  t: 'Tarjeta' },
                       { v: 'dividido', t: 'Dividido' },
                     ] as const).map((m) => (
-                      <Button key={m.v} disabled={m.v === 'dividido' && esVentaCarrito && carritoConPromo}
+                      <Button key={m.v} disabled={m.v === 'dividido' && carritoConPromo}
                         onClick={() => { setMetodoPago(m.v); setMontoDividido({ efectivo: '', tarjeta: '' }); }}
                         sx={botonSegmento(metodoPago === m.v)}>
                         {m.t}
                       </Button>
                     ))}
                   </Box>
-                  {esVentaCarrito && carritoConPromo && (
+                  {carritoConPromo && (
                     <Typography sx={{ fontSize: 12, color: GRIS_ETIQUETA, mt: 0.75 }}>Dividido no aplica con promociones.</Typography>
                   )}
                 </Box>
-                {(esVentaCarrito ? divididoCarrito : divididoTelefono) && (
-                  <Box sx={{ mt: 1.5 }}>{esVentaCarrito ? divididoCarrito : divididoTelefono}</Box>
-                )}
-
-                {esVentaTelefono && (
-                  <Box sx={{ mt: 1.5 }}>
-                    {etiqueta('Tipo de venta')}
-                    <Box sx={segmentado}>
-                      {([
-                        { v: 'Contado',  t: 'Contado' },
-                        { v: 'Paguitos', t: 'Paguitos' },
-                        { v: 'Pajoy',    t: 'PayJoy' },
-                      ] as const).map((tv) => (
-                        <Button key={tv.v} onClick={() => setTelefonoTipo_venta(tv.v)} sx={botonSegmento(telefonoTipo_venta === tv.v)}>
-                          {tv.t}
-                        </Button>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
+                {divididoCarrito && <Box sx={{ mt: 1.5 }}>{divididoCarrito}</Box>}
 
                 <Button fullWidth disabled={!puedeRegistrar}
-                  onClick={esVentaCarrito ? enviarCarrito : registrarVentaTelefono}
+                  onClick={enviarCarritoNuevo}
                   sx={{ ...botonGrande(puedeRegistrar, NARANJA, 60, 17), mt: 2.5, boxShadow: puedeRegistrar ? `0 12px 26px -10px ${NARANJA}` : 'none' }}>
                   Registrar venta
                 </Button>
