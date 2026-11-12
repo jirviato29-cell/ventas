@@ -219,7 +219,6 @@ const TABS_ENCARGADO: Record<string, number> = { tickets: 1, 'mis-ventas': 2, ta
 const FormularioVentaMultiple = () => {
   const moduloLocal = localStorage.getItem('modulo') || '';
   const esCadenas = moduloLocal.toLowerCase().includes('cadena');
-  const MODULOS_IMEI_OBLIGATORIO = ['wa','sa','uni','u2','dr','vl','ha','gi','ps','r1','al','m1','vi','m2','mf','ro'];
   const isMobile = useMediaQuery('(max-width:767px)');
 
   // ── Estado general ───────────────────────────────────────────────────────
@@ -298,7 +297,7 @@ const FormularioVentaMultiple = () => {
   const [modulos, setModulos] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const nombreModuloActual = (user?.modulo?.nombre || moduloLocal || '').trim().toLowerCase();
-  const imeiObligatorio = !user?.is_admin && MODULOS_IMEI_OBLIGATORIO.includes(nombreModuloActual);
+  const imeiObligatorio = true;
   const navigate = useNavigate();
   // Sube tras cada venta registrada para que AvanceMetaDia recargue al instante.
   const [refrescoAvance, setRefrescoAvance] = useState(0);
