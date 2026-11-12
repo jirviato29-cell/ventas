@@ -19,6 +19,7 @@ import HeadphonesIcon from '@mui/icons-material/Headphones';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { InventarioGeneral, ProductoEnVenta, Usuario, Venta, VentaChip } from '../Types';
@@ -2042,18 +2043,18 @@ const FormularioVentaMultiple = () => {
                           fontFamily: 'inherit', cursor: 'pointer',
                           display: 'inline-flex', alignItems: 'center', gap: '8px',
                           height: 56, px: '20px', borderRadius: '14px',
-                          fontSize: 16, fontWeight: 800, color: '#fff',
-                          background: 'linear-gradient(90deg, #C00000 0%, #F97316 100%)',
-                          border: activa ? '3px solid #fff' : '3px solid transparent',
-                          boxShadow: activa
-                            ? '0 6px 16px rgba(192,0,0,0.45), 0 0 0 2px rgba(249,115,22,0.55)'
-                            : '0 2px 6px rgba(15,27,51,0.12)',
+                          fontSize: 16, fontWeight: 800,
+                          color: activa ? '#fff' : '#C00000',
+                          background: activa
+                            ? 'linear-gradient(90deg, #C00000 0%, #F97316 100%)'
+                            : '#fff',
+                          border: activa ? '2px solid transparent' : '2px solid #F97316',
+                          boxShadow: activa ? '0 6px 16px rgba(192,0,0,0.45)' : 'none',
                           transition: 'box-shadow 120ms, transform 120ms',
-                          '&:hover': { boxShadow: '0 8px 20px rgba(192,0,0,0.35)' },
                           '&:active': { transform: 'translateY(1px)' },
-                          '& svg': { fontSize: 20 },
+                          '& svg': { fontSize: 20, color: activa ? '#fff' : '#C00000' },
                         }}>
-                        <LocalOfferIcon />
+                        {activa ? <CheckCircleIcon /> : <LocalOfferIcon />}
                         {etiquetaPromo(c)}
                       </Box>
                     );
