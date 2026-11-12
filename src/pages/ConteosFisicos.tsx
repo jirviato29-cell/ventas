@@ -85,6 +85,11 @@ interface ConteoListItem {
   productos_actualizados?: number; productos_creados?: number;
   productos_en_cero?: number; estado: string; notas?: string;
 }
+// Lo que usa RESULTADO de GET /registro/usuarios (ya viene filtrado a activos)
+interface UsuarioEncargado {
+  id: number; nombre_completo?: string | null; rol: string;
+  modulo?: { id: number; nombre: string } | null;
+}
 interface ConteoDetalle extends ConteoListItem {
   items: ConteoItem[];
   imeis_sin_clave?: string[];
@@ -205,6 +210,7 @@ const ConteosFisicos = () => {
   const [cargandoResultado, setCargandoResultado] = useState(false);
   const [errorResultado, setErrorResultado]     = useState<string | null>(null);
   const [encargadoInput, setEncargadoInput]     = useState("");
+  const [usuariosActivos, setUsuariosActivos]   = useState<UsuarioEncargado[] | null>(null);
 
   // Captura manual
   const [modoCaptura, setModoCaptura]     = useState<"excel" | "manual">("excel");
@@ -480,6 +486,23 @@ const ConteosFisicos = () => {
     setResultadoItems(null);
     setErrorResultado(null);
     setCargandoResultado(true);
+    setEncargadoInput("");
+    // Prellenar el encargado: usuario activo con rol encargado en ese módulo.
+    // La lista se pide una sola vez; si falla, el campo queda vacío y editable.
+    (async () => {
+      let lista = usuariosActivos;
+      if (!lista) {
+        try {
+          const r = await axios.get<UsuarioEncargado[]>(`${BASE}/registro/usuarios`, config);
+          lista = r.data;
+          setUsuariosActivos(lista);
+        } catch { return; }
+      }
+      const enc = lista.find(u => u.rol === "encargado" && u.modulo?.nombre === c.modulo);
+      const primerNombre = (enc?.nombre_completo ?? "").trim().split(/\s+/)[0] ?? "";
+      // No pisa lo que el usuario ya haya empezado a escribir
+      if (primerNombre) setEncargadoInput(prev => prev || primerNombre.toUpperCase());
+    })();
     try {
       const r = await axios.get<ConteoDetalle>(`${BASE}/conteos-fisicos/${c.folio}/detalle`, config);
       setResultadoItems(r.data.items ?? []);
