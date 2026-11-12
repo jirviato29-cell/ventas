@@ -232,7 +232,6 @@ const FormularioVentaMultiple = () => {
   const [precio, setPrecio] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState<number>(1);
   const [metodoPago, setMetodoPago] = useState('');
-  const [telefono, settelefono] = useState('');
   const [carrito, setCarrito] = useState<ProductoEnVenta[]>([]);
   const [montoDividido, setMontoDividido] = useState({ efectivo: '', tarjeta: '' });
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
@@ -679,7 +678,7 @@ const FormularioVentaMultiple = () => {
       try {
         const resEf = await axios.post(
           `/api/ventas/ventas/multiples`,
-          { productos: makeItems(pctEf, false), telefono_cliente: telefono, metodo_pago: 'efectivo' },
+          { productos: makeItems(pctEf, false), metodo_pago: 'efectivo' },
           config,
         );
         const folioCompartido = resEf?.data?.[0]?.folio;
@@ -688,7 +687,7 @@ const FormularioVentaMultiple = () => {
         try {
           await axios.post(
             `/api/ventas/ventas/multiples`,
-            { productos: makeItems(pctTa, true), telefono_cliente: telefono, metodo_pago: 'tarjeta', folio: folioCompartido },
+            { productos: makeItems(pctTa, true), metodo_pago: 'tarjeta', folio: folioCompartido },
             config,
           );
         } catch {
@@ -707,13 +706,12 @@ const FormularioVentaMultiple = () => {
             total: carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
             metodoPago,
             montoDividido,
-            telefono,
             folio: folioCompartido,
             clasificacion: 'Accesorios',
             modulo: user?.modulo?.nombre || moduloLocal || '',
             vendedor: localStorage.getItem('usuario') || '',
           });
-          setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+          setCarrito([]); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
           setRefrescoAvance((n) => n + 1);
           if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
         }
@@ -727,7 +725,7 @@ const FormularioVentaMultiple = () => {
     try {
       const res = await axios.post(
         `/api/ventas/ventas/multiples`,
-        { productos: carrito, telefono_cliente: telefono, metodo_pago: metodoPago },
+        { productos: carrito, metodo_pago: metodoPago },
         config,
       );
       const folioVenta = res?.data?.[0]?.folio;
@@ -738,13 +736,12 @@ const FormularioVentaMultiple = () => {
         total: ticketProds.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
         metodoPago,
         montoDividido,
-        telefono,
         folio: folioVenta,
         clasificacion: 'Accesorios',
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
       });
-      setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+      setCarrito([]); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
       setPromoSel(null);
       setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
@@ -852,7 +849,6 @@ const FormularioVentaMultiple = () => {
           tipo_chip: tipoChip,
           numero_telefono: esPayJoy ? tadDevice : numero,
           monto_recarga: (esPayJoy || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)) ? 0 : parseFloat(recarga),
-          telefono_cliente: telefono || null,
           cvip: false,
           imei: tipoChip === 'Boletin 63' ? (imei || null) : null,
           iccid: chipDesdeClave
@@ -873,7 +869,7 @@ const FormularioVentaMultiple = () => {
         { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } },
       );
       setMensaje({ tipo: 'success', texto: 'Venta de chip registrada correctamente' });
-      setTipoChip(''); setNumero(''); setRecarga(''); settelefono(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
+      setTipoChip(''); setNumero(''); setRecarga(''); setTadDevice(''); setImei(''); setIccid(''); setCambioChip(false); setCurp(''); setNip(''); setFechaPorta('');
       setMarca(''); setModelo(''); setPrecioEquipo('');
       setClaveChip(''); setChipDesdeClave(false); setErrorClave('');
       setRefrescoAvance((n) => n + 1);
@@ -910,7 +906,7 @@ const FormularioVentaMultiple = () => {
     };
     const resetTel = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
-      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); settelefono('');
+      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
       setTelefonoOrigen('telcel');
       setTelefonoImei('');
@@ -931,7 +927,7 @@ const FormularioVentaMultiple = () => {
       try {
         const resEf = await axios.post(
           `/api/ventas/ventas`,
-          { productos: [{ ...productoBase, precio_unitario: ef, skip_comision: false }], metodo_pago: 'efectivo', telefono_cliente: telefono?.trim() || '' },
+          { productos: [{ ...productoBase, precio_unitario: ef, skip_comision: false }], metodo_pago: 'efectivo' },
           config,
         );
         const folioCompartido = resEf?.data?.[0]?.folio;
@@ -940,7 +936,7 @@ const FormularioVentaMultiple = () => {
         try {
           await axios.post(
             `/api/ventas/ventas`,
-            { productos: [{ ...productoBase, imei: null, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', telefono_cliente: telefono?.trim() || '', folio: folioCompartido },
+            { productos: [{ ...productoBase, imei: null, precio_unitario: ta, skip_comision: true, skip_inventario: true }], metodo_pago: 'tarjeta', folio: folioCompartido },
             config,
           );
         } catch {
@@ -959,7 +955,6 @@ const FormularioVentaMultiple = () => {
             total: p,
             metodoPago,
             montoDividido,
-            telefono,
             modulo: user?.modulo?.nombre || moduloLocal || '',
             vendedor: localStorage.getItem('usuario') || '',
             folio: folioCompartido,
@@ -979,7 +974,7 @@ const FormularioVentaMultiple = () => {
     try {
       const res = await axios.post(
         `/api/ventas/ventas`,
-        { productos: [{ ...productoBase, precio_unitario: p }], metodo_pago: metodoPago, telefono_cliente: telefono?.trim() || '' },
+        { productos: [{ ...productoBase, precio_unitario: p }], metodo_pago: metodoPago },
         config,
       );
       const folioVenta = res?.data?.[0]?.folio;
@@ -993,7 +988,6 @@ const FormularioVentaMultiple = () => {
         total: p,
         metodoPago,
         montoDividido,
-        telefono,
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
         folio: folioVenta,
@@ -1067,7 +1061,6 @@ const FormularioVentaMultiple = () => {
         `/api/ventas/ventas/multiples`,
         {
           productos: carrito,
-          telefono_cliente: telefono?.trim() || '',
           metodo_pago: metodoPago,
           ...(pagoDividido ? { pago_dividido: pagoDividido } : {}),
         },
@@ -1082,13 +1075,12 @@ const FormularioVentaMultiple = () => {
         total: ticketProds.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0),
         metodoPago,
         montoDividido,
-        telefono,
         folio: folioVenta,
         clasificacion: telefonoEnCarrito ? (hayAccesorios ? 'Accesorios y Teléfono' : 'Telefono') : 'Accesorios',
         modulo: user?.modulo?.nombre || moduloLocal || '',
         vendedor: localStorage.getItem('usuario') || '',
       });
-      setCarrito([]); settelefono(''); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
+      setCarrito([]); setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' });
       setPromoSel(null);
       setRefrescoAvance((n) => n + 1);
       if (rol === 'asesor') { fetchVentas(); fetchComisionesHoy(); }
@@ -2110,7 +2102,7 @@ const FormularioVentaMultiple = () => {
           {tipoVenta === 'plan' && <Box sx={{ mt: 2 }}>{bloquePlan}</Box>}
         </Box>
 
-        {/* ── Derecha: carrito + cliente y pago ── */}
+        {/* ── Derecha: carrito + pago ── */}
         <Box sx={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {(esVentaCarrito || esVentaTelefono) ? (
             <>
@@ -2183,10 +2175,7 @@ const FormularioVentaMultiple = () => {
               </Box>
 
               <Box sx={tarjetaSx}>
-                {tituloTarjeta('Cliente y pago')}
-                <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)}
-                  fullWidth size="small" margin="dense" type="tel" />
-
+                {tituloTarjeta('Pago')}
                 <Box sx={{ mt: 1.5 }}>
                   {etiqueta('¿Cómo paga el cliente?')}
                   <Box sx={segmentado}>
@@ -2294,7 +2283,6 @@ const FormularioVentaMultiple = () => {
             sx={{ mt: 0.5, borderRadius: 2, border: '1.5px dashed #c4b5fd', bgcolor: '#faf5ff', color: '#7c3aed', fontWeight: 700, py: 0.7, textTransform: 'none', '&:hover': { bgcolor: '#f3e8ff', border: '1.5px dashed #a78bfa' } }}>
             Agregar al Carrito
           </Button>
-          <TextField label="Teléfono del cliente" value={telefono} onChange={(e) => settelefono(e.target.value)} fullWidth size="small" margin="dense" />
           <Box mt={0.5}>
             <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Carrito</Typography>
             {carrito.length === 0
