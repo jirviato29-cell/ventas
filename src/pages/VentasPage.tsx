@@ -886,6 +886,10 @@ const FormularioVentaMultiple = () => {
   // Recarga: obligatoria salvo en Boletín 63 (ahí es opcional).
   const recargaObligatoria = ['linea_nueva', 'chip_ato', 'chip_promo'].includes(telefonoClasificacion);
   const montoRecargaTel = telefonoRecarga ? Number(telefonoRecarga) : null;
+  // Chip ATO se valida como Chip Express, cuya tabla de comisión llega hasta $150.
+  const TOPE_RECARGA_CHIP_ATO = 150;
+  const recargaPasaTope = telefonoClasificacion === 'chip_ato' && (montoRecargaTel ?? 0) > TOPE_RECARGA_CHIP_ATO;
+  const recargaEnCero = recargaObligatoria && montoRecargaTel === 0;
 
   // Validaciones del teléfono, compartidas por los dos diseños. null = todo bien.
   const validarTelefono = (): string | null => {
@@ -894,6 +898,8 @@ const FormularioVentaMultiple = () => {
     if (imeiObligatorio && !telefonoClasificacion) return 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.';
     if (imeiObligatorio && !Chip_casado.trim()) return 'El Número es obligatorio en este módulo.';
     if (recargaObligatoria && !telefonoRecarga) return 'La Recarga es obligatoria para Línea Nueva, Chip ATO y Chip Promo.';
+    if (recargaEnCero) return 'La Recarga debe ser mayor a $0.';
+    if (recargaPasaTope) return `La Recarga de Chip ATO no puede pasar de $${TOPE_RECARGA_CHIP_ATO}.`;
     if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) return 'Faltan datos del teléfono.';
     const p = Number(telefonoPrecio);
     if (isNaN(p) || p <= 0) return 'Precio inválido.';
@@ -1620,7 +1626,8 @@ const FormularioVentaMultiple = () => {
             fullWidth
             size="small" margin="dense"
             required={recargaObligatoria}
-            error={recargaObligatoria && !telefonoRecarga}
+            error={(recargaObligatoria && !telefonoRecarga) || recargaEnCero || recargaPasaTope}
+            helperText={telefonoClasificacion === 'chip_ato' ? `Máximo $${TOPE_RECARGA_CHIP_ATO}` : undefined}
             inputProps={{ inputMode: 'numeric' }}
             InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
           />
