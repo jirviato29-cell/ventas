@@ -7,11 +7,34 @@ import {
 } from "@mui/material";
 import {
   AddCircle, CheckCircle, CloudUpload, Delete, Error as ErrorIcon,
-  FileDownload, HelpOutline, QueryStats, Refresh, Visibility,
+  FileDownload, HelpOutline, Print, QueryStats, Refresh, Visibility,
 } from "@mui/icons-material";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { Modulo } from "../Types";
+import { procesar } from "../utils/cuadreInventario";
+import { imprimirReporte } from "../utils/reporteInventarioHTML";
+
+// ── Fechas del reporte RESULTADO (siempre en hora de México) ─────────────────
+const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO",
+               "AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+const partesMx = (iso: string) => {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Mexico_City", year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(new Date(iso));
+  const v = (t: string) => Number(p.find(x => x.type === t)?.value);
+  return { y: v("year"), m: v("month"), d: v("day") };
+};
+// "10 / NOVIEMBRE / 2026"
+const fechaReporte = (iso: string) => {
+  const { y, m, d } = partesMx(iso);
+  return `${d} / ${MESES[m - 1]} / ${y}`;
+};
+// Días de calendario entre dos fechas (sin importar la hora del día)
+const diasEntre = (desdeIso: string, hastaIso: string) => {
+  const a = partesMx(desdeIso), b = partesMx(hastaIso);
+  return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000);
+};
 
 const BASE = "/api";
 // Directo a Render, sin pasar por Vercel: /aplicar puede tardar más de los 120 s del rewrite.
@@ -175,6 +198,13 @@ const ConteosFisicos = () => {
   // Revertir
   const [confirmFolio, setConfirmFolio]   = useState<string | null>(null);
   const [revirtiendoFolio, setRevirtiendoFolio] = useState<string | null>(null);
+
+  // Resultado (reporte de cuadre imprimible)
+  const [resultadoConteo, setResultadoConteo]   = useState<ConteoListItem | null>(null);
+  const [resultadoItems, setResultadoItems]     = useState<ConteoItem[] | null>(null);
+  const [cargandoResultado, setCargandoResultado] = useState(false);
+  const [errorResultado, setErrorResultado]     = useState<string | null>(null);
+  const [encargadoInput, setEncargadoInput]     = useState("");
 
   // Captura manual
   const [modoCaptura, setModoCaptura]     = useState<"excel" | "manual">("excel");
@@ -440,6 +470,46 @@ const ConteosFisicos = () => {
       setDetalle(r.data);
     } catch { setDetalle(null); }
     finally { setCargandoDet(false); }
+  };
+
+  // RESULTADO: abre el diálogo del encargado y trae los items con el mismo
+  // endpoint de DETALLE. La impresión se lanza desde el botón del diálogo para
+  // que window.open corra dentro del clic y el navegador no la bloquee.
+  const handleResultado = async (c: ConteoListItem) => {
+    setResultadoConteo(c);
+    setResultadoItems(null);
+    setErrorResultado(null);
+    setCargandoResultado(true);
+    try {
+      const r = await axios.get<ConteoDetalle>(`${BASE}/conteos-fisicos/${c.folio}/detalle`, config);
+      setResultadoItems(r.data.items ?? []);
+    } catch {
+      setErrorResultado("No se pudieron cargar los items del conteo.");
+    } finally { setCargandoResultado(false); }
+  };
+
+  const handleImprimirResultado = () => {
+    if (!resultadoConteo || !resultadoItems) return;
+    const c = resultadoConteo;
+    // Conteo previo del MISMO módulo, aplicado, de la lista ya cargada
+    const previo = historial
+      .filter(h => h.modulo === c.modulo && h.estado === "aplicado" && h.id !== c.id
+                   && new Date(h.fecha).getTime() < new Date(c.fecha).getTime())
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+    const items = resultadoItems.map(i => ({
+      clave: i.clave, producto: i.producto,
+      cantidad_anterior: i.cantidad_anterior, cantidad_nueva: i.cantidad_nueva,
+    }));
+    const res = procesar([{ modulo: c.modulo, items }], {});
+    imprimirReporte(res[0], {
+      folio: c.folio,
+      modulo: c.modulo,
+      encargado: encargadoInput.trim().toUpperCase(),
+      corte: fechaReporte(c.fecha),
+      anterior: previo ? fechaReporte(previo.fecha) : "—",
+      dias: previo ? diasEntre(previo.fecha, c.fecha) : "—",
+    });
+    setResultadoConteo(null);
   };
 
   // El detalle del backend trae el nombre del modulo, no su id; alta-individual
@@ -1579,6 +1649,13 @@ const ConteosFisicos = () => {
                       >
                         Detalle
                       </Button>
+                      <Button
+                        size="small" startIcon={<Print sx={{ fontSize: 14 }} />}
+                        onClick={() => handleResultado(c)}
+                        sx={{ fontSize: 11, mr: 0.5 }}
+                      >
+                        Resultado
+                      </Button>
                       {c.estado === "aplicado" && (
                         <Button
                           size="small" color="error" variant="outlined"
@@ -1598,6 +1675,41 @@ const ConteosFisicos = () => {
           </>
         )}
       </Paper>
+
+      {/* ─── MODAL: RESULTADO (encargado antes de imprimir) ─────────────────── */}
+      <Dialog open={resultadoConteo !== null} onClose={() => setResultadoConteo(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Resultado — {resultadoConteo?.folio} · {resultadoConteo?.modulo}
+        </DialogTitle>
+        <DialogContent>
+          {errorResultado && <Alert severity="error" sx={{ mb: 2 }}>{errorResultado}</Alert>}
+          <TextField
+            autoFocus fullWidth size="small" margin="dense"
+            label="Encargado del módulo"
+            value={encargadoInput}
+            onChange={e => setEncargadoInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && resultadoItems && encargadoInput.trim()) handleImprimirResultado();
+            }}
+          />
+          {cargandoResultado && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption">Cargando items del conteo…</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResultadoConteo(null)}>Cancelar</Button>
+          <Button
+            variant="contained" startIcon={<Print />}
+            disabled={!resultadoItems || !encargadoInput.trim()}
+            onClick={handleImprimirResultado}
+          >
+            Imprimir
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ─── MODAL: DETALLE ─────────────────────────────────────────────────── */}
       <Dialog open={modalDetalle} onClose={() => setModalDetalle(false)} maxWidth="lg" fullWidth>
