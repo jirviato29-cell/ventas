@@ -219,6 +219,7 @@ const ConteosFisicos = () => {
   // Items por módulo: el del conteo seleccionado primero, luego los del cruce
   const [resultadoItems, setResultadoItems]     = useState<{ modulo: string; items: ConteoItem[] }[] | null>(null);
   const [cruceCon, setCruceCon]                 = useState<ConteoListItem[]>([]);
+  const [avisoResultado, setAvisoResultado]     = useState<string | null>(null);
   const resultadoReq = useRef(0);
   const [cargandoResultado, setCargandoResultado] = useState(false);
   const [errorResultado, setErrorResultado]     = useState<string | null>(null);
@@ -503,6 +504,7 @@ const ConteosFisicos = () => {
     setResultadoConteo(c);
     setResultadoItems(null);
     setCruceCon([]);
+    setAvisoResultado(null);
     setErrorResultado(null);
     setCargandoResultado(true);
     setEncargadoInput("");
@@ -523,6 +525,11 @@ const ConteosFisicos = () => {
 
       // 2) Todos los módulos activos de ese encargado
       const eng = normNombre(enc?.nombre_englobado);
+      // Sin englobado no se pueden encontrar sus otros módulos: se avisa, no se calla
+      if (enc && !eng) {
+        setAvisoResultado("Este encargado no tiene englobado configurado. " +
+                          "El resultado sale sin cruzar con otros módulos.");
+      }
       const cuentas = enc && eng
         ? lista.filter(u => u.rol === "encargado" && u.modulo && normNombre(u.nombre_englobado) === eng)
         : [];
@@ -1764,6 +1771,7 @@ const ConteosFisicos = () => {
         </DialogTitle>
         <DialogContent>
           {errorResultado && <Alert severity="error" sx={{ mb: 2 }}>{errorResultado}</Alert>}
+          {avisoResultado && <Alert severity="warning" sx={{ mb: 2 }}>{avisoResultado}</Alert>}
           <TextField
             autoFocus fullWidth size="small" margin="dense"
             label="Encargado del módulo"
