@@ -35,6 +35,15 @@ const diasEntre = (desdeIso: string, hastaIso: string) => {
   const a = partesMx(desdeIso), b = partesMx(hastaIso);
   return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86400000);
 };
+// "9 nov"
+const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fechaCorta = (iso: string) => {
+  const { m, d } = partesMx(iso);
+  return `${d} ${MESES_CORTOS[m - 1]}`;
+};
+// Ventana para aceptar el conteo de otro módulo en el cruce
+const DIAS_VENTANA_CRUCE = 15;
+const normNombre = (s?: string | null) => (s ?? "").trim().replace(/\s+/g, " ").toUpperCase();
 
 const BASE = "/api";
 // Directo a Render, sin pasar por Vercel: /aplicar puede tardar más de los 120 s del rewrite.
@@ -88,6 +97,7 @@ interface ConteoListItem {
 // Lo que usa RESULTADO de GET /registro/usuarios (ya viene filtrado a activos)
 interface UsuarioEncargado {
   id: number; nombre_completo?: string | null; rol: string;
+  nombre_englobado?: string | null;
   modulo?: { id: number; nombre: string } | null;
 }
 interface ConteoDetalle extends ConteoListItem {
@@ -206,7 +216,10 @@ const ConteosFisicos = () => {
 
   // Resultado (reporte de cuadre imprimible)
   const [resultadoConteo, setResultadoConteo]   = useState<ConteoListItem | null>(null);
-  const [resultadoItems, setResultadoItems]     = useState<ConteoItem[] | null>(null);
+  // Items por módulo: el del conteo seleccionado primero, luego los del cruce
+  const [resultadoItems, setResultadoItems]     = useState<{ modulo: string; items: ConteoItem[] }[] | null>(null);
+  const [cruceCon, setCruceCon]                 = useState<ConteoListItem[]>([]);
+  const resultadoReq = useRef(0);
   const [cargandoResultado, setCargandoResultado] = useState(false);
   const [errorResultado, setErrorResultado]     = useState<string | null>(null);
   const [encargadoInput, setEncargadoInput]     = useState("");
@@ -481,34 +494,74 @@ const ConteosFisicos = () => {
   // RESULTADO: abre el diálogo del encargado y trae los items con el mismo
   // endpoint de DETALLE. La impresión se lanza desde el botón del diálogo para
   // que window.open corra dentro del clic y el navegador no la bloquee.
+  //
+  // Cruce: si el encargado tiene varios módulos (sus cuentas comparten
+  // nombre_englobado), se procesan juntos con el conteo aplicado más reciente
+  // de cada otro módulo dentro de ±15 días. Si falta alguno, no se imprime.
   const handleResultado = async (c: ConteoListItem) => {
+    const req = ++resultadoReq.current;           // ignora respuestas de un clic anterior
     setResultadoConteo(c);
     setResultadoItems(null);
+    setCruceCon([]);
     setErrorResultado(null);
     setCargandoResultado(true);
     setEncargadoInput("");
-    // Prellenar el encargado: usuario activo con rol encargado en ese módulo.
-    // La lista se pide una sola vez; si falla, el campo queda vacío y editable.
-    (async () => {
+    try {
+      // 1) Encargado del módulo (lista de usuarios activos, se pide una vez)
       let lista = usuariosActivos;
       if (!lista) {
         try {
           const r = await axios.get<UsuarioEncargado[]>(`${BASE}/registro/usuarios`, config);
           lista = r.data;
           setUsuariosActivos(lista);
-        } catch { return; }
+        } catch { lista = []; }
       }
+      if (req !== resultadoReq.current) return;
       const enc = lista.find(u => u.rol === "encargado" && u.modulo?.nombre === c.modulo);
       const primerNombre = (enc?.nombre_completo ?? "").trim().split(/\s+/)[0] ?? "";
-      // No pisa lo que el usuario ya haya empezado a escribir
       if (primerNombre) setEncargadoInput(prev => prev || primerNombre.toUpperCase());
-    })();
-    try {
-      const r = await axios.get<ConteoDetalle>(`${BASE}/conteos-fisicos/${c.folio}/detalle`, config);
-      setResultadoItems(r.data.items ?? []);
-    } catch {
-      setErrorResultado("No se pudieron cargar los items del conteo.");
-    } finally { setCargandoResultado(false); }
+
+      // 2) Todos los módulos activos de ese encargado
+      const eng = normNombre(enc?.nombre_englobado);
+      const cuentas = enc && eng
+        ? lista.filter(u => u.rol === "encargado" && u.modulo && normNombre(u.nombre_englobado) === eng)
+        : [];
+      const otrosModulos = Array.from(new Set(cuentas.map(u => u.modulo!.nombre)))
+        .filter(m => m !== c.modulo);
+
+      // 3) Conteo aplicado más reciente de cada otro módulo, dentro de la ventana
+      const cruce: ConteoListItem[] = [];
+      const faltan: string[] = [];
+      for (const m of otrosModulos) {
+        const conteo = historial
+          .filter(h => h.modulo === m && h.estado === "aplicado"
+                       && Math.abs(diasEntre(h.fecha, c.fecha)) <= DIAS_VENTANA_CRUCE)
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+        if (conteo) cruce.push(conteo); else faltan.push(m);
+      }
+      setCruceCon(cruce);
+      if (faltan.length) {
+        setErrorResultado(
+          `Falta el inventario de: ${faltan.join(", ")}. ` +
+          `El cruce necesita los ${otrosModulos.length + 1} módulos.`
+        );
+        return;
+      }
+
+      // 4) Items de todos los conteos con el mismo endpoint de DETALLE
+      const conteos = [c, ...cruce];
+      try {
+        const detalles = await Promise.all(conteos.map(x =>
+          axios.get<ConteoDetalle>(`${BASE}/conteos-fisicos/${x.folio}/detalle`, config)));
+        if (req !== resultadoReq.current) return;
+        setResultadoItems(conteos.map((x, i) => ({ modulo: x.modulo, items: detalles[i].data.items ?? [] })));
+      } catch {
+        if (req === resultadoReq.current)
+          setErrorResultado("No se pudieron cargar los items de los conteos.");
+      }
+    } finally {
+      if (req === resultadoReq.current) setCargandoResultado(false);
+    }
   };
 
   const handleImprimirResultado = () => {
@@ -519,12 +572,17 @@ const ConteosFisicos = () => {
       .filter(h => h.modulo === c.modulo && h.estado === "aplicado" && h.id !== c.id
                    && new Date(h.fecha).getTime() < new Date(c.fecha).getTime())
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
-    const items = resultadoItems.map(i => ({
-      clave: i.clave, producto: i.producto,
-      cantidad_anterior: i.cantidad_anterior, cantidad_nueva: i.cantidad_nueva,
+    const modulos = resultadoItems.map(m => ({
+      modulo: m.modulo,
+      items: m.items.map(i => ({
+        clave: i.clave, producto: i.producto,
+        cantidad_anterior: i.cantidad_anterior, cantidad_nueva: i.cantidad_nueva,
+      })),
     }));
-    const res = procesar([{ modulo: c.modulo, items }], {});
-    imprimirReporte(res[0], {
+    const res = procesar(modulos, modulos.length > 1 ? { mismoEncargado: true } : {});
+    const propio = res.find((r: { modulo: string }) => r.modulo === c.modulo);
+    if (!propio) return;
+    imprimirReporte(propio, {
       folio: c.folio,
       modulo: c.modulo,
       encargado: encargadoInput.trim().toUpperCase(),
@@ -1715,6 +1773,12 @@ const ConteosFisicos = () => {
               if (e.key === "Enter" && resultadoItems && encargadoInput.trim()) handleImprimirResultado();
             }}
           />
+          {cruceCon.length > 0 && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              <strong>Cruza con:</strong>{" "}
+              {cruceCon.map(x => `${x.modulo} ${x.folio} (${fechaCorta(x.fecha)})`).join(", ")}
+            </Typography>
+          )}
           {cargandoResultado && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
               <CircularProgress size={16} />
