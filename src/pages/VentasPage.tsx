@@ -272,6 +272,8 @@ const FormularioVentaMultiple = () => {
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
+  // Recarga del chip casado: va al registro de venta_chips que crea el backend.
+  const [telefonoRecarga, setTelefonoRecarga] = useState('');
 
   const [planTipo, setPlanTipo] = useState('');
   const [planEstatus, setPlanEstatus] = useState('');
@@ -567,7 +569,7 @@ const FormularioVentaMultiple = () => {
     if (!disenoNuevoRef.current) return;
     setMensaje((m) => (m?.tipo === 'error' ? null : m));
   }, [carrito, montoDividido, metodoPago, producto, precio, cantidad,
-      telefonoImei, telefonoMarca, telefonoModelo, telefonoPrecio, telefonoTipo_venta, telefonoClasificacion, Chip_casado]);
+      telefonoImei, telefonoMarca, telefonoModelo, telefonoPrecio, telefonoTipo_venta, telefonoClasificacion, Chip_casado, telefonoRecarga]);
 
   // ── Acciones ─────────────────────────────────────────────────────────────
   // ── Promos Buen Fin (valores derivados, sin hooks) ─────────────────────
@@ -881,12 +883,17 @@ const FormularioVentaMultiple = () => {
     }
   };
 
+  // Recarga: obligatoria salvo en Boletín 63 (ahí es opcional).
+  const recargaObligatoria = ['linea_nueva', 'chip_ato', 'chip_promo'].includes(telefonoClasificacion);
+  const montoRecargaTel = telefonoRecarga ? Number(telefonoRecarga) : null;
+
   // Validaciones del teléfono, compartidas por los dos diseños. null = todo bien.
   const validarTelefono = (): string | null => {
     if (imeiObligatorio && !telefonoImei.trim()) return 'El IMEI es obligatorio en este módulo.';
     if (imeiObligatorio && (!telefonoMarca || !telefonoModelo)) return 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.';
     if (imeiObligatorio && !telefonoClasificacion) return 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.';
     if (imeiObligatorio && !Chip_casado.trim()) return 'El Número es obligatorio en este módulo.';
+    if (recargaObligatoria && !telefonoRecarga) return 'La Recarga es obligatoria para Línea Nueva, Chip ATO y Chip Promo.';
     if (!telefonoMarca || !telefonoModelo || !telefonoPrecio || !telefonoTipo_venta) return 'Faltan datos del teléfono.';
     const p = Number(telefonoPrecio);
     if (isNaN(p) || p <= 0) return 'Precio inválido.';
@@ -903,10 +910,11 @@ const FormularioVentaMultiple = () => {
       chip_casado: Chip_casado || null,
       imei: telefonoImei || null,
       clasificacion: telefonoClasificacion || null,
+      monto_recarga: montoRecargaTel,
     };
     const resetTel = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
-      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado('');
+      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); setTelefonoRecarga('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
       setTelefonoOrigen('telcel');
       setTelefonoImei('');
@@ -1023,10 +1031,11 @@ const FormularioVentaMultiple = () => {
       imei: telefonoImei.trim() || null,
       chip_casado: Chip_casado.trim() || null,
       clasificacion: telefonoClasificacion || null,
+      monto_recarga: montoRecargaTel,
       tipo_venta: telefonoTipo_venta,
     }]);
     setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
-    setTelefonoPrecio(''); setChip_casado(''); setTelefonoImei(''); setTelefonoClasificacion('');
+    setTelefonoPrecio(''); setChip_casado(''); setTelefonoRecarga(''); setTelefonoImei(''); setTelefonoClasificacion('');
     setTelefonoEstadoAct(''); setTelefonoOrigen('telcel');
   };
 
@@ -1604,6 +1613,17 @@ const FormularioVentaMultiple = () => {
             required={imeiObligatorio}
             error={imeiObligatorio && !Chip_casado.trim()}
           />
+          <TextField
+            label={recargaObligatoria ? 'Recarga (obligatoria)' : 'Recarga'}
+            value={telefonoRecarga}
+            onChange={(e) => setTelefonoRecarga(e.target.value.replace(/\D/g, ''))}
+            fullWidth
+            size="small" margin="dense"
+            required={recargaObligatoria}
+            error={recargaObligatoria && !telefonoRecarga}
+            inputProps={{ inputMode: 'numeric' }}
+            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+          />
     </>
   );
   const divididoTelefono = 
@@ -2140,6 +2160,7 @@ const FormularioVentaMultiple = () => {
                               {p.cantidad} × ${p.precio_unitario.toFixed(2)}
                               {p.tipo_producto === 'telefono' && p.tipo_venta && ` · ${etiquetaTipoVentaTel[p.tipo_venta] ?? p.tipo_venta}`}
                               {p.tipo_producto === 'telefono' && p.imei && ` · IMEI ${p.imei}`}
+                              {p.tipo_producto === 'telefono' && p.monto_recarga != null && ` · Recarga $${p.monto_recarga}`}
                               {p.promocion && (
                                 <Chip label={etiquetaPromo(p.promocion)} size="small"
                                   sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 800, bgcolor: '#fef3c7', color: '#92400e' }} />

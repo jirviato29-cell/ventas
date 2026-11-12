@@ -167,6 +167,7 @@ export interface ProductoEnVenta {
   imei?: string | null;
   chip_casado?: string | null;
   clasificacion?: string | null;
+  monto_recarga?: number | null;
   tipo_venta?: string;
 }
 
