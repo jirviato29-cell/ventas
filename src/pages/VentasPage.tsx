@@ -1611,27 +1611,29 @@ const FormularioVentaMultiple = () => {
                 </Button>
               ))}
           </Box>
-          <TextField
-            label={imeiObligatorio ? "Número (obligatorio)" : "Número"}
-            value={Chip_casado}
-            onChange={(e) => setChip_casado(e.target.value)}
-            fullWidth
-            size="small" margin="dense"
-            required={imeiObligatorio}
-            error={imeiObligatorio && !Chip_casado.trim()}
-          />
-          <TextField
-            label={recargaObligatoria ? 'Recarga (obligatoria)' : 'Recarga'}
-            value={telefonoRecarga}
-            onChange={(e) => setTelefonoRecarga(e.target.value.replace(/\D/g, ''))}
-            fullWidth
-            size="small" margin="dense"
-            required={recargaObligatoria}
-            error={(recargaObligatoria && !telefonoRecarga) || recargaEnCero || recargaPasaTope}
-            helperText={telefonoClasificacion === 'chip_ato' ? `Máximo $${TOPE_RECARGA_CHIP_ATO}` : undefined}
-            inputProps={{ inputMode: 'numeric' }}
-            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-          />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '3fr 2fr' }, gap: '12px', alignItems: 'start' }}>
+            <TextField
+              label={imeiObligatorio ? "Número (obligatorio)" : "Número"}
+              value={Chip_casado}
+              onChange={(e) => setChip_casado(e.target.value)}
+              fullWidth
+              size="small" margin="dense"
+              required={imeiObligatorio}
+              error={imeiObligatorio && !Chip_casado.trim()}
+            />
+            <TextField
+              label={recargaObligatoria ? 'Recarga (obligatoria)' : 'Recarga'}
+              value={telefonoRecarga}
+              onChange={(e) => setTelefonoRecarga(e.target.value.replace(/\D/g, ''))}
+              fullWidth
+              size="small" margin="dense"
+              required={recargaObligatoria}
+              error={(recargaObligatoria && !telefonoRecarga) || recargaEnCero || recargaPasaTope}
+              helperText={telefonoClasificacion === 'chip_ato' ? `Máximo $${TOPE_RECARGA_CHIP_ATO}` : undefined}
+              inputProps={{ inputMode: 'numeric' }}
+              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+            />
+          </Box>
     </>
   );
   const divididoTelefono = 
