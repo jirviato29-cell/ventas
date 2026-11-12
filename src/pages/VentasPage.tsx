@@ -2030,37 +2030,41 @@ const FormularioVentaMultiple = () => {
             })}
           </Box>
 
+          {esVentaCarrito && promosBoton.length > 0 && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', mt: 1.5 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {promosBoton.map((c) => {
+                  const activa = promoSel === c;
+                  return (
+                    <Box key={c} component="button" type="button" aria-pressed={activa}
+                      onClick={() => setPromoSel(activa ? null : c)}
+                      sx={{
+                        fontFamily: 'inherit', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                        width: '100%', height: 56, px: '10px', borderRadius: '14px',
+                        fontSize: 16, fontWeight: 800,
+                        textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.15,
+                        color: activa ? '#fff' : '#C00000',
+                        background: activa
+                          ? 'linear-gradient(90deg, #C00000 0%, #F97316 100%)'
+                          : '#fff',
+                        border: activa ? '2px solid transparent' : '2px solid #F97316',
+                        boxShadow: activa ? '0 6px 16px rgba(192,0,0,0.45)' : 'none',
+                        transition: 'box-shadow 120ms, transform 120ms',
+                        '&:active': { transform: 'translateY(1px)' },
+                        '& svg': { fontSize: 20, color: activa ? '#fff' : '#C00000', flexShrink: 0 },
+                      }}>
+                      {activa ? <CheckCircleIcon /> : <LocalOfferIcon />}
+                      {etiquetaPromo(c)}
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+
           {esVentaCarrito && (
             <Box sx={{ mt: 2.5 }}>
-              {promosBoton.length > 0 && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 2 }}>
-                  {promosBoton.map((c) => {
-                    const activa = promoSel === c;
-                    return (
-                      <Box key={c} component="button" type="button" aria-pressed={activa}
-                        onClick={() => setPromoSel(activa ? null : c)}
-                        sx={{
-                          fontFamily: 'inherit', cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center', gap: '8px',
-                          height: 56, px: '20px', borderRadius: '14px',
-                          fontSize: 16, fontWeight: 800,
-                          color: activa ? '#fff' : '#C00000',
-                          background: activa
-                            ? 'linear-gradient(90deg, #C00000 0%, #F97316 100%)'
-                            : '#fff',
-                          border: activa ? '2px solid transparent' : '2px solid #F97316',
-                          boxShadow: activa ? '0 6px 16px rgba(192,0,0,0.45)' : 'none',
-                          transition: 'box-shadow 120ms, transform 120ms',
-                          '&:active': { transform: 'translateY(1px)' },
-                          '& svg': { fontSize: 20, color: activa ? '#fff' : '#C00000' },
-                        }}>
-                        {activa ? <CheckCircleIcon /> : <LocalOfferIcon />}
-                        {etiquetaPromo(c)}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
               {selectorProducto}
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', mt: 1 }}>
                 <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
