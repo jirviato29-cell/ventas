@@ -346,6 +346,8 @@ const FormularioVentaMultiple = () => {
   // Promos Buen Fin
   const [promosActivas, setPromosActivas] = useState<PromoActiva[]>([]);
   const [promoSel, setPromoSel] = useState<null | '3X2' | '2DA30'>(null);
+  // Sugerencia Buen Fin: confirmación antes de cobrar sin promoción.
+  const [confirmSinPromoOpen, setConfirmSinPromoOpen] = useState(false);
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -596,6 +598,15 @@ const FormularioVentaMultiple = () => {
   const promoProductoActual = producto ? promoParaProducto(productoClave) : null;
   const carritoConPromo = carrito.some((p) => !!p.promocion);
   const vistaPromo = calcularPromos(carrito);
+  // Sugerencia Buen Fin: un accesorio "califica" para 3X2/2DA30 si cuesta
+  // ≤ $1,000 (misma regla de calcularPromos: las piezas caras no pueden ser
+  // la descontada, así que no las contamos para gatillar el aviso).
+  const piezasAccCalifican = carrito
+    .filter((p) => p.tipo_producto !== 'telefono' && p.precio_unitario <= 1000)
+    .reduce((s, p) => s + p.cantidad, 0);
+  const sugiere3X2   = promosBoton.includes('3X2')   && piezasAccCalifican >= 3;
+  const sugiere2DA30 = promosBoton.includes('2DA30') && piezasAccCalifican >= 2;
+  const carritoCalificaPromo = (sugiere3X2 || sugiere2DA30) && promoSel === null && !carritoConPromo;
 
   // Renglones del ticket: con promo usa los renglones ya partidos por precio
   // (precios del backend si la respuesta coincide); sin promo, igual que siempre.
@@ -640,6 +651,19 @@ const FormularioVentaMultiple = () => {
     setProductoClave('');
     setCantidad(1);
     setPrecio(null);
+  };
+
+  // Al aplicar una promo con el carrito ya cargado, marcamos cada accesorio
+  // con el código y, si tienen clave en inventario, igualamos el precio al de
+  // lista (misma regla que agregarAlCarrito cuando se parte con promo).
+  const aplicarPromoAlCarrito = (codigo: '3X2' | '2DA30') => {
+    setCarrito((prev) => prev.map((p) => {
+      if (p.tipo_producto === 'telefono') return p;
+      const pInv = precioInventario(p.clave ?? '');
+      return { ...p, promocion: codigo, ...(pInv != null ? { precio_unitario: pInv } : {}) };
+    }));
+    setPromoSel(codigo);
+    if (metodoPago === 'dividido') { setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' }); }
   };
 
   const enviarCarrito = async () => {
@@ -1309,7 +1333,40 @@ const FormularioVentaMultiple = () => {
             renderInput={(params) => <TextField {...params} label="Producto" fullWidth margin="dense" />}
           />
   );
-  const avisosPromo = 
+  // Aviso Buen Fin: arriba del botón "Registrar venta" cuando el carrito
+  // califica para una promo activa y el asesor no eligió ninguna.
+  const bannerCalificaPromo = carritoCalificaPromo ? (
+    <Alert
+      severity="warning"
+      icon={<LocalOfferIcon />}
+      sx={{
+        mt: 0.5, borderRadius: 2, alignItems: 'center',
+        bgcolor: '#fef9c3', color: '#854d0e', border: '1px solid #fde047',
+        '& .MuiAlert-icon': { color: '#ca8a04' },
+      }}
+    >
+      <Box sx={{ fontWeight: 800, fontSize: 13.5, lineHeight: 1.2 }}>
+        Este carrito califica para promoción Buen Fin
+      </Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+        {sugiere3X2 && (
+          <Button size="small" variant="contained"
+            onClick={() => aplicarPromoAlCarrito('3X2')}
+            sx={{ bgcolor: '#f97316', color: '#fff', fontWeight: 800, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' } }}>
+            Aplicar 3x2
+          </Button>
+        )}
+        {sugiere2DA30 && (
+          <Button size="small" variant="outlined"
+            onClick={() => aplicarPromoAlCarrito('2DA30')}
+            sx={{ borderColor: '#f97316', color: '#ea580c', fontWeight: 800, textTransform: 'none', '&:hover': { borderColor: '#ea580c', bgcolor: '#fff7ed' } }}>
+            Aplicar 2.ª pieza al 30%
+          </Button>
+        )}
+      </Box>
+    </Alert>
+  ) : null;
+  const avisosPromo =
           vistaPromo.avisos.map((a) => (
             <Alert key={a} severity="warning" sx={{ mt: 0.5, py: 0, fontSize: 12.5 }}>{a}</Alert>
           ))
@@ -2242,9 +2299,10 @@ const FormularioVentaMultiple = () => {
                   )}
                 </Box>
                 {divididoCarrito && <Box sx={{ mt: 1.5 }}>{divididoCarrito}</Box>}
+                {bannerCalificaPromo && <Box sx={{ mt: 1.5 }}>{bannerCalificaPromo}</Box>}
 
                 <Button fullWidth disabled={!puedeRegistrar}
-                  onClick={enviarCarritoNuevo}
+                  onClick={() => { if (carritoCalificaPromo) { setConfirmSinPromoOpen(true); return; } enviarCarritoNuevo(); }}
                   sx={{ ...botonGrande(puedeRegistrar, NARANJA, 60, 17), mt: 2.5, boxShadow: puedeRegistrar ? `0 12px 26px -10px ${NARANJA}` : 'none' }}>
                   Registrar venta
                 </Button>
@@ -2377,7 +2435,10 @@ const FormularioVentaMultiple = () => {
             </MenuItem>
           </TextField>
           {divididoCarrito}
-          <Button variant="contained" fullWidth onClick={enviarCarrito} disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
+          {bannerCalificaPromo}
+          <Button variant="contained" fullWidth
+            onClick={() => { if (carritoCalificaPromo) { setConfirmSinPromoOpen(true); return; } enviarCarrito(); }}
+            disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
             sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
             Registrar Venta
           </Button>
@@ -2425,6 +2486,41 @@ const FormularioVentaMultiple = () => {
     </Paper>
   ) : null;
   const formulario = disenoNuevo ? formularioNuevo : formularioActual;
+
+  // Diálogo de confirmación cuando el asesor va a cobrar sin promo y el
+  // carrito califica. Las opciones se muestran según piezas: 3x2 (≥3) y/o
+  // 2.ª pieza 30% (≥2). "Vender sin promoción" siempre aparece.
+  const confirmSinPromoDialog = (
+    <Dialog open={confirmSinPromoOpen} onClose={() => setConfirmSinPromoOpen(false)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>¿Vender sin promoción?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary">
+          Este carrito califica para una promoción del Buen Fin. ¿Qué deseas hacer?
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end' }}>
+        {sugiere3X2 && (
+          <Button variant="contained"
+            onClick={() => { setConfirmSinPromoOpen(false); aplicarPromoAlCarrito('3X2'); }}
+            sx={{ bgcolor: '#f97316', color: '#fff', fontWeight: 800, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' } }}>
+            Aplicar 3x2
+          </Button>
+        )}
+        {sugiere2DA30 && (
+          <Button variant="outlined"
+            onClick={() => { setConfirmSinPromoOpen(false); aplicarPromoAlCarrito('2DA30'); }}
+            sx={{ borderColor: '#f97316', color: '#ea580c', fontWeight: 800, textTransform: 'none', '&:hover': { borderColor: '#ea580c', bgcolor: '#fff7ed' } }}>
+            Aplicar 2.ª pieza al 30%
+          </Button>
+        )}
+        <Button
+          onClick={() => { setConfirmSinPromoOpen(false); (disenoNuevo ? enviarCarritoNuevo : enviarCarrito)(); }}
+          sx={{ color: '#475569', fontWeight: 700, textTransform: 'none' }}>
+          Vender sin promoción
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 
   // ════════════════════════════════════════════════════════════════════════════
   // VISTA ADMIN
@@ -3280,6 +3376,7 @@ const FormularioVentaMultiple = () => {
             </Box>
           );
         })()}
+        {confirmSinPromoDialog}
       </Box>
     );
   }
@@ -3872,6 +3969,7 @@ const FormularioVentaMultiple = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      {confirmSinPromoDialog}
     </Box>
   );
 };
