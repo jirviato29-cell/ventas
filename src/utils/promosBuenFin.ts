@@ -27,16 +27,6 @@ export interface VistaPromo {
 
 const LIMITE_PIEZA_CARA = 1000;
 
-// 3X2: la pieza gratis debe ser estrictamente más barata que las otras dos,
-// salvo que sea un protector o una mica (por tipo de producto, no por precio).
-export const MENSAJE_3X2_IGUAL =
-  'En el 3x2 la pieza gratis debe ser de menor precio que las otras dos (excepto protectores y micas). Cambia una pieza o usa 2.ª pieza al 30%.';
-
-const esProtectorMica = (nombre?: string | null) => {
-  const u = (nombre ?? '').trim().toUpperCase();
-  return u.startsWith('PROTECTOR') || u.startsWith('MICA');
-};
-
 export const ETIQUETA_PROMO: Record<string, string> = {
   '3X2': '3x2',
   '2DA30': '2.ª pieza al 30%',
@@ -100,22 +90,8 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
     const factor = codigoGrupo === '3X2' ? 0 : 0.7;
     const piezas = conPromo
       .filter(({ p }) => p.promocion!.toUpperCase() === codigoGrupo)
-      .flatMap(({ p, idx }) => Array.from({ length: p.cantidad }, () => ({
-        precio: p.precio_unitario,
-        idx,
-        nombre: p.producto || p.nombre || '',
-      })))
-      .sort((a, b) => {
-        if (a.precio !== b.precio) return a.precio - b.precio;
-        // En 3x2, cuando hay empate de precio preferimos que la pieza gratis
-        // sea un protector/mica para aprovechar la excepción.
-        if (codigoGrupo === '3X2') {
-          const ap = esProtectorMica(a.nombre);
-          const bp = esProtectorMica(b.nombre);
-          if (ap !== bp) return ap ? -1 : 1;
-        }
-        return a.idx - b.idx;
-      });
+      .flatMap(({ p, idx }) => Array.from({ length: p.cantidad }, () => ({ precio: p.precio_unitario, idx })))
+      .sort((a, b) => a.precio - b.precio || a.idx - b.idx);
     const n = piezas.length;
     // El candado por promo en VentasPage impide dejar un grupo incompleto,
     // así que no empujamos "llevas X de GRUPO piezas" como aviso.
@@ -125,13 +101,6 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
       avisos.push(`${etiquetaPromo(codigoGrupo)}: máximo 1 pieza de más de $1,000 por cada ${grupo} piezas (llevas ${caras}).`);
     }
     const conDescuento = Math.floor(n / grupo);
-    if (codigoGrupo === '3X2' && conDescuento > 0 && n > conDescuento) {
-      const precioBorde = piezas[conDescuento].precio;
-      const violacion = piezas
-        .slice(0, conDescuento)
-        .some((x) => x.precio === precioBorde && !esProtectorMica(x.nombre));
-      if (violacion) avisos.push(MENSAJE_3X2_IGUAL);
-    }
     piezas.forEach((x, i) => sumar(x.idx, i < conDescuento ? r2(x.precio * factor) : r2(x.precio), 1));
   } else if (codigoGrupo) {
     avisos.push(`La promoción ${codigoGrupo} no está soportada.`);
