@@ -21,18 +21,17 @@ const TIRA_APAGADO_TEXTO = '#cbd5e1';
 const TIRA_GANADO_FONDO = '#ecfdf5';
 const TIRA_TOTAL_FONDO = '#eff6ff';
 
-// Un color fijo por tramo, de menor a mayor. No dependen de si el tramo se
-// alcanzo: cada tramo siempre es de su color y solo se pinta lo cubierto.
-const COLORES_TRAMO = ['#fbbf24', '#f59e0b', '#ea580c', '#dc2626'];
-const colorTramo = (nivel: number) => COLORES_TRAMO[nivel - 1] ?? COLORES_TRAMO[COLORES_TRAMO.length - 1];
-
-const BRILLO = 'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 100%)';
+// La escalera se dibuja como cuatro escalones del mismo ancho, no como una
+// barra corrida: en pesos los niveles pueden estar muy juntos (en Buen Fin van
+// de 4,100 a 5,000) y una barra proporcional gastaria casi todo su largo en el
+// tramo que todavia no paga nada.
+const MARINO = '#0f2847';
+const NARANJA = '#ea580c';
+const ESCALON_SEPARACION = 3;
 
 const REFRESCO_MS = 60 * 1000;
 const GROSOR_BARRA = 26;
 const GROSOR_BARRA_XS = 22;
-const ALTO_ETIQUETA = 15;
-const FUENTE = "'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif";
 
 type Escalon = { nivel: number; meta: number | null; bolsa: number | null };
 
@@ -78,22 +77,11 @@ type MiPendiente = {
   bono_pendiente: number;
 };
 
-type Etiqueta = {
-  nivel: number;
-  meta: number;
-  pos: number;
-  monto: string;
-  final: boolean;
-  fila: number;
-  izq: number | null;
-  ancho: number;
-};
-
 const dinero = (v: number | null | undefined) =>
   `$${Math.round(Number(v ?? 0)).toLocaleString('es-MX')}`;
 
-// Debajo de este ancho de barra las cuatro etiquetas no caben con el monto
-// completo, asi que se acortan para que sigan en un solo renglon.
+// Debajo de este ancho los cuatro montos no caben completos dentro de su
+// escalon, asi que se acortan.
 const ANCHO_CORTO = 480;
 
 /** "$450", "$2.7k", "$3k". Un decimal, sin comas, y sin el .0 cuando sobra. */
@@ -138,71 +126,30 @@ function diaDePago(iso: string) {
   return `${nombre} ${dia} ${MES_CORTO[mes]}`;
 }
 
-let lienzo: CanvasRenderingContext2D | null = null;
-
-/** Tamano de la etiqueta. Repartidas en movil, las cuatro van al mismo 11px. */
-const fuenteEtiqueta = (grande: boolean, corto: boolean) =>
-  corto ? 11 : grande ? 12 : 11;
-
-/** Ancho real del texto en la fuente del tema; si no hay canvas, una estimacion. */
-function anchoTexto(texto: string, grande: boolean, corto: boolean) {
-  const px = fuenteEtiqueta(grande, corto);
-  if (!lienzo) lienzo = document.createElement('canvas').getContext('2d');
-  if (!lienzo) return texto.length * px * 0.63;
-  lienzo.font = `700 ${px}px ${FUENTE}`;
-  return lienzo.measureText(texto).width;
-}
-
 /**
- * Etiquetas de las metas. La del nivel maximo va pegada al extremo derecho de
- * la barra y se coloca primero, para que siempre se quede en el renglon de
- * arriba: si choca con la del nivel anterior, baja la otra.
+ * Un escalon por nivel, todos del mismo ancho. `lleno` es el avance DENTRO de
+ * ese escalon: 100 cuando el nivel ya se gano, 0 cuando la venta ni siquiera
+ * llego al nivel anterior, y la proporcion del tramo cuando va a medias.
  */
-function acomodarEtiquetas(
-  escalones: Escalon[],
-  tope: number,
-  anchoBarra: number,
-  corto: boolean
-): Etiqueta[] {
-  if (!escalones.length) return [];
-  const ultimo = escalones.length - 1;
-
-  const etiquetas: Etiqueta[] = escalones.map((m, i) => {
-    const meta = Number(m.meta);
-    const final = i === ultimo;
-    const pos = tope > 0 ? (meta / tope) * 100 : 0;
-    const monto = corto ? dineroCorto(meta) : dinero(meta);
-    const ancho = Math.ceil(anchoTexto(monto, final, corto)) + 6;
-    const izq = anchoBarra <= 0
-      ? null
-      : final
-        ? anchoBarra - ancho
-        : Math.max(0, Math.min((pos / 100) * anchoBarra - ancho / 2, anchoBarra - ancho));
-    return { nivel: m.nivel, meta, pos, monto, final, fila: 0, izq, ancho };
+function armarEscalones(escalones: Escalon[], venta: number, corto: boolean) {
+  return escalones.map((e, i) => {
+    const meta = Number(e.meta);
+    const desde = i === 0 ? 0 : Number(escalones[i - 1].meta);
+    const tramo = meta - desde;
+    const lleno = venta >= meta
+      ? 100
+      : venta <= desde || tramo <= 0
+        ? 0
+        : ((venta - desde) / tramo) * 100;
+    return {
+      nivel: e.nivel,
+      meta,
+      bolsa: e.bolsa,
+      lleno,
+      ganado: venta >= meta,
+      monto: corto ? dineroCorto(meta) : dinero(meta),
+    };
   });
-
-  if (anchoBarra <= 0) return etiquetas;
-
-  // Se compara contra todo lo ya colocado en cada renglon, no solo contra la
-  // ultima: la del nivel maximo ocupa el extremo derecho antes que las demas.
-  const filas: { desde: number; hasta: number }[][] = [];
-  const orden = [ultimo, ...etiquetas.map((_, i) => i).filter((i) => i !== ultimo)];
-  orden.forEach((i) => {
-    const e = etiquetas[i];
-    const desde = e.izq as number;
-    const hasta = desde + e.ancho;
-    let fila = filas.findIndex((ocupadas) =>
-      ocupadas.every((o) => hasta + 4 <= o.desde || desde >= o.hasta + 4)
-    );
-    if (fila === -1) {
-      fila = filas.length;
-      filas.push([]);
-    }
-    filas[fila].push({ desde, hasta });
-    e.fila = fila;
-  });
-
-  return etiquetas;
 }
 
 export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number }) {
@@ -271,33 +218,13 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
   const escalera = (data.escalera ?? [])
     .filter((e) => e.meta != null)
     .sort((a, b) => a.nivel - b.nivel);
-  const tope = Number(escalera[escalera.length - 1]?.meta ?? 0);
   const venta = Number(data.venta_modulo ?? 0);
-  const aPct = (v: number) => (tope > 0 ? Math.min(100, Math.max(0, (v / tope) * 100)) : 0);
   const gana = data.nivel > 0;
 
-  // Tramo = de la meta anterior a la siguiente, con su color fijo. Se pinta
-  // solo la parte cubierta por la venta; el relleno corta en la venta actual.
-  const tramos = escalera.map((e, i) => {
-    const desde = i === 0 ? 0 : Number(escalera[i - 1].meta);
-    const hasta = Number(e.meta);
-    return {
-      nivel: e.nivel,
-      izq: aPct(desde),
-      ancho: venta > desde ? aPct(Math.min(venta, hasta)) - aPct(desde) : 0,
-      color: colorTramo(e.nivel),
-    };
-  });
-
-  // Todas las metas llevan etiqueta; la marca vertical solo va de la 1 a la 3,
-  // porque la del nivel maximo cae en el borde y se veria cortada.
   // anchoBarra 0 es "todavia sin medir": se asume ancho normal hasta que el
   // ResizeObserver responde, un solo frame despues.
   const corto = anchoBarra > 0 && anchoBarra < ANCHO_CORTO;
-  const etiquetas = acomodarEtiquetas(escalera, tope, anchoBarra, corto);
-  // En modo corto no se acomoda por filas: las etiquetas se reparten a lo
-  // ancho y siempre ocupan un solo renglon.
-  const filas = corto ? 1 : etiquetas.reduce((max, e) => Math.max(max, e.fila + 1), 1);
+  const escalones = armarEscalones(escalera, venta, corto);
 
   const miParte = venta > 0 ? Math.min(100, (Number(data.mi_venta ?? 0) / venta) * 100) : 0;
 
@@ -430,86 +357,65 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
           </Box>
         </Box>
 
-        {/* Derecha: barra del modulo con sus etiquetas y, debajo, la participacion propia */}
+        {/* Derecha: la escalera del modulo y, debajo, la participacion propia */}
         <Box sx={{ gridArea: 'barras', minWidth: 0, mt: { xs: 1.5, md: 0 }, pt: { md: 0.75 } }}>
-          <div ref={medirBarra} style={{ position: 'relative' }}>
-            {/* Pista con los tramos de color y su brillo */}
-            <Box
-              sx={{
-                position: 'relative',
-                height: { xs: GROSOR_BARRA_XS, md: GROSOR_BARRA },
-                borderRadius: { xs: GROSOR_BARRA_XS / 2, md: GROSOR_BARRA / 2 },
-                bgcolor: PISTA, overflow: 'hidden',
-              }}
-            >
-              {tramos.map((t) =>
-                t.ancho > 0 ? (
+          <div ref={medirBarra}>
+            {/* Un escalon por nivel, todos del mismo ancho. El marino es lo que
+                falta y el naranja lo avanzado dentro de ese escalon. */}
+            <Box sx={{ display: 'flex', gap: `${ESCALON_SEPARACION}px` }}>
+              {escalones.map((e, i) => {
+                const primero = i === 0;
+                const ultimo = i === escalones.length - 1;
+                const radio = { xs: GROSOR_BARRA_XS / 2, md: GROSOR_BARRA / 2 };
+                return (
                   <Box
-                    key={t.nivel}
+                    key={`escalon-${e.nivel}`}
                     sx={{
-                      position: 'absolute', top: 0, bottom: 0,
-                      left: `${t.izq}%`, width: `${t.ancho}%`,
-                      bgcolor: t.color, backgroundImage: BRILLO,
+                      flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden',
+                      display: 'grid', placeItems: 'center',
+                      height: { xs: GROSOR_BARRA_XS, md: GROSOR_BARRA },
+                      bgcolor: MARINO,
+                      borderTopLeftRadius: primero ? radio : '4px',
+                      borderBottomLeftRadius: primero ? radio : '4px',
+                      borderTopRightRadius: ultimo ? radio : '4px',
+                      borderBottomRightRadius: ultimo ? radio : '4px',
                     }}
-                  />
-                ) : null
-              )}
-            </Box>
-            {etiquetas.filter((e) => !e.final).map((e) => (
-              <Box
-                key={`marca-${e.nivel}`}
-                sx={{
-                  position: 'absolute', top: -4, width: 3, ml: '-1.5px',
-                  height: { xs: GROSOR_BARRA_XS + 8, md: GROSOR_BARRA + 8 },
-                  left: `${e.pos}%`, bgcolor: '#1e293b', borderRadius: 1,
-                }}
-              />
-            ))}
-            <Box sx={{ position: 'relative', height: filas * ALTO_ETIQUETA, mt: 0.75 }}>
-              {corto ? (
-                // Movil: columnas iguales a lo ancho de la barra. La etiqueta ya
-                // no cae sobre su marca; quien senala el punto exacto es la marca.
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  {etiquetas.map((e, i) => (
+                  >
+                    {e.lleno > 0 && (
+                      <Box
+                        sx={{
+                          position: 'absolute', top: 0, bottom: 0, left: 0,
+                          width: `${e.lleno}%`, bgcolor: NARANJA,
+                        }}
+                      />
+                    )}
                     <Typography
-                      key={`etiqueta-${e.nivel}`}
                       sx={{
-                        flex: 1,
-                        minWidth: 0,
-                        textAlign: i === 0 ? 'left' : i === etiquetas.length - 1 ? 'right' : 'center',
-                        whiteSpace: 'nowrap',
-                        fontSize: fuenteEtiqueta(e.final, true),
-                        fontWeight: 700,
-                        lineHeight: 1.15,
-                        color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
+                        position: 'relative', whiteSpace: 'nowrap',
+                        fontSize: { xs: 10, md: 11 }, fontWeight: 700,
+                        lineHeight: 1.15, color: 'rgba(255,255,255,0.92)',
                       }}
                     >
                       {e.monto}
                     </Typography>
-                  ))}
-                </Box>
-              ) : (
-                etiquetas.map((e) => (
-                  <Typography
-                    key={`etiqueta-${e.nivel}`}
-                    sx={{
-                      position: 'absolute',
-                      top: e.fila * ALTO_ETIQUETA,
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                      fontSize: fuenteEtiqueta(e.final, false),
-                      fontWeight: 700,
-                      lineHeight: 1.15,
-                      color: venta >= e.meta ? colorTramo(e.nivel) : 'text.primary',
-                      ...(e.izq === null
-                        ? (e.final ? { right: 0 } : { left: `${e.pos}%`, transform: 'translateX(-50%)' })
-                        : { left: e.izq, width: e.ancho }),
-                    }}
-                  >
-                    {e.monto}
-                  </Typography>
-                ))
-              )}
+                  </Box>
+                );
+              })}
+            </Box>
+            {/* Lo que paga cada escalon, alineado debajo del suyo */}
+            <Box sx={{ display: 'flex', gap: `${ESCALON_SEPARACION}px`, mt: 0.6 }}>
+              {escalones.map((e, i) => (
+                <Typography
+                  key={`bolsa-${e.nivel}`}
+                  sx={{
+                    flex: 1, minWidth: 0, textAlign: 'center', whiteSpace: 'nowrap',
+                    fontSize: { xs: 9, md: 9.5 }, fontWeight: 700, lineHeight: 1.15,
+                    color: e.ganado ? NARANJA : 'text.secondary',
+                  }}
+                >
+                  {i === 0 && !corto ? `paga ${dinero(e.bolsa)}` : dinero(e.bolsa)}
+                </Typography>
+              ))}
             </Box>
           </div>
 
