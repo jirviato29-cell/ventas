@@ -27,7 +27,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PLANES_CASCADA } from '../data/planesCascada';
 import { usaDisenoNuevo } from '../data/modulosDisenoNuevo';
 import { imprimirTicket } from '../utils/imprimirTicket';
-import { calcularPromos, etiquetaPromo, normClave, PromoActiva } from '../utils/promosBuenFin';
+import { calcularPromos, etiquetaPromo, normClave, PromoActiva, MICA_GRATIS, CLAVE_MICA_GRATIS, PROMOS_APARTE, esMicaGratis } from '../utils/promosBuenFin';
 import { calcComision } from '../utils/calcComision';
 import RecibosPanel from '../components/RecibosPanel';
 import AvanceMetaDia from '../components/AvanceMetaDia';
@@ -348,6 +348,8 @@ const FormularioVentaMultiple = () => {
   // Promos Buen Fin
   const [promosActivas, setPromosActivas] = useState<PromoActiva[]>([]);
   const [promoSel, setPromoSel] = useState<null | '3X2' | '2DA30'>(null);
+  // Aviso cuando se quita sola una mica gratis del carrito.
+  const [avisoMicaGratis, setAvisoMicaGratis] = useState<string | null>(null);
   // Sugerencia Buen Fin: confirmación antes de cobrar sin promoción.
   const [confirmSinPromoOpen, setConfirmSinPromoOpen] = useState(false);
   // Diálogo cuando se intenta registrar con 3X2 y menos de 3 piezas.
@@ -585,6 +587,34 @@ const FormularioVentaMultiple = () => {
   }, [carrito, montoDividido, metodoPago, producto, precio, cantidad,
       telefonoImei, telefonoMarca, telefonoModelo, telefonoPrecio, telefonoTipo_venta, telefonoClasificacion, Chip_casado, telefonoRecarga]);
 
+  // Mica gratis: 1 por teléfono participante de Contado, solo en Efectivo.
+  // Si deja de cumplirse (quitan el teléfono o cambia el pago), se quitan las sobrantes.
+  useEffect(() => {
+    if (carrito.length === 0) { setAvisoMicaGratis(null); return; }
+    const micas = carrito.filter(esMicaGratis).reduce((s, p) => s + p.cantidad, 0);
+    if (micas === 0) return;
+    const promo = promosActivas.find((p) => p.codigo === MICA_GRATIS);
+    const claves = new Set((promo?.claves ?? []).map(normClave));
+    const participantes = carrito
+      .filter((p) => p.tipo_producto === 'telefono' && p.tipo_venta === 'Contado' && claves.has(normClave(p.clave)))
+      .reduce((s, p) => s + p.cantidad, 0);
+    const permitidas = metodoPago === 'efectivo' ? participantes : 0;
+    if (micas <= permitidas) return;
+    let sobran = micas - permitidas;
+    const nuevo = [...carrito];
+    for (let i = nuevo.length - 1; i >= 0 && sobran > 0; i--) {
+      if (esMicaGratis(nuevo[i])) { sobran -= nuevo[i].cantidad; nuevo.splice(i, 1); }
+    }
+    setCarrito(nuevo);
+    setAvisoMicaGratis(
+      participantes === 0
+        ? 'Se quitó la mica de hidrogel gratis: ya no hay un teléfono participante de Contado en el carrito.'
+        : metodoPago !== 'efectivo'
+          ? 'Se quitó la mica de hidrogel gratis: solo aplica con pago en Efectivo.'
+          : 'Se quitó una mica de hidrogel gratis: es 1 por teléfono participante.',
+    );
+  }, [carrito, metodoPago, promosActivas]);
+
   // ── Acciones ─────────────────────────────────────────────────────────────
   // ── Promos Buen Fin (valores derivados, sin hooks) ─────────────────────
   const promosBoton = (['3X2', '2DA30'] as const).filter((c) => promosActivas.some((p) => p.codigo === c));
@@ -615,15 +645,16 @@ const FormularioVentaMultiple = () => {
   // ≤ $1,000 (misma regla de calcularPromos: las piezas caras no pueden ser
   // la descontada). Los productos marcados con FUNDAS30 no se acumulan con
   // 3X2/2DA30 y no cuentan ni gatillan el aviso.
-  const esFundas30Item = (p: ProductoEnVenta) => (p.promocion ?? '').toUpperCase() === 'FUNDAS30';
+  // FUNDAS30 y MICA_GRATIS van aparte: no cuentan ni se re-etiquetan para 3X2/2DA30.
+  const esPromoAparte = (p: ProductoEnVenta) => PROMOS_APARTE.includes((p.promocion ?? '').toUpperCase());
   const piezasAccCalifican = carrito
-    .filter((p) => p.tipo_producto !== 'telefono' && !esFundas30Item(p) && p.precio_unitario <= 1000)
+    .filter((p) => p.tipo_producto !== 'telefono' && !esPromoAparte(p) && p.precio_unitario <= 1000)
     .reduce((s, p) => s + p.cantidad, 0);
   const sugiere3X2   = promosBoton.includes('3X2')   && piezasAccCalifican >= 3;
   const sugiere2DA30 = promosBoton.includes('2DA30') && piezasAccCalifican >= 2;
   // Solo bloquean el aviso las promos "de grupo" (3X2/2DA30), no FUNDAS30:
   // FUNDAS30 convive con 3X2/2DA30 en el mismo ticket.
-  const carritoConPromoGrupo = carrito.some((p) => p.promocion && !esFundas30Item(p));
+  const carritoConPromoGrupo = carrito.some((p) => p.promocion && !esPromoAparte(p));
   const carritoCalificaPromo = (sugiere3X2 || sugiere2DA30) && promoSel === null && !carritoConPromoGrupo;
   // 3X2 elegido pero el carrito no llega a 3 accesorios (FUNDAS30 no cuenta):
   // no se aplica descuento. Avisamos arriba del botón y, al registrar, abrimos
@@ -647,7 +678,9 @@ const FormularioVentaMultiple = () => {
       cantidad: filas ? Number(filas[i].cantidad) : r.cantidad,
       precio_unitario: filas ? Number(filas[i].precio_unitario) : r.precio_unitario,
       precio_original: r.precio_original,
-      promocion: r.promocion ? etiquetaPromo(r.promocion) : null,
+      promocion: !r.promocion ? null
+        : r.promocion.toUpperCase() === MICA_GRATIS ? 'REGALO con teléfono'
+        : etiquetaPromo(r.promocion),
     }));
   };
 
@@ -661,7 +694,7 @@ const FormularioVentaMultiple = () => {
       const promoUp = promo.toUpperCase();
       if (promoUp !== 'FUNDAS30') {
         const conflicto = carrito.find((p) => p.promocion
-          && p.promocion.toUpperCase() !== 'FUNDAS30'
+          && !esPromoAparte(p)
           && p.promocion.toUpperCase() !== promoUp);
         if (conflicto) {
           setMensaje({ tipo: 'error', texto: `No se pueden combinar promociones: el carrito ya trae ${etiquetaPromo(conflicto.promocion!)} y este producto entraría con ${etiquetaPromo(promo)}.` });
@@ -703,7 +736,7 @@ const FormularioVentaMultiple = () => {
   const aplicarPromoAlCarrito = (codigo: '3X2' | '2DA30') => {
     setCarrito((prev) => prev.map((p) => {
       if (p.tipo_producto === 'telefono') return p;
-      if (esFundas30Item(p)) return p;
+      if (esPromoAparte(p)) return p;
       const pInv = precioInventario(p.clave ?? '');
       return { ...p, promocion: codigo, ...(pInv != null ? { precio_unitario: pInv } : {}) };
     }));
@@ -722,7 +755,7 @@ const FormularioVentaMultiple = () => {
     }
     if (v) { aplicarPromoAlCarrito(v); return; }
     setCarrito((prev) => prev.map((p) => {
-      if (p.tipo_producto === 'telefono' || esFundas30Item(p)) return p;
+      if (p.tipo_producto === 'telefono' || esPromoAparte(p)) return p;
       const { promocion, ...resto } = p;
       return resto as ProductoEnVenta;
     }));
@@ -737,7 +770,7 @@ const FormularioVentaMultiple = () => {
     const pendiente = dialog2DA30Limite;
     setCarrito((prev) => {
       const retagged = prev.map((p) => {
-        if (p.tipo_producto === 'telefono' || esFundas30Item(p)) return p;
+        if (p.tipo_producto === 'telefono' || esPromoAparte(p)) return p;
         const pInv = precioInventario(p.clave ?? '');
         return { ...p, promocion: '3X2' as string, ...(pInv != null ? { precio_unitario: pInv } : {}) };
       });
@@ -1161,7 +1194,7 @@ const FormularioVentaMultiple = () => {
     const errorTelefono = validarTelefono();
     if (errorTelefono) { setMensaje({ tipo: 'error', texto: errorTelefono }); return; }
     setCarrito([...carrito, {
-      id: 0, nombre: '', clave: '',
+      id: 0, nombre: '', clave: telefonoClave,
       producto: `${telefonoMarca} ${telefonoModelo}`,
       cantidad: 1,
       precio_unitario: Number(telefonoPrecio),
@@ -2073,7 +2106,30 @@ const FormularioVentaMultiple = () => {
     '2DA30':    { fondo: '#DCFCE7', color: '#22C55E', degradado: 'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)' },
     'FUNDAS30': { fondo: '#FCE7F3', color: '#EC4899', degradado: 'linear-gradient(135deg, #DB2777 0%, #F472B6 100%)' },
   };
+  COLOR_PROMO[MICA_GRATIS] = { fondo: '#FAE8FF', color: '#C026D3', degradado: 'linear-gradient(135deg, #A21CAF 0%, #E879F9 100%)' };
   const colorPromo = (codigo?: string | null) => (codigo ? COLOR_PROMO[codigo.toUpperCase()] : undefined);
+  // Mica gratis: el botón aparece mientras haya teléfonos participantes de
+  // Contado sin su mica y el pago sea Efectivo (1 mica por teléfono).
+  const promoMicaGratis = promosActivas.find((p) => p.codigo === MICA_GRATIS);
+  const clavesMicaGratis = new Set((promoMicaGratis?.claves ?? []).map(normClave));
+  const telParticipantesMica = carrito
+    .filter((p) => p.tipo_producto === 'telefono' && p.tipo_venta === 'Contado' && clavesMicaGratis.has(normClave(p.clave)))
+    .reduce((s, p) => s + p.cantidad, 0);
+  const micasGratisEnCarrito = carrito.filter(esMicaGratis).reduce((s, p) => s + p.cantidad, 0);
+  const puedeAgregarMicaGratis = !!promoMicaGratis && metodoPago === 'efectivo' && telParticipantesMica > micasGratisEnCarrito;
+  const agregarMicaGratis = () => {
+    const inv = productos.find((p) => normClave(p.clave) === CLAVE_MICA_GRATIS);
+    setAvisoMicaGratis(null);
+    setCarrito([...carrito, {
+      id: 0, nombre: '', clave: CLAVE_MICA_GRATIS,
+      producto: inv?.producto || 'MICA DE HIDROGEL $199',
+      cantidad: 1,
+      // Precio de lista (199); calcularPromos y el backend lo dejan en $0.
+      precio_unitario: inv?.precio ?? 199,
+      tipo_producto: 'accesorios',
+      promocion: MICA_GRATIS,
+    }]);
+  };
   const TIPOS_NUEVO = {
     accesorio: { label: 'Accesorio', sub: 'Al carrito',         color: '#7c3aed', fondo: '#ede9fe', borde: '#c4b5fd' },
     telefono:  { label: 'Teléfono',  sub: 'Con IMEI',           color: '#0891b2', fondo: '#cffafe', borde: '#67e8f9' },
@@ -2422,6 +2478,19 @@ const FormularioVentaMultiple = () => {
                     })}
                   </Box>
                 )}
+                {puedeAgregarMicaGratis && (
+                  <Box component="button" type="button" onClick={agregarMicaGratis}
+                    sx={{
+                      fontFamily: 'inherit', cursor: 'pointer', width: '100%', mt: 1.5, py: '12px', px: '14px',
+                      borderRadius: '14px', border: 0, color: '#fff', fontSize: 15, fontWeight: 800,
+                      background: 'linear-gradient(135deg, #DB2777 0%, #F472B6 100%)',
+                      boxShadow: '0 6px 16px rgba(236,72,153,0.35)',
+                      '&:active': { transform: 'translateY(1px)' },
+                    }}>
+                    🎁 Agregar mica de hidrogel GRATIS
+                  </Box>
+                )}
+                {avisoMicaGratis && aviso(avisoMicaGratis, 'aviso-mica')}
                 {vistaPromo.avisos.map((a) => aviso(a, a))}
 
                 <Box sx={{ position: 'relative', overflow: 'hidden', bgcolor: NAVY, borderRadius: '18px', px: '20px', py: '18px', mt: 2 }}>

@@ -90,7 +90,10 @@ export function imprimirTicket(data: TicketData): void {
     let detalle = '';
     if (p.promocion) {
       const orig = p.precio_original ?? p.precio_unitario;
-      detalle = p.precio_unitario < orig
+      // Regalo (mica gratis): precio de lista sin tachar, $0.00 y la leyenda.
+      detalle = p.precio_unitario === 0 && orig > 0
+        ? `<div class="prod-detalle">${p.cantidad} x ${fmt(orig)} ${fmt(0)} · ${p.promocion}</div>`
+        : p.precio_unitario < orig
         ? `<div class="prod-detalle">${p.cantidad} x <s>${fmt(orig)}</s> ${fmt(p.precio_unitario)} · PROMO ${p.promocion}</div>`
         : `<div class="prod-detalle">${p.cantidad} x ${fmt(p.precio_unitario)} · Pieza pagada (${p.promocion})</div>`;
     }

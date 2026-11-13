@@ -31,7 +31,16 @@ export const ETIQUETA_PROMO: Record<string, string> = {
   '3X2': '3x2',
   '2DA30': '2.ª pieza al 30%',
   FUNDAS30: 'Fundas 30%',
+  MICA_GRATIS: 'Mica gratis',
 };
+
+// MICA_GRATIS: 1 mica de hidrogel en $0 por cada teléfono participante
+// (clave en la promo) vendido de Contado y pagado en Efectivo.
+export const MICA_GRATIS = 'MICA_GRATIS';
+export const CLAVE_MICA_GRATIS = 'MICHIDRO199';
+// Promos que se calculan aparte y no cuentan para 3X2 / 2DA30.
+export const PROMOS_APARTE = ['FUNDAS30', MICA_GRATIS];
+export const esMicaGratis = (p: { promocion?: string | null }) => (p.promocion ?? '').toUpperCase() === MICA_GRATIS;
 
 export const etiquetaPromo = (codigo?: string | null) =>
   codigo ? ETIQUETA_PROMO[codigo.toUpperCase()] ?? codigo : '';
@@ -50,7 +59,7 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
   // FUNDAS30 es independiente (30% automático sobre sus propias piezas, no
   // acumula). 3X2 y 2DA30 sí se excluyen entre sí. Por eso permitimos que
   // FUNDAS30 conviva con 3X2 o 2DA30 en el mismo ticket.
-  const codigosGrupo = codigos.filter((c) => c !== 'FUNDAS30');
+  const codigosGrupo = codigos.filter((c) => !PROMOS_APARTE.includes(c));
   if (codigosGrupo.length > 1) {
     avisos.push('No se pueden combinar dos promociones distintas en la misma venta.');
   }
@@ -70,6 +79,11 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
       .filter(({ p }) => p.promocion!.toUpperCase() === 'FUNDAS30')
       .forEach(({ p, idx }) => sumar(idx, r2(p.precio_unitario * 0.7), p.cantidad));
   }
+
+  // Mica gratis: va en $0; sus reglas se validan en VentasPage y en el backend.
+  conPromo
+    .filter(({ p }) => esMicaGratis(p))
+    .forEach(({ p, idx }) => sumar(idx, 0, p.cantidad));
 
   if (codigoGrupo === '3X2' || codigoGrupo === '2DA30') {
     const grupo = codigoGrupo === '3X2' ? 3 : 2;
