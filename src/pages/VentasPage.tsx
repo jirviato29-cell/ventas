@@ -2041,6 +2041,13 @@ const FormularioVentaMultiple = () => {
   const GRIS_ETIQUETA = '#5b6b85';
   const BORDE_CAMPO = '#e1e6f0';
   const FONDO_CAMPO = '#f8f9fc';
+  // Colores por promo (solo estilo): renglón del carrito, etiqueta y botón seleccionado.
+  const COLOR_PROMO: Record<string, { fondo: string; color: string; degradado: string }> = {
+    '3X2':      { fondo: '#FFEDD5', color: '#F97316', degradado: 'linear-gradient(135deg, #EA580C 0%, #FB923C 100%)' },
+    '2DA30':    { fondo: '#DCFCE7', color: '#22C55E', degradado: 'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)' },
+    'FUNDAS30': { fondo: '#FCE7F3', color: '#EC4899', degradado: 'linear-gradient(135deg, #DB2777 0%, #F472B6 100%)' },
+  };
+  const colorPromo = (codigo?: string | null) => (codigo ? COLOR_PROMO[codigo.toUpperCase()] : undefined);
   const TIPOS_NUEVO = {
     accesorio: { label: 'Accesorio', sub: 'Al carrito',         color: '#7c3aed', fondo: '#ede9fe', borde: '#c4b5fd' },
     telefono:  { label: 'Teléfono',  sub: 'Con IMEI',           color: '#0891b2', fondo: '#cffafe', borde: '#67e8f9' },
@@ -2212,6 +2219,8 @@ const FormularioVentaMultiple = () => {
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {promosBoton.map((c) => {
                   const activa = promoSel === c;
+                  const cp = colorPromo(c);
+                  const tono = cp?.color ?? '#F97316';
                   return (
                     <Box key={c} component="button" type="button" aria-pressed={activa}
                       onClick={() => cambiarPromoSel(activa ? null : c)}
@@ -2221,15 +2230,15 @@ const FormularioVentaMultiple = () => {
                         width: '100%', height: 56, px: '10px', borderRadius: '14px',
                         fontSize: 16, fontWeight: 800,
                         textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.15,
-                        color: activa ? '#fff' : '#C00000',
+                        color: activa ? '#fff' : tono,
                         background: activa
-                          ? 'linear-gradient(90deg, #C00000 0%, #F97316 100%)'
+                          ? (cp?.degradado ?? 'linear-gradient(90deg, #C00000 0%, #F97316 100%)')
                           : '#fff',
-                        border: activa ? '2px solid transparent' : '2px solid #F97316',
-                        boxShadow: activa ? '0 6px 16px rgba(192,0,0,0.45)' : 'none',
+                        border: activa ? '2px solid transparent' : `2px solid ${tono}`,
+                        boxShadow: activa ? `0 6px 16px ${tono}73` : 'none',
                         transition: 'box-shadow 120ms, transform 120ms',
                         '&:active': { transform: 'translateY(1px)' },
-                        '& svg': { fontSize: 20, color: activa ? '#fff' : '#C00000', flexShrink: 0 },
+                        '& svg': { fontSize: 20, color: activa ? '#fff' : tono, flexShrink: 0 },
                       }}>
                       {activa ? <CheckCircleIcon /> : <LocalOfferIcon />}
                       {etiquetaPromo(c)}
@@ -2347,8 +2356,13 @@ const FormularioVentaMultiple = () => {
                         .filter((r) => r.idx === i)
                         .reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
                       const tipoRenglon = p.tipo_producto === 'telefono' ? 'telefono' : 'accesorio';
+                      const cpRenglon = colorPromo(p.promocion);
                       return (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.2, bgcolor: FONDO_CAMPO, borderRadius: '16px', p: '10px' }}>
+                        <Box key={i} sx={{
+                          display: 'flex', alignItems: 'center', gap: 1.2, borderRadius: '16px', p: '10px',
+                          bgcolor: cpRenglon?.fondo ?? FONDO_CAMPO,
+                          ...(cpRenglon ? { borderLeft: `4px solid ${cpRenglon.color}`, pl: '8px' } : {}),
+                        }}>
                           <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: '12px', display: 'grid', placeItems: 'center', bgcolor: TIPOS_NUEVO[tipoRenglon].color, color: '#fff' }}>
                             {iconoTipo(tipoRenglon, 19)}
                           </Box>
@@ -2363,7 +2377,7 @@ const FormularioVentaMultiple = () => {
                               {p.tipo_producto === 'telefono' && p.monto_recarga != null && ` · Recarga $${p.monto_recarga}`}
                               {p.promocion && (
                                 <Chip label={etiquetaPromo(p.promocion)} size="small"
-                                  sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 800, bgcolor: '#fef3c7', color: '#92400e' }} />
+                                  sx={{ height: 18, ml: 0.5, fontSize: 10.5, fontWeight: 800, bgcolor: cpRenglon?.color ?? '#fef3c7', color: cpRenglon ? '#fff' : '#92400e' }} />
                               )}
                             </Typography>
                           </Box>
