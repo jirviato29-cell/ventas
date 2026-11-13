@@ -27,10 +27,11 @@ export interface VistaPromo {
 
 const LIMITE_PIEZA_CARA = 1000;
 
-// 3X2: la pieza gratis debe ser estrictamente más barata que las otras dos.
-// En caso de empate en el menor precio (p.ej. 3 piezas iguales) no aplica.
+// 3X2: dentro de cada grupo de 3 piezas la gratis (la más barata) debe tener
+// un precio de lista menor que la pieza más cara del grupo. En la práctica se
+// bloquea solo si las 3 piezas del grupo cuestan exactamente lo mismo.
 export const MENSAJE_3X2_IGUAL =
-  'En el 3x2 la pieza gratis debe ser de menor precio que las otras dos. Cambia una pieza o usa 2.ª pieza al 30%.';
+  'En el 3x2 las 3 piezas no pueden ser del mismo precio. Cambia una pieza o usa 2.ª pieza al 30%.';
 
 export const ETIQUETA_PROMO: Record<string, string> = {
   '3X2': '3x2',
@@ -106,10 +107,11 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
       avisos.push(`${etiquetaPromo(codigoGrupo)}: máximo 1 pieza de más de $1,000 por cada ${grupo} piezas (llevas ${caras}).`);
     }
     const conDescuento = Math.floor(n / grupo);
-    if (codigoGrupo === '3X2' && conDescuento > 0 && n > conDescuento) {
-      if (piezas[conDescuento - 1].precio >= piezas[conDescuento].precio) {
-        avisos.push(MENSAJE_3X2_IGUAL);
-      }
+    if (codigoGrupo === '3X2' && conDescuento > 0) {
+      const grupoIgual = Array.from({ length: conDescuento }).some(
+        (_, k) => piezas[k * grupo].precio === piezas[k * grupo + grupo - 1].precio,
+      );
+      if (grupoIgual) avisos.push(MENSAJE_3X2_IGUAL);
     }
     piezas.forEach((x, i) => sumar(x.idx, i < conDescuento ? r2(x.precio * factor) : r2(x.precio), 1));
   } else if (codigoGrupo) {
