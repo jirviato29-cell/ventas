@@ -70,6 +70,14 @@ type MiSemana = {
   total: number;
 };
 
+type MiPendiente = {
+  lunes: string;
+  domingo: string;
+  paga_el: string;
+  claves: number;
+  bono_pendiente: number;
+};
+
 type Etiqueta = {
   nivel: number;
   meta: number;
@@ -117,6 +125,17 @@ function rangoSemana(lunes: string, domingo: string) {
   return l.mes === d.mes
     ? `Semana del ${l.dia} al ${d.dia} de ${MESES[d.mes]}`
     : `Semana del ${l.dia} de ${MESES[l.mes]} al ${d.dia} de ${MESES[d.mes]}`;
+}
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** "miércoles 18 nov" */
+function diaDePago(iso: string) {
+  const { anio, mes, dia } = partes(iso);
+  if (!MES_CORTO[mes]) return '';
+  const nombre = DIAS_SEMANA[new Date(anio, mes, dia).getDay()];
+  return `${nombre} ${dia} ${MES_CORTO[mes]}`;
 }
 
 let lienzo: CanvasRenderingContext2D | null = null;
@@ -189,18 +208,20 @@ function acomodarEtiquetas(
 export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number }) {
   const [data, setData] = useState<MiAvance | null>(null);
   const [semana, setSemana] = useState<MiSemana | null>(null);
+  const [pendiente, setPendiente] = useState<MiPendiente | null>(null);
   const [anchoBarra, setAnchoBarra] = useState(0);
   const observador = useRef<ResizeObserver | null>(null);
 
-  // Las dos peticiones van juntas y se resuelven por separado: un fallo de
-  // mi-semana solo quita la tira, nunca tumba el resto de la franja.
+  // Las tres peticiones van juntas y se resuelven por separado: un fallo de
+  // mi-semana o mi-pendiente solo quita su parte, nunca tumba el resto de la franja.
   const cargar = useCallback(async () => {
     const token = localStorage.getItem('token');
     const cabeceras = { headers: { Authorization: `Bearer ${token}` } };
 
-    const [avance, tira] = await Promise.allSettled([
+    const [avance, tira, deuda] = await Promise.allSettled([
       axios.get<MiAvance | ''>(`${API}/api/metas/mi-avance`, cabeceras),
       axios.get<MiSemana | ''>(`${API}/api/metas/mi-semana`, cabeceras),
+      axios.get<MiPendiente | ''>(`${API}/api/metas/mi-pendiente`, cabeceras),
     ]);
 
     // 204: sin modulo o sin meta vigente hoy. No se muestra nada.
@@ -214,6 +235,13 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
     setSemana(
       tira.status === 'fulfilled' && tira.value.status !== 204 && tira.value.data
         ? (tira.value.data as MiSemana)
+        : null
+    );
+
+    // 204 o error: no se pinta el renglon del pendiente. El resto sigue igual.
+    setPendiente(
+      deuda.status === 'fulfilled' && deuda.value.status !== 204 && deuda.value.data
+        ? (deuda.value.data as MiPendiente)
         : null
     );
   }, []);
@@ -302,6 +330,25 @@ export default function AvanceMetaDia({ refrescar = 0 }: { refrescar?: number })
       >
         {dinero(bono)}
       </Typography>
+      {pendiente && Number(pendiente.bono_pendiente) > 0 && (
+        <Box sx={{ mt: 0.5 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: 'text.secondary' }}>
+            Bono de la semana pasada
+            {Number(pendiente.claves) > 1 && ` · tus ${pendiente.claves} claves`}
+          </Typography>
+          <Typography
+            sx={{
+              fontWeight: 800, fontSize: Math.round(tamanoMonto * 0.72),
+              lineHeight: 1.15, color: DORADO,
+            }}
+          >
+            {dinero(pendiente.bono_pendiente)}
+          </Typography>
+          <Typography sx={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.2, color: 'text.secondary' }}>
+            Se paga el {diaDePago(pendiente.paga_el)}
+          </Typography>
+        </Box>
+      )}
       {SEMANA_PRUEBA && (
         <Typography sx={{ fontSize: 10, lineHeight: 1.2, color: 'text.secondary' }}>
           Simulación - arranca la próxima semana
