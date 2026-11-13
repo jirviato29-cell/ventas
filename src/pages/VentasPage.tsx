@@ -1139,11 +1139,22 @@ const FormularioVentaMultiple = () => {
   };
 
   // ── Diseño nuevo: el teléfono va al carrito junto con los accesorios ──
+  const etiquetaClasificacionTel: Record<string, string> = {
+    linea_nueva: 'Línea Nueva', boletin_63: 'Boletín 63', chip_ato: 'Chip ATO', chip_promo: 'Chip Promo',
+  };
   const telefonoEnCarrito = carrito.some((p) => p.tipo_producto === 'telefono');
 
   const agregarTelefonoAlCarrito = () => {
-    if (telefonoEnCarrito) {
-      setMensaje({ tipo: 'error', texto: 'Solo se permite 1 teléfono por ticket. Quita el que está en el carrito para cambiarlo.' });
+    // Varios teléfonos por ticket: cada uno con su IMEI y su número, sin repetir.
+    const imeiNuevo = telefonoImei.trim();
+    const numeroNuevo = Chip_casado.trim();
+    const telefonosCarrito = carrito.filter((p) => p.tipo_producto === 'telefono');
+    if (imeiNuevo && telefonosCarrito.some((p) => (p.imei ?? '').trim() === imeiNuevo)) {
+      setMensaje({ tipo: 'error', texto: `El IMEI ${imeiNuevo} ya está en el carrito.` });
+      return;
+    }
+    if (numeroNuevo && telefonosCarrito.some((p) => (p.chip_casado ?? '').trim() === numeroNuevo)) {
+      setMensaje({ tipo: 'error', texto: `El número ${numeroNuevo} ya está en el carrito con otro teléfono.` });
       return;
     }
     setIntentoTelefono(true);
@@ -2153,7 +2164,7 @@ const FormularioVentaMultiple = () => {
   const articulosCarrito = carrito.reduce((a, p) => a + (Number.isFinite(p.cantidad) ? p.cantidad : 0), 0);
   const precioTelefonoNum = Number(telefonoPrecio) || 0;
   const puedeAgregar = !!producto && precio !== null && cantidad > 0;
-  const puedeAgregarTelefono = !telefonoEnCarrito && !!telefonoMarca && !!telefonoModelo
+  const puedeAgregarTelefono = !!telefonoMarca && !!telefonoModelo
     && precioTelefonoNum > 0 && !!telefonoTipo_venta;
 
   // Mismas validaciones que el diseño actual, en texto para el asesor.
@@ -2333,7 +2344,6 @@ const FormularioVentaMultiple = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
                 sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
               {telefonoClasifNumero}
-              {telefonoEnCarrito && aviso('Ya hay un teléfono en el carrito: solo se permite 1 por ticket. Quítalo con la × para cambiarlo.')}
               <Button fullWidth onClick={agregarTelefonoAlCarrito} disabled={!puedeAgregarTelefono}
                 sx={{ ...botonGrande(puedeAgregarTelefono, colorTipoActual, 56, 16), mt: 2.5 }}>
                 Agregar al carrito{precioTelefonoNum > 0 ? ` · $${fmt(precioTelefonoNum)}` : ''}
@@ -2388,6 +2398,8 @@ const FormularioVentaMultiple = () => {
                               {p.cantidad} × ${p.precio_unitario.toFixed(2)}
                               {p.tipo_producto === 'telefono' && p.tipo_venta && ` · ${etiquetaTipoVentaTel[p.tipo_venta] ?? p.tipo_venta}`}
                               {p.tipo_producto === 'telefono' && p.imei && ` · IMEI ${p.imei}`}
+                              {p.tipo_producto === 'telefono' && p.chip_casado && ` · Núm. ${p.chip_casado}`}
+                              {p.tipo_producto === 'telefono' && p.clasificacion && ` · ${etiquetaClasificacionTel[p.clasificacion] ?? p.clasificacion}`}
                               {p.tipo_producto === 'telefono' && p.monto_recarga != null && ` · Recarga $${p.monto_recarga}`}
                               {p.promocion && (
                                 <Chip label={etiquetaPromo(p.promocion)} size="small"
