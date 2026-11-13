@@ -267,8 +267,14 @@ export default function RecibosPanel({ esAdmin, modulos }: RecibosPanelProps) {
     const tp = (r.items[0]?.tipo_producto ?? '').toLowerCase();
     return tp.includes('telefono') || tp.includes('teléfono');
   });
-  const totalAccesorios = recibosAccesorios.reduce((s, r) => s + r.total, 0);
-  const totalTelefonos  = recibosTelefonos.reduce((s, r) => s + r.total, 0);
+  // Los cuadros de arriba solo suman lo vigente: sin renglones cancelados ni
+  // devueltos. La tabla sigue mostrando el total original de cada recibo.
+  const totalVigente = (r: Recibo) =>
+    r.items
+      .filter((i) => i.cancelada !== true && i.devuelta !== true)
+      .reduce((s, i) => s + (i.total ?? i.precio_unitario * i.cantidad), 0);
+  const totalAccesorios = recibosAccesorios.reduce((s, r) => s + totalVigente(r), 0);
+  const totalTelefonos  = recibosTelefonos.reduce((s, r) => s + totalVigente(r), 0);
 
   const inputSx = {
     '& .MuiOutlinedInput-root': {
