@@ -683,6 +683,19 @@ const FormularioVentaMultiple = () => {
     if (metodoPago === 'dividido') { setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' }); }
   };
 
+  // Un solo punto de cambio para el botón de promo: evita que el carrito
+  // y promoSel se desincronicen (p. ej. botón 3X2 encendido pero accesorios
+  // marcados como 2DA30 porque se aplicaron desde el aviso o el diálogo).
+  const cambiarPromoSel = (v: '3X2' | '2DA30' | null) => {
+    if (v) { aplicarPromoAlCarrito(v); return; }
+    setCarrito((prev) => prev.map((p) => {
+      if (p.tipo_producto === 'telefono' || esFundas30Item(p)) return p;
+      const { promocion, ...resto } = p;
+      return resto as ProductoEnVenta;
+    }));
+    setPromoSel(null);
+  };
+
   const enviarCarrito = async () => {
     if (carrito.length === 0) return;
     const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
@@ -1308,7 +1321,7 @@ const FormularioVentaMultiple = () => {
   const botonesPromo = (
         <ToggleButtonGroup
           exclusive fullWidth size="small" value={promoSel}
-          onChange={(_, v: '3X2' | '2DA30' | null) => setPromoSel(v)}
+          onChange={(_, v: '3X2' | '2DA30' | null) => cambiarPromoSel(v)}
           sx={{ mb: 1 }}
         >
           {promosBoton.map((c) => (
@@ -2113,7 +2126,7 @@ const FormularioVentaMultiple = () => {
                   const activa = promoSel === c;
                   return (
                     <Box key={c} component="button" type="button" aria-pressed={activa}
-                      onClick={() => setPromoSel(activa ? null : c)}
+                      onClick={() => cambiarPromoSel(activa ? null : c)}
                       sx={{
                         fontFamily: 'inherit', cursor: 'pointer',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
