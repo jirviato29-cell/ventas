@@ -273,6 +273,8 @@ const FormularioVentaMultiple = () => {
   const [telefonoTipo_venta, setTelefonoTipo_venta] = useState('');
   const [telefonoPrecio, setTelefonoPrecio] = useState('');
   const [Chip_casado, setChip_casado] = useState('');
+  // Solo marca en rojo IMEI/Número del teléfono después de intentar agregar.
+  const [intentoTelefono, setIntentoTelefono] = useState(false);
   // Recarga del chip casado: va al registro de venta_chips que crea el backend.
   const [telefonoRecarga, setTelefonoRecarga] = useState('');
 
@@ -994,6 +996,11 @@ const FormularioVentaMultiple = () => {
     }
   };
 
+  const textoFaltanNumeros = (n: string) => {
+    const faltan = 10 - n.length;
+    return faltan === 1 ? 'Falta 1 número' : `Faltan ${faltan} números`;
+  };
+
   // Recarga: obligatoria salvo en Boletín 63 (ahí es opcional).
   const recargaObligatoria = ['linea_nueva', 'chip_ato', 'chip_promo'].includes(telefonoClasificacion);
   const montoRecargaTel = telefonoRecarga ? Number(telefonoRecarga) : null;
@@ -1008,6 +1015,7 @@ const FormularioVentaMultiple = () => {
     if (imeiObligatorio && (!telefonoMarca || !telefonoModelo)) return 'Captura el IMEI y presiona Enter para cargar el equipo antes de guardar.';
     if (imeiObligatorio && !telefonoClasificacion) return 'Selecciona una clasificación: Línea Nueva, Boletín 63 o Chip ATO.';
     if (imeiObligatorio && !Chip_casado.trim()) return 'El Número es obligatorio en este módulo.';
+    if (Chip_casado && Chip_casado.length < 10) return 'El Número debe tener 10 dígitos.';
     if (recargaObligatoria && !telefonoRecarga) return 'La Recarga es obligatoria para Línea Nueva, Chip ATO y Chip Promo.';
     if (recargaEnCero) return 'La Recarga debe ser mayor a $0.';
     if (recargaPasaTope) return `La Recarga de Chip ATO no puede pasar de $${TOPE_RECARGA_CHIP_ATO}.`;
@@ -1018,6 +1026,7 @@ const FormularioVentaMultiple = () => {
   };
 
   const registrarVentaTelefono = async () => {
+    setIntentoTelefono(true);
     const errorTelefono = validarTelefono();
     if (errorTelefono) { setMensaje({ tipo: 'error', texto: errorTelefono }); return; }
     const p = Number(telefonoPrecio);
@@ -1031,7 +1040,7 @@ const FormularioVentaMultiple = () => {
     };
     const resetTel = () => {
       setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
-      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); setTelefonoRecarga('');
+      setMetodoPago(''); setTelefonoPrecio(''); setChip_casado(''); setIntentoTelefono(false); setTelefonoRecarga('');
       setMontoDividido({ efectivo: '', tarjeta: '' });
       setTelefonoOrigen('telcel');
       setTelefonoImei('');
@@ -1137,6 +1146,7 @@ const FormularioVentaMultiple = () => {
       setMensaje({ tipo: 'error', texto: 'Solo se permite 1 teléfono por ticket. Quita el que está en el carrito para cambiarlo.' });
       return;
     }
+    setIntentoTelefono(true);
     const errorTelefono = validarTelefono();
     if (errorTelefono) { setMensaje({ tipo: 'error', texto: errorTelefono }); return; }
     setCarrito([...carrito, {
@@ -1152,7 +1162,7 @@ const FormularioVentaMultiple = () => {
       tipo_venta: telefonoTipo_venta,
     }]);
     setTelefonoMarca(''); setTelefonoModelo(''); setTelefonoClave(''); setTelefonoTipo_venta('');
-    setTelefonoPrecio(''); setChip_casado(''); setTelefonoRecarga(''); setTelefonoImei(''); setTelefonoClasificacion('');
+    setTelefonoPrecio(''); setChip_casado(''); setIntentoTelefono(false); setTelefonoRecarga(''); setTelefonoImei(''); setTelefonoClasificacion('');
     setTelefonoEstadoAct(''); setTelefonoOrigen('telcel');
   };
 
@@ -1578,7 +1588,8 @@ const FormularioVentaMultiple = () => {
                 label="Número" type="tel" value={numero} fullWidth size="small" margin="dense"
                 disabled={chipDesdeClave}
                 required={tipoChip === 'Boletin 63' || TIPOS_CON_CURP_NIP.includes(tipoChip) || TIPOS_CON_FECHA_PORTA.includes(tipoChip)}
-                onChange={(e) => { setNumero(e.target.value); setNumeroDuplicado(false); }}
+                onChange={(e) => { setNumero(e.target.value.replace(/\D/g, '').slice(0, 10)); setNumeroDuplicado(false); }}
+                inputProps={{ inputMode: 'numeric', maxLength: 10 }}
                 onBlur={() => verificarNumero(numero)}
                 error={numeroDuplicado || (tipoChip === 'Boletin 63' && !numero.trim())}
                 helperText={
@@ -1588,6 +1599,8 @@ const FormularioVentaMultiple = () => {
                     ? 'Verificando…'
                     : (tipoChip === 'Boletin 63' && !numero.trim())
                     ? 'Obligatorio para Boletín 63'
+                    : (numero && numero.length < 10)
+                    ? textoFaltanNumeros(numero)
                     : ''
                 }
                 InputProps={{ endAdornment: verificandoNumero ? <InputAdornment position="end"><CircularProgress size={16} /></InputAdornment> : undefined }}
@@ -1674,7 +1687,7 @@ const FormularioVentaMultiple = () => {
           )}
           <Button
             variant="contained" fullWidth onClick={handleSubmit}
-            disabled={registrando || !tipoChip || (
+            disabled={registrando || !tipoChip || (tipoChip !== 'Tarjetas PayJoy' && !!numero && numero.length < 10) || (
               tipoChip === 'Tarjetas PayJoy'
                 ? !tadDevice
                 : TIPOS_CON_CURP_NIP.includes(tipoChip)
@@ -1698,7 +1711,7 @@ const FormularioVentaMultiple = () => {
             fullWidth
             size="small" margin="dense"
             required={imeiObligatorio}
-            error={imeiObligatorio && !telefonoImei.trim()}
+            error={intentoTelefono && imeiObligatorio && !telefonoImei.trim()}
           />
           {telefonoEstadoAct && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
@@ -1788,11 +1801,13 @@ const FormularioVentaMultiple = () => {
             <TextField
               label={imeiObligatorio ? "Número (obligatorio)" : "Número"}
               value={Chip_casado}
-              onChange={(e) => setChip_casado(e.target.value)}
+              onChange={(e) => setChip_casado(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              inputProps={{ inputMode: 'numeric', maxLength: 10 }}
               fullWidth
               size="small" margin="dense"
               required={imeiObligatorio}
-              error={imeiObligatorio && !Chip_casado.trim()}
+              error={intentoTelefono && ((imeiObligatorio && !Chip_casado) || (!!Chip_casado && Chip_casado.length < 10))}
+              helperText={Chip_casado && Chip_casado.length < 10 ? textoFaltanNumeros(Chip_casado) : undefined}
             />
             <TextField
               label={recargaObligatoria ? 'Recarga (obligatoria)' : 'Recarga'}
@@ -2318,7 +2333,6 @@ const FormularioVentaMultiple = () => {
                 InputProps={{ startAdornment: <InputAdornment position="start"><Box component="span" sx={{ fontSize: 17, fontWeight: 800, color: NAVY }}>$</Box></InputAdornment> }}
                 sx={{ '& .MuiOutlinedInput-input': { fontSize: 17, fontWeight: 800 } }} />
               {telefonoClasifNumero}
-              {imeiObligatorio && !telefonoImei.trim() && aviso('El IMEI es obligatorio en este módulo: captúralo y presiona Enter para cargar el equipo.')}
               {telefonoEnCarrito && aviso('Ya hay un teléfono en el carrito: solo se permite 1 por ticket. Quítalo con la × para cambiarlo.')}
               <Button fullWidth onClick={agregarTelefonoAlCarrito} disabled={!puedeAgregarTelefono}
                 sx={{ ...botonGrande(puedeAgregarTelefono, colorTipoActual, 56, 16), mt: 2.5 }}>
