@@ -1,6 +1,9 @@
-// Módulos que ven el diseño nuevo de "Registrar venta" (VentasPage).
-// Para darlo a más módulos, agrega su id aquí; los demás siguen con el diseño actual.
-export const MODULOS_DISENO_NUEVO: number[] = [21]; // 21 = BO
+// Módulos que NO ven el diseño nuevo de "Registrar venta" (VentasPage).
+// El diseño nuevo aplica por defecto a todo módulo con id conocido; para
+// dejar un módulo con el diseño actual, agrega su id aquí.
+// 7 = Cadenas (ya excluido además por esCadenas en VentasPage, se repite
+// aquí explícito).
+export const MODULOS_SIN_DISENO_NUEVO: number[] = [5, 7, 8, 20];
 
 export const usaDisenoNuevo = (moduloId?: number | null): boolean =>
-  moduloId != null && MODULOS_DISENO_NUEVO.includes(moduloId);
+  moduloId != null && !MODULOS_SIN_DISENO_NUEVO.includes(moduloId);
