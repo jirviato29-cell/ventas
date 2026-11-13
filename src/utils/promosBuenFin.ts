@@ -47,11 +47,15 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
     .filter(({ p }) => !!p.promocion);
 
   const codigos = Array.from(new Set(conPromo.map(({ p }) => p.promocion!.toUpperCase())));
-  if (codigos.length > 1) {
+  // FUNDAS30 es independiente (30% automático sobre sus propias piezas, no
+  // acumula). 3X2 y 2DA30 sí se excluyen entre sí. Por eso permitimos que
+  // FUNDAS30 conviva con 3X2 o 2DA30 en el mismo ticket.
+  const codigosGrupo = codigos.filter((c) => c !== 'FUNDAS30');
+  if (codigosGrupo.length > 1) {
     avisos.push('No se pueden combinar dos promociones distintas en la misma venta.');
   }
-  // Con dos códigos distintos no se calcula nada: la venta queda bloqueada.
-  const codigo = codigos.length === 1 ? codigos[0] : null;
+  const codigoGrupo = codigosGrupo.length === 1 ? codigosGrupo[0] : null;
+  const tieneFundas30 = codigos.includes('FUNDAS30');
 
   // idx -> lista de [precio, piezas]
   const porIdx = new Map<number, Map<number, number>>();
@@ -61,28 +65,33 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
     porIdx.set(idx, m);
   };
 
-  if (codigo === 'FUNDAS30') {
-    conPromo.forEach(({ p, idx }) => sumar(idx, r2(p.precio_unitario * 0.7), p.cantidad));
-  } else if (codigo === '3X2' || codigo === '2DA30') {
-    const grupo = codigo === '3X2' ? 3 : 2;
-    const factor = codigo === '3X2' ? 0 : 0.7;
+  if (tieneFundas30) {
+    conPromo
+      .filter(({ p }) => p.promocion!.toUpperCase() === 'FUNDAS30')
+      .forEach(({ p, idx }) => sumar(idx, r2(p.precio_unitario * 0.7), p.cantidad));
+  }
+
+  if (codigoGrupo === '3X2' || codigoGrupo === '2DA30') {
+    const grupo = codigoGrupo === '3X2' ? 3 : 2;
+    const factor = codigoGrupo === '3X2' ? 0 : 0.7;
     const piezas = conPromo
+      .filter(({ p }) => p.promocion!.toUpperCase() === codigoGrupo)
       .flatMap(({ p, idx }) => Array.from({ length: p.cantidad }, () => ({ precio: p.precio_unitario, idx })))
       .sort((a, b) => a.precio - b.precio || a.idx - b.idx);
     const n = piezas.length;
     const resto = n % grupo;
     if (resto !== 0) {
-      avisos.push(`${etiquetaPromo(codigo)}: llevas ${resto} de ${grupo} piezas`);
+      avisos.push(`${etiquetaPromo(codigoGrupo)}: llevas ${resto} de ${grupo} piezas`);
     }
     const grupos = Math.ceil(n / grupo);
     const caras = piezas.filter((x) => x.precio > LIMITE_PIEZA_CARA).length;
     if (caras > grupos) {
-      avisos.push(`${etiquetaPromo(codigo)}: máximo 1 pieza de más de $1,000 por cada ${grupo} piezas (llevas ${caras}).`);
+      avisos.push(`${etiquetaPromo(codigoGrupo)}: máximo 1 pieza de más de $1,000 por cada ${grupo} piezas (llevas ${caras}).`);
     }
     const conDescuento = Math.floor(n / grupo);
     piezas.forEach((x, i) => sumar(x.idx, i < conDescuento ? r2(x.precio * factor) : r2(x.precio), 1));
-  } else if (codigo) {
-    avisos.push(`La promoción ${codigo} no está soportada.`);
+  } else if (codigoGrupo) {
+    avisos.push(`La promoción ${codigoGrupo} no está soportada.`);
   }
 
   const renglones: RenglonPromo[] = [];

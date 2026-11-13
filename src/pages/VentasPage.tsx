@@ -579,8 +579,10 @@ const FormularioVentaMultiple = () => {
   const promosBoton = (['3X2', '2DA30'] as const).filter((c) => promosActivas.some((p) => p.codigo === c));
   const fundas30 = promosActivas.find((p) => p.codigo === 'FUNDAS30');
   const promoParaProducto = (clave: string): string | null => {
-    if (promoSel && promosBoton.includes(promoSel)) return promoSel;
+    // FUNDAS30 es automático e independiente: si la clave está en su lista,
+    // siempre gana sobre un 3X2/2DA30 elegido (no se acumulan).
     if (fundas30 && clave && fundas30.claves.some((c) => normClave(c) === normClave(clave))) return 'FUNDAS30';
+    if (promoSel && promosBoton.includes(promoSel)) return promoSel;
     return null;
   };
   const precioInventario = (clave: string): number | null =>
@@ -600,13 +602,18 @@ const FormularioVentaMultiple = () => {
   const vistaPromo = calcularPromos(carrito);
   // Sugerencia Buen Fin: un accesorio "califica" para 3X2/2DA30 si cuesta
   // ≤ $1,000 (misma regla de calcularPromos: las piezas caras no pueden ser
-  // la descontada, así que no las contamos para gatillar el aviso).
+  // la descontada). Los productos marcados con FUNDAS30 no se acumulan con
+  // 3X2/2DA30 y no cuentan ni gatillan el aviso.
+  const esFundas30Item = (p: ProductoEnVenta) => (p.promocion ?? '').toUpperCase() === 'FUNDAS30';
   const piezasAccCalifican = carrito
-    .filter((p) => p.tipo_producto !== 'telefono' && p.precio_unitario <= 1000)
+    .filter((p) => p.tipo_producto !== 'telefono' && !esFundas30Item(p) && p.precio_unitario <= 1000)
     .reduce((s, p) => s + p.cantidad, 0);
   const sugiere3X2   = promosBoton.includes('3X2')   && piezasAccCalifican >= 3;
   const sugiere2DA30 = promosBoton.includes('2DA30') && piezasAccCalifican >= 2;
-  const carritoCalificaPromo = (sugiere3X2 || sugiere2DA30) && promoSel === null && !carritoConPromo;
+  // Solo bloquean el aviso las promos "de grupo" (3X2/2DA30), no FUNDAS30:
+  // FUNDAS30 convive con 3X2/2DA30 en el mismo ticket.
+  const carritoConPromoGrupo = carrito.some((p) => p.promocion && !esFundas30Item(p));
+  const carritoCalificaPromo = (sugiere3X2 || sugiere2DA30) && promoSel === null && !carritoConPromoGrupo;
 
   // Renglones del ticket: con promo usa los renglones ya partidos por precio
   // (precios del backend si la respuesta coincide); sin promo, igual que siempre.
@@ -633,10 +640,17 @@ const FormularioVentaMultiple = () => {
     const promo = promoParaProducto(productoClave);
     let precioFinal = precio;
     if (promo) {
-      const codigoEnCarrito = carrito.find((p) => p.promocion)?.promocion;
-      if (codigoEnCarrito && codigoEnCarrito !== promo) {
-        setMensaje({ tipo: 'error', texto: `No se pueden combinar promociones: el carrito ya trae ${etiquetaPromo(codigoEnCarrito)} y este producto entraría con ${etiquetaPromo(promo)}.` });
-        return;
+      // FUNDAS30 sí convive con 3X2 o 2DA30 (se aplica solo a sus propias
+      // piezas). Solo bloqueamos cuando dos códigos NO-FUNDAS30 chocan.
+      const promoUp = promo.toUpperCase();
+      if (promoUp !== 'FUNDAS30') {
+        const conflicto = carrito.find((p) => p.promocion
+          && p.promocion.toUpperCase() !== 'FUNDAS30'
+          && p.promocion.toUpperCase() !== promoUp);
+        if (conflicto) {
+          setMensaje({ tipo: 'error', texto: `No se pueden combinar promociones: el carrito ya trae ${etiquetaPromo(conflicto.promocion!)} y este producto entraría con ${etiquetaPromo(promo)}.` });
+          return;
+        }
       }
       const pInv = precioInventario(productoClave);
       if (pInv === null) {
@@ -655,10 +669,13 @@ const FormularioVentaMultiple = () => {
 
   // Al aplicar una promo con el carrito ya cargado, marcamos cada accesorio
   // con el código y, si tienen clave en inventario, igualamos el precio al de
-  // lista (misma regla que agregarAlCarrito cuando se parte con promo).
+  // lista (misma regla que agregarAlCarrito cuando se parte con promo). Los
+  // productos con FUNDAS30 se dejan intactos: conservan su 30% y no entran
+  // en el cálculo de 3X2/2DA30.
   const aplicarPromoAlCarrito = (codigo: '3X2' | '2DA30') => {
     setCarrito((prev) => prev.map((p) => {
       if (p.tipo_producto === 'telefono') return p;
+      if (esFundas30Item(p)) return p;
       const pInv = precioInventario(p.clave ?? '');
       return { ...p, promocion: codigo, ...(pInv != null ? { precio_unitario: pInv } : {}) };
     }));
