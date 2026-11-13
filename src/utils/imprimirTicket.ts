@@ -84,11 +84,22 @@ export function imprimirTicket(data: TicketData): void {
   ${data.folio ? `<div class="info">Folio: ${data.folio}</div>` : ''}
   <div class="div"></div>
   ${data.clasificacion ? `<div class="clasif">${data.clasificacion}</div>` : ''}
-  ${data.productos.map((p) => `
+  ${data.productos.map((p) => {
+    // Con promo: la pieza descontada va con precio original tachado; la pieza
+    // "completa" en 3x2 / 2.ª al 30% comparte código de promo pero NO se tacha.
+    let detalle = '';
+    if (p.promocion) {
+      const orig = p.precio_original ?? p.precio_unitario;
+      detalle = p.precio_unitario < orig
+        ? `<div class="prod-detalle">${p.cantidad} x <s>${fmt(orig)}</s> ${fmt(p.precio_unitario)} · PROMO ${p.promocion}</div>`
+        : `<div class="prod-detalle">${p.cantidad} x ${fmt(p.precio_unitario)} · Pieza pagada (${p.promocion})</div>`;
+    }
+    return `
     <div class="prod-nombre">${p.nombre}</div>
-    ${p.promocion ? `<div class="prod-detalle">${p.cantidad} x <s>${fmt(p.precio_original ?? p.precio_unitario)}</s> ${fmt(p.precio_unitario)} · PROMO ${p.promocion}</div>` : ''}
+    ${detalle}
     <div class="prod-precio">${fmt(p.cantidad * p.precio_unitario)}</div>
-  `).join('<div style="height:5px"></div>')}
+  `;
+  }).join('<div style="height:5px"></div>')}
   <div class="div"></div>
   <div class="total-row"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
   <div class="div"></div>
