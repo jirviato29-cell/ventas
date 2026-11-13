@@ -350,6 +350,13 @@ const FormularioVentaMultiple = () => {
   const [confirmSinPromoOpen, setConfirmSinPromoOpen] = useState(false);
   // Diálogo cuando se intenta registrar con 3X2 y menos de 3 piezas.
   const [dialogFalta3X2Open, setDialogFalta3X2Open] = useState(false);
+  // Diálogo al intentar agregar la 3.ª pieza con 2DA30 (ofrece cambiar a 3X2).
+  // Guarda la pieza pendiente para poder cambiar la promo y agregarla en un
+  // mismo setCarrito.
+  const [dialog2DA30Limite, setDialog2DA30Limite] = useState<
+    | { producto: string; clave: string; cantidad: number; precio: number }
+    | null
+  >(null);
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -667,6 +674,18 @@ const FormularioVentaMultiple = () => {
       precioFinal = pInv;
       if (metodoPago === 'dividido') { setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' }); }
     }
+    // Candado por promo: 2DA30 admite 2 piezas que califican, 3X2 admite 3.
+    // FUNDAS30 y piezas caras (>$1,000) no cuentan — misma regla que piezasAccCalifican.
+    const promoUp = (promo || '').toUpperCase();
+    const piezasNuevasLimite = promoUp !== 'FUNDAS30' && precioFinal <= 1000 ? cantidad : 0;
+    if (promoSel === '2DA30' && piezasAccCalifican + piezasNuevasLimite > 2) {
+      setDialog2DA30Limite({ producto, clave: productoClave, cantidad, precio: precioFinal });
+      return;
+    }
+    if (promoSel === '3X2' && piezasAccCalifican + piezasNuevasLimite > 3) {
+      setMensaje({ tipo: 'error', texto: 'El 3x2 es para 3 piezas. Las demás van en otro ticket.' });
+      return;
+    }
     setCarrito([...carrito, { producto, clave: productoClave, cantidad, precio_unitario: precioFinal, id: 0, nombre: '', tipo_producto: 'accesorios', ...(promo ? { promocion: promo } : {}) }]);
     setProducto('');
     setProductoClave('');
@@ -694,6 +713,11 @@ const FormularioVentaMultiple = () => {
   // y promoSel se desincronicen (p. ej. botón 3X2 encendido pero accesorios
   // marcados como 2DA30 porque se aplicaron desde el aviso o el diálogo).
   const cambiarPromoSel = (v: '3X2' | '2DA30' | null) => {
+    // 2DA30 solo admite 2 piezas. Si el carrito ya trae 3+, no dejar cambiar.
+    if (v === '2DA30' && piezasAccCalifican > 2) {
+      setMensaje({ tipo: 'error', texto: 'La 2.ª pieza al 30% es para 2 piezas. Si el cliente lleva 3, cambia a 3x2.' });
+      return;
+    }
     if (v) { aplicarPromoAlCarrito(v); return; }
     setCarrito((prev) => prev.map((p) => {
       if (p.tipo_producto === 'telefono' || esFundas30Item(p)) return p;
@@ -701,6 +725,30 @@ const FormularioVentaMultiple = () => {
       return resto as ProductoEnVenta;
     }));
     setPromoSel(null);
+  };
+
+  // Cierra el diálogo 2DA30→3X2: cambia la promo y agrega la pieza pendiente
+  // en una sola actualización del carrito (si lo hiciera en dos pasos, el
+  // closure de agregarAlCarrito leería un promoSel aún no propagado).
+  const aplicar3X2YAgregarPendiente = () => {
+    if (!dialog2DA30Limite) return;
+    const pendiente = dialog2DA30Limite;
+    setCarrito((prev) => {
+      const retagged = prev.map((p) => {
+        if (p.tipo_producto === 'telefono' || esFundas30Item(p)) return p;
+        const pInv = precioInventario(p.clave ?? '');
+        return { ...p, promocion: '3X2' as string, ...(pInv != null ? { precio_unitario: pInv } : {}) };
+      });
+      return [...retagged, {
+        producto: pendiente.producto, clave: pendiente.clave, cantidad: pendiente.cantidad,
+        precio_unitario: pendiente.precio,
+        id: 0, nombre: '', tipo_producto: 'accesorios', promocion: '3X2',
+      }];
+    });
+    setPromoSel('3X2');
+    if (metodoPago === 'dividido') { setMetodoPago(''); setMontoDividido({ efectivo: '', tarjeta: '' }); }
+    setProducto(''); setProductoClave(''); setCantidad(1); setPrecio(null);
+    setDialog2DA30Limite(null);
   };
 
   const enviarCarrito = async () => {
@@ -2594,6 +2642,33 @@ const FormularioVentaMultiple = () => {
     </Dialog>
   );
 
+  // Diálogo al rebasar el límite de 2 piezas con 2DA30: ofrece cambiar a 3X2
+  // y agregar la pieza pendiente. Cancelar descarta la pieza.
+  const dialog2DA30LimiteEl = (
+    <Dialog open={!!dialog2DA30Limite} onClose={() => setDialog2DA30Limite(null)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>La 2.ª pieza al 30% es para 2 piezas</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary">
+          Si el cliente lleva 3, cambia a 3x2.
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end' }}>
+        {promosBoton.includes('3X2') && (
+          <Button variant="contained"
+            onClick={aplicar3X2YAgregarPendiente}
+            sx={{ bgcolor: '#f97316', color: '#fff', fontWeight: 800, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' } }}>
+            Cambiar a 3x2
+          </Button>
+        )}
+        <Button
+          onClick={() => setDialog2DA30Limite(null)}
+          sx={{ color: '#475569', fontWeight: 700, textTransform: 'none' }}>
+          Cancelar
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   // Diálogo cuando se intenta registrar con 3X2 y menos de 3 piezas que
   // califican. Ofrece cambiar a 2.ª al 30% (si está activa) o vender sin promo.
   const dialogFalta3X2 = (
@@ -3477,6 +3552,7 @@ const FormularioVentaMultiple = () => {
         })()}
         {confirmSinPromoDialog}
         {dialogFalta3X2}
+        {dialog2DA30LimiteEl}
       </Box>
     );
   }
@@ -4071,6 +4147,7 @@ const FormularioVentaMultiple = () => {
       </Dialog>
       {confirmSinPromoDialog}
       {dialogFalta3X2}
+      {dialog2DA30LimiteEl}
     </Box>
   );
 };

@@ -79,10 +79,8 @@ export function calcularPromos(carrito: ProductoEnVenta[]): VistaPromo {
       .flatMap(({ p, idx }) => Array.from({ length: p.cantidad }, () => ({ precio: p.precio_unitario, idx })))
       .sort((a, b) => a.precio - b.precio || a.idx - b.idx);
     const n = piezas.length;
-    const resto = n % grupo;
-    if (resto !== 0) {
-      avisos.push(`${etiquetaPromo(codigoGrupo)}: llevas ${resto} de ${grupo} piezas`);
-    }
+    // El candado por promo en VentasPage impide dejar un grupo incompleto,
+    // así que no empujamos "llevas X de GRUPO piezas" como aviso.
     const grupos = Math.ceil(n / grupo);
     const caras = piezas.filter((x) => x.precio > LIMITE_PIEZA_CARA).length;
     if (caras > grupos) {
