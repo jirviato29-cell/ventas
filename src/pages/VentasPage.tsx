@@ -348,6 +348,8 @@ const FormularioVentaMultiple = () => {
   const [promoSel, setPromoSel] = useState<null | '3X2' | '2DA30'>(null);
   // Sugerencia Buen Fin: confirmación antes de cobrar sin promoción.
   const [confirmSinPromoOpen, setConfirmSinPromoOpen] = useState(false);
+  // Diálogo cuando se intenta registrar con 3X2 y menos de 3 piezas.
+  const [dialogFalta3X2Open, setDialogFalta3X2Open] = useState(false);
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -614,6 +616,11 @@ const FormularioVentaMultiple = () => {
   // FUNDAS30 convive con 3X2/2DA30 en el mismo ticket.
   const carritoConPromoGrupo = carrito.some((p) => p.promocion && !esFundas30Item(p));
   const carritoCalificaPromo = (sugiere3X2 || sugiere2DA30) && promoSel === null && !carritoConPromoGrupo;
+  // 3X2 elegido pero el carrito no llega a 3 accesorios (FUNDAS30 no cuenta):
+  // no se aplica descuento. Avisamos arriba del botón y, al registrar, abrimos
+  // un diálogo para cambiar a 2.ª al 30% o vender sin promo.
+  const faltaPiezaPara3X2 = promoSel === '3X2' && piezasAccCalifican > 0 && piezasAccCalifican < 3;
+  const piezasFaltantes3X2 = faltaPiezaPara3X2 ? 3 - piezasAccCalifican : 0;
 
   // Renglones del ticket: con promo usa los renglones ya partidos por precio
   // (precios del backend si la respuesta coincide); sin promo, igual que siempre.
@@ -700,6 +707,7 @@ const FormularioVentaMultiple = () => {
     if (carrito.length === 0) return;
     const totalCarrito = carrito.reduce((a, p) => a + p.precio_unitario * p.cantidad, 0);
 
+    if (faltaPiezaPara3X2) { setDialogFalta3X2Open(true); return; }
     if (vistaPromo.bloquea) {
       setMensaje({ tipo: 'error', texto: vistaPromo.avisos[0] });
       return;
@@ -1103,6 +1111,7 @@ const FormularioVentaMultiple = () => {
   // Un solo POST con accesorios y teléfono; si es dividido, el backend parte cada renglón.
   const enviarCarritoNuevo = async () => {
     if (carrito.length === 0) return;
+    if (faltaPiezaPara3X2) { setDialogFalta3X2Open(true); return; }
     if (vistaPromo.bloquea) { setMensaje({ tipo: 'error', texto: vistaPromo.avisos[0] }); return; }
     if (!metodoPago) { setMensaje({ tipo: 'error', texto: 'Elige cómo paga el cliente.' }); return; }
 
@@ -1396,10 +1405,39 @@ const FormularioVentaMultiple = () => {
       </Box>
     </Alert>
   ) : null;
-  const avisosPromo =
-          vistaPromo.avisos.map((a) => (
-            <Alert key={a} severity="warning" sx={{ mt: 0.5, py: 0, fontSize: 12.5 }}>{a}</Alert>
-          ))
+  // Aviso cuando se eligió 3X2 pero faltan piezas. Reemplaza al banner naranja
+  // de "este carrito califica" (ese solo aparece con promoSel=null).
+  const bannerFaltaPieza3X2 = faltaPiezaPara3X2 ? (
+    <Alert
+      severity="warning"
+      icon={<LocalOfferIcon />}
+      sx={{
+        mt: 0.5, borderRadius: 2, alignItems: 'center',
+        bgcolor: '#fef9c3', color: '#854d0e', border: '1px solid #fde047',
+        '& .MuiAlert-icon': { color: '#ca8a04' },
+      }}
+    >
+      <Box sx={{ fontWeight: 800, fontSize: 13.5, lineHeight: 1.2 }}>
+        Falta {piezasFaltantes3X2} pieza{piezasFaltantes3X2 > 1 ? 's' : ''} para el 3x2
+      </Box>
+      {promosBoton.includes('2DA30') && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+          <Button size="small" variant="contained"
+            onClick={() => cambiarPromoSel('2DA30')}
+            sx={{ bgcolor: '#f97316', color: '#fff', fontWeight: 800, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' } }}>
+            Cambiar a 2.ª pieza al 30%
+          </Button>
+        </Box>
+      )}
+    </Alert>
+  ) : null;
+  // Avisos genéricos de calcularPromos. Cuando falta pieza para el 3x2
+  // ya mostramos el banner específico, así que evitamos duplicar.
+  const avisosPromo = faltaPiezaPara3X2
+    ? null
+    : vistaPromo.avisos.map((a) => (
+        <Alert key={a} severity="warning" sx={{ mt: 0.5, py: 0, fontSize: 12.5 }}>{a}</Alert>
+      ))
   ;
   const divididoCarrito = 
           metodoPago === 'dividido' && carrito.length > 0 && (() => {
@@ -2057,11 +2095,13 @@ const FormularioVentaMultiple = () => {
   // Accesorios y teléfono se cobran juntos: un solo carrito y un solo pago.
   const ayudaRegistrar = carrito.length === 0
     ? (esVentaTelefono ? 'Agrega el teléfono al carrito.' : 'Agrega al menos un producto al carrito.')
+    : faltaPiezaPara3X2 ? `Falta ${piezasFaltantes3X2} pieza${piezasFaltantes3X2 > 1 ? 's' : ''} para el 3x2.`
     : vistaPromo.bloquea ? vistaPromo.avisos[0]
     : !metodoPago ? 'Elige cómo paga el cliente.'
     : metodoPago === 'dividido' && !sumaDividida(montoDividido, totalCarritoBruto) ? 'Efectivo y tarjeta deben sumar el total.'
     : 'Todo listo: registra la venta.';
-  const puedeRegistrar = carrito.length > 0 && !!metodoPago && !vistaPromo.bloquea;
+  // En el caso 3X2+<3 dejamos clickable el botón para que abra el diálogo.
+  const puedeRegistrar = carrito.length > 0 && !!metodoPago && (!vistaPromo.bloquea || faltaPiezaPara3X2);
   const etiquetaTipoVentaTel: Record<string, string> = { Contado: 'Contado', Paguitos: 'Paguitos', Pajoy: 'PayJoy' };
 
   const formularioNuevo = disenoNuevo ? (
@@ -2330,6 +2370,7 @@ const FormularioVentaMultiple = () => {
                 </Box>
                 {divididoCarrito && <Box sx={{ mt: 1.5 }}>{divididoCarrito}</Box>}
                 {bannerCalificaPromo && <Box sx={{ mt: 1.5 }}>{bannerCalificaPromo}</Box>}
+                {bannerFaltaPieza3X2 && <Box sx={{ mt: 1.5 }}>{bannerFaltaPieza3X2}</Box>}
 
                 <Button fullWidth disabled={!puedeRegistrar}
                   onClick={() => { if (carritoCalificaPromo) { setConfirmSinPromoOpen(true); return; } enviarCarritoNuevo(); }}
@@ -2466,9 +2507,10 @@ const FormularioVentaMultiple = () => {
           </TextField>
           {divididoCarrito}
           {bannerCalificaPromo}
+          {bannerFaltaPieza3X2}
           <Button variant="contained" fullWidth
             onClick={() => { if (carritoCalificaPromo) { setConfirmSinPromoOpen(true); return; } enviarCarrito(); }}
-            disabled={carrito.length === 0 || !metodoPago || vistaPromo.bloquea}
+            disabled={carrito.length === 0 || !metodoPago || (vistaPromo.bloquea && !faltaPiezaPara3X2)}
             sx={{ mt: 1, borderRadius: 3, bgcolor: '#f97316', color: '#fff', fontWeight: 800, py: 0.9, fontSize: 14, textTransform: 'uppercase', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' }, '&.Mui-disabled': { bgcolor: '#e5e7eb', color: '#9ca3af' } }}>
             Registrar Venta
           </Button>
@@ -2545,6 +2587,33 @@ const FormularioVentaMultiple = () => {
         )}
         <Button
           onClick={() => { setConfirmSinPromoOpen(false); (disenoNuevo ? enviarCarritoNuevo : enviarCarrito)(); }}
+          sx={{ color: '#475569', fontWeight: 700, textTransform: 'none' }}>
+          Vender sin promoción
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  // Diálogo cuando se intenta registrar con 3X2 y menos de 3 piezas que
+  // califican. Ofrece cambiar a 2.ª al 30% (si está activa) o vender sin promo.
+  const dialogFalta3X2 = (
+    <Dialog open={dialogFalta3X2Open} onClose={() => setDialogFalta3X2Open(false)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>El 3x2 necesita 3 piezas. ¿Qué hacemos?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary">
+          Llevas {piezasAccCalifican} pieza{piezasAccCalifican === 1 ? '' : 's'} que califican. Elige cómo continuar:
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1, justifyContent: 'flex-end' }}>
+        {promosBoton.includes('2DA30') && (
+          <Button variant="contained"
+            onClick={() => { setDialogFalta3X2Open(false); cambiarPromoSel('2DA30'); }}
+            sx={{ bgcolor: '#f97316', color: '#fff', fontWeight: 800, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#ea580c' } }}>
+            Aplicar 2.ª pieza al 30%
+          </Button>
+        )}
+        <Button
+          onClick={() => { setDialogFalta3X2Open(false); cambiarPromoSel(null); }}
           sx={{ color: '#475569', fontWeight: 700, textTransform: 'none' }}>
           Vender sin promoción
         </Button>
@@ -3407,6 +3476,7 @@ const FormularioVentaMultiple = () => {
           );
         })()}
         {confirmSinPromoDialog}
+        {dialogFalta3X2}
       </Box>
     );
   }
@@ -4000,6 +4070,7 @@ const FormularioVentaMultiple = () => {
         </DialogActions>
       </Dialog>
       {confirmSinPromoDialog}
+      {dialogFalta3X2}
     </Box>
   );
 };
