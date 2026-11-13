@@ -21,6 +21,19 @@ interface TicketData {
 const fmt = (n: number) =>
   n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
+// Buen Fin 2026: del 13 al 17 de noviembre (hora de México) se cambia la
+// leyenda del 10% por la de promociones no acumulables; el 18 vuelve sola.
+const BUEN_FIN_INICIO = '2026-11-13';
+const BUEN_FIN_FIN = '2026-11-17';
+const LEYENDA_10 = 'Presenta este ticket en tu siguiente compra y recibe 10% de descuento en: protectores, micas de hidrogel, cargadores, bocinas, power bank y manos libres.';
+const LEYENDA_BUEN_FIN = 'Promociones Buen Fin no acumulables con otros descuentos.';
+
+const leyendaPromo = (): string => {
+  // en-CA da AAAA-MM-DD, comparable como texto.
+  const hoyMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+  return hoyMx >= BUEN_FIN_INICIO && hoyMx <= BUEN_FIN_FIN ? LEYENDA_BUEN_FIN : LEYENDA_10;
+};
+
 export function imprimirTicket(data: TicketData): void {
   const fecha = new Date().toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
@@ -124,7 +137,7 @@ export function imprimirTicket(data: TicketData): void {
   <div class="garantia-item">• No hay cambios</div>
   <div class="garantia-item">• No hay devolucion de efectivo.</div>
   <div class="div"></div>
-  <div class="promo">Presenta este ticket en tu siguiente compra y recibe 10% de descuento en: protectores, micas de hidrogel, cargadores, bocinas, power bank y manos libres.</div>
+  <div class="promo">${leyendaPromo()}</div>
   <div style="height:12mm"></div>
 </body>
 </html>`;
