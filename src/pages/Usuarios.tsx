@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import {
   Edit, Delete, Close, AccessTime, Visibility, VisibilityOff,
-  KeyboardArrowDown, KeyboardArrowRight, Search, Add,
+  KeyboardArrowDown, KeyboardArrowRight, Search, Add, CheckCircle,
 } from "@mui/icons-material";
 import axios from "axios";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -54,8 +54,9 @@ interface PersonaUsuarios {
   jornada: number;
   principalId: number;
   formaPago: string | null;
-  cuentaClabe: string | null;
-  cuentaInterbancaria: string | null;
+  pagoCompleto: boolean;
+  talla: string | null;
+  whatsapp: string | null;
   fechaIngreso: string | null;
   cuentas: Usuario[];
   textoBusqueda: string;
@@ -109,8 +110,17 @@ const agruparPorPersona = (usuarios: Usuario[]): PersonaUsuarios[] => {
       jornada,
       principalId: principal.id,
       formaPago: principal.forma_pago ?? null,
-      cuentaClabe: principal.cuenta_clabe ?? null,
-      cuentaInterbancaria: principal.cuenta_interbancaria ?? null,
+      // Palomita en Forma de pago: con BBVA/Banco Azteca (misma condición que el modal)
+      // pide CLABE e interbancaria; con otra forma basta con tenerla; vacía, sin palomita
+      pagoCompleto: (() => {
+        const forma = (principal.forma_pago ?? "").trim();
+        if (!forma) return false;
+        if (forma === "BBVA" || forma === "Banco Azteca")
+          return (principal.cuenta_clabe ?? "").trim() !== "" && (principal.cuenta_interbancaria ?? "").trim() !== "";
+        return true;
+      })(),
+      talla: principal.talla ?? null,
+      whatsapp: principal.whatsapp ?? null,
       fechaIngreso: principal.fecha_ingreso ?? null,
       cuentas,
       textoBusqueda: sinAcentos([nombre, id, ...cuentas.map((c) => c.username)].join(" ")),
@@ -495,8 +505,8 @@ const UsuariosAdmin = () => {
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Sueldo</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Jornada (h)</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Forma de pago</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta CLABE</TableCell>
-              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuenta interbancaria</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Talla</TableCell>
+              <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>WhatsApp</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Fecha de ingreso</TableCell>
               <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700 }}>Cuentas</TableCell>
             </TableRow>
@@ -568,11 +578,16 @@ const UsuariosAdmin = () => {
                         {p.jornada > 0 ? `${p.jornada}h` : "—"}
                       </Button>
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.75rem" }}>{p.formaPago || "-"}</TableCell>
-                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>{p.cuentaClabe || "-"}</TableCell>
-                    <TableCell sx={{ fontSize: "0.75rem", wordBreak: "break-all" }}>
-                      {p.cuentaInterbancaria || "-"}
+                    <TableCell sx={{ fontSize: "0.75rem" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        {p.formaPago || "-"}
+                        {p.pagoCompleto && (
+                          <CheckCircle titleAccess="Forma de pago y cuentas completas" sx={{ fontSize: 16, color: "success.main" }} />
+                        )}
+                      </Box>
                     </TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem" }}>{p.talla || "-"}</TableCell>
+                    <TableCell sx={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>{p.whatsapp || "-"}</TableCell>
                     <TableCell sx={{ fontSize: "0.75rem" }}>{fechaDDMMAAAA(p.fechaIngreso) ?? "-"}</TableCell>
                     <TableCell sx={{ fontSize: "0.75rem", whiteSpace: "nowrap", py: 0 }}>
                       {p.cuentas.length} {p.cuentas.length === 1 ? "cuenta" : "cuentas"}

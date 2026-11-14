@@ -19,12 +19,18 @@ import { Usuario } from "../Types";
 
 const ROLES = ["admin", "encargado", "asesor", "contador", "check"];
 const MIXTO = "__mixto__"; // valor del select cuando las cuentas no coinciden: no se cambia
+const TALLAS = ["CH", "M", "G", "XG", "XXG"];
+
+// Deja solo dígitos y corta al máximo permitido
+const soloDigitos = (valor: string, max: number) => valor.replace(/\D/g, "").slice(0, max);
 
 interface FormPersona {
   nombre_completo: string;
   rol: string;
   asegurado: string; // "si" | "no" | MIXTO
   forma_pago: string;
+  whatsapp: string;
+  talla: string;
   cuenta_clabe: string;
   cuenta_interbancaria: string;
   nombre_englobado: string;
@@ -57,6 +63,8 @@ const formInicial = (cuentas: Usuario[]): FormPersona => {
     rol: roles.size === 1 ? cuentas[0].rol : MIXTO,
     asegurado: aseguradas === cuentas.length ? "si" : aseguradas === 0 ? "no" : MIXTO,
     forma_pago: principal.forma_pago ?? "",
+    whatsapp: principal.whatsapp ?? "",
+    talla: principal.talla ?? "",
     cuenta_clabe: principal.cuenta_clabe ?? "",
     cuenta_interbancaria: principal.cuenta_interbancaria ?? "",
     nombre_englobado: principal.nombre_englobado ?? "",
@@ -104,6 +112,8 @@ const EditarPersonaDialog: React.FC<Props> = ({ open, cuentas, onClose, onGuarda
     if (form.rol !== inicial.rol && form.rol !== MIXTO) p.rol = form.rol;
     if (form.asegurado !== inicial.asegurado && form.asegurado !== MIXTO) p.asegurado = form.asegurado === "si";
     if (form.forma_pago !== inicial.forma_pago) p.forma_pago = form.forma_pago || null;
+    if (form.whatsapp !== inicial.whatsapp) p.whatsapp = form.whatsapp.trim() || null;
+    if (form.talla !== inicial.talla) p.talla = form.talla || null;
     if (conCuentas) {
       if (form.cuenta_clabe !== inicial.cuenta_clabe || form.forma_pago !== inicial.forma_pago)
         p.cuenta_clabe = form.cuenta_clabe.trim() || null;
@@ -270,6 +280,39 @@ const EditarPersonaDialog: React.FC<Props> = ({ open, cuentas, onClose, onGuarda
           <MenuItem value="Kids">Kids</MenuItem>
         </TextField>
 
+        <TextField
+          label="WhatsApp"
+          value={form.whatsapp}
+          onChange={(e) => setF("whatsapp", soloDigitos(e.target.value, 10))}
+          fullWidth
+          margin="normal"
+          size="small"
+          inputProps={{ inputMode: "numeric", maxLength: 10 }}
+          helperText={varia(cuentas, "whatsapp") ? "Hoy varía entre cuentas; solo se unifica si lo cambias" : undefined}
+        />
+
+        <TextField
+          select
+          label="Talla"
+          value={form.talla}
+          onChange={(e) => setF("talla", e.target.value)}
+          fullWidth
+          margin="normal"
+          size="small"
+          helperText={varia(cuentas, "talla") ? "Hoy varía entre cuentas; solo se unifica si la cambias" : undefined}
+        >
+          <MenuItem value="">(Sin talla)</MenuItem>
+          {/* Si en la BD hay una talla fuera de la lista, se muestra para no perderla */}
+          {inicial.talla && !TALLAS.includes(inicial.talla) && (
+            <MenuItem value={inicial.talla}>{inicial.talla}</MenuItem>
+          )}
+          {TALLAS.map((t) => (
+            <MenuItem key={t} value={t}>
+              {t}
+            </MenuItem>
+          ))}
+        </TextField>
+
         {conCuentas && (
           <>
             <TextField
@@ -284,10 +327,11 @@ const EditarPersonaDialog: React.FC<Props> = ({ open, cuentas, onClose, onGuarda
             <TextField
               label="Cuenta interbancaria"
               value={form.cuenta_interbancaria}
-              onChange={(e) => setF("cuenta_interbancaria", e.target.value)}
+              onChange={(e) => setF("cuenta_interbancaria", soloDigitos(e.target.value, 18))}
               fullWidth
               margin="normal"
               size="small"
+              inputProps={{ inputMode: "numeric", maxLength: 18 }}
             />
           </>
         )}

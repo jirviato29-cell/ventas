@@ -114,6 +114,8 @@ export interface Usuario {
   } | null;
   asegurado?: boolean;
   fecha_ingreso?: string | null; // "YYYY-MM-DD"
+  whatsapp?: string | null;
+  talla?: string | null;
 }
 
 
