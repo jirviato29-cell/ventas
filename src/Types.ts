@@ -125,6 +125,7 @@ export interface InventarioGeneral {
   clave: string
   precio: number;
   cantidad: number;
+  tipo_producto?: string;
 }
 
 export interface InventarioTelefono {
