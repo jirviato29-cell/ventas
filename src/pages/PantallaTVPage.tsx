@@ -64,8 +64,11 @@ const PURPLE = '#a855f7';
 const TEXT_DIM = '#94a3b8';
 const MONO = '"Roboto Mono","SF Mono",Menlo,Consolas,monospace';
 
-const N_SCREENS = 10;
-const ROTATE_MS = 15000;
+const N_SCREENS = 8;
+const ROTATE_MS = 5000;
+const DIRECTOR_MS = 60000; // la pantalla de resumen del director se queda 1 minuto
+const RED = '#ef4444';
+const duracionPantalla = (i: number) => (i === 0 ? DIRECTOR_MS : ROTATE_MS);
 const REFRESH_MS = 60000;
 
 const SCREEN_TITLES = [
@@ -73,9 +76,6 @@ const SCREEN_TITLES = [
   '📲 Chips activados',
   '📋 Planes Telcel',
   '📊 Totales del mes',
-  '🏪 Ranking por módulo',
-  '🎧 Accesorios · Top 10',
-  '📱 Teléfonos · Top 10',
   '📈 Teléfonos por día',
   '🎧 Accesorios por día',
 ];
@@ -207,6 +207,34 @@ const HBar: React.FC<{ label: string; value: number; max: number; color: string;
   </Box>
 );
 
+// Promedio diario de una serie hasta el día `d` (incluye días en cero)
+const promedioHasta = (serie: { dia: number }[], d: number, campo: string) => {
+  if (d <= 0) return 0;
+  const suma = serie.filter((x) => x.dia <= d).reduce((t, x: any) => t + Number(x[campo] ?? 0), 0);
+  return suma / d;
+};
+
+// Flechita: compara el promedio de días cerrados (hasta ayer) contra el de anteayer
+const Tendencia: React.FC<{ actual: number; anterior: number | null; dinero?: boolean }> = ({ actual, anterior, dinero = false }) => {
+  if (anterior === null) {
+    return <Box sx={{ fontSize: 'clamp(12px,1.2vw,22px)', color: TEXT_DIM }}>sin día anterior</Box>;
+  }
+  const diff = actual - anterior;
+  const igual = Math.abs(diff) < 0.05;
+  const color = igual ? TEXT_DIM : diff > 0 ? GREEN : RED;
+  const flecha = igual ? '＝' : diff > 0 ? '▲' : '▼';
+  const txt = dinero ? fmt$(Math.abs(diff)) : Math.abs(diff).toFixed(1);
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5vw', color, fontWeight: 800 }}>
+      <Box sx={{ fontSize: 'clamp(20px,2.4vw,46px)', lineHeight: 1 }}>{flecha}</Box>
+      <Box sx={{ fontFamily: MONO, fontSize: 'clamp(14px,1.5vw,28px)' }}>
+        {igual ? 'igual' : `${diff > 0 ? '+' : '-'}${txt}`}
+      </Box>
+      <Box sx={{ fontSize: 'clamp(11px,1.1vw,20px)', color: TEXT_DIM, fontWeight: 600 }}>vs día anterior</Box>
+    </Box>
+  );
+};
+
 // ── Componente principal ─────────────────────────────────────────────────────────
 
 const PantallaTVPage: React.FC = () => {
@@ -247,11 +275,11 @@ const PantallaTVPage: React.FC = () => {
     return () => clearInterval(id);
   }, [mes, cargar]);
 
-  // Rotación de pantallas cada 15s
+  // Rotación: el resumen del director dura 1 min, las demás 5s
   useEffect(() => {
-    const id = setInterval(() => setScreen((s) => (s + 1) % N_SCREENS), ROTATE_MS);
-    return () => clearInterval(id);
-  }, []);
+    const id = setTimeout(() => setScreen((s) => (s + 1) % N_SCREENS), duracionPantalla(screen));
+    return () => clearTimeout(id);
+  }, [screen]);
 
   // Reloj
   useEffect(() => {
@@ -402,8 +430,125 @@ const PantallaTVPage: React.FC = () => {
     );
   };
 
+  // ── Pantalla 0 · RESUMEN DEL DIRECTOR (fija 1 minuto) ──────────────────────
+  const renderDirector = () => {
+    if (!data) {
+      return (
+        <ScreenShell title="📊 RESUMEN DEL MES">
+          <BigStat label="CONECTANDO" value="…" color={TEXT_DIM} />
+        </ScreenShell>
+      );
+    }
+    const hoy = new Date().getDate();
+    const cerrados = hoy - 1; // días completos (sin contar hoy)
+    const telDia = data.telefonos_por_dia ?? [];
+    const accDia = data.accesorios_por_dia ?? [];
+
+    const telProm = promedioHasta(telDia, cerrados, 'cantidad');
+    const telPromAnt = cerrados >= 2 ? promedioHasta(telDia, cerrados - 1, 'cantidad') : null;
+    const accProm = promedioHasta(accDia, cerrados, 'total');
+    const accPromAnt = cerrados >= 2 ? promedioHasta(accDia, cerrados - 1, 'total') : null;
+    const accMonto = accDia.reduce((t, x) => t + Number(x.total ?? 0), 0);
+
+    const tipos = [...(data.chips.por_tipo ?? [])].sort((a, b) => b.cantidad - a.cantidad);
+
+    const desglose = [
+      { l: 'CONTADO', v: data.telefonos.contado.cantidad, c: GREEN },
+      { l: 'PAYJOY', v: data.telefonos.payjoy.cantidad, c: ORANGE },
+      { l: 'PAGUITOS', v: data.telefonos.paguitos.cantidad, c: BLUE },
+      { l: 'PLANES', v: data.telefonos.plan?.cantidad ?? 0, c: PURPLE },
+    ];
+
+    const card = (c: string) => ({
+      bgcolor: CARD,
+      border: `2px solid ${c}55`,
+      borderRadius: 3,
+      textAlign: 'center' as const,
+      py: '1.6vh',
+      px: '0.8vw',
+    });
+    const etiqueta = (c: string) => ({ fontSize: 'clamp(13px,1.4vw,26px)', color: c, fontWeight: 700, letterSpacing: '0.05em' });
+    const numero = (c: string, size: string) => ({
+      fontFamily: MONO,
+      fontVariantNumeric: 'tabular-nums',
+      fontWeight: 800,
+      color: c,
+      lineHeight: 1.05,
+      fontSize: size,
+    });
+
+    return (
+      <ScreenShell title="📊 RESUMEN DEL MES">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1.8vh', height: '100%', justifyContent: 'center' }}>
+          {/* FILA 1 · TELÉFONOS */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(4, 1fr)', gap: '1vw' }}>
+            <Box sx={card(ORANGE)}>
+              <Box sx={etiqueta(ORANGE)}>📱 TELÉFONOS</Box>
+              <Box sx={numero('#fff', 'clamp(44px,6.5vw,130px)')}>{fmtN(data.telefonos.total)}</Box>
+              <Box sx={{ fontSize: 'clamp(12px,1.2vw,22px)', color: TEXT_DIM, mt: '0.5vh' }}>
+                Promedio diario: <b style={{ color: '#fff' }}>{telProm.toFixed(1)}</b>
+              </Box>
+              <Tendencia actual={telProm} anterior={telPromAnt} />
+            </Box>
+            {desglose.map((d) => (
+              <Box key={d.l} sx={{ ...card(d.c), display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Box sx={etiqueta(d.c)}>{d.l}</Box>
+                <Box sx={numero(d.c, 'clamp(36px,5vw,100px)')}>{fmtN(d.v)}</Box>
+              </Box>
+            ))}
+          </Box>
+
+          {/* FILA 2 · ACCESORIOS */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1vw' }}>
+            <Box sx={card(PURPLE)}>
+              <Box sx={etiqueta(PURPLE)}>🎧 ACCESORIOS · VENTA DEL MES</Box>
+              <Box sx={numero(PURPLE, 'clamp(36px,5vw,100px)')}>{fmt$(accMonto)}</Box>
+            </Box>
+            <Box sx={card(PURPLE)}>
+              <Box sx={etiqueta(PURPLE)}>PIEZAS</Box>
+              <Box sx={numero('#fff', 'clamp(36px,5vw,100px)')}>{fmtN(data.accesorios.total_unidades)}</Box>
+            </Box>
+            <Box sx={card(PURPLE)}>
+              <Box sx={etiqueta(PURPLE)}>PROMEDIO DIARIO</Box>
+              <Box sx={numero('#fff', 'clamp(32px,4.4vw,88px)')}>{fmt$(accProm)}</Box>
+              <Tendencia actual={accProm} anterior={accPromAnt} dinero />
+            </Box>
+          </Box>
+
+          {/* FILA 3 · CHIPS (informativo) */}
+          <Box sx={{ ...card(BLUE), display: 'flex', alignItems: 'center', gap: '1.5vw', textAlign: 'left', flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '0.8vw', flexShrink: 0 }}>
+              <Box sx={etiqueta(BLUE)}>📲 CHIPS</Box>
+              <Box sx={numero(BLUE, 'clamp(30px,4vw,80px)')}>{fmtN(data.chips.total)}</Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: '0.8vw', flexWrap: 'wrap' }}>
+              {tipos.map((t) => (
+                <Box
+                  key={t.tipo_chip}
+                  sx={{
+                    bgcolor: `${BLUE}22`,
+                    border: `1px solid ${BLUE}55`,
+                    borderRadius: 2,
+                    px: '0.9vw',
+                    py: '0.6vh',
+                    fontSize: 'clamp(13px,1.4vw,26px)',
+                    color: '#e2e8f0',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t.tipo_chip}: <b style={{ color: '#fff', fontFamily: MONO }}>{fmtN(t.cantidad)}</b>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      </ScreenShell>
+    );
+  };
+
   const renderScreen = () => {
-    if (screen === 0) return renderHoy();
+    if (screen === 0) return renderDirector();
+    if (screen === 1) return renderHoy();
 
     if (!data) {
       return (
@@ -413,7 +558,7 @@ const PantallaTVPage: React.FC = () => {
       );
     }
 
-    switch (screen - 1) {
+    switch (screen - 2) {
       // 1 · TELÉFONOS
       case 0:
         return (
@@ -582,118 +727,13 @@ const PantallaTVPage: React.FC = () => {
           </ScreenShell>
         );
 
-      // 5 · RANKING POR MÓDULO
+      // 5 · TELÉFONOS POR DÍA
       case 4: {
-        const ranking = [...(data.por_modulo ?? [])].sort((a, b) => b.telefonos_total - a.telefonos_total);
-        return (
-          <ScreenShell title={SCREEN_TITLES[4]}>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gridAutoRows: '1fr',
-                gap: '1vw',
-                flex: 1,
-                minHeight: 0,
-                width: '100%',
-                overflow: 'visible',
-              }}
-            >
-              {ranking.length === 0 && (
-                <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
-              )}
-              {ranking.map((m, i) => {
-                const top = i < 3;
-                return (
-                  <Box
-                    key={m.modulo}
-                    sx={{
-                      textAlign: 'center',
-                      bgcolor: top ? '#2a1c0e' : CARD,
-                      border: `2px solid ${top ? ORANGE : '#33415555'}`,
-                      borderRadius: 3,
-                      px: '0.5vw',
-                      py: '0.6vh',
-                      minHeight: 0,
-                      overflow: 'visible',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Box sx={{ fontSize: 'clamp(18px, 2vw, 36px)', fontWeight: 900, lineHeight: 1.2 }}>
-                      <span style={{ color: top ? ORANGE : TEXT_DIM }}>#{i + 1}</span>
-                      {' · '}
-                      <span style={{ color: '#FFFFFF' }}>{m.modulo}</span>
-                    </Box>
-                    <Box
-                      sx={{
-                        fontFamily: MONO,
-                        fontVariantNumeric: 'tabular-nums',
-                        fontWeight: 800,
-                        color: top ? ORANGE : '#fff',
-                        fontSize: 'clamp(24px, 3.4vw, 68px)',
-                        lineHeight: 1.05,
-                        mt: '0.3vh',
-                      }}
-                    >
-                      {fmtN(m.telefonos_total)}
-                    </Box>
-                    <Box sx={{ fontSize: 'clamp(9px, 0.9vw, 16px)', color: TEXT_DIM, lineHeight: 1 }}>equipos</Box>
-                    <Box sx={{ fontSize: 'clamp(11px, 1.2vw, 22px)', color: GREEN, fontWeight: 700, mt: '0.3vh' }}>
-                      {fmtN(m.planes)} planes
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Box>
-          </ScreenShell>
-        );
-      }
-
-      // 6 · ACCESORIOS TOP 10
-      case 5: {
-        const top = data.accesorios.top_10_productos ?? [];
-        const maxA = top.reduce((m, p) => Math.max(m, p.cantidad), 0);
-        return (
-          <ScreenShell title={SCREEN_TITLES[5]}>
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
-              {top.length === 0 && (
-                <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
-              )}
-              {top.map((p) => (
-                <HBar key={p.producto} label={p.producto} value={p.cantidad} max={maxA} color="#a855f7" compact />
-              ))}
-            </Box>
-          </ScreenShell>
-        );
-      }
-
-      // 7 · TELÉFONOS TOP 10
-      case 6: {
-        const top = data.telefonos_top ?? [];
-        const maxM = top.reduce((m, p) => Math.max(m, p.cantidad), 0);
-        return (
-          <ScreenShell title={SCREEN_TITLES[6]}>
-            <Box sx={{ overflow: 'hidden' }}>
-              {top.length === 0 && (
-                <Box sx={{ textAlign: 'center', color: TEXT_DIM, fontSize: 'clamp(18px,2vw,32px)' }}>Sin datos</Box>
-              )}
-              {top.map((p) => (
-                <HBar key={p.modelo} label={p.modelo} value={p.cantidad} max={maxM} color={ORANGE} />
-              ))}
-            </Box>
-          </ScreenShell>
-        );
-      }
-
-      // 8 · TELÉFONOS POR DÍA
-      case 7: {
         const hoy = new Date().getDate();
         const serie = (data.telefonos_por_dia ?? []).filter((x) => x.dia <= hoy);
         const cantidadHoy = serie.find((x) => x.dia === hoy)?.cantidad ?? 0;
         return (
-          <ScreenShell title={SCREEN_TITLES[7]}>
+          <ScreenShell title={SCREEN_TITLES[4]}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0, mb: '1vh' }}>
               <Box
                 sx={{
@@ -734,13 +774,13 @@ const PantallaTVPage: React.FC = () => {
         );
       }
 
-      // 9 · ACCESORIOS POR DÍA
-      case 8: {
+      // 6 · ACCESORIOS POR DÍA
+      case 5: {
         const hoy = new Date().getDate();
         const serie = (data.accesorios_por_dia ?? []).filter((x) => x.dia <= hoy);
         const totalHoy = serie.find((x) => x.dia === hoy)?.total ?? 0;
         return (
-          <ScreenShell title={SCREEN_TITLES[8]}>
+          <ScreenShell title={SCREEN_TITLES[5]}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0 }}>
               <Box
                 sx={{
@@ -871,7 +911,7 @@ const PantallaTVPage: React.FC = () => {
 
       {/* ── FOOTER: progreso + indicadores ─────────────────────────────────── */}
       <Box sx={{ flexShrink: 0, bgcolor: '#0b1220', borderTop: `2px solid ${CARD}` }}>
-        {/* Barra de progreso de 15s (se reinicia con la key en cada pantalla) */}
+        {/* Barra de progreso (1 min en el resumen, 5s en las demás; se reinicia con la key) */}
         <Box sx={{ height: 'clamp(5px, 0.7vh, 9px)', bgcolor: '#111a2e', overflow: 'hidden' }}>
           <Box
             key={screen}
@@ -879,7 +919,7 @@ const PantallaTVPage: React.FC = () => {
               height: '100%',
               bgcolor: ORANGE,
               '@keyframes tvprogress': { from: { width: '0%' }, to: { width: '100%' } },
-              animation: `tvprogress ${ROTATE_MS}ms linear`,
+              animation: `tvprogress ${duracionPantalla(screen)}ms linear`,
             }}
           />
         </Box>
