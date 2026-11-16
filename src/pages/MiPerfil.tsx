@@ -28,8 +28,16 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
-import MisDatosPerfil, { authH, SelectorEmpleado, usePersonas } from "../components/MisDatosPerfil";
+import MisDatosPerfil, {
+  authH,
+  MiPerfilApi,
+  Persona,
+  personaDesdeMiPerfil,
+  SelectorEmpleado,
+  usePersonas,
+} from "../components/MisDatosPerfil";
 import MisSolicitudesVacaciones, { mensajeError } from "../components/MisSolicitudesVacaciones";
+import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 
 const AZUL = "#0A2878";
 const ROJO_FONDO = "#FDE2E2";
@@ -335,8 +343,15 @@ const MesCalendario: React.FC<MesProps> = ({
   );
 };
 
+type EstadoPiloto = "cargando" | "ok" | "rechazado" | "error";
+
 const MiPerfil = () => {
   const rol = obtenerRolDesdeToken();
+  const esAdmin = rol === "admin";
+  // Piloto: no admin y con su username en PILOTO_MI_PERFIL. Solo ve SUS datos, sin editar nada.
+  const pilotoLocal = !esAdmin && esPilotoMiPerfil(localStorage.getItem("usuario"));
+  const [miPersona, setMiPersona] = useState<Persona | null>(null);
+  const [estadoPiloto, setEstadoPiloto] = useState<EstadoPiloto>("cargando");
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
   const [pestana, setPestana] = useState(0);
@@ -353,27 +368,54 @@ const MiPerfil = () => {
   const [erroresRegistro, setErroresRegistro] = useState<string[]>([]);
   const [porBorrar, setPorBorrar] = useState<VacacionApi | null>(null);
   const hoy = hoyLocal();
+  const miClave = miPersona?.clave ?? null;
 
-  // Vacaciones del empleado elegido; sin empleado el calendario queda como siempre
+  // Piloto: sus datos salen del token; se vuelve a revisar la lista con el username que regresa el backend
+  useEffect(() => {
+    if (!pilotoLocal) return;
+    let vivo = true;
+    setEstadoPiloto("cargando");
+    axios
+      .get<MiPerfilApi>("/api/mi-perfil", { headers: authH() })
+      .then((r) => {
+        if (!vivo) return;
+        if (!esPilotoMiPerfil(r.data.username)) {
+          setEstadoPiloto("rechazado");
+          return;
+        }
+        setMiPersona(personaDesdeMiPerfil(r.data));
+        setEstadoPiloto("ok");
+      })
+      .catch(() => vivo && setEstadoPiloto("error"));
+    return () => {
+      vivo = false;
+    };
+  }, [pilotoLocal]);
+
+  // Vacaciones: admin las del empleado elegido; piloto solo las suyas. Sin persona el calendario queda como siempre.
   useEffect(() => {
     setPeriodos([]);
     setErrorVac(null);
     setCargandoVac(false);
-    if (!empleadoSel || rol !== "admin") return;
+    const consulta = esAdmin
+      ? empleadoSel
+        ? { url: "/api/vacaciones", params: { clave: empleadoSel } }
+        : null
+      : miClave
+      ? { url: "/api/mi-perfil/vacaciones", params: undefined }
+      : null;
+    if (!consulta) return;
     let vivo = true;
     setCargandoVac(true);
     axios
-      .get<VacacionApi[]>("/api/vacaciones", {
-        params: { clave: empleadoSel },
-        headers: authH(),
-      })
+      .get<VacacionApi[]>(consulta.url, { params: consulta.params, headers: authH() })
       .then((r) => vivo && setPeriodos(r.data))
       .catch(() => vivo && setErrorVac("No se pudieron cargar las vacaciones."))
       .finally(() => vivo && setCargandoVac(false));
     return () => {
       vivo = false;
     };
-  }, [empleadoSel, rol, recargaVac]);
+  }, [empleadoSel, esAdmin, miClave, recargaVac]);
 
   const diasVacaciones = useMemo(() => diasDeVacaciones(periodos, hoy), [periodos, hoy]);
   // Tabla: de la más reciente a la más vieja
@@ -465,6 +507,8 @@ const MiPerfil = () => {
   };
 
   const toggleDia = (clave: string) => {
+    // El piloto solo ve su calendario: no se marcan días
+    if (!esAdmin) return;
     if (modoFalta) {
       setSeleccionadas((prev) => {
         const nuevo = new Set(prev);
@@ -532,7 +576,20 @@ const MiPerfil = () => {
     setSeleccionadas((prev) => new Set(prev).add(clave));
   };
 
-  if (rol !== "admin") return <Navigate to="/" replace />;
+  // Todos los hooks van arriba: este return no puede quedar antes de ninguno
+  if (!esAdmin && (!pilotoLocal || estadoPiloto === "rechazado")) return <Navigate to="/" replace />;
+
+  const soloLectura = !esAdmin;
+  const personasVista = esAdmin ? personas : miPersona ? [miPersona] : [];
+  const seleccionVista = esAdmin ? empleadoSel : miClave;
+  const cargandoVista = esAdmin ? cargandoPersonas : estadoPiloto === "cargando";
+  const errorVista = esAdmin
+    ? errorPersonas
+    : estadoPiloto === "error"
+    ? "No se pudieron cargar tus datos."
+    : null;
+  // Sin la columna de borrar, la tabla del piloto tiene una columna menos
+  const columnasTabla = soloLectura ? 6 : 7;
 
   const total = seleccionadas.size;
   const bloques = agruparBloques(seleccionadas);
@@ -565,24 +622,27 @@ const MiPerfil = () => {
 
       {pestana === 0 && (
         <MisDatosPerfil
-          personas={personas}
-          cargando={cargandoPersonas}
-          error={errorPersonas}
-          seleccion={empleadoSel}
+          personas={personasVista}
+          cargando={cargandoVista}
+          error={errorVista}
+          seleccion={seleccionVista}
           onSeleccion={cambiarEmpleado}
+          sinSelector={soloLectura}
         />
       )}
 
       {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
       {pestana === 1 && (
         <>
-          <SelectorEmpleado
-            personas={personas}
-            cargando={cargandoPersonas}
-            seleccion={empleadoSel}
-            onSeleccion={cambiarEmpleado}
-          />
-          {errorPersonas && <Alert severity="error" sx={{ mb: 2 }}>{errorPersonas}</Alert>}
+          {!soloLectura && (
+            <SelectorEmpleado
+              personas={personas}
+              cargando={cargandoPersonas}
+              seleccion={empleadoSel}
+              onSeleccion={cambiarEmpleado}
+            />
+          )}
+          {errorVista && <Alert severity="error" sx={{ mb: 2 }}>{errorVista}</Alert>}
 
           {modoFalta && (
             <Alert
@@ -622,7 +682,7 @@ const MiPerfil = () => {
 
           <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
             {[
-              { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
+              ...(soloLectura ? [] : [{ texto: "Seleccionado", fondo: AZUL, borde: AZUL }]),
               { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
               { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
               ...PRIORIDAD_VACACION.map((e) => ({
@@ -651,45 +711,48 @@ const MiPerfil = () => {
             ))}
           </Box>
 
-          <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
-            <Typography sx={{ fontWeight: 700, color: AZUL }}>
-              {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
-            </Typography>
-            {bloques.map((b) => (
-              <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-                {textoBloque(b)}
+          {/* Selección y botones de registrar: solo admin */}
+          {!soloLectura && (
+            <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
+              <Typography sx={{ fontWeight: 700, color: AZUL }}>
+                {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
               </Typography>
-            ))}
-            <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
-              <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
-                Limpiar selección
-              </Button>
-              {empleadoSel && (
-                <>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={modoFalta || total === 0}
-                    onClick={abrirConfirmacion}
-                  >
-                    REGISTRAR VACACIONES
-                  </Button>
-                  {/* Primer toque: entra al modo falta. Ya en el modo, con días marcados: registra */}
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={modoFalta && total === 0}
-                    onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
-                    sx={{ bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#333" } }}
-                  >
-                    REGISTRAR FALTA INJUSTIFICADA
-                  </Button>
-                </>
-              )}
-            </Box>
-          </Paper>
+              {bloques.map((b) => (
+                <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
+                  {textoBloque(b)}
+                </Typography>
+              ))}
+              <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
+                <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
+                  Limpiar selección
+                </Button>
+                {empleadoSel && (
+                  <>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={modoFalta || total === 0}
+                      onClick={abrirConfirmacion}
+                    >
+                      REGISTRAR VACACIONES
+                    </Button>
+                    {/* Primer toque: entra al modo falta. Ya en el modo, con días marcados: registra */}
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={modoFalta && total === 0}
+                      onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
+                      sx={{ bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#333" } }}
+                    >
+                      REGISTRAR FALTA INJUSTIFICADA
+                    </Button>
+                  </>
+                )}
+              </Box>
+            </Paper>
+          )}
 
-          {empleadoSel && (
+          {seleccionVista && (
             <Box sx={{ mt: 2 }}>
               <Typography sx={{ fontWeight: 700, color: "#1e293b", mb: 1 }}>Periodos de vacaciones</Typography>
               {errorVac && <Alert severity="error" sx={{ mb: 1 }}>{errorVac}</Alert>}
@@ -707,19 +770,19 @@ const MiPerfil = () => {
                       <TableCell align="center" sx={celdaEncabezadoSx}>Tipo</TableCell>
                       <TableCell align="center" sx={celdaEncabezadoSx}>Cubre</TableCell>
                       <TableCell sx={celdaEncabezadoSx}>Nota</TableCell>
-                      <TableCell sx={celdaEncabezadoSx} aria-label="Acciones" />
+                      {!soloLectura && <TableCell sx={celdaEncabezadoSx} aria-label="Acciones" />}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {cargandoVac ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                        <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3 }}>
                           <CircularProgress size={24} />
                         </TableCell>
                       </TableRow>
                     ) : periodosTabla.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 3, fontSize: 14, color: "#94a3b8" }}>
+                        <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3, fontSize: 14, color: "#94a3b8" }}>
                           Sin periodos registrados
                         </TableCell>
                       </TableRow>
@@ -766,18 +829,20 @@ const MiPerfil = () => {
                             <TableCell sx={{ ...celdaSx, fontSize: 13, color: "#64748b" }}>
                               {p.nota?.trim() || "—"}
                             </TableCell>
-                            <TableCell align="center" sx={celdaSx}>
-                              {p.origen === "sistema" && (
-                                <IconButton
-                                  size="small"
-                                  aria-label="Borrar periodo"
-                                  onClick={() => setPorBorrar(p)}
-                                  sx={{ color: ROJO_TEXTO }}
-                                >
-                                  <DeleteOutlineIcon fontSize="small" />
-                                </IconButton>
-                              )}
-                            </TableCell>
+                            {!soloLectura && (
+                              <TableCell align="center" sx={celdaSx}>
+                                {p.origen === "sistema" && (
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Borrar periodo"
+                                    onClick={() => setPorBorrar(p)}
+                                    sx={{ color: ROJO_TEXTO }}
+                                  >
+                                    <DeleteOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                )}
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })
@@ -788,7 +853,7 @@ const MiPerfil = () => {
                           Totales
                         </TableCell>
                         <TableCell
-                          colSpan={6}
+                          colSpan={columnasTabla - 1}
                           sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}
                         >
                           Tomados: {textoDias(totalDias(periodosTabla, "tomada", hoy))} · Autorizados:{" "}
@@ -804,7 +869,12 @@ const MiPerfil = () => {
         </>
       )}
 
-      {pestana === 2 && <MisSolicitudesVacaciones personas={personas} cargandoPersonas={cargandoPersonas} />}
+      {pestana === 2 &&
+        (soloLectura ? (
+          <Typography sx={{ color: "#94a3b8", textAlign: "center", py: 6 }}>Próximamente</Typography>
+        ) : (
+          <MisSolicitudesVacaciones personas={personas} cargandoPersonas={cargandoPersonas} />
+        ))}
 
       <Dialog open={confirmando} onClose={() => !guardando && setConfirmando(false)} fullWidth maxWidth="xs">
         <DialogTitle>{modoFalta ? "Registrar falta injustificada" : "Registrar vacaciones"}</DialogTitle>

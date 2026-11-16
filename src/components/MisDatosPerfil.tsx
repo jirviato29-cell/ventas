@@ -187,6 +187,34 @@ const CampoCopiable: React.FC<{ etiqueta: string; valor: string | null; onCopiar
   </Box>
 );
 
+// Respuesta de GET /api/mi-perfil (el backend ya agrupó las cuentas de la persona del token)
+export interface MiPerfilApi {
+  username: string;
+  clave: string;
+  nombre_completo: string | null;
+  nombre_englobado: string | null;
+  modulos: string[];
+  sueldo: number;
+  forma_pago: string | null;
+  cuenta_clabe: string | null;
+  cuenta_interbancaria: string | null;
+  fecha_ingreso: string | null; // "YYYY-MM-DD"
+}
+
+// Misma forma que una opción de usePersonas, para reutilizar la tarjeta
+export const personaDesdeMiPerfil = (d: MiPerfilApi): Persona => ({
+  clave: d.clave.trim().toUpperCase(),
+  idVisible: normalizar(d.clave),
+  nombre: d.nombre_completo && !vacio(d.nombre_completo) ? normalizar(d.nombre_completo) : "",
+  englobado: d.nombre_englobado && !vacio(d.nombre_englobado) ? normalizar(d.nombre_englobado) : null,
+  modulos: d.modulos,
+  sueldo: d.sueldo ?? 0,
+  formaPago: d.forma_pago,
+  cuenta: d.cuenta_clabe,
+  clabe: d.cuenta_interbancaria,
+  fechaIngreso: d.fecha_ingreso,
+});
+
 // Empleados (asesor/encargado) agrupados por persona. Lo usan "Mis datos" y "Selección de vacaciones".
 // activo = false no pide nada (la página la abre alguien que no es admin y lo va a redirigir).
 export const usePersonas = (activo = true) => {
@@ -267,9 +295,11 @@ interface Props {
   error: string | null;
   seleccion: string | null;
   onSeleccion: (clave: string | null) => void;
+  // Piloto (no admin): solo su propia tarjeta, sin selector de empleado
+  sinSelector?: boolean;
 }
 
-const MisDatosPerfil: React.FC<Props> = ({ personas, cargando, error, seleccion, onSeleccion }) => {
+const MisDatosPerfil: React.FC<Props> = ({ personas, cargando, error, seleccion, onSeleccion, sinSelector = false }) => {
   const [aviso, setAviso] = useState<string | null>(null);
   const persona = personas.find((p) => p.clave === seleccion) ?? null;
 
@@ -288,12 +318,20 @@ const MisDatosPerfil: React.FC<Props> = ({ personas, cargando, error, seleccion,
 
   return (
     <Box>
-      <SelectorEmpleado personas={personas} cargando={cargando} seleccion={seleccion} onSeleccion={onSeleccion} />
+      {!sinSelector && (
+        <SelectorEmpleado personas={personas} cargando={cargando} seleccion={seleccion} onSeleccion={onSeleccion} />
+      )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {!persona ? (
-        <Typography sx={{ color: GRIS_VACIO, textAlign: "center", py: 6 }}>Elige un empleado</Typography>
+      {sinSelector && cargando ? (
+        <Box sx={{ textAlign: "center", py: 6 }}>
+          <CircularProgress size={28} />
+        </Box>
+      ) : !persona ? (
+        sinSelector ? null : (
+          <Typography sx={{ color: GRIS_VACIO, textAlign: "center", py: 6 }}>Elige un empleado</Typography>
+        )
       ) : (
         <Paper elevation={0} sx={{ maxWidth: 720, borderRadius: "12px", boxShadow: "0 4px 20px rgba(15,23,42,0.08)" }}>
           {/* Encabezado: banda azul; el círculo queda montado sobre su borde inferior */}

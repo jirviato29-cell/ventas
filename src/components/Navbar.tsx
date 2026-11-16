@@ -40,6 +40,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
+import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 
 const navBtnSx = {
   color: "#f1f5f9",
@@ -825,6 +826,14 @@ const Navbar = () => {
                 </ListItemButton>
               )}
             </>
+          )}
+
+          {/* ── MI PERFIL (piloto): asesor/encargado de la lista PILOTO_MI_PERFIL ── */}
+          {(rolToken === "asesor" || rolToken === "encargado") && esPilotoMiPerfil(usuario) && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
+              <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
+              <ListItemText primary="MI PERFIL" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
           )}
 
           {/* ── DIRECCIÓN ─────────────────────────────────────────────────────── */}
