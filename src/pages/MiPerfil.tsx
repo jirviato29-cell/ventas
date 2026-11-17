@@ -854,8 +854,12 @@ const MiPerfil = () => {
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
   return (
-    // Con el botón flotante del piloto, espacio extra abajo para que no tape la tabla
-    <Container sx={{ mt: 4, mb: vistaPiloto && total > 0 && pestana === 1 ? 12 : 6 }}>
+    // Con el botón flotante del piloto, espacio extra abajo para que no tape la tabla.
+    // "Mis solicitudes" de admin usa todo el ancho, como Gestión de Usuarios
+    <Container
+      maxWidth={pestana === 2 && !vistaPiloto ? false : "lg"}
+      sx={{ mt: 4, mb: vistaPiloto && total > 0 && pestana === 1 ? 12 : 6 }}
+    >
       <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
         Mi Perfil
       </Typography>

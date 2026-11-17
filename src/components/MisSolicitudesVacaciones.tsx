@@ -30,7 +30,6 @@ import axios from "axios";
 import { authH, Persona, SelectorEmpleado } from "./MisDatosPerfil";
 
 const API = "/api";
-const AZUL = "#0A2878";
 const VERDE = "#15803D";
 const ROJO = "#B91C1C";
 
@@ -97,11 +96,17 @@ const textoDias = (dias: number) => `${numero(dias)} ${dias === 1 ? "día" : "d�
 const textoRango = (inicio: string, fin: string) =>
   inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`;
 
-// Mismo estilo que la tabla de "Periodos de vacaciones" de Mi Perfil
-const BORDE_TABLA = "#e2e8f0";
-const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
-const celdaSx = { fontSize: 14, borderRight: `1px solid ${BORDE_TABLA}`, "&:last-of-type": { borderRight: 0 } };
+// Mismo estilo que Gestión de Usuarios y Validación de Chips: los títulos naranjas, la línea
+// gris entre filas y el resaltado al pasar el mouse vienen del tema (theme.ts)
+const celdaEncabezadoSx = { fontSize: 13, px: 1, whiteSpace: "nowrap" };
+const celdaSx = { fontSize: 13, px: 1, py: 0.75 };
 const COLUMNAS = 9;
+// "¿Quién cubre?" más bajo que el Autocomplete normal (letra 13 y menos relleno)
+const selectorCompactoSx = {
+  "& .MuiAutocomplete-root .MuiInputBase-root": { fontSize: 13, py: "1px" },
+  "& .MuiInputLabel-root": { fontSize: 13 },
+  "& .MuiInputLabel-root:not(.MuiInputLabel-shrink)": { transform: "translate(14px, 6px) scale(1)" },
+};
 
 interface Props {
   personas: Persona[];
@@ -212,9 +217,12 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
           <Chip
             size="small"
             label={valor ? "Aprobó" : "Rechazó"}
+            // Chip compacto para que la columna no crezca
             onClick={() => setEditando((prev) => new Set(prev).add(`${s.id}-${nivel}`))}
             sx={{
               fontWeight: 600,
+              fontSize: 12,
+              height: 22,
               bgcolor: valor ? "#DCFCE7" : "#FDE2E2",
               color: valor ? VERDE : ROJO,
               border: `1px solid ${valor ? "#16A34A" : ROJO}`,
@@ -224,24 +232,24 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
       );
     }
     return (
-      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.25 }}>
+      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0 }}>
         <IconButton
           size="small"
           aria-label={`Aprobar ${texto}`}
           disabled={ocupada === s.id}
           onClick={() => pulsarNivel(s, nivel, true)}
-          sx={{ color: VERDE, border: "1px solid #bbf7d0", p: 0.25 }}
+          sx={{ color: VERDE, p: "3px" }}
         >
-          <CheckIcon fontSize="small" />
+          <CheckIcon sx={{ fontSize: 18 }} />
         </IconButton>
         <IconButton
           size="small"
           aria-label={`Rechazar ${texto}`}
           disabled={ocupada === s.id}
           onClick={() => pulsarNivel(s, nivel, false)}
-          sx={{ color: ROJO, border: "1px solid #fecaca", p: 0.25 }}
+          sx={{ color: ROJO, p: "3px" }}
         >
-          <CloseIcon fontSize="small" />
+          <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
         {abierta && (
           <Button size="small" onClick={() => cerrarEdicion(s.id, nivel)} sx={{ minWidth: 0, fontSize: 11, px: 0.5 }}>
@@ -255,7 +263,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
   // "Le quedan": saldo del año de vacaciones; rojo si esta solicitud no le alcanza
   const celdaQuedan = (s: Solicitud) => {
     if (s.dias_quedan == null || s.dias_corresponden == null) {
-      return <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>Sin fecha de ingreso</Typography>;
+      return <Typography sx={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.2 }}>Sin fecha de ingreso</Typography>;
     }
     const despues = s.dias_quedan - Number(s.dias ?? 0);
     const anio =
@@ -317,12 +325,9 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
         <Typography sx={{ fontSize: 12, color: "#64748b" }}>La decisión final es de Gerencia</Typography>
       </Box>
 
-      {/* En celular la tabla se desliza de lado en lugar de cortarse */}
-      <TableContainer
-        component={Paper}
-        sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
-      >
-        <Table size="small" sx={{ minWidth: 1180 }}>
+      {/* En computadora las columnas se reparten el ancho; solo en celular se desliza de lado */}
+      <TableContainer component={Paper} sx={{ width: "100%", overflowX: "auto" }}>
+        <Table size="small" sx={{ width: "100%", minWidth: { xs: 960, md: 0 } }}>
           <TableHead>
             <TableRow>
               <TableCell sx={celdaEncabezadoSx}>ID</TableCell>
@@ -344,35 +349,26 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                 </TableCell>
               </TableRow>
             ) : (
-              filas.map((s, i) => {
+              filas.map((s) => {
                 const inicio = s.fecha_inicio.slice(0, 10);
                 const fin = s.fecha_fin.slice(0, 10);
                 // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
                 const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
                 return (
-                  <TableRow
-                    key={s.id}
-                    sx={{
-                      bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc",
-                      "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
-                    }}
-                  >
+                  <TableRow key={s.id}>
                     <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
                       {/* El nombre completo va en el tooltip */}
                       <Tooltip arrow title={s.nombre_completo?.trim().toUpperCase() || "Sin nombre"}>
-                        <Chip
-                          size="small"
-                          label={s.clave.trim().toUpperCase()}
-                          variant="outlined"
-                          sx={{ color: AZUL, borderColor: AZUL, fontWeight: 600, cursor: "help" }}
-                        />
+                        <Typography component="span" sx={{ fontSize: 13, fontWeight: 700, cursor: "help" }}>
+                          {s.clave.trim().toUpperCase()}
+                        </Typography>
                       </Tooltip>
                     </TableCell>
-                    <TableCell sx={{ ...celdaSx, color: "#475569", fontSize: 13 }}>
+                    <TableCell sx={{ ...celdaSx, color: "#475569" }}>
                       {s.modulos && s.modulos.length > 0 ? s.modulos.join(", ") : "—"}
                     </TableCell>
                     <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+                      <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
                         {textoRango(inicio, fin)}
                       </Typography>
                       {s.nota?.trim() && (
@@ -389,7 +385,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                         {celdaNivel(s, nivel, texto)}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...celdaSx, minWidth: 240 }}>
+                    <TableCell sx={{ ...celdaSx, width: "22%", minWidth: 170, ...selectorCompactoSx }}>
                       <SelectorEmpleado
                         personas={opcionesCubre}
                         cargando={cargandoPersonas}
@@ -399,7 +395,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                         margenInferior={0}
                       />
                     </TableCell>
-                    <TableCell align="center" sx={celdaSx}>
+                    <TableCell align="center" sx={{ ...celdaSx, minWidth: 80 }}>
                       {celdaQuedan(s)}
                     </TableCell>
                   </TableRow>
