@@ -56,6 +56,13 @@ interface Solicitud extends Aprobaciones {
   estado: string | null;
   nota: string | null;
   cubre_clave: string | null;
+  // Saldo del año de vacaciones (GET /vacaciones/solicitudes); null sin fecha de ingreso
+  modulos?: string[];
+  dias_corresponden?: number | null;
+  ciclo_inicio?: string | null;
+  ciclo_fin?: string | null;
+  dias_usados?: number | null;
+  dias_quedan?: number | null;
 }
 
 // El detail del backend (409 de empalme, 400 de clave) o, si no hay, el texto dado
@@ -83,20 +90,18 @@ const momento = (iso: string | null) =>
 const sinAcentos = (texto: string) =>
   texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
 
-const textoDias = (dias: number) => `${dias.toLocaleString("es-MX")} ${dias === 1 ? "día" : "días"}`;
+const numero = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 1 });
+
+const textoDias = (dias: number) => `${numero(dias)} ${dias === 1 ? "día" : "días"}`;
+
+const textoRango = (inicio: string, fin: string) =>
+  inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`;
 
 // Mismo estilo que la tabla de "Periodos de vacaciones" de Mi Perfil
 const BORDE_TABLA = "#e2e8f0";
 const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
 const celdaSx = { fontSize: 14, borderRight: `1px solid ${BORDE_TABLA}`, "&:last-of-type": { borderRight: 0 } };
-const COLUMNAS = 7;
-
-interface Grupo {
-  clave: string;
-  nombre: string;
-  solicitudes: Solicitud[];
-  dias: number;
-}
+const COLUMNAS = 9;
 
 interface Props {
   personas: Persona[];
@@ -126,24 +131,17 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     };
   }, []);
 
-  // Una persona por grupo; grupos por su solicitud más próxima y, dentro, por fecha
-  const grupos = useMemo(() => {
+  // Una fila por solicitud, por fecha de inicio; el buscador filtra por ID o nombre
+  const filas = useMemo(() => {
     const filtro = sinAcentos(busqueda);
-    const mapa = new Map<string, Grupo>();
-    solicitudes.forEach((s) => {
-      const clave = claveCubre(s.clave) ?? "";
-      const grupo = mapa.get(clave) ?? { clave, nombre: "", solicitudes: [], dias: 0 };
-      if (!grupo.nombre && s.nombre_completo?.trim()) grupo.nombre = s.nombre_completo.trim().toUpperCase();
-      grupo.solicitudes.push(s);
-      grupo.dias += Number(s.dias ?? 0);
-      mapa.set(clave, grupo);
-    });
-    const ordenar = (a: Solicitud, b: Solicitud) =>
-      a.fecha_inicio === b.fecha_inicio ? a.id - b.id : a.fecha_inicio.localeCompare(b.fecha_inicio);
-    return Array.from(mapa.values())
-      .filter((g) => !filtro || sinAcentos(g.nombre).includes(filtro) || sinAcentos(g.clave).includes(filtro))
-      .map((g) => ({ ...g, solicitudes: [...g.solicitudes].sort(ordenar) }))
-      .sort((a, b) => ordenar(a.solicitudes[0], b.solicitudes[0]));
+    return solicitudes
+      .filter(
+        (s) =>
+          !filtro || sinAcentos(s.clave).includes(filtro) || sinAcentos(s.nombre_completo ?? "").includes(filtro)
+      )
+      .sort((a, b) =>
+        a.fecha_inicio === b.fecha_inicio ? a.id - b.id : a.fecha_inicio.localeCompare(b.fecha_inicio)
+      );
   }, [solicitudes, busqueda]);
 
   const cerrarEdicion = (id: number, nivel: Nivel) =>
@@ -254,6 +252,31 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     );
   };
 
+  // "Le quedan": saldo del año de vacaciones; rojo si esta solicitud no le alcanza
+  const celdaQuedan = (s: Solicitud) => {
+    if (s.dias_quedan == null || s.dias_corresponden == null) {
+      return <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>Sin fecha de ingreso</Typography>;
+    }
+    const despues = s.dias_quedan - Number(s.dias ?? 0);
+    const anio =
+      s.ciclo_inicio && s.ciclo_fin
+        ? ` · Año de vacaciones: ${fechaCorta(s.ciclo_inicio)} – ${fechaCorta(s.ciclo_fin)}`
+        : "";
+    return (
+      <Tooltip
+        arrow
+        title={`Le tocan ${numero(s.dias_corresponden)} · Usados ${numero(s.dias_usados ?? 0)} · Si se autoriza esta, le quedarían ${numero(despues)}${anio}`}
+      >
+        <Typography
+          component="span"
+          sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: despues < 0 ? ROJO : VERDE, cursor: "help" }}
+        >
+          {numero(s.dias_quedan)}
+        </Typography>
+      </Tooltip>
+    );
+  };
+
   // Todos los hooks van arriba: este return no puede quedar antes de ninguno
   if (cargando) {
     return (
@@ -299,97 +322,89 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
         component={Paper}
         sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
       >
-        <Table size="small" sx={{ minWidth: 1000 }}>
+        <Table size="small" sx={{ minWidth: 1180 }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={celdaEncabezadoSx}>Empleado</TableCell>
-              <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
+              <TableCell sx={celdaEncabezadoSx}>ID</TableCell>
+              <TableCell sx={celdaEncabezadoSx}>Módulo</TableCell>
+              <TableCell sx={celdaEncabezadoSx}>Ciclo</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
               {NIVELES.map(({ nivel, texto }) => (
                 <TableCell key={nivel} align="center" sx={celdaEncabezadoSx}>{texto}</TableCell>
               ))}
               <TableCell sx={celdaEncabezadoSx}>¿Quién cubre?</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Le quedan</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {grupos.length === 0 ? (
+            {filas.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={COLUMNAS} align="center" sx={{ py: 4, fontSize: 14, color: "#94a3b8" }}>
                   {solicitudes.length === 0 ? "Sin solicitudes pendientes" : "Sin coincidencias"}
                 </TableCell>
               </TableRow>
             ) : (
-              grupos.map((g) => (
-                <React.Fragment key={g.clave}>
-                  {/* Encabezado del grupo: nombre, ID y resumen */}
-                  <TableRow sx={{ bgcolor: "#eef2ff" }}>
-                    <TableCell colSpan={COLUMNAS} sx={{ py: 1, borderTop: `2px solid ${AZUL}` }}>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-                        <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: 14 }}>
-                          {g.nombre || "SIN NOMBRE"}
-                        </Typography>
+              filas.map((s, i) => {
+                const inicio = s.fecha_inicio.slice(0, 10);
+                const fin = s.fecha_fin.slice(0, 10);
+                // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
+                const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
+                return (
+                  <TableRow
+                    key={s.id}
+                    sx={{
+                      bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc",
+                      "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
+                    }}
+                  >
+                    <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                      {/* El nombre completo va en el tooltip */}
+                      <Tooltip arrow title={s.nombre_completo?.trim().toUpperCase() || "Sin nombre"}>
                         <Chip
                           size="small"
-                          label={g.clave}
+                          label={s.clave.trim().toUpperCase()}
                           variant="outlined"
-                          sx={{ color: AZUL, borderColor: AZUL, fontWeight: 600, bgcolor: "#fff" }}
+                          sx={{ color: AZUL, borderColor: AZUL, fontWeight: 600, cursor: "help" }}
                         />
-                        <Typography sx={{ fontSize: 13, color: "#475569" }}>
-                          {g.solicitudes.length} {g.solicitudes.length === 1 ? "solicitud" : "solicitudes"} ·{" "}
-                          {textoDias(g.dias)}
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell sx={{ ...celdaSx, color: "#475569", fontSize: 13 }}>
+                      {s.modulos && s.modulos.length > 0 ? s.modulos.join(", ") : "—"}
+                    </TableCell>
+                    <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+                        {textoRango(inicio, fin)}
+                      </Typography>
+                      {s.nota?.trim() && (
+                        <Typography sx={{ fontSize: 12, color: "#64748b", whiteSpace: "normal", maxWidth: 220 }}>
+                          {s.nota.trim()}
                         </Typography>
-                      </Box>
+                      )}
+                    </TableCell>
+                    <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
+                      {s.dias != null ? textoDias(Number(s.dias)) : "—"}
+                    </TableCell>
+                    {NIVELES.map(({ nivel, texto }) => (
+                      <TableCell key={nivel} align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                        {celdaNivel(s, nivel, texto)}
+                      </TableCell>
+                    ))}
+                    <TableCell sx={{ ...celdaSx, minWidth: 240 }}>
+                      <SelectorEmpleado
+                        personas={opcionesCubre}
+                        cargando={cargandoPersonas}
+                        seleccion={claveCubre(s.cubre_clave)}
+                        onSeleccion={(clave) => guardarCubre(s.id, clave)}
+                        etiqueta="Cubre"
+                        margenInferior={0}
+                      />
+                    </TableCell>
+                    <TableCell align="center" sx={celdaSx}>
+                      {celdaQuedan(s)}
                     </TableCell>
                   </TableRow>
-
-                  {g.solicitudes.map((s, i) => {
-                    const inicio = s.fecha_inicio.slice(0, 10);
-                    const fin = s.fecha_fin.slice(0, 10);
-                    // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
-                    const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
-                    return (
-                      <TableRow
-                        key={s.id}
-                        sx={{
-                          bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc",
-                          "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
-                        }}
-                      >
-                        {/* Sin repetir el nombre: ya está en el encabezado del grupo */}
-                        <TableCell sx={{ ...celdaSx, width: 40 }} />
-                        <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
-                          <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
-                            {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
-                          </Typography>
-                          {s.nota?.trim() && (
-                            <Typography sx={{ fontSize: 12, color: "#64748b", whiteSpace: "normal", maxWidth: 220 }}>
-                              {s.nota.trim()}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
-                          {s.dias != null ? textoDias(Number(s.dias)) : "—"}
-                        </TableCell>
-                        {NIVELES.map(({ nivel, texto }) => (
-                          <TableCell key={nivel} align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
-                            {celdaNivel(s, nivel, texto)}
-                          </TableCell>
-                        ))}
-                        <TableCell sx={{ ...celdaSx, minWidth: 240 }}>
-                          <SelectorEmpleado
-                            personas={opcionesCubre}
-                            cargando={cargandoPersonas}
-                            seleccion={claveCubre(s.cubre_clave)}
-                            onSeleccion={(clave) => guardarCubre(s.id, clave)}
-                            etiqueta="Cubre"
-                            margenInferior={0}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </React.Fragment>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
