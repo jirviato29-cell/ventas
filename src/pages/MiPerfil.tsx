@@ -10,8 +10,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   Paper,
+  Radio,
+  RadioGroup,
   Snackbar,
   Tab,
   Table,
@@ -137,6 +140,35 @@ interface VacacionApi {
   aprobado_gerencia?: boolean | null;
 }
 
+// Saldo del año de vacaciones (GET /api/vacaciones/saldo y /api/mi-perfil/vacaciones/saldo)
+interface SaldoAnioApi {
+  anios: number;
+  dias_corresponden: number;
+  ciclo_inicio: string; // "YYYY-MM-DD", aniversario
+  ciclo_fin: string;
+  dias_usados: number; // autorizadas/tomadas + descuentos
+  dias_solicitados_pendientes: number;
+  dias_quedan: number; // corresponden - usados (sin restar las pendientes)
+}
+
+interface SaldoApi {
+  clave: string;
+  // null si no tiene fecha de ingreso
+  actual: SaldoAnioApi | null;
+  siguiente: SaldoAnioApi | null;
+}
+
+// Año de vacaciones (actual o siguiente) donde cae una fecha; null si cae fuera de los dos
+const anioDeVacaciones = (saldo: SaldoApi | null, clave: string) =>
+  [saldo?.actual, saldo?.siguiente].find((a) => a && clave >= a.ciclo_inicio && clave <= a.ciclo_fin) ?? null;
+
+// Lo que todavía se puede pedir: lo que le queda menos lo que ya está solicitado
+const disponiblesDe = (a: SaldoAnioApi) => a.dias_quedan - a.dias_solicitados_pendientes;
+
+const numeroDias = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 1 });
+
+const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
+
 interface EstiloVacacion {
   texto: string;
   fondo: string;
@@ -171,6 +203,8 @@ const categoriaVacacion = (p: VacacionApi, hoy: string): CategoriaVacacion | nul
 const diasDeVacaciones = (periodos: VacacionApi[], hoy: string) => {
   const mapa = new Map<string, CategoriaVacacion>();
   periodos.forEach((p) => {
+    // Un descuento es una fila fechada en el aniversario, no días de vacaciones
+    if (esDescuento(p)) return;
     const categoria = categoriaVacacion(p, hoy);
     const inicio = p.fecha_inicio?.slice(0, 10);
     const fin = p.fecha_fin?.slice(0, 10);
@@ -197,7 +231,13 @@ const textoDias = (dias: number | null) =>
 
 // Suma los días de los periodos de esa categoría
 const totalDias = (periodos: VacacionApi[], categoria: CategoriaVacacion, hoy: string) =>
-  periodos.reduce((suma, p) => (categoriaVacacion(p, hoy) === categoria ? suma + Number(p.dias ?? 0) : suma), 0);
+  periodos.reduce(
+    (suma, p) => (!esDescuento(p) && categoriaVacacion(p, hoy) === categoria ? suma + Number(p.dias ?? 0) : suma),
+    0
+  );
+
+const totalDescuentos = (periodos: VacacionApi[]) =>
+  periodos.reduce((suma, p) => (esDescuento(p) ? suma + Number(p.dias ?? 0) : suma), 0);
 
 const BORDE_TABLA = "#e2e8f0";
 const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
@@ -589,6 +629,16 @@ const MiPerfil = () => {
   // Diálogo de solicitud del piloto: quién cubre es opcional (si no, admin lo asigna)
   const [cubrePiloto, setCubrePiloto] = useState("");
   const [exito, setExito] = useState<string | null>(null);
+  // Saldo del año de vacaciones actual y del siguiente de la persona elegida (admin) o propia (piloto)
+  const [saldo, setSaldo] = useState<SaldoApi | null>(null);
+  const [cargandoSaldo, setCargandoSaldo] = useState(false);
+  const [errorSaldo, setErrorSaldo] = useState<string | null>(null);
+  // Diálogo de REGISTRAR DESCUENTO (solo admin)
+  const [descuentoAbierto, setDescuentoAbierto] = useState(false);
+  const [anioDescuento, setAnioDescuento] = useState<"actual" | "siguiente">("actual");
+  const [diasDescuento, setDiasDescuento] = useState("");
+  const [notaDescuento, setNotaDescuento] = useState("");
+  const [errorDescuento, setErrorDescuento] = useState<string | null>(null);
   // Candado inmediato contra doble clic (el estado tarda un render en deshabilitar el botón)
   const enviandoRef = useRef(false);
   // El admin sigue con la hora de su computadora; el piloto usa la de México, como el backend
@@ -637,6 +687,31 @@ const MiPerfil = () => {
       .then((r) => vivo && setPeriodos(r.data))
       .catch(() => vivo && setErrorVac("No se pudieron cargar las vacaciones."))
       .finally(() => vivo && setCargandoVac(false));
+    return () => {
+      vivo = false;
+    };
+  }, [empleadoSel, esAdmin, miClave, recargaVac]);
+
+  // Saldo: se vuelve a pedir con los periodos (al guardar, borrar o registrar un descuento)
+  useEffect(() => {
+    setSaldo(null);
+    setErrorSaldo(null);
+    setCargandoSaldo(false);
+    const consulta = esAdmin
+      ? empleadoSel
+        ? { url: "/api/vacaciones/saldo", params: { clave: empleadoSel } }
+        : null
+      : miClave
+      ? { url: "/api/mi-perfil/vacaciones/saldo", params: undefined }
+      : null;
+    if (!consulta) return;
+    let vivo = true;
+    setCargandoSaldo(true);
+    axios
+      .get<SaldoApi>(consulta.url, { params: consulta.params, headers: authH() })
+      .then((r) => vivo && setSaldo(r.data))
+      .catch(() => vivo && setErrorSaldo("No se pudo cargar el saldo de vacaciones."))
+      .finally(() => vivo && setCargandoSaldo(false));
     return () => {
       vivo = false;
     };
@@ -763,6 +838,73 @@ const MiPerfil = () => {
     }
   };
 
+  // Sin adelantos: cada bloque cuenta en el año de vacaciones donde empieza (igual que el backend).
+  // Si el saldo no cargó, no se bloquea aquí: el backend valida al guardar.
+  const motivoSaldo = (nueva: Set<string>): string | null => {
+    if (cargandoSaldo || errorSaldo || !saldo) return null;
+    if (!saldo.actual) {
+      return esAdmin
+        ? "No tiene fecha de ingreso; pide a RH que la registre."
+        : "No tienes fecha de ingreso; pide a RH que la registre.";
+    }
+    const porAnio = new Map<SaldoAnioApi, number>();
+    for (const b of agruparBloques(nueva)) {
+      const anio = anioDeVacaciones(saldo, b.inicio);
+      if (!anio) continue;
+      if (anio.anios === 0) return esAdmin ? "Aún no cumple su primer año." : "Aún no cumples tu primer año.";
+      porAnio.set(anio, (porAnio.get(anio) ?? 0) + b.dias);
+    }
+    for (const [anio, dias] of Array.from(porAnio.entries())) {
+      const disponibles = Math.max(disponiblesDe(anio), 0);
+      if (dias > disponibles) {
+        return `Solo ${esAdmin ? "le" : "te"} quedan ${numeroDias(disponibles)} ${
+          disponibles === 1 ? "día" : "días"
+        } en el año de vacaciones ${textoPeriodo(anio.ciclo_inicio, anio.ciclo_fin)}.`;
+      }
+    }
+    return null;
+  };
+
+  const abrirDescuento = () => {
+    setAnioDescuento("actual");
+    setDiasDescuento("");
+    setNotaDescuento("");
+    setErrorDescuento(null);
+    setDescuentoAbierto(true);
+  };
+
+  const diasDescuentoNum = Number(diasDescuento);
+  const descuentoValido =
+    diasDescuento.trim() !== "" && diasDescuentoNum > 0 && diasDescuentoNum <= 999.9 && notaDescuento.trim() !== "";
+
+  const guardarDescuento = async () => {
+    if (!empleadoSel || !descuentoValido || enviandoRef.current) return;
+    enviandoRef.current = true;
+    setGuardando(true);
+    setErrorDescuento(null);
+    try {
+      await axios.post(
+        "/api/vacaciones",
+        {
+          tipo: "descuento",
+          clave: empleadoSel,
+          anio: anioDescuento,
+          dias: diasDescuentoNum,
+          nota: notaDescuento.trim(),
+        },
+        { headers: authH() }
+      );
+      setDescuentoAbierto(false);
+      setRecargaVac((n) => n + 1);
+      setExito("Descuento registrado.");
+    } catch (e) {
+      setErrorDescuento(mensajeError(e, "No se pudo registrar el descuento."));
+    } finally {
+      setGuardando(false);
+      enviandoRef.current = false;
+    }
+  };
+
   // Mismas reglas de selección para admin y piloto (el piloto nunca entra al modo falta)
   const toggleDia = (clave: string) => {
     if (modoFalta) {
@@ -827,6 +969,11 @@ const MiPerfil = () => {
     }
     if (!otrosBloques.every((b) => respetaSeparacion(clave, b))) {
       setAviso("Debe haber al menos 15 días entre un periodo de vacaciones y otro.");
+      return;
+    }
+    const sinSaldo = motivoSaldo(new Set(seleccionadas).add(clave));
+    if (sinSaldo) {
+      setAviso(sinSaldo);
       return;
     }
 
@@ -949,6 +1096,9 @@ const MiPerfil = () => {
                     >
                       REGISTRAR FALTA INJUSTIFICADA
                     </Button>
+                    <Button variant="outlined" size="small" color="warning" disabled={modoFalta} onClick={abrirDescuento}>
+                      REGISTRAR DESCUENTO
+                    </Button>
                   </>
                 )
               )}
@@ -1001,6 +1151,44 @@ const MiPerfil = () => {
             >
               Modo falta injustificada: puedes marcar cualquier día. Al terminar, pulsa REGISTRAR FALTA INJUSTIFICADA.
             </Alert>
+          )}
+
+          {seleccionVista && (
+            <Paper sx={{ mb: 2, p: 2, border: `1px solid ${BORDE_TABLA}` }}>
+              {cargandoSaldo ? (
+                <CircularProgress size={20} />
+              ) : errorSaldo ? (
+                <Typography sx={{ fontSize: 14, color: ROJO_TEXTO }}>{errorSaldo}</Typography>
+              ) : saldo && !saldo.actual ? (
+                <Typography sx={{ fontSize: 14, color: "#64748b" }}>
+                  Sin fecha de ingreso: no se puede calcular el saldo de vacaciones.
+                </Typography>
+              ) : saldo?.actual ? (
+                <>
+                  <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#1e293b" }}>
+                    {vistaPiloto ? "Te tocan" : "Le tocan"} {numeroDias(saldo.actual.dias_corresponden)} · Usados{" "}
+                    {numeroDias(saldo.actual.dias_usados)} · Solicitados{" "}
+                    {numeroDias(saldo.actual.dias_solicitados_pendientes)} ·{" "}
+                    <Box
+                      component="span"
+                      sx={{ fontWeight: 800, color: saldo.actual.dias_quedan < 0 ? ROJO_TEXTO : "#15803D" }}
+                    >
+                      {vistaPiloto ? "Te quedan" : "Le quedan"} {numeroDias(saldo.actual.dias_quedan)}
+                    </Box>{" "}
+                    · Año de vacaciones {fechaCorta(saldo.actual.ciclo_inicio)} – {fechaCorta(saldo.actual.ciclo_fin)}
+                  </Typography>
+                  {saldo.siguiente && (
+                    <Typography sx={{ fontSize: 13, color: "#64748b", mt: 0.5 }}>
+                      Siguiente año de vacaciones ({fechaCorta(saldo.siguiente.ciclo_inicio)} –{" "}
+                      {fechaCorta(saldo.siguiente.ciclo_fin)}): {vistaPiloto ? "te tocan" : "le tocan"}{" "}
+                      {numeroDias(saldo.siguiente.dias_corresponden)} · Usados {numeroDias(saldo.siguiente.dias_usados)} ·
+                      Solicitados {numeroDias(saldo.siguiente.dias_solicitados_pendientes)} ·{" "}
+                      {vistaPiloto ? "Te quedan" : "Le quedan"} {numeroDias(saldo.siguiente.dias_quedan)}
+                    </Typography>
+                  )}
+                </>
+              ) : null}
+            </Paper>
           )}
 
           <Box
@@ -1141,7 +1329,7 @@ const MiPerfil = () => {
                               />
                             </TableCell>
                             <TableCell align="center" sx={{ ...celdaSx, color: "#475569" }}>
-                              {p.tipo === "falta_injustificada" ? "Falta" : "Vacaciones"}
+                              {p.tipo === "falta_injustificada" ? "Falta" : esDescuento(p) ? "Descuento" : "Vacaciones"}
                             </TableCell>
                             <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
                               {p.cubre_clave?.trim() || "—"}
@@ -1151,7 +1339,8 @@ const MiPerfil = () => {
                             </TableCell>
                             {!vistaPiloto && (
                               <TableCell align="center" sx={celdaSx}>
-                                {p.origen === "sistema" && (
+                                {/* sistema = capturado por admin; ajuste = descuento */}
+                                {(p.origen === "sistema" || p.origen === "ajuste") && (
                                   <IconButton
                                     size="small"
                                     aria-label="Borrar periodo"
@@ -1178,6 +1367,8 @@ const MiPerfil = () => {
                         >
                           Tomados: {textoDias(totalDias(periodosTabla, "tomada", hoy))} · Autorizados:{" "}
                           {textoDias(totalDias(periodosTabla, "autorizada", hoy))}
+                          {totalDescuentos(periodosTabla) > 0 &&
+                            ` · Descuentos: ${textoDias(totalDescuentos(periodosTabla))}`}
                         </TableCell>
                       </TableRow>
                     )}
@@ -1257,13 +1448,93 @@ const MiPerfil = () => {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={descuentoAbierto} onClose={() => !guardando && setDescuentoAbierto(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Registrar descuento</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+            {personaSel?.nombre || "Sin nombre"} · {personaSel?.idVisible ?? empleadoSel}
+          </Typography>
+          {saldo && !saldo.actual && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              No tiene fecha de ingreso; pide a RH que la registre.
+            </Alert>
+          )}
+          <Typography sx={{ fontSize: 13, color: "#64748b", mt: 2 }}>Año de vacaciones</Typography>
+          <RadioGroup
+            value={anioDescuento}
+            onChange={(e) => setAnioDescuento(e.target.value as "actual" | "siguiente")}
+          >
+            {(["actual", "siguiente"] as const).map((anio) => {
+              const datos = saldo?.[anio];
+              return (
+                <FormControlLabel
+                  key={anio}
+                  value={anio}
+                  control={<Radio size="small" />}
+                  label={
+                    <Typography sx={{ fontSize: 14 }}>
+                      {anio === "actual" ? "Actual" : "Siguiente"}
+                      {datos &&
+                        ` (${textoPeriodo(datos.ciclo_inicio, datos.ciclo_fin)}) · le quedan ${numeroDias(
+                          datos.dias_quedan
+                        )}`}
+                    </Typography>
+                  }
+                />
+              );
+            })}
+          </RadioGroup>
+          <TextField
+            label="Días"
+            type="number"
+            value={diasDescuento}
+            onChange={(e) => setDiasDescuento(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+            inputProps={{ min: 0.5, max: 999.9, step: 0.5 }}
+          />
+          <TextField
+            label="Motivo (obligatorio)"
+            value={notaDescuento}
+            onChange={(e) => setNotaDescuento(e.target.value)}
+            multiline
+            minRows={2}
+            fullWidth
+            size="small"
+            sx={{ mt: 2 }}
+            inputProps={{ maxLength: 500 }}
+          />
+          {errorDescuento && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {errorDescuento}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={guardando} onClick={() => setDescuentoAbierto(false)}>
+            Cancelar
+          </Button>
+          <Button variant="contained" disabled={guardando || !descuentoValido} onClick={guardarDescuento}>
+            {guardando ? "Guardando…" : "Registrar descuento"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={porBorrar !== null} onClose={() => !guardando && setPorBorrar(null)} fullWidth maxWidth="xs">
         <DialogTitle>Borrar periodo</DialogTitle>
         <DialogContent>
           {porBorrar && (
             <Typography sx={{ color: "#475569" }}>
-              ¿Borrar el registro del {textoPeriodo(porBorrar.fecha_inicio.slice(0, 10), porBorrar.fecha_fin.slice(0, 10))}{" "}
-              ({textoDias(porBorrar.dias)})? Esta acción no se puede deshacer.
+              {esDescuento(porBorrar)
+                ? `¿Borrar el descuento de ${textoDias(porBorrar.dias)} del año de vacaciones que empieza el ${fechaCorta(
+                    porBorrar.fecha_inicio.slice(0, 10)
+                  )}?`
+                : `¿Borrar el registro del ${textoPeriodo(
+                    porBorrar.fecha_inicio.slice(0, 10),
+                    porBorrar.fecha_fin.slice(0, 10)
+                  )} (${textoDias(porBorrar.dias)})?`}{" "}
+              Esta acción no se puede deshacer.
             </Typography>
           )}
         </DialogContent>
