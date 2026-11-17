@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -10,12 +10,22 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputAdornment,
   Paper,
   Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import { authH, Persona, SelectorEmpleado } from "./MisDatosPerfil";
 
@@ -26,8 +36,8 @@ const ROJO = "#B91C1C";
 
 const NIVELES = [
   { nivel: "rh", texto: "RH" },
-  { nivel: "encargado", texto: "ENCARGADO" },
-  { nivel: "gerencia", texto: "GERENCIA" },
+  { nivel: "encargado", texto: "Encargado" },
+  { nivel: "gerencia", texto: "Gerencia" },
 ] as const;
 
 type Nivel = typeof NIVELES[number]["nivel"];
@@ -69,6 +79,25 @@ const momento = (iso: string | null) =>
       })
     : "";
 
+// Para buscar sin importar mayúsculas ni acentos
+const sinAcentos = (texto: string) =>
+  texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+
+const textoDias = (dias: number) => `${dias.toLocaleString("es-MX")} ${dias === 1 ? "día" : "días"}`;
+
+// Mismo estilo que la tabla de "Periodos de vacaciones" de Mi Perfil
+const BORDE_TABLA = "#e2e8f0";
+const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
+const celdaSx = { fontSize: 14, borderRight: `1px solid ${BORDE_TABLA}`, "&:last-of-type": { borderRight: 0 } };
+const COLUMNAS = 7;
+
+interface Grupo {
+  clave: string;
+  nombre: string;
+  solicitudes: Solicitud[];
+  dias: number;
+}
+
 interface Props {
   personas: Persona[];
   cargandoPersonas: boolean;
@@ -81,6 +110,9 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupada, setOcupada] = useState<number | null>(null);
   const [decisionGerencia, setDecisionGerencia] = useState<{ solicitud: Solicitud; aprobado: boolean } | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  // Celdas ya marcadas que se abrieron para cambiar la decisión ("id-nivel")
+  const [editando, setEditando] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let vivo = true;
@@ -93,6 +125,33 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
       vivo = false;
     };
   }, []);
+
+  // Una persona por grupo; grupos por su solicitud más próxima y, dentro, por fecha
+  const grupos = useMemo(() => {
+    const filtro = sinAcentos(busqueda);
+    const mapa = new Map<string, Grupo>();
+    solicitudes.forEach((s) => {
+      const clave = claveCubre(s.clave) ?? "";
+      const grupo = mapa.get(clave) ?? { clave, nombre: "", solicitudes: [], dias: 0 };
+      if (!grupo.nombre && s.nombre_completo?.trim()) grupo.nombre = s.nombre_completo.trim().toUpperCase();
+      grupo.solicitudes.push(s);
+      grupo.dias += Number(s.dias ?? 0);
+      mapa.set(clave, grupo);
+    });
+    const ordenar = (a: Solicitud, b: Solicitud) =>
+      a.fecha_inicio === b.fecha_inicio ? a.id - b.id : a.fecha_inicio.localeCompare(b.fecha_inicio);
+    return Array.from(mapa.values())
+      .filter((g) => !filtro || sinAcentos(g.nombre).includes(filtro) || sinAcentos(g.clave).includes(filtro))
+      .map((g) => ({ ...g, solicitudes: [...g.solicitudes].sort(ordenar) }))
+      .sort((a, b) => ordenar(a.solicitudes[0], b.solicitudes[0]));
+  }, [solicitudes, busqueda]);
+
+  const cerrarEdicion = (id: number, nivel: Nivel) =>
+    setEditando((prev) => {
+      const nuevo = new Set(prev);
+      nuevo.delete(`${id}-${nivel}`);
+      return nuevo;
+    });
 
   const marcar = async (id: number, nivel: Nivel, aprobado: boolean) => {
     setOcupada(id);
@@ -108,6 +167,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
           ? prev.map((s) => (s.id === id ? { ...s, ...data } : s))
           : prev.filter((s) => s.id !== id)
       );
+      cerrarEdicion(id, nivel);
     } catch (e) {
       setAviso(mensajeError(e, "No se pudo guardar la decisión."));
     } finally {
@@ -143,6 +203,58 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     }
   };
 
+  // Celda de un nivel: botones ✓ ✗; ya marcado, el chip (clic para cambiar la decisión)
+  const celdaNivel = (s: Solicitud, nivel: Nivel, texto: string) => {
+    const valor = s[`aprobado_${nivel}` as const];
+    const abierta = editando.has(`${s.id}-${nivel}`);
+    if (valor != null && !abierta) {
+      const quien = s[`aprobado_${nivel}_por` as const] ?? "Sin nombre";
+      return (
+        <Tooltip title={`${valor ? "Aprobó" : "Rechazó"}: ${quien} · ${momento(s[`aprobado_${nivel}_at` as const])}`} arrow>
+          <Chip
+            size="small"
+            label={valor ? "Aprobó" : "Rechazó"}
+            onClick={() => setEditando((prev) => new Set(prev).add(`${s.id}-${nivel}`))}
+            sx={{
+              fontWeight: 600,
+              bgcolor: valor ? "#DCFCE7" : "#FDE2E2",
+              color: valor ? VERDE : ROJO,
+              border: `1px solid ${valor ? "#16A34A" : ROJO}`,
+            }}
+          />
+        </Tooltip>
+      );
+    }
+    return (
+      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.25 }}>
+        <IconButton
+          size="small"
+          aria-label={`Aprobar ${texto}`}
+          disabled={ocupada === s.id}
+          onClick={() => pulsarNivel(s, nivel, true)}
+          sx={{ color: VERDE, border: "1px solid #bbf7d0", p: 0.25 }}
+        >
+          <CheckIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          aria-label={`Rechazar ${texto}`}
+          disabled={ocupada === s.id}
+          onClick={() => pulsarNivel(s, nivel, false)}
+          sx={{ color: ROJO, border: "1px solid #fecaca", p: 0.25 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+        {abierta && (
+          <Button size="small" onClick={() => cerrarEdicion(s.id, nivel)} sx={{ minWidth: 0, fontSize: 11, px: 0.5 }}>
+            Dejar
+          </Button>
+        )}
+      </Box>
+    );
+  };
+
+  // Todos los hooks van arriba: este return no puede quedar antes de ninguno
   if (cargando) {
     return (
       <Box sx={{ textAlign: "center", py: 6 }}>
@@ -155,109 +267,133 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     <Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Typography sx={{ fontSize: 12, color: "#64748b", mb: 2 }}>La decisión final es de Gerencia</Typography>
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1.5,
+          mb: 2,
+        }}
+      >
+        <TextField
+          size="small"
+          placeholder="Buscar por nombre o ID"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          sx={{ width: { xs: "100%", sm: 320 } }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Typography sx={{ fontSize: 12, color: "#64748b" }}>La decisión final es de Gerencia</Typography>
+      </Box>
 
-      {!error && solicitudes.length === 0 && (
-        <Typography sx={{ color: "#94a3b8", textAlign: "center", py: 6 }}>Sin solicitudes pendientes</Typography>
-      )}
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {solicitudes.map((s) => {
-          const inicio = s.fecha_inicio.slice(0, 10);
-          const fin = s.fecha_fin.slice(0, 10);
-          const cubre = claveCubre(s.cubre_clave);
-          // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
-          const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
-          return (
-            <Paper key={s.id} sx={{ p: 2 }}>
-              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
-                <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  {s.nombre_completo?.trim() || "Sin nombre"}
-                </Typography>
-                <Chip size="small" label={s.clave.trim()} variant="outlined" sx={{ color: AZUL, borderColor: AZUL }} />
-              </Box>
-              <Typography sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-                {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
-                {s.dias != null && ` · ${Number(s.dias)} ${Number(s.dias) === 1 ? "día" : "días"}`}
-              </Typography>
-              {s.nota?.trim() && (
-                <Typography sx={{ fontSize: 13, color: "#64748b", mt: 0.5 }}>{s.nota.trim()}</Typography>
-              )}
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
-                  gap: 1.5,
-                  mt: 2,
-                }}
-              >
-                {NIVELES.map(({ nivel, texto }) => {
-                  const valor = s[`aprobado_${nivel}` as const];
-                  return (
-                    <Box key={nivel} sx={{ border: "1px solid #e2e8f0", borderRadius: "8px", p: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{texto}</Typography>
-                        <Box>
-                          <IconButton
-                            size="small"
-                            aria-label={`Aprobar ${texto}`}
-                            disabled={ocupada === s.id}
-                            onClick={() => pulsarNivel(s, nivel, true)}
-                            sx={{ color: VERDE }}
-                          >
-                            <CheckIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            aria-label={`Rechazar ${texto}`}
-                            disabled={ocupada === s.id}
-                            onClick={() => pulsarNivel(s, nivel, false)}
-                            sx={{ color: ROJO }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                      {valor != null && (
+      {/* En celular la tabla se desliza de lado en lugar de cortarse */}
+      <TableContainer
+        component={Paper}
+        sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
+      >
+        <Table size="small" sx={{ minWidth: 1000 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={celdaEncabezadoSx}>Empleado</TableCell>
+              <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
+              {NIVELES.map(({ nivel, texto }) => (
+                <TableCell key={nivel} align="center" sx={celdaEncabezadoSx}>{texto}</TableCell>
+              ))}
+              <TableCell sx={celdaEncabezadoSx}>¿Quién cubre?</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {grupos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={COLUMNAS} align="center" sx={{ py: 4, fontSize: 14, color: "#94a3b8" }}>
+                  {solicitudes.length === 0 ? "Sin solicitudes pendientes" : "Sin coincidencias"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              grupos.map((g) => (
+                <React.Fragment key={g.clave}>
+                  {/* Encabezado del grupo: nombre, ID y resumen */}
+                  <TableRow sx={{ bgcolor: "#eef2ff" }}>
+                    <TableCell colSpan={COLUMNAS} sx={{ py: 1, borderTop: `2px solid ${AZUL}` }}>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1 }}>
+                        <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: 14 }}>
+                          {g.nombre || "SIN NOMBRE"}
+                        </Typography>
                         <Chip
                           size="small"
-                          label={`${valor ? "Aprobó" : "Rechazó"} ${s[`aprobado_${nivel}_por` as const] ?? ""} · ${momento(
-                            s[`aprobado_${nivel}_at` as const]
-                          )}`}
-                          sx={{
-                            mt: 0.5,
-                            height: "auto",
-                            py: 0.25,
-                            fontWeight: 600,
-                            bgcolor: valor ? "#DCFCE7" : "#FDE2E2",
-                            color: valor ? VERDE : ROJO,
-                            "& .MuiChip-label": { whiteSpace: "normal" },
-                          }}
+                          label={g.clave}
+                          variant="outlined"
+                          sx={{ color: AZUL, borderColor: AZUL, fontWeight: 600, bgcolor: "#fff" }}
                         />
-                      )}
-                    </Box>
-                  );
-                })}
-              </Box>
+                        <Typography sx={{ fontSize: 13, color: "#475569" }}>
+                          {g.solicitudes.length} {g.solicitudes.length === 1 ? "solicitud" : "solicitudes"} ·{" "}
+                          {textoDias(g.dias)}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
 
-              <Box sx={{ mt: 2 }}>
-                <SelectorEmpleado
-                  personas={opcionesCubre}
-                  cargando={cargandoPersonas}
-                  seleccion={cubre}
-                  onSeleccion={(clave) => guardarCubre(s.id, clave)}
-                  etiqueta="¿Quién cubre?"
-                  margenInferior={0}
-                />
-                {cubre && (
-                  <Typography sx={{ fontSize: 13, color: "#64748b", mt: 0.5 }}>Cubre: {cubre}</Typography>
-                )}
-              </Box>
-            </Paper>
-          );
-        })}
-      </Box>
+                  {g.solicitudes.map((s, i) => {
+                    const inicio = s.fecha_inicio.slice(0, 10);
+                    const fin = s.fecha_fin.slice(0, 10);
+                    // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
+                    const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
+                    return (
+                      <TableRow
+                        key={s.id}
+                        sx={{
+                          bgcolor: i % 2 === 0 ? "#fff" : "#f8fafc",
+                          "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
+                        }}
+                      >
+                        {/* Sin repetir el nombre: ya está en el encabezado del grupo */}
+                        <TableCell sx={{ ...celdaSx, width: 40 }} />
+                        <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+                            {inicio === fin ? fechaCorta(inicio) : `${fechaCorta(inicio)} – ${fechaCorta(fin)}`}
+                          </Typography>
+                          {s.nota?.trim() && (
+                            <Typography sx={{ fontSize: 12, color: "#64748b", whiteSpace: "normal", maxWidth: 220 }}>
+                              {s.nota.trim()}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
+                          {s.dias != null ? textoDias(Number(s.dias)) : "—"}
+                        </TableCell>
+                        {NIVELES.map(({ nivel, texto }) => (
+                          <TableCell key={nivel} align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                            {celdaNivel(s, nivel, texto)}
+                          </TableCell>
+                        ))}
+                        <TableCell sx={{ ...celdaSx, minWidth: 240 }}>
+                          <SelectorEmpleado
+                            personas={opcionesCubre}
+                            cargando={cargandoPersonas}
+                            seleccion={claveCubre(s.cubre_clave)}
+                            onSeleccion={(clave) => guardarCubre(s.id, clave)}
+                            etiqueta="Cubre"
+                            margenInferior={0}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </React.Fragment>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Dialog
         open={decisionGerencia !== null}
