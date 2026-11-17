@@ -40,6 +40,7 @@ import MisDatosPerfil, {
   usePersonas,
 } from "../components/MisDatosPerfil";
 import MisSolicitudesVacaciones, { mensajeError } from "../components/MisSolicitudesVacaciones";
+import PanelControlVacaciones from "../components/PanelControlVacaciones";
 import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 
 const AZUL = "#0A2878";
@@ -1002,13 +1003,14 @@ const MiPerfil = () => {
 
   return (
     // Con el botón flotante del piloto, espacio extra abajo para que no tape la tabla.
-    // "Mis solicitudes" de admin usa todo el ancho, como Gestión de Usuarios
+    // "Mis solicitudes" y "Panel de control" de admin usan todo el ancho, como Gestión de Usuarios
     <Container
-      maxWidth={pestana === 2 && !vistaPiloto ? false : "lg"}
+      maxWidth={pestana >= 2 && !vistaPiloto ? false : "lg"}
       sx={{ mt: 4, mb: vistaPiloto && total > 0 && pestana === 1 ? 12 : 6 }}
     >
+      {/* Para admin la página es "Vacaciones"; el piloto la sigue viendo como "Mi Perfil" */}
       <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
-        Mi Perfil
+        {esAdmin ? "Vacaciones" : "Mi Perfil"}
       </Typography>
 
       <Tabs
@@ -1021,7 +1023,7 @@ const MiPerfil = () => {
         sx={{ mb: 3, borderBottom: "1px solid #e2e8f0" }}
       >
         {/* El azul va en el indicador y en cada Tab para ganarle al naranja del tema */}
-        {["Mis datos", "Selección de vacaciones", "Mis solicitudes"].map((texto) => (
+        {["Mis datos", "Selección de vacaciones", "Mis solicitudes", ...(esAdmin ? ["Panel de control"] : [])].map((texto) => (
           <Tab
             key={texto}
             label={texto}
@@ -1395,6 +1397,8 @@ const MiPerfil = () => {
         ) : (
           <MisSolicitudesVacaciones personas={personas} cargandoPersonas={cargandoPersonas} />
         ))}
+
+      {pestana === 3 && esAdmin && <PanelControlVacaciones />}
 
       <Dialog open={confirmando} onClose={() => !guardando && setConfirmando(false)} fullWidth maxWidth="xs">
         <DialogTitle>

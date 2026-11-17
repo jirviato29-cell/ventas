@@ -689,9 +689,10 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="📺 PANTALLA TV" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
+              {/* Para admin, Mi Perfil se llama Vacaciones (el piloto lo sigue viendo como MI PERFIL) */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
                 <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
-                <ListItemText primary="MI PERFIL" primaryTypographyProps={{ fontWeight: 700 }} />
+                <ListItemText primary="VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
             </>
           )}
