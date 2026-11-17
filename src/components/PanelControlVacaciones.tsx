@@ -74,7 +74,9 @@ const sinAcentos = (texto: string) =>
 const celdaEncabezadoSx = { fontSize: 13, px: 1, whiteSpace: "nowrap" };
 const celdaSx = { fontSize: 13, px: 1, py: 0.75 };
 const subEncabezadoSx = { fontSize: 12, px: 1, fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" };
-const COLUMNAS = 12;
+const COLUMNAS = 13;
+// Con 30 días o menos para que caduquen (y días por usar), los días van en rojo
+const AVISO_CADUCAN = 30;
 
 const ESTILO_ESTADO: Record<EstadoCiclo, { fondo: string; color: string; borde: string }> = {
   Cerrado: { fondo: "#f1f5f9", color: "#475569", borde: "#cbd5e1" },
@@ -211,6 +213,7 @@ const PanelControlVacaciones: React.FC = () => {
               <TableCell align="center" sx={celdaEncabezadoSx}>Descuentos</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Solicitados</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Le quedan</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Caducan en</TableCell>
               <TableCell sx={celdaEncabezadoSx}>Ciclo actual</TableCell>
             </TableRow>
           </TableHead>
@@ -226,6 +229,13 @@ const PanelControlVacaciones: React.FC = () => {
                 const conIngreso = p.anios != null;
                 const expandible = p.ciclos.length > 0;
                 const abiertaFila = abierta === p.clave;
+                // Los días del ciclo actual caducan el último día del ciclo (el día antes del aniversario).
+                // Sin días por usar, sin fecha de ingreso o sin su primer año: no hay nada que caduque.
+                const diasCaducan =
+                  conIngreso && (p.anios ?? 0) > 0 && (p.dias_quedan ?? 0) > 0 &&
+                  p.ciclo_fin && p.dias_para_aniversario != null
+                    ? p.dias_para_aniversario - 1
+                    : null;
                 return (
                   <React.Fragment key={p.clave}>
                     <TableRow
@@ -298,6 +308,25 @@ const PanelControlVacaciones: React.FC = () => {
                           >
                             {numero(p.dias_quedan ?? 0)}
                           </Typography>
+                        ) : (
+                          guion
+                        )}
+                      </TableCell>
+                      <TableCell align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                        {diasCaducan != null && p.ciclo_fin ? (
+                          <>
+                            <Typography sx={{ fontSize: 13 }}>{fechaCorta(p.ciclo_fin)}</Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                lineHeight: 1.2,
+                                color: diasCaducan <= AVISO_CADUCAN ? ROJO : "#64748b",
+                                fontWeight: diasCaducan <= AVISO_CADUCAN ? 700 : 400,
+                              }}
+                            >
+                              {diasCaducan === 0 ? "Hoy" : `${diasCaducan} ${diasCaducan === 1 ? "día" : "días"}`}
+                            </Typography>
+                          </>
                         ) : (
                           guion
                         )}
