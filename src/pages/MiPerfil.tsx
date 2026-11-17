@@ -143,6 +143,8 @@ interface EstiloVacacion {
   borde: string;
   color: string;
   tachado?: boolean;
+  // Borde punteado: distingue la solicitada (azul claro) de la selección (azul marino)
+  punteado?: boolean;
 }
 
 // El azul sólido queda reservado para la selección actual; por eso solicitada va en azul claro
@@ -150,7 +152,7 @@ const ESTILO_VACACION: Record<CategoriaVacacion, EstiloVacacion> = {
   falta: { texto: "Falta injustificada", fondo: "#000000", borde: "#000000", color: "#FFFFFF" },
   tomada: { texto: "Tomada", fondo: "#EDE9FE", borde: "#8B5CF6", color: "#6D28D9" },
   autorizada: { texto: "Autorizada", fondo: "#DCFCE7", borde: "#16A34A", color: "#15803D" },
-  solicitada: { texto: "Solicitada", fondo: "#DBEAFE", borde: "#60A5FA", color: "#1D4ED8" },
+  solicitada: { texto: "Solicitada", fondo: "#DBEAFE", borde: "#60A5FA", color: "#1D4ED8", punteado: true },
   rechazada: { texto: "Rechazada", fondo: "#E2E8F0", borde: "#94A3B8", color: "#475569", tachado: true },
 };
 
@@ -333,7 +335,11 @@ const MesCalendario: React.FC<MesProps> = ({
                 fontFamily: "inherit",
                 p: 0,
                 cursor: pasado ? "default" : bloqueado || sinAnticipacion ? "not-allowed" : "pointer",
-                border: esHoy ? `2px solid ${AZUL}` : `1px solid ${estiloVac ? estiloVac.borde : "#e2e8f0"}`,
+                border: esHoy
+                  ? `2px solid ${AZUL}`
+                  : estiloVac?.punteado
+                  ? `2px dashed ${estiloVac.borde}`
+                  : `1px solid ${estiloVac ? estiloVac.borde : "#e2e8f0"}`,
                 bgcolor: marcado
                   ? AZUL
                   : estiloVac
@@ -724,6 +730,8 @@ const MiPerfil = () => {
       setConfirmando(false);
       cambiarModoFalta(false);
       if (!esAdmin) {
+        // Ya guardadas: se ven en "Mis solicitudes" con sus aprobaciones
+        setPestana(2);
         setExito(
           bloquesPorGuardar.length === 1
             ? "Tu solicitud de vacaciones se envió."
@@ -846,7 +854,8 @@ const MiPerfil = () => {
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
   return (
-    <Container sx={{ mt: 4, mb: 6 }}>
+    // Con el botón flotante del piloto, espacio extra abajo para que no tape la tabla
+    <Container sx={{ mt: 4, mb: vistaPiloto && total > 0 && pestana === 1 ? 12 : 6 }}>
       <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
         Mi Perfil
       </Typography>
@@ -884,6 +893,88 @@ const MiPerfil = () => {
       {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
       {pestana === 1 && (
         <>
+          {/* Barra de acciones arriba del calendario (admin y piloto): contador, bloques y botones */}
+          <Paper
+            sx={{
+              mb: 2,
+              p: 2,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1.5,
+              border: `1px solid ${total > 0 ? AZUL : BORDE_TABLA}`,
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontWeight: 700, color: AZUL }}>
+                {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
+              </Typography>
+              {bloques.map((b) => (
+                <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.25 }}>
+                  {textoBloque(b)}
+                </Typography>
+              ))}
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
+                Limpiar selección
+              </Button>
+              {vistaPiloto ? (
+                <Button variant="contained" size="small" disabled={total === 0 || !miClave} onClick={abrirConfirmacion}>
+                  SOLICITAR VACACIONES
+                </Button>
+              ) : (
+                empleadoSel && (
+                  <>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={modoFalta || total === 0}
+                      onClick={abrirConfirmacion}
+                    >
+                      REGISTRAR VACACIONES
+                    </Button>
+                    {/* Primer toque: entra al modo falta. Ya en el modo, con días marcados: registra */}
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={modoFalta && total === 0}
+                      onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
+                      sx={{ bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#333" } }}
+                    >
+                      REGISTRAR FALTA INJUSTIFICADA
+                    </Button>
+                  </>
+                )
+              )}
+            </Box>
+          </Paper>
+
+          {/* Piloto: botón fijo abajo a la derecha, visible aunque baje la pantalla */}
+          {vistaPiloto && total > 0 && !confirmando && (
+            <Button
+              variant="contained"
+              disabled={!miClave}
+              onClick={abrirConfirmacion}
+              sx={{
+                position: "fixed",
+                right: { xs: 16, sm: 24 },
+                bottom: { xs: 16, sm: 24 },
+                zIndex: 1200,
+                borderRadius: "999px",
+                px: 3,
+                py: 1.5,
+                fontWeight: 700,
+                bgcolor: AZUL,
+                boxShadow: "0 8px 24px rgba(10,40,120,0.35)",
+                "&:hover": { bgcolor: "#081f5e" },
+              }}
+            >
+              SOLICITAR ({total} {total === 1 ? "día" : "días"})
+            </Button>
+          )}
+
           {!vistaPiloto && (
             <SelectorEmpleado
               personas={personas}
@@ -941,8 +1032,22 @@ const MiPerfil = () => {
                 fondo: ESTILO_VACACION[e].fondo,
                 borde: ESTILO_VACACION[e].borde,
                 tachado: ESTILO_VACACION[e].tachado,
+                punteado: ESTILO_VACACION[e].punteado,
               })),
-            ].map(({ texto, fondo, borde, tachado }: { texto: string; fondo: string; borde: string; tachado?: boolean }) => (
+            ].map(
+              ({
+                texto,
+                fondo,
+                borde,
+                tachado,
+                punteado,
+              }: {
+                texto: string;
+                fondo: string;
+                borde: string;
+                tachado?: boolean;
+                punteado?: boolean;
+              }) => (
               <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                 <Box
                   sx={{
@@ -950,7 +1055,7 @@ const MiPerfil = () => {
                     height: 14,
                     borderRadius: "3px",
                     bgcolor: fondo,
-                    border: `1px solid ${borde}`,
+                    border: `1px ${punteado ? "dashed" : "solid"} ${borde}`,
                     // Rayita diagonal: el tachado de las rechazadas
                     backgroundImage: tachado
                       ? `linear-gradient(to top right, transparent 44%, ${borde} 44%, ${borde} 56%, transparent 56%)`
@@ -959,71 +1064,9 @@ const MiPerfil = () => {
                 />
                 <Typography sx={{ fontSize: 12, color: "#64748b" }}>{texto}</Typography>
               </Box>
-            ))}
+              )
+            )}
           </Box>
-
-          {/* Selección y botones de registrar: solo admin */}
-          {!vistaPiloto && (
-            <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
-              <Typography sx={{ fontWeight: 700, color: AZUL }}>
-                {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
-              </Typography>
-              {bloques.map((b) => (
-                <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-                  {textoBloque(b)}
-                </Typography>
-              ))}
-              <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
-                <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
-                  Limpiar selección
-                </Button>
-                {empleadoSel && (
-                  <>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={modoFalta || total === 0}
-                      onClick={abrirConfirmacion}
-                    >
-                      REGISTRAR VACACIONES
-                    </Button>
-                    {/* Primer toque: entra al modo falta. Ya en el modo, con días marcados: registra */}
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={modoFalta && total === 0}
-                      onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
-                      sx={{ bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#333" } }}
-                    >
-                      REGISTRAR FALTA INJUSTIFICADA
-                    </Button>
-                  </>
-                )}
-              </Box>
-            </Paper>
-          )}
-
-          {/* Solicitud del piloto: mismo resumen que admin y un botón que abre la confirmación */}
-          {vistaPiloto && (
-            <Paper sx={{ mt: 2, p: 2, textAlign: "center" }}>
-              <Typography sx={{ fontWeight: 700, color: AZUL }}>
-                {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
-              </Typography>
-              {bloques.map((b) => (
-                <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.5 }}>
-                  {textoBloque(b)}
-                </Typography>
-              ))}
-              <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
-                <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
-                  Limpiar selección
-                </Button>
-                <Button variant="contained" size="small" disabled={total === 0 || !miClave} onClick={abrirConfirmacion}>
-                  SOLICITAR VACACIONES
-                </Button>
-              </Box>
-            </Paper>
-          )}
 
           {seleccionVista && (
             <Box sx={{ mt: 2 }}>
