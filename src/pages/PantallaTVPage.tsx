@@ -53,6 +53,15 @@ interface HoyData {
   ultimas_ventas: VentaHoyItem[];
 }
 
+interface CadenasConteos {
+  tel_activado: number; chip_express: number; chip_cero: number;
+  preactivado: number; portabilidad: number; boletin63: number; total: number;
+}
+interface CadenasResumen {
+  ciclo: { inicio: string; fin: string; etiqueta: string };
+  totales: CadenasConteos;
+}
+
 // ── Paleta / constantes ─────────────────────────────────────────────────────────
 
 const BG = '#0d1526';
@@ -64,7 +73,7 @@ const PURPLE = '#a855f7';
 const TEXT_DIM = '#94a3b8';
 const MONO = '"Roboto Mono","SF Mono",Menlo,Consolas,monospace';
 
-const N_SCREENS = 8;
+const N_SCREENS = 7;
 const ROTATE_MS = 5000;
 const DIRECTOR_MS = 60000; // la pantalla de resumen del director se queda 1 minuto
 const RED = '#ef4444';
@@ -75,7 +84,6 @@ const SCREEN_TITLES = [
   '📱 Teléfonos vendidos',
   '📲 Chips activados',
   '📋 Planes Telcel',
-  '📊 Totales del mes',
   '📈 Teléfonos por día',
   '🎧 Accesorios por día',
 ];
@@ -244,6 +252,8 @@ const PantallaTVPage: React.FC = () => {
   });
   const [data, setData] = useState<EstData | null>(null);
   const [dataHoy, setDataHoy] = useState<HoyData | null>(null);
+  const [dataAnio, setDataAnio] = useState<EstData | null>(null); // mismo mes del año pasado
+  const [cadenas, setCadenas] = useState<CadenasResumen | null>(null);
   const [screen, setScreen] = useState(0);
   const [reloj, setReloj] = useState<Date>(() => new Date());
 
@@ -266,6 +276,15 @@ const PantallaTVPage: React.FC = () => {
     } catch {
       /* idem: conserva lo anterior si el refresco de hoy falla */
     }
+    try {
+      const { data: respCad } = await axios.get<CadenasResumen>(
+        `${API}/ventas-cadenas/resumen`,
+        { headers: authH() },
+      );
+      setCadenas(respCad);
+    } catch {
+      /* si falla, la fila de cadenas conserva lo anterior */
+    }
   }, []);
 
   // Carga inicial + refresco cada 60s
@@ -274,6 +293,15 @@ const PantallaTVPage: React.FC = () => {
     const id = setInterval(() => cargar(mes), REFRESH_MS);
     return () => clearInterval(id);
   }, [mes, cargar]);
+
+  // Mismo mes del año pasado (se carga una vez, no cambia)
+  useEffect(() => {
+    const [y, m] = mes.split('-');
+    axios
+      .get<EstData>(`${API}/direccion/estadisticas`, { headers: authH(), params: { mes: `${Number(y) - 1}-${m}` } })
+      .then(({ data: resp }) => setDataAnio(resp))
+      .catch(() => { /* sin comparación si falla */ });
+  }, [mes]);
 
   // Rotación: el resumen del director dura 1 min, las demás 5s
   useEffect(() => {
@@ -448,7 +476,26 @@ const PantallaTVPage: React.FC = () => {
     const telPromAnt = cerrados >= 2 ? promedioHasta(telDia, cerrados - 1, 'cantidad') : null;
     const accProm = promedioHasta(accDia, cerrados, 'total');
     const accPromAnt = cerrados >= 2 ? promedioHasta(accDia, cerrados - 1, 'total') : null;
-    const accMonto = accDia.reduce((t, x) => t + Number(x.total ?? 0), 0);
+    // Teléfonos vs mismo mes del año pasado, mismos días (1 al día de hoy)
+    const sumaHasta = (serie: { dia: number; cantidad: number }[]) =>
+      serie.filter((x) => x.dia <= hoy).reduce((t, x) => t + Number(x.cantidad ?? 0), 0);
+    const telActual = sumaHasta(telDia);
+    const telAnio = dataAnio ? sumaHasta(dataAnio.telefonos_por_dia ?? []) : null;
+    const anioPasado = Number(mes.split('-')[0]) - 1;
+    const pctAnio = telAnio && telAnio > 0 ? ((telActual - telAnio) / telAnio) * 100 : null;
+    const colorAnio = pctAnio === null ? TEXT_DIM : pctAnio >= 0 ? GREEN : RED;
+
+    const cad = cadenas?.totales;
+    const cadItems: { l: string; v: number }[] = cad
+      ? [
+          { l: 'Tel. activado', v: cad.tel_activado },
+          { l: 'Chip Express', v: cad.chip_express },
+          { l: 'Chip Cero/Libre', v: cad.chip_cero },
+          { l: 'Preactivado', v: cad.preactivado },
+          { l: 'Portabilidad', v: cad.portabilidad },
+          { l: 'Boletín 63', v: cad.boletin63 },
+        ]
+      : [];
 
     const tipos = [...(data.chips.por_tipo ?? [])].sort((a, b) => b.cantidad - a.cantidad);
 
@@ -464,7 +511,7 @@ const PantallaTVPage: React.FC = () => {
       border: `2px solid ${c}55`,
       borderRadius: 3,
       textAlign: 'center' as const,
-      py: '1.6vh',
+      py: '1.2vh',
       px: '0.8vw',
     });
     const etiqueta = (c: string) => ({ fontSize: 'clamp(13px,1.4vw,26px)', color: c, fontWeight: 700, letterSpacing: '0.05em' });
@@ -479,49 +526,60 @@ const PantallaTVPage: React.FC = () => {
 
     return (
       <ScreenShell title="📊 RESUMEN DEL MES">
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1.8vh', height: '100%', justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1.2vh', height: '100%', justifyContent: 'center' }}>
           {/* FILA 1 · TELÉFONOS */}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(4, 1fr)', gap: '1vw' }}>
             <Box sx={card(ORANGE)}>
               <Box sx={etiqueta(ORANGE)}>📱 TELÉFONOS</Box>
-              <Box sx={numero('#fff', 'clamp(44px,6.5vw,130px)')}>{fmtN(data.telefonos.total)}</Box>
+              <Box sx={numero('#fff', 'clamp(36px,5vw,100px)')}>{fmtN(data.telefonos.total)}</Box>
               <Box sx={{ fontSize: 'clamp(12px,1.2vw,22px)', color: TEXT_DIM, mt: '0.5vh' }}>
                 Promedio diario: <b style={{ color: '#fff' }}>{telProm.toFixed(1)}</b>
               </Box>
               <Tendencia actual={telProm} anterior={telPromAnt} />
+              <Box sx={{ mt: '0.8vh', pt: '0.8vh', borderTop: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6vw', flexWrap: 'wrap' }}>
+                <Box sx={{ fontSize: 'clamp(12px,1.2vw,22px)', color: TEXT_DIM, fontWeight: 700 }}>vs {anioPasado}:</Box>
+                {telAnio === null ? (
+                  <Box sx={{ fontSize: 'clamp(12px,1.2vw,22px)', color: TEXT_DIM }}>sin datos</Box>
+                ) : (
+                  <>
+                    <Box sx={{ fontFamily: MONO, fontSize: 'clamp(14px,1.5vw,28px)', color: '#fff', fontWeight: 800 }}>{fmtN(telAnio)}</Box>
+                    {pctAnio !== null && (
+                      <Box sx={{ fontFamily: MONO, fontSize: 'clamp(14px,1.5vw,28px)', color: colorAnio, fontWeight: 800 }}>
+                        {pctAnio >= 0 ? '▲ +' : '▼ '}{pctAnio.toFixed(0)}%
+                      </Box>
+                    )}
+                  </>
+                )}
+              </Box>
             </Box>
             {desglose.map((d) => (
               <Box key={d.l} sx={{ ...card(d.c), display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Box sx={etiqueta(d.c)}>{d.l}</Box>
-                <Box sx={numero(d.c, 'clamp(36px,5vw,100px)')}>{fmtN(d.v)}</Box>
+                <Box sx={numero(d.c, 'clamp(30px,4.2vw,84px)')}>{fmtN(d.v)}</Box>
               </Box>
             ))}
           </Box>
 
           {/* FILA 2 · ACCESORIOS */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1vw' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1vw' }}>
             <Box sx={card(PURPLE)}>
-              <Box sx={etiqueta(PURPLE)}>🎧 ACCESORIOS · VENTA DEL MES</Box>
-              <Box sx={numero(PURPLE, 'clamp(36px,5vw,100px)')}>{fmt$(accMonto)}</Box>
+              <Box sx={etiqueta(PURPLE)}>🎧 ACCESORIOS · PIEZAS</Box>
+              <Box sx={numero('#fff', 'clamp(30px,4vw,80px)')}>{fmtN(data.accesorios.total_unidades)}</Box>
             </Box>
             <Box sx={card(PURPLE)}>
-              <Box sx={etiqueta(PURPLE)}>PIEZAS</Box>
-              <Box sx={numero('#fff', 'clamp(36px,5vw,100px)')}>{fmtN(data.accesorios.total_unidades)}</Box>
-            </Box>
-            <Box sx={card(PURPLE)}>
-              <Box sx={etiqueta(PURPLE)}>PROMEDIO DIARIO</Box>
-              <Box sx={numero('#fff', 'clamp(32px,4.4vw,88px)')}>{fmt$(accProm)}</Box>
+              <Box sx={etiqueta(PURPLE)}>ACCESORIOS · PROMEDIO DIARIO</Box>
+              <Box sx={numero('#fff', 'clamp(30px,4vw,80px)')}>{fmt$(accProm)}</Box>
               <Tendencia actual={accProm} anterior={accPromAnt} dinero />
             </Box>
           </Box>
 
           {/* FILA 3 · CHIPS (informativo) */}
-          <Box sx={{ ...card(BLUE), display: 'flex', alignItems: 'center', gap: '1.5vw', textAlign: 'left', flexWrap: 'wrap' }}>
+          <Box sx={{ ...card(BLUE), display: 'flex', alignItems: 'center', gap: '1.2vw', textAlign: 'left', flexWrap: 'nowrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '0.8vw', flexShrink: 0 }}>
               <Box sx={etiqueta(BLUE)}>📲 CHIPS</Box>
-              <Box sx={numero(BLUE, 'clamp(30px,4vw,80px)')}>{fmtN(data.chips.total)}</Box>
+              <Box sx={numero(BLUE, 'clamp(26px,3.2vw,64px)')}>{fmtN(data.chips.total)}</Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: '0.8vw', flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: '0.6vw', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
               {tipos.map((t) => (
                 <Box
                   key={t.tipo_chip}
@@ -529,14 +587,44 @@ const PantallaTVPage: React.FC = () => {
                     bgcolor: `${BLUE}22`,
                     border: `1px solid ${BLUE}55`,
                     borderRadius: 2,
-                    px: '0.9vw',
-                    py: '0.6vh',
-                    fontSize: 'clamp(13px,1.4vw,26px)',
+                    px: '0.6vw',
+                    py: '0.4vh',
+                    fontSize: 'clamp(11px,1.1vw,21px)',
                     color: '#e2e8f0',
                     whiteSpace: 'nowrap',
                   }}
                 >
                   {t.tipo_chip}: <b style={{ color: '#fff', fontFamily: MONO }}>{fmtN(t.cantidad)}</b>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* FILA 4 · CADENAS (solo cadenas) */}
+          <Box sx={{ ...card(GREEN), display: 'flex', alignItems: 'center', gap: '1.2vw', textAlign: 'left', flexWrap: 'nowrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '0.8vw', flexShrink: 0 }}>
+              <Box sx={etiqueta(GREEN)}>🏬 CADENAS</Box>
+              <Box sx={numero(GREEN, 'clamp(26px,3.2vw,64px)')}>{cad ? fmtN(cad.total) : '…'}</Box>
+              {cadenas?.ciclo?.etiqueta && (
+                <Box sx={{ fontSize: 'clamp(11px,1vw,18px)', color: TEXT_DIM }}>{cadenas.ciclo.etiqueta}</Box>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: '0.6vw', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              {cadItems.map((t) => (
+                <Box
+                  key={t.l}
+                  sx={{
+                    bgcolor: `${GREEN}1f`,
+                    border: `1px solid ${GREEN}55`,
+                    borderRadius: 2,
+                    px: '0.6vw',
+                    py: '0.4vh',
+                    fontSize: 'clamp(11px,1.1vw,21px)',
+                    color: '#e2e8f0',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t.l}: <b style={{ color: '#fff', fontFamily: MONO }}>{fmtN(t.v)}</b>
                 </Box>
               ))}
             </Box>
@@ -677,63 +765,13 @@ const PantallaTVPage: React.FC = () => {
         );
       }
 
-      // 4 · TOTALES DEL MES
-      case 3:
-        return (
-          <ScreenShell title={SCREEN_TITLES[3]}>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '2.5vw',
-                alignContent: 'center',
-                height: '100%',
-              }}
-            >
-              {[
-                { l: 'TELÉFONOS', v: data.resumen_general.total_telefonos, c: ORANGE },
-                { l: 'CHIPS', v: data.resumen_general.total_chips, c: BLUE },
-                { l: 'PLANES', v: data.resumen_general.total_planes, c: GREEN },
-                { l: 'ACCESORIOS (u)', v: data.accesorios.total_unidades, c: '#a855f7' },
-              ].map((s) => (
-                <Box
-                  key={s.l}
-                  sx={{
-                    textAlign: 'center',
-                    bgcolor: CARD,
-                    border: `2px solid ${s.c}44`,
-                    borderRadius: 3,
-                    py: '3vh',
-                  }}
-                >
-                  <Box sx={{ fontSize: 'clamp(16px, 1.8vw, 32px)', color: s.c, fontWeight: 700, letterSpacing: '0.06em' }}>
-                    {s.l}
-                  </Box>
-                  <Box
-                    sx={{
-                      fontFamily: MONO,
-                      fontVariantNumeric: 'tabular-nums',
-                      fontWeight: 800,
-                      color: '#fff',
-                      fontSize: 'clamp(50px, 9vw, 150px)',
-                      lineHeight: 1,
-                    }}
-                  >
-                    {fmtN(s.v)}
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </ScreenShell>
-        );
-
-      // 5 · TELÉFONOS POR DÍA
-      case 4: {
+      // 4 · TELÉFONOS POR DÍA
+      case 3: {
         const hoy = new Date().getDate();
         const serie = (data.telefonos_por_dia ?? []).filter((x) => x.dia <= hoy);
         const cantidadHoy = serie.find((x) => x.dia === hoy)?.cantidad ?? 0;
         return (
-          <ScreenShell title={SCREEN_TITLES[4]}>
+          <ScreenShell title={SCREEN_TITLES[3]}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0, mb: '1vh' }}>
               <Box
                 sx={{
@@ -774,13 +812,13 @@ const PantallaTVPage: React.FC = () => {
         );
       }
 
-      // 6 · ACCESORIOS POR DÍA
-      case 5: {
+      // 5 · ACCESORIOS POR DÍA
+      case 4: {
         const hoy = new Date().getDate();
         const serie = (data.accesorios_por_dia ?? []).filter((x) => x.dia <= hoy);
         const totalHoy = serie.find((x) => x.dia === hoy)?.total ?? 0;
         return (
-          <ScreenShell title={SCREEN_TITLES[5]}>
+          <ScreenShell title={SCREEN_TITLES[4]}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '1vw', flexShrink: 0 }}>
               <Box
                 sx={{
