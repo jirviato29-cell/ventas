@@ -1043,7 +1043,7 @@ const MiPerfil = () => {
     if (cargandoSaldo || errorSaldo || !saldo) return null;
     if (!saldo.actual) {
       return esAdmin
-        ? "No tiene fecha de ingreso; pide a RH que la registre."
+        ? "No tiene fecha de ingreso; RH debe registrarla."
         : "No tienes fecha de ingreso; pide a RH que la registre.";
     }
     const porAnio = new Map<SaldoAnioApi, number>();
@@ -1118,7 +1118,9 @@ const MiPerfil = () => {
     if (clave < primerDisponible) {
       setAviso(
         // Regla del negocio: "30 días de anticipación"; el cálculo sigue siendo hoy + 31
-        `Las vacaciones se piden con 30 días de anticipación. Puedes elegir a partir del ${fechaLarga(primerDisponible)}.`
+        `Las vacaciones se piden con 30 días de anticipación. ${
+          esAdmin ? "Se puede elegir" : "Puedes elegir"
+        } a partir del ${fechaLarga(primerDisponible)}.`
       );
       return;
     }
@@ -1134,7 +1136,9 @@ const MiPerfil = () => {
     if (seleccionadas.has(clave)) {
       const propio = bloques.find((b) => clave >= b.inicio && clave <= b.fin)!;
       if (clave !== propio.inicio && clave !== propio.fin) {
-        setAviso("Solo puedes quitar el primer o el último día para que sigan siendo seguidos.");
+        setAviso(
+          `${esAdmin ? "Solo se puede" : "Solo puedes"} quitar el primer o el último día para que sigan siendo seguidos.`
+        );
         return;
       }
       setSeleccionadas((prev) => {
@@ -1155,10 +1159,11 @@ const MiPerfil = () => {
     if (bloqueEnMes) {
       // Si el mes ya tiene un bloque propio, el día debería ir pegado a él; si lo ocupa
       // un bloque que cruza de mes, o el día alarga otro bloque hacia ese mes, ya está lleno
+      // Admin habla del empleado en tercera persona; el piloto, de sí mismo
       setAviso(
         pegado || cruzaDeMes(bloqueEnMes)
-          ? "Ya tienes vacaciones en este mes. Solo se permite un periodo por mes."
-          : "Tus vacaciones deben ser días seguidos."
+          ? `${esAdmin ? "Ya tiene" : "Ya tienes"} vacaciones en este mes. Solo se permite un periodo por mes.`
+          : `${esAdmin ? "Sus" : "Tus"} vacaciones deben ser días seguidos.`
       );
       return;
     }
@@ -1509,7 +1514,7 @@ const MiPerfil = () => {
                 </Button>
               }
             >
-              Modo falta injustificada: puedes marcar cualquier día. Al terminar, pulsa REGISTRAR FALTA INJUSTIFICADA.
+              Modo falta injustificada: se puede marcar cualquier día. Al terminar, pulsa REGISTRAR FALTA INJUSTIFICADA.
             </Alert>
           )}
 
