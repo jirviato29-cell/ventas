@@ -28,6 +28,9 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import BeachAccessIcon from "@mui/icons-material/BeachAccess";
+import CelebrationIcon from "@mui/icons-material/Celebration";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
@@ -304,6 +307,172 @@ interface MesProps {
   motivoBloqueo: (clave: string) => string | undefined;
   onToggle: (clave: string) => void;
 }
+
+// ── Saldo en 3 cuadritos: días que le quedan, años en la empresa y hasta cuándo puede tomarlos ──
+// Solo muestra el saldo; el tope de días al seleccionar vive en MiPerfil (motivoSaldo).
+const AVISO_CADUCAN = 30;
+
+// Días de hoy a una fecha YYYY-MM-DD (en UTC, para que no influya la zona horaria)
+const diasHasta = (desde: string, hasta: string) => {
+  const utc = (c: string) => Date.UTC(Number(c.slice(0, 4)), Number(c.slice(5, 7)) - 1, Number(c.slice(8, 10)));
+  return Math.round((utc(hasta) - utc(desde)) / 86400000);
+};
+
+const TONOS = {
+  verde: { fondo: "#ECFDF5", borde: "#A7F3D0", acento: "#059669" },
+  morado: { fondo: "#F5F3FF", borde: "#DDD6FE", acento: "#7C3AED" },
+  azul: { fondo: "#EFF6FF", borde: "#BFDBFE", acento: "#2563EB" },
+  rojo: { fondo: "#FEF2F2", borde: "#FECACA", acento: "#DC2626" },
+  gris: { fondo: "#F8FAFC", borde: "#E2E8F0", acento: "#64748b" },
+};
+
+interface CuadroProps {
+  tono: keyof typeof TONOS;
+  icono: React.ReactNode;
+  arriba?: string;
+  grande: string;
+  // El número va enorme; una frase en lugar del número va más chica
+  grandeEsTexto?: boolean;
+  abajo: string;
+}
+
+const CuadroSaldo: React.FC<CuadroProps> = ({ tono, icono, arriba, grande, grandeEsTexto, abajo }) => {
+  const t = TONOS[tono];
+  return (
+    <Box
+      sx={{
+        p: 2.5,
+        borderRadius: "18px",
+        bgcolor: t.fondo,
+        border: `1px solid ${t.borde}`,
+        boxShadow: "0 2px 10px rgba(15,23,42,0.06)",
+        textAlign: "center",
+        transition: "transform 0.18s ease, box-shadow 0.18s ease",
+        "@media (hover: hover)": {
+          "&:hover": { transform: "translateY(-3px)", boxShadow: "0 8px 20px rgba(15,23,42,0.10)" },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          width: 44,
+          height: 44,
+          mx: "auto",
+          mb: 1,
+          borderRadius: "50%",
+          bgcolor: "#fff",
+          color: t.acento,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: `0 0 0 4px ${t.borde}`,
+        }}
+      >
+        {icono}
+      </Box>
+      {arriba && <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>{arriba}</Typography>}
+      <Typography
+        sx={{
+          fontSize: grandeEsTexto ? 20 : 40,
+          fontWeight: 800,
+          lineHeight: 1.15,
+          color: t.acento,
+          my: grandeEsTexto ? 1 : 0.25,
+        }}
+      >
+        {grande}
+      </Typography>
+      <Typography sx={{ fontSize: 14, color: "#475569" }}>{abajo}</Typography>
+    </Box>
+  );
+};
+
+interface CuadrosSaldoProps {
+  saldo: SaldoApi | null;
+  cargando: boolean;
+  error: string | null;
+  hoy: string;
+  // Piloto: "Tienes"; admin viendo a un empleado: "Tiene"
+  piloto: boolean;
+}
+
+const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy, piloto }) => {
+  if (cargando) {
+    return (
+      <Box sx={{ mb: 2, textAlign: "center" }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+  if (error) return <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>;
+  if (!saldo) return null;
+
+  const tienes = piloto ? "Tienes" : "Tiene";
+  const a = saldo.actual;
+  const rejilla = { mb: 2, display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" } };
+
+  if (!a) {
+    return (
+      <Box sx={{ ...rejilla, gridTemplateColumns: "1fr" }}>
+        <CuadroSaldo
+          tono="gris"
+          icono={<CalendarMonthIcon />}
+          grande="Sin fecha de ingreso"
+          grandeEsTexto
+          abajo="No se puede calcular"
+        />
+      </Box>
+    );
+  }
+
+  const primerAnio = a.anios === 0;
+  // Último día del año de vacaciones; con 0 años, el día en que cumple su primer año
+  const fechaClave = primerAnio ? sumarDias(a.ciclo_fin, 1) : a.ciclo_fin;
+  const porCaducar = !primerAnio && diasHasta(hoy, a.ciclo_fin) <= AVISO_CADUCAN;
+
+  return (
+    <Box sx={rejilla}>
+      {primerAnio ? (
+        <CuadroSaldo
+          tono="verde"
+          icono={<BeachAccessIcon />}
+          grande={piloto ? "Aún no cumples tu primer año" : "Aún no cumple su primer año"}
+          grandeEsTexto
+          abajo="todavía sin días de vacaciones"
+        />
+      ) : (
+        <CuadroSaldo
+          tono="verde"
+          icono={<BeachAccessIcon />}
+          arriba={tienes}
+          grande={numeroDias(a.dias_quedan)}
+          abajo={a.dias_quedan === 1 ? "día de vacaciones" : "días de vacaciones"}
+        />
+      )}
+      <CuadroSaldo
+        tono="morado"
+        icono={<CelebrationIcon />}
+        arriba={tienes}
+        grande={String(a.anios)}
+        abajo={a.anios === 1 ? "año en la empresa" : "años en la empresa"}
+      />
+      <CuadroSaldo
+        tono={porCaducar ? "rojo" : "azul"}
+        icono={<CalendarMonthIcon />}
+        grande={fechaCorta(fechaClave)}
+        abajo={
+          primerAnio
+            ? piloto
+              ? "este día cumples tu primer año"
+              : "este día cumple su primer año"
+            : piloto
+            ? "tienes hasta este día para tomarlos"
+            : "tiene hasta este día para tomarlos"
+        }
+      />
+    </Box>
+  );
+};
 
 const MesCalendario: React.FC<MesProps> = ({
   anio,
@@ -1156,41 +1325,7 @@ const MiPerfil = () => {
           )}
 
           {seleccionVista && (
-            <Paper sx={{ mb: 2, p: 2, border: `1px solid ${BORDE_TABLA}` }}>
-              {cargandoSaldo ? (
-                <CircularProgress size={20} />
-              ) : errorSaldo ? (
-                <Typography sx={{ fontSize: 14, color: ROJO_TEXTO }}>{errorSaldo}</Typography>
-              ) : saldo && !saldo.actual ? (
-                <Typography sx={{ fontSize: 14, color: "#64748b" }}>
-                  Sin fecha de ingreso: no se puede calcular el saldo de vacaciones.
-                </Typography>
-              ) : saldo?.actual ? (
-                <>
-                  <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#1e293b" }}>
-                    {vistaPiloto ? "Te tocan" : "Le tocan"} {numeroDias(saldo.actual.dias_corresponden)} · Usados{" "}
-                    {numeroDias(saldo.actual.dias_usados)} · Solicitados{" "}
-                    {numeroDias(saldo.actual.dias_solicitados_pendientes)} ·{" "}
-                    <Box
-                      component="span"
-                      sx={{ fontWeight: 800, color: saldo.actual.dias_quedan < 0 ? ROJO_TEXTO : "#15803D" }}
-                    >
-                      {vistaPiloto ? "Te quedan" : "Le quedan"} {numeroDias(saldo.actual.dias_quedan)}
-                    </Box>{" "}
-                    · Año de vacaciones {fechaCorta(saldo.actual.ciclo_inicio)} – {fechaCorta(saldo.actual.ciclo_fin)}
-                  </Typography>
-                  {saldo.siguiente && (
-                    <Typography sx={{ fontSize: 13, color: "#64748b", mt: 0.5 }}>
-                      Siguiente año de vacaciones ({fechaCorta(saldo.siguiente.ciclo_inicio)} –{" "}
-                      {fechaCorta(saldo.siguiente.ciclo_fin)}): {vistaPiloto ? "te tocan" : "le tocan"}{" "}
-                      {numeroDias(saldo.siguiente.dias_corresponden)} · Usados {numeroDias(saldo.siguiente.dias_usados)} ·
-                      Solicitados {numeroDias(saldo.siguiente.dias_solicitados_pendientes)} ·{" "}
-                      {vistaPiloto ? "Te quedan" : "Le quedan"} {numeroDias(saldo.siguiente.dias_quedan)}
-                    </Typography>
-                  )}
-                </>
-              ) : null}
-            </Paper>
+            <CuadrosSaldo saldo={saldo} cargando={cargandoSaldo} error={errorSaldo} hoy={hoy} piloto={vistaPiloto} />
           )}
 
           <Box
