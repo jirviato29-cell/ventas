@@ -2,10 +2,17 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Checkbox,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -14,15 +21,19 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import axios from "axios";
+import { obtenerRolDesdeToken } from "../components/Token";
 
 const API = "/api";
 const token = () => localStorage.getItem("token") ?? "";
 const authH = () => ({ Authorization: `Bearer ${token()}` });
 
 const GRIS = "#94a3b8";
+const ROJO = "#C62828";
 
 type Estado = "pendientes" | "realizadas" | "todas";
 
@@ -91,6 +102,12 @@ const PortabilidadesPage: React.FC = () => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardandoId, setGuardandoId] = useState<number | null>(null);
+  // Eliminar (solo admin): la fila a confirmar, si se está guardando y el aviso final
+  const [porEliminar, setPorEliminar] = useState<PortabilidadItem | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const esAdmin = obtenerRolDesdeToken() === "admin";
 
   const cargar = useCallback(async (filtro: Estado) => {
     setCargando(true);
@@ -145,6 +162,31 @@ const PortabilidadesPage: React.FC = () => {
       }
     } finally {
       setGuardandoId(null);
+    }
+  };
+
+  // "Eliminar" = el backend la cancela (queda rastro). Se quita la fila sin recargar,
+  // así el contador baja en cualquiera de las 3 pestañas.
+  const eliminar = async () => {
+    if (!porEliminar) return;
+    const id = porEliminar.id;
+    setEliminando(true);
+    setError(null);
+    try {
+      await axios.delete(`${API}/ventas/portabilidades/${id}`, { headers: authH() });
+      setFilas((prev) => prev.filter((f) => f.id !== id));
+      setPorEliminar(null);
+      setAviso("Portabilidad eliminada");
+    } catch (err: any) {
+      setPorEliminar(null);
+      if (err?.response?.status === 403) {
+        setError("No tienes permiso para eliminar portabilidades.");
+      } else {
+        const detail = err?.response?.data?.detail;
+        setError(typeof detail === "string" ? detail : "No se pudo eliminar. Intenta de nuevo.");
+      }
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -203,6 +245,8 @@ const PortabilidadesPage: React.FC = () => {
                     {h}
                   </TableCell>
                 ))}
+                {/* Columna del bote de basura: sin título, solo admin */}
+                {esAdmin && <TableCell sx={{ ...cellSx, width: 48 }} />}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -236,12 +280,57 @@ const PortabilidadesPage: React.FC = () => {
                   <TableCell sx={{ ...cellSx, whiteSpace: "nowrap" }}>
                     {formatFechaHora(f.fecha_portabilidad)}
                   </TableCell>
+                  {esAdmin && (
+                    <TableCell align="center" sx={{ ...cellSx, py: 0.5 }}>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" aria-label="Eliminar portabilidad" onClick={() => setPorEliminar(f)} sx={{ color: ROJO }}>
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={!!porEliminar} onClose={() => !eliminando && setPorEliminar(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Eliminar portabilidad</DialogTitle>
+        <DialogContent>
+          {porEliminar && (
+            <Typography>
+              ¿Eliminar la portabilidad del número <b>{porEliminar.numero_telefono}</b> de{" "}
+              <b>{porEliminar.asesor || "—"}</b> del <b>{formatFecha(porEliminar.fecha)}</b>? No se puede deshacer.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPorEliminar(null)} disabled={eliminando} sx={{ color: "#64748b" }}>
+            CANCELAR
+          </Button>
+          <Button
+            variant="contained"
+            onClick={eliminar}
+            disabled={eliminando}
+            sx={{ bgcolor: ROJO, color: "#fff", "&:hover": { bgcolor: "#a31f1f" } }}
+          >
+            {eliminando ? "ELIMINANDO..." : "ELIMINAR"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!aviso}
+        autoHideDuration={3000}
+        onClose={() => setAviso(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setAviso(null)}>
+          {aviso}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
