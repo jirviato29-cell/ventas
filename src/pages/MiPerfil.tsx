@@ -192,6 +192,26 @@ const ESTILO_VACACION: Record<CategoriaVacacion, EstiloVacacion> = {
   rechazada: { texto: "Rechazada", fondo: "#E2E8F0", borde: "#94A3B8", color: "#475569", tachado: true },
 };
 
+// Calendario y leyenda: colores sólidos y fuertes (las fichas de "Estado" de las tablas usan ESTILO_VACACION)
+const COLOR_SELECCION = "#0D2B6B";
+const COLOR_BLOQUEO = "#C62828";
+
+interface ColorDia {
+  fondo: string;
+  color: string;
+  borde: string;
+  tachado?: boolean;
+  punteado?: boolean;
+}
+
+const COLOR_CALENDARIO: Record<CategoriaVacacion, ColorDia> = {
+  falta: { fondo: "#000000", color: "#FFFFFF", borde: "#000000" },
+  tomada: { fondo: "#6A1B9A", color: "#FFFFFF", borde: "#6A1B9A" },
+  autorizada: { fondo: "#2E7D32", color: "#FFFFFF", borde: "#2E7D32" },
+  solicitada: { fondo: "#F9A825", color: "#000000", borde: "#3E2723", punteado: true },
+  rechazada: { fondo: "#616161", color: "#FFFFFF", borde: "#616161", tachado: true },
+};
+
 // Si dos periodos caen en el mismo día, se pinta el estado más firme
 const PRIORIDAD_VACACION: CategoriaVacacion[] = ["falta", "tomada", "autorizada", "solicitada", "rechazada"];
 
@@ -319,73 +339,73 @@ const diasHasta = (desde: string, hasta: string) => {
 };
 
 const TONOS = {
-  verde: { fondo: "#ECFDF5", borde: "#A7F3D0", acento: "#059669" },
-  morado: { fondo: "#F5F3FF", borde: "#DDD6FE", acento: "#7C3AED" },
-  azul: { fondo: "#EFF6FF", borde: "#BFDBFE", acento: "#2563EB" },
-  rojo: { fondo: "#FEF2F2", borde: "#FECACA", acento: "#DC2626" },
-  gris: { fondo: "#F8FAFC", borde: "#E2E8F0", acento: "#64748b" },
+  verde: "#2E7D32",
+  morado: "#6A1B9A",
+  azul: "#1565C0",
+  rojo: "#C62828",
+  gris: "#616161",
 };
 
 interface CuadroProps {
   tono: keyof typeof TONOS;
   icono: React.ReactNode;
-  arriba?: string;
+  antes?: string;
+  // Número (o fecha) grande en negritas; con grandeEsTexto, una frase un poco más chica
   grande: string;
-  // El número va enorme; una frase en lugar del número va más chica
   grandeEsTexto?: boolean;
-  abajo: string;
+  despues: string;
+  // El texto de después en su propio renglón (para la fecha y las frases)
+  despuesAbajo?: boolean;
 }
 
-const CuadroSaldo: React.FC<CuadroProps> = ({ tono, icono, arriba, grande, grandeEsTexto, abajo }) => {
-  const t = TONOS[tono];
-  return (
+// Compacto (~80 px de alto): ícono a la izquierda y el texto en una o dos líneas
+const CuadroSaldo: React.FC<CuadroProps> = ({ tono, icono, antes, grande, grandeEsTexto, despues, despuesAbajo }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1.5,
+      px: 2,
+      py: 1.25,
+      boxSizing: "border-box",
+      minHeight: 64,
+      maxHeight: 80,
+      borderRadius: "14px",
+      bgcolor: TONOS[tono],
+      color: "#fff",
+      boxShadow: "0 2px 8px rgba(15,23,42,0.18)",
+      transition: "transform 0.18s ease, box-shadow 0.18s ease",
+      "@media (hover: hover)": {
+        "&:hover": { transform: "translateY(-2px)", boxShadow: "0 6px 16px rgba(15,23,42,0.25)" },
+      },
+    }}
+  >
     <Box
       sx={{
-        p: 2.5,
-        borderRadius: "18px",
-        bgcolor: t.fondo,
-        border: `1px solid ${t.borde}`,
-        boxShadow: "0 2px 10px rgba(15,23,42,0.06)",
-        textAlign: "center",
-        transition: "transform 0.18s ease, box-shadow 0.18s ease",
-        "@media (hover: hover)": {
-          "&:hover": { transform: "translateY(-3px)", boxShadow: "0 8px 20px rgba(15,23,42,0.10)" },
-        },
+        flexShrink: 0,
+        width: 40,
+        height: 40,
+        borderRadius: "50%",
+        bgcolor: "rgba(255,255,255,0.2)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
+      {icono}
+    </Box>
+    <Typography component="div" sx={{ fontSize: 14, lineHeight: 1.25, color: "#fff", minWidth: 0 }}>
+      {antes && `${antes} `}
       <Box
-        sx={{
-          width: 44,
-          height: 44,
-          mx: "auto",
-          mb: 1,
-          borderRadius: "50%",
-          bgcolor: "#fff",
-          color: t.acento,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: `0 0 0 4px ${t.borde}`,
-        }}
-      >
-        {icono}
-      </Box>
-      {arriba && <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>{arriba}</Typography>}
-      <Typography
-        sx={{
-          fontSize: grandeEsTexto ? 20 : 40,
-          fontWeight: 800,
-          lineHeight: 1.15,
-          color: t.acento,
-          my: grandeEsTexto ? 1 : 0.25,
-        }}
+        component="span"
+        sx={{ fontSize: grandeEsTexto ? 17 : 28, fontWeight: 800, lineHeight: 1.1, letterSpacing: grandeEsTexto ? 0 : "-0.5px" }}
       >
         {grande}
-      </Typography>
-      <Typography sx={{ fontSize: 14, color: "#475569" }}>{abajo}</Typography>
-    </Box>
-  );
-};
+      </Box>
+      {despuesAbajo ? <Box sx={{ opacity: 0.92 }}>{despues}</Box> : ` ${despues}`}
+    </Typography>
+  </Box>
+);
 
 interface CuadrosSaldoProps {
   saldo: SaldoApi | null;
@@ -409,7 +429,7 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
 
   const tienes = piloto ? "Tienes" : "Tiene";
   const a = saldo.actual;
-  const rejilla = { mb: 2, display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" } };
+  const rejilla = { mb: 2, display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" } };
 
   if (!a) {
     return (
@@ -419,7 +439,8 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
           icono={<CalendarMonthIcon />}
           grande="Sin fecha de ingreso"
           grandeEsTexto
-          abajo="No se puede calcular"
+          despues="No se puede calcular"
+          despuesAbajo
         />
       </Box>
     );
@@ -438,29 +459,30 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
           icono={<BeachAccessIcon />}
           grande={piloto ? "Aún no cumples tu primer año" : "Aún no cumple su primer año"}
           grandeEsTexto
-          abajo="todavía sin días de vacaciones"
+          despues="todavía sin días de vacaciones"
+          despuesAbajo
         />
       ) : (
         <CuadroSaldo
           tono="verde"
           icono={<BeachAccessIcon />}
-          arriba={tienes}
+          antes={tienes}
           grande={numeroDias(a.dias_quedan)}
-          abajo={a.dias_quedan === 1 ? "día de vacaciones" : "días de vacaciones"}
+          despues={a.dias_quedan === 1 ? "día de vacaciones" : "días de vacaciones"}
         />
       )}
       <CuadroSaldo
         tono="morado"
         icono={<CelebrationIcon />}
-        arriba={tienes}
+        antes={tienes}
         grande={String(a.anios)}
-        abajo={a.anios === 1 ? "año en la empresa" : "años en la empresa"}
+        despues={a.anios === 1 ? "año en la empresa" : "años en la empresa"}
       />
       <CuadroSaldo
         tono={porCaducar ? "rojo" : "azul"}
         icono={<CalendarMonthIcon />}
         grande={fechaCorta(fechaClave)}
-        abajo={
+        despues={
           primerAnio
             ? piloto
               ? "este día cumples tu primer año"
@@ -469,6 +491,7 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
             ? "tienes hasta este día para tomarlos"
             : "tiene hasta este día para tomarlos"
         }
+        despuesAbajo
       />
     </Box>
   );
@@ -523,7 +546,7 @@ const MesCalendario: React.FC<MesProps> = ({
           const bloqueado = !modoFalta && !noDisponible && !!motivoBloqueo(clave);
           // Vacaciones del empleado elegido: le ganan al gris y al rojo; solo la selección actual va encima
           const vac = marcado ? undefined : vacaciones.get(clave);
-          const estiloVac = vac ? ESTILO_VACACION[vac] : null;
+          const estiloVac = vac ? COLOR_CALENDARIO[vac] : null;
 
           return (
             <Box
@@ -532,7 +555,7 @@ const MesCalendario: React.FC<MesProps> = ({
               type="button"
               disabled={pasado}
               aria-disabled={bloqueado || sinAnticipacion || undefined}
-              title={estiloVac?.texto}
+              title={vac ? ESTILO_VACACION[vac].texto : undefined}
               onClick={() => onToggle(clave)}
               sx={{
                 aspectRatio: "1 / 1",
@@ -549,13 +572,15 @@ const MesCalendario: React.FC<MesProps> = ({
                   ? `2px solid ${AZUL}`
                   : estiloVac?.punteado
                   ? `2px dashed ${estiloVac.borde}`
-                  : `1px solid ${estiloVac ? estiloVac.borde : "#e2e8f0"}`,
+                  : `1px solid ${
+                      marcado ? COLOR_SELECCION : estiloVac ? estiloVac.borde : bloqueado ? COLOR_BLOQUEO : "#e2e8f0"
+                    }`,
                 bgcolor: marcado
-                  ? AZUL
+                  ? COLOR_SELECCION
                   : estiloVac
                   ? estiloVac.fondo
                   : bloqueado
-                  ? ROJO_FONDO
+                  ? COLOR_BLOQUEO
                   : noDisponible
                   ? "#f1f5f9"
                   : "#fff",
@@ -564,7 +589,7 @@ const MesCalendario: React.FC<MesProps> = ({
                   : estiloVac
                   ? estiloVac.color
                   : bloqueado
-                  ? ROJO_TEXTO
+                  ? "#fff"
                   : noDisponible
                   ? "#cbd5e1"
                   : "#1e293b",
@@ -1353,41 +1378,40 @@ const MiPerfil = () => {
 
           <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
             {[
-              { texto: "Seleccionado", fondo: AZUL, borde: AZUL },
-              { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0" },
-              { texto: "Periodo bloqueado por ventas", fondo: ROJO_FONDO, borde: ROJO_TEXTO },
+              { texto: "Seleccionado", fondo: COLOR_SELECCION, borde: COLOR_SELECCION, color: "#fff" },
+              { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0", color: "#cbd5e1" },
+              { texto: "Periodo bloqueado por ventas", fondo: COLOR_BLOQUEO, borde: COLOR_BLOQUEO, color: "#fff" },
               ...PRIORIDAD_VACACION.map((e) => ({
                 texto: e === "falta" ? ESTILO_VACACION[e].texto : `Vacaciones ${ESTILO_VACACION[e].texto.toLowerCase()}`,
-                fondo: ESTILO_VACACION[e].fondo,
-                borde: ESTILO_VACACION[e].borde,
-                tachado: ESTILO_VACACION[e].tachado,
-                punteado: ESTILO_VACACION[e].punteado,
+                ...COLOR_CALENDARIO[e],
               })),
             ].map(
               ({
                 texto,
                 fondo,
                 borde,
+                color,
                 tachado,
                 punteado,
               }: {
                 texto: string;
                 fondo: string;
                 borde: string;
+                color: string;
                 tachado?: boolean;
                 punteado?: boolean;
               }) => (
               <Box key={texto} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                 <Box
                   sx={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "3px",
+                    width: 16,
+                    height: 16,
+                    borderRadius: "4px",
                     bgcolor: fondo,
-                    border: `1px ${punteado ? "dashed" : "solid"} ${borde}`,
-                    // Rayita diagonal: el tachado de las rechazadas
+                    border: `${punteado ? "2px dashed" : "1px solid"} ${borde}`,
+                    // Rayita diagonal: el tachado de las rechazadas (del color de su número)
                     backgroundImage: tachado
-                      ? `linear-gradient(to top right, transparent 44%, ${borde} 44%, ${borde} 56%, transparent 56%)`
+                      ? `linear-gradient(to top right, transparent 44%, ${color} 44%, ${color} 56%, transparent 56%)`
                       : undefined,
                   }}
                 />
