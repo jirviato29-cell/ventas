@@ -32,6 +32,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { keyframes } from "@mui/material/styles";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
@@ -327,15 +328,27 @@ const BOTON_NAVY = {
 };
 const MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-// Chip de la barra: "Ene 19 – 24 · 6 días", "Mar 16 · 1 día" o "Nov 30 – Dic 5 · 6 días"
-const textoChipBloque = (b: Bloque) => {
-  const mes = (clave: string) => MES_CORTO[Number(clave.slice(5, 7)) - 1];
+const DIA_CORTO = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+
+// Tarjeta de la barra, en escalera: "ENE" (o "ENE – FEB"), "11 → 15", "lun – vie" y "5 días"
+const diaSemanaCorto = (clave: string) => DIA_CORTO[new Date(`${clave}T12:00:00`).getDay()];
+const textosTarjetaBloque = (b: Bloque) => {
+  const mes = (clave: string) => MES_CORTO[Number(clave.slice(5, 7)) - 1].toUpperCase();
   const dia = (clave: string) => Number(clave.slice(8));
-  const dias = `${b.dias} ${b.dias === 1 ? "día" : "días"}`;
-  if (b.dias === 1) return `${mes(b.inicio)} ${dia(b.inicio)} · ${dias}`;
-  const fin = cruzaDeMes(b) ? `${mes(b.fin)} ${dia(b.fin)}` : `${dia(b.fin)}`;
-  return `${mes(b.inicio)} ${dia(b.inicio)} – ${fin} · ${dias}`;
+  const unDia = b.dias === 1;
+  return {
+    meses: cruzaDeMes(b) ? `${mes(b.inicio)} – ${mes(b.fin)}` : mes(b.inicio),
+    rango: unDia ? `${dia(b.inicio)}` : `${dia(b.inicio)} → ${dia(b.fin)}`,
+    semana: unDia ? diaSemanaCorto(b.inicio) : `${diaSemanaCorto(b.inicio)} – ${diaSemanaCorto(b.fin)}`,
+    dias: `${b.dias} ${unDia ? "día" : "días"}`,
+  };
 };
+
+// Cada tarjeta aparece suave: fade + sube 4 px
+const aparecerTarjeta = keyframes`
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 // ¿Quedan al menos DIAS_ENTRE_BLOQUES días libres entre la fecha y el bloque?
 const respetaSeparacion = (clave: string, b: Bloque) =>
@@ -1475,21 +1488,64 @@ const MiPerfil = () => {
               >
                 <CalendarMonthIcon sx={{ fontSize: 22 }} />
               </Box>
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
                 {total > 0 ? (
                   <>
                     <Typography sx={{ fontWeight: 700, fontSize: 18, color: "#1e293b", lineHeight: 1.3 }}>
                       {total} {total === 1 ? "día seleccionado" : "días seleccionados"}
                     </Typography>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 0.75 }}>
-                      {bloques.map((b) => (
-                        <Chip
-                          key={b.inicio}
-                          size="small"
-                          label={textoChipBloque(b)}
-                          sx={{ bgcolor: "#f1f5f9", color: "#334155", fontWeight: 600, fontSize: 12, height: 24 }}
-                        />
-                      ))}
+                    {/* Una tarjeta por bloque: en fila (con wrap) en computadora, dos columnas en celular */}
+                    <Box
+                      sx={{
+                        mt: 1,
+                        gap: "10px",
+                        display: { xs: "grid", sm: "flex" },
+                        gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))" },
+                        flexWrap: { sm: "wrap" },
+                      }}
+                    >
+                      {bloques.map((b) => {
+                        const t = textosTarjetaBloque(b);
+                        return (
+                          <Box
+                            key={b.inicio}
+                            sx={{
+                              bgcolor: "#EEF2FA",
+                              borderLeft: `4px solid ${NAVY_BARRA}`,
+                              borderRadius: "10px",
+                              py: 1,
+                              px: 1.5,
+                              minWidth: { sm: 120 },
+                              boxShadow: "0 1px 4px rgba(15,23,42,0.10)",
+                              animation: `${aparecerTarjeta} 150ms ease-out`,
+                            }}
+                          >
+                            <Typography sx={{ fontSize: 11, fontWeight: 700, color: NAVY_BARRA, letterSpacing: 0.5, lineHeight: 1.2 }}>
+                              {t.meses}
+                            </Typography>
+                            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#1e293b", lineHeight: 1.3 }}>
+                              {t.rango}
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>{t.semana}</Typography>
+                            <Box
+                              component="span"
+                              sx={{
+                                display: "inline-block",
+                                mt: 0.75,
+                                px: 1,
+                                py: 0.25,
+                                borderRadius: "999px",
+                                bgcolor: NAVY_BARRA,
+                                color: "#fff",
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {t.dias}
+                            </Box>
+                          </Box>
+                        );
+                      })}
                     </Box>
                   </>
                 ) : (
