@@ -25,6 +25,7 @@ import {
   TableRow,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -173,6 +174,9 @@ const numeroDias = (n: number) => n.toLocaleString("es-MX", { maximumFractionDig
 
 const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 
+// Chip de Estado del historial: un descuento va en rojo; una falta, en negro con texto corto
+const ESTILO_DESCUENTO: EstiloVacacion = { texto: "Descuento", fondo: "#C62828", borde: "#C62828", color: "#FFFFFF" };
+
 interface EstiloVacacion {
   texto: string;
   fondo: string;
@@ -183,13 +187,13 @@ interface EstiloVacacion {
   punteado?: boolean;
 }
 
-// El azul sólido queda reservado para la selección actual; por eso solicitada va en azul claro
+// Chips de "Estado" (historial y Mis solicitudes): mismos colores fuertes que el calendario
 const ESTILO_VACACION: Record<CategoriaVacacion, EstiloVacacion> = {
   falta: { texto: "Falta injustificada", fondo: "#000000", borde: "#000000", color: "#FFFFFF" },
-  tomada: { texto: "Tomada", fondo: "#EDE9FE", borde: "#8B5CF6", color: "#6D28D9" },
-  autorizada: { texto: "Autorizada", fondo: "#DCFCE7", borde: "#16A34A", color: "#15803D" },
-  solicitada: { texto: "Solicitada", fondo: "#DBEAFE", borde: "#60A5FA", color: "#1D4ED8", punteado: true },
-  rechazada: { texto: "Rechazada", fondo: "#E2E8F0", borde: "#94A3B8", color: "#475569", tachado: true },
+  tomada: { texto: "Tomada", fondo: "#6A1B9A", borde: "#6A1B9A", color: "#FFFFFF" },
+  autorizada: { texto: "Autorizada", fondo: "#2E7D32", borde: "#2E7D32", color: "#FFFFFF" },
+  solicitada: { texto: "Solicitada", fondo: "#F9A825", borde: "#F9A825", color: "#000000", punteado: true },
+  rechazada: { texto: "Rechazada", fondo: "#616161", borde: "#616161", color: "#FFFFFF", tachado: true },
 };
 
 // Calendario y leyenda: colores sólidos y fuertes (las fichas de "Estado" de las tablas usan ESTILO_VACACION)
@@ -1195,6 +1199,154 @@ const MiPerfil = () => {
   // En el diálogo: el empleado elegido (admin) o la propia persona (piloto)
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
+  // Historial de vacaciones (pestaña "Mis datos"): el del empleado elegido (admin) o el propio (piloto).
+  // No es un hook: es solo el JSX de la tabla.
+  const historial = seleccionVista && (
+    <Box>
+      <Typography sx={{ fontWeight: 700, color: "#1e293b", mb: 1, fontSize: 18 }}>
+        {vistaPiloto ? "Mi historial de vacaciones" : "Historial de vacaciones"}
+      </Typography>
+      {errorVac && <Alert severity="error" sx={{ mb: 1 }}>{errorVac}</Alert>}
+      {/* En computadora cabe en su columna (la Nota se corta con …); solo en celular se desliza de lado */}
+      <TableContainer
+        component={Paper}
+        sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
+      >
+        <Table size="small" sx={{ tableLayout: "fixed", width: "100%", minWidth: { xs: 720, md: 0 } }}>
+          <colgroup>
+            <col style={{ width: "25%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "13%" }} />
+            <col />
+            {!vistaPiloto && <col style={{ width: 44 }} />}
+          </colgroup>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Estado</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Tipo</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Cubre</TableCell>
+              <TableCell sx={celdaEncabezadoSx}>Nota</TableCell>
+              {!vistaPiloto && <TableCell sx={celdaEncabezadoSx} aria-label="Acciones" />}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {cargandoVac ? (
+              <TableRow>
+                <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3 }}>
+                  <CircularProgress size={24} />
+                </TableCell>
+              </TableRow>
+            ) : periodosTabla.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3, fontSize: 14, color: "#94a3b8" }}>
+                  Sin periodos registrados
+                </TableCell>
+              </TableRow>
+            ) : (
+              periodosTabla.map((p) => {
+                const categoria = categoriaVacacion(p, hoy);
+                const esFalta = p.tipo === "falta_injustificada";
+                const estilo: EstiloVacacion | null = esDescuento(p)
+                  ? ESTILO_DESCUENTO
+                  : categoria
+                  ? { ...ESTILO_VACACION[categoria], texto: esFalta ? "Falta" : ESTILO_VACACION[categoria].texto }
+                  : null;
+                const inicio = p.fecha_inicio.slice(0, 10);
+                const fin = p.fecha_fin.slice(0, 10);
+                const nota = p.nota?.trim();
+                return (
+                  <TableRow
+                    key={p.id}
+                    sx={{
+                      "&:nth-of-type(odd)": { bgcolor: "#fff" },
+                      "&:nth-of-type(even)": { bgcolor: "#f8fafc" },
+                      "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
+                    }}
+                  >
+                    <TableCell sx={{ ...celdaSx, fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+                      {textoPeriodo(inicio, fin)}
+                    </TableCell>
+                    <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}>
+                      {textoDias(p.dias)}
+                    </TableCell>
+                    <TableCell align="center" sx={{ ...celdaSx, px: 0.5 }}>
+                      <Chip
+                        size="small"
+                        label={estilo?.texto ?? p.estado ?? "Sin estado"}
+                        sx={{
+                          maxWidth: "100%",
+                          fontWeight: 600,
+                          fontSize: 12,
+                          bgcolor: estilo?.fondo ?? "#f1f5f9",
+                          color: estilo?.color ?? "#475569",
+                          border: `1px solid ${estilo?.borde ?? BORDE_TABLA}`,
+                          textDecoration: estilo?.tachado ? "line-through" : undefined,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569" }}>
+                      {esFalta ? "Falta" : esDescuento(p) ? "Descuento" : "Vacaciones"}
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {p.cubre_clave?.trim() || "—"}
+                    </TableCell>
+                    <TableCell
+                      sx={{ ...celdaSx, fontSize: 13, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {/* Si no cabe se corta con …; completa al pasar el mouse */}
+                      {nota ? (
+                        <Tooltip arrow title={nota}>
+                          <span>{nota}</span>
+                        </Tooltip>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    {!vistaPiloto && (
+                      <TableCell align="center" sx={{ ...celdaSx, px: 0 }}>
+                        {/* sistema = capturado por admin; ajuste = descuento */}
+                        {(p.origen === "sistema" || p.origen === "ajuste") && (
+                          <IconButton
+                            size="small"
+                            aria-label="Borrar periodo"
+                            onClick={() => setPorBorrar(p)}
+                            sx={{ color: ROJO_TEXTO }}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
+            )}
+            {!cargandoVac && periodosTabla.length > 0 && (
+              <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+                <TableCell sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}>Totales</TableCell>
+                <TableCell
+                  colSpan={columnasTabla - 1}
+                  sx={{ ...celdaSx, fontSize: 13, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}
+                >
+                  Tomados: {textoDias(totalDias(periodosTabla, "tomada", hoy))} · Autorizados:{" "}
+                  {textoDias(totalDias(periodosTabla, "autorizada", hoy))}
+                  {totalDescuentos(periodosTabla) > 0 && ` · Descuentos: ${textoDias(totalDescuentos(periodosTabla))}`}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+
   return (
     // Con el botón flotante del piloto, espacio extra abajo para que no tape la tabla.
     // "Mis solicitudes" y "Panel de control" de admin usan todo el ancho, como Gestión de Usuarios
@@ -1227,14 +1379,26 @@ const MiPerfil = () => {
       </Tabs>
 
       {pestana === 0 && (
-        <MisDatosPerfil
-          personas={personasVista}
-          cargando={cargandoVista}
-          error={errorVista}
-          seleccion={seleccionVista}
-          onSeleccion={cambiarEmpleado}
-          sinSelector={vistaPiloto}
-        />
+        <Box
+          sx={{
+            display: "grid",
+            gap: 3,
+            alignItems: "start",
+            // Sin persona elegida no hay historial: los datos ocupan todo el ancho
+            // minmax(0, …): la tabla no ensancha la columna; en celular solo la tabla se desliza de lado
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: historial ? "minmax(0, 2fr) minmax(0, 3fr)" : "minmax(0, 1fr)" },
+          }}
+        >
+          <MisDatosPerfil
+            personas={personasVista}
+            cargando={cargandoVista}
+            error={errorVista}
+            seleccion={seleccionVista}
+            onSeleccion={cambiarEmpleado}
+            sinSelector={vistaPiloto}
+          />
+          {historial}
+        </Box>
       )}
 
       {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
@@ -1421,123 +1585,6 @@ const MiPerfil = () => {
             )}
           </Box>
 
-          {seleccionVista && (
-            <Box sx={{ mt: 2 }}>
-              <Typography sx={{ fontWeight: 700, color: "#1e293b", mb: 1 }}>Periodos de vacaciones</Typography>
-              {errorVac && <Alert severity="error" sx={{ mb: 1 }}>{errorVac}</Alert>}
-              {/* En celular la tabla se desliza de lado en lugar de cortarse */}
-              <TableContainer
-                component={Paper}
-                sx={{ borderRadius: "12px", border: `1px solid ${BORDE_TABLA}`, overflowX: "auto" }}
-              >
-                <Table size="small" sx={{ minWidth: 820 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
-                      <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
-                      <TableCell align="center" sx={celdaEncabezadoSx}>Estado</TableCell>
-                      <TableCell align="center" sx={celdaEncabezadoSx}>Tipo</TableCell>
-                      <TableCell align="center" sx={celdaEncabezadoSx}>Cubre</TableCell>
-                      <TableCell sx={celdaEncabezadoSx}>Nota</TableCell>
-                      {!vistaPiloto && <TableCell sx={celdaEncabezadoSx} aria-label="Acciones" />}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {cargandoVac ? (
-                      <TableRow>
-                        <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3 }}>
-                          <CircularProgress size={24} />
-                        </TableCell>
-                      </TableRow>
-                    ) : periodosTabla.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={columnasTabla} align="center" sx={{ py: 3, fontSize: 14, color: "#94a3b8" }}>
-                          Sin periodos registrados
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      periodosTabla.map((p) => {
-                        const categoria = categoriaVacacion(p, hoy);
-                        const estilo = categoria ? ESTILO_VACACION[categoria] : null;
-                        const inicio = p.fecha_inicio.slice(0, 10);
-                        const fin = p.fecha_fin.slice(0, 10);
-                        return (
-                          <TableRow
-                            key={p.id}
-                            sx={{
-                              "&:nth-of-type(odd)": { bgcolor: "#fff" },
-                              "&:nth-of-type(even)": { bgcolor: "#f8fafc" },
-                              "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
-                            }}
-                          >
-                            <TableCell sx={{ ...celdaSx, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>
-                              {textoPeriodo(inicio, fin)}
-                            </TableCell>
-                            <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
-                              {textoDias(p.dias)}
-                            </TableCell>
-                            <TableCell align="center" sx={celdaSx}>
-                              <Chip
-                                size="small"
-                                label={estilo?.texto ?? p.estado ?? "Sin estado"}
-                                sx={{
-                                  fontWeight: 600,
-                                  bgcolor: estilo?.fondo ?? "#f1f5f9",
-                                  color: estilo?.color ?? "#475569",
-                                  border: `1px solid ${estilo?.borde ?? BORDE_TABLA}`,
-                                  textDecoration: estilo?.tachado ? "line-through" : undefined,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell align="center" sx={{ ...celdaSx, color: "#475569" }}>
-                              {p.tipo === "falta_injustificada" ? "Falta" : esDescuento(p) ? "Descuento" : "Vacaciones"}
-                            </TableCell>
-                            <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
-                              {p.cubre_clave?.trim() || "—"}
-                            </TableCell>
-                            <TableCell sx={{ ...celdaSx, fontSize: 13, color: "#64748b" }}>
-                              {p.nota?.trim() || "—"}
-                            </TableCell>
-                            {!vistaPiloto && (
-                              <TableCell align="center" sx={celdaSx}>
-                                {/* sistema = capturado por admin; ajuste = descuento */}
-                                {(p.origen === "sistema" || p.origen === "ajuste") && (
-                                  <IconButton
-                                    size="small"
-                                    aria-label="Borrar periodo"
-                                    onClick={() => setPorBorrar(p)}
-                                    sx={{ color: ROJO_TEXTO }}
-                                  >
-                                    <DeleteOutlineIcon fontSize="small" />
-                                  </IconButton>
-                                )}
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })
-                    )}
-                    {!cargandoVac && periodosTabla.length > 0 && (
-                      <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                        <TableCell sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}>
-                          Totales
-                        </TableCell>
-                        <TableCell
-                          colSpan={columnasTabla - 1}
-                          sx={{ ...celdaSx, fontWeight: 700, color: "#1e293b", borderBottom: 0 }}
-                        >
-                          Tomados: {textoDias(totalDias(periodosTabla, "tomada", hoy))} · Autorizados:{" "}
-                          {textoDias(totalDias(periodosTabla, "autorizada", hoy))}
-                          {totalDescuentos(periodosTabla) > 0 &&
-                            ` · Descuentos: ${textoDias(totalDescuentos(periodosTabla))}`}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
         </>
       )}
 
