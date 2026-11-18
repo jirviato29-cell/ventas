@@ -1244,6 +1244,27 @@ const MiPerfil = () => {
 
   const total = seleccionadas.size;
   const bloques = agruparBloques(seleccionadas);
+
+  // "· Te/Le quedan Y días" junto al título de la barra: lo que se puede pedir (igual que el tope,
+  // ya sin las solicitadas) menos lo seleccionado. Cada bloque cuenta en el año donde empieza.
+  // No se muestra en modo falta ni con el diálogo de descuento abierto.
+  const quedanSeleccion = (() => {
+    if (total === 0 || modoFalta || descuentoAbierto || !saldo?.actual) return null;
+    let diasActual = 0;
+    let diasSiguiente = 0;
+    for (const b of bloques) {
+      const anio = anioDeVacaciones(saldo, b.inicio);
+      if (anio === saldo.actual) diasActual += b.dias;
+      else if (anio && anio === saldo.siguiente) diasSiguiente += b.dias;
+    }
+    const quedan = Math.max(Math.max(disponiblesDe(saldo.actual), 0) - diasActual, 0);
+    const siguiente =
+      diasSiguiente > 0 && saldo.siguiente
+        ? Math.max(Math.max(disponiblesDe(saldo.siguiente), 0) - diasSiguiente, 0)
+        : null;
+    const color = quedan > 2 ? "#2E7D32" : quedan > 0 ? "#F9A825" : "#C62828";
+    return { quedan, siguiente, color };
+  })();
   // En el diálogo: el empleado elegido (admin) o la propia persona (piloto)
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
@@ -1493,6 +1514,20 @@ const MiPerfil = () => {
                   <>
                     <Typography sx={{ fontWeight: 700, fontSize: 18, color: "#1e293b", lineHeight: 1.3 }}>
                       {total} {total === 1 ? "día seleccionado" : "días seleccionados"}
+                      {quedanSeleccion && (
+                        <>
+                          {" "}
+                          <Box component="span" sx={{ color: quedanSeleccion.color, whiteSpace: "nowrap" }}>
+                            · {vistaPiloto ? "Te" : "Le"} quedan {quedanSeleccion.quedan}{" "}
+                            {quedanSeleccion.quedan === 1 ? "día" : "días"}
+                          </Box>
+                          {quedanSeleccion.siguiente !== null && (
+                            <Box component="span" sx={{ fontSize: 13, fontWeight: 500, color: "#64748b", ml: 0.75, whiteSpace: "nowrap" }}>
+                              (siguiente año: {quedanSeleccion.siguiente})
+                            </Box>
+                          )}
+                        </>
+                      )}
                     </Typography>
                     {/* Una tarjeta por bloque: en fila (con wrap) en computadora, dos columnas en celular */}
                     <Box
