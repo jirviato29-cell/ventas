@@ -621,12 +621,16 @@ const NIVELES_APROBACION = [
   { nivel: "aprobado_gerencia", texto: "Gerencia" },
 ] as const;
 
-// Igual que el DELETE del backend: pedida desde Mi Perfil, solicitada y sin ninguna revisión
-const sePuedeCancelar = (p: VacacionApi) =>
+// Igual que el DELETE del backend: pedida desde Mi Perfil, vacaciones solicitadas o autorizadas
+// (aunque ya tengan visto bueno) y faltan 7 días o más para que empiecen ("hoy" en hora de México)
+const DIAS_PARA_CANCELAR = 7;
+// Suya desde Mi Perfil, vacaciones, solicitada o autorizada: solo entonces aplica el límite de 7 días
+const cancelablePorEstado = (p: VacacionApi) =>
   p.origen === "mi_perfil" &&
-  p.tipo !== "falta_injustificada" &&
-  p.estado?.trim().toLowerCase() === "solicitada" &&
-  NIVELES_APROBACION.every(({ nivel }) => p[nivel] == null);
+  p.tipo === "vacaciones" &&
+  ["solicitada", "autorizada"].includes(p.estado?.trim().toLowerCase() ?? "");
+const sePuedeCancelar = (p: VacacionApi, hoy: string) =>
+  cancelablePorEstado(p) && diasHasta(hoy, p.fecha_inicio.slice(0, 10)) >= DIAS_PARA_CANCELAR;
 
 // Mis solicitudes: lo que sigue en solicitada y lo que la persona pidió desde Mi Perfil (para ver en qué quedó)
 const esSolicitudPiloto = (p: VacacionApi) =>
@@ -756,7 +760,7 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
                       </TableCell>
                     ))}
                     <TableCell align="center" sx={celdaSx}>
-                      {sePuedeCancelar(p) && (
+                      {sePuedeCancelar(p, hoy) ? (
                         <Button
                           size="small"
                           color="error"
@@ -766,7 +770,12 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
                         >
                           Cancelar solicitud
                         </Button>
-                      )}
+                      ) : cancelablePorEstado(p) ? (
+                        // Solo cuando la razón es el tiempo; rechazadas, tomadas o ajenas a Mi Perfil quedan vacías
+                        <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>
+                          No cancelable (menos de {DIAS_PARA_CANCELAR} días)
+                        </Typography>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 );
@@ -781,9 +790,8 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
         <DialogContent>
           {porCancelar && (
             <Typography sx={{ color: "#475569" }}>
-              ¿Cancelar tu solicitud de vacaciones del{" "}
-              {textoPeriodo(porCancelar.fecha_inicio.slice(0, 10), porCancelar.fecha_fin.slice(0, 10))} (
-              {textoDias(porCancelar.dias)})?
+              ¿Cancelar tus vacaciones del {fechaCorta(porCancelar.fecha_inicio.slice(0, 10))} al{" "}
+              {fechaCorta(porCancelar.fecha_fin.slice(0, 10))}? Puedes cancelar hasta {DIAS_PARA_CANCELAR} días antes.
             </Typography>
           )}
           {errorCancelar && <Alert severity="error" sx={{ mt: 2 }}>{errorCancelar}</Alert>}
