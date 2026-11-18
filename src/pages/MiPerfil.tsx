@@ -32,6 +32,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import { keyframes } from "@mui/material/styles";
 import { Navigate } from "react-router-dom";
 import axios from "axios";
@@ -51,6 +52,8 @@ import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 const AZUL = "#0A2878";
 const ROJO_FONDO = "#FDE2E2";
 const ROJO_TEXTO = "#B91C1C";
+// Días de descanso extra: naranja en el cuadro, el calendario, la leyenda y los botones
+const NARANJA_EXTRA = "#EF6C00";
 
 // Periodos en los que no se pueden pedir vacaciones (fechas YYYY-MM-DD, ambos días incluidos).
 // Se comparan como texto, así no intervienen horas ni zona horaria.
@@ -127,7 +130,8 @@ const sumarDias = (clave: string, n: number) => {
 };
 
 // Periodos de vacaciones guardados (GET /api/vacaciones?clave=...)
-type CategoriaVacacion = "falta" | "tomada" | "autorizada" | "solicitada" | "rechazada";
+// "extra" solo pinta el calendario y la leyenda (un día extra no rechazado); el estado de la fila sigue aparte
+type CategoriaVacacion = "falta" | "tomada" | "autorizada" | "extra" | "solicitada" | "rechazada";
 
 interface VacacionApi {
   id: number;
@@ -174,6 +178,40 @@ const disponiblesDe = (a: SaldoAnioApi) => a.dias_quedan - a.dias_solicitados_pe
 const numeroDias = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 1 });
 
 const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
+const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
+
+// ── Días de descanso extra: mismas reglas que el backend (app/routers/vacaciones.py) ──
+// Fuera de una ventana especial: 20 días de anticipación (primer día = hoy + 21, como vacaciones usa hoy + 31)
+const DIAS_ANTICIPACION_EXTRA = 21;
+// Ventanas especiales por festivo: se pide sin anticipación (desde mañana). Igual que VENTANAS_DIA_EXTRA del backend.
+const VENTANAS_DIA_EXTRA = [
+  { fechaFestivo: "2026-11-16", inicio: "2026-11-19", fin: "2026-12-04", soloEntreSemana: true },
+];
+const esFinDeSemana = (clave: string) => {
+  const d = new Date(`${clave}T12:00:00`).getDay();
+  return d === 0 || d === 6;
+};
+const ventanaExtra = (clave: string, festivos: string[]) =>
+  VENTANAS_DIA_EXTRA.find((v) => festivos.includes(v.fechaFestivo) && clave >= v.inicio && clave <= v.fin);
+
+// GET /api/vacaciones/dias-extra?clave= (admin) y /api/mi-perfil/dias-extra (piloto)
+interface DiaExtraOtorgadoApi {
+  id: number;
+  fecha_festivo: string;
+  vence: string;
+  dias: number;
+  motivo: string;
+  dias_restantes: number;
+  vigente: boolean;
+}
+interface DiasExtraApi {
+  clave: string;
+  dias_disponibles: number;
+  vence: string | null;
+  dias_usados: number;
+  dias_pendientes: number;
+  otorgados: DiaExtraOtorgadoApi[];
+}
 
 // Chip de Estado del historial: un descuento va en rojo; una falta, en negro con texto corto
 const ESTILO_DESCUENTO: EstiloVacacion = { texto: "Descuento", fondo: "#C62828", borde: "#C62828", color: "#FFFFFF" };
@@ -193,6 +231,7 @@ const ESTILO_VACACION: Record<CategoriaVacacion, EstiloVacacion> = {
   falta: { texto: "Falta injustificada", fondo: "#000000", borde: "#000000", color: "#FFFFFF" },
   tomada: { texto: "Tomada", fondo: "#6A1B9A", borde: "#6A1B9A", color: "#FFFFFF" },
   autorizada: { texto: "Autorizada", fondo: "#2E7D32", borde: "#2E7D32", color: "#FFFFFF" },
+  extra: { texto: "Día extra", fondo: NARANJA_EXTRA, borde: NARANJA_EXTRA, color: "#FFFFFF" },
   solicitada: { texto: "Solicitada", fondo: "#F9A825", borde: "#F9A825", color: "#000000", punteado: true },
   rechazada: { texto: "Rechazada", fondo: "#616161", borde: "#616161", color: "#FFFFFF", tachado: true },
 };
@@ -213,12 +252,13 @@ const COLOR_CALENDARIO: Record<CategoriaVacacion, ColorDia> = {
   falta: { fondo: "#000000", color: "#FFFFFF", borde: "#000000" },
   tomada: { fondo: "#6A1B9A", color: "#FFFFFF", borde: "#6A1B9A" },
   autorizada: { fondo: "#2E7D32", color: "#FFFFFF", borde: "#2E7D32" },
+  extra: { fondo: NARANJA_EXTRA, color: "#FFFFFF", borde: NARANJA_EXTRA },
   solicitada: { fondo: "#F9A825", color: "#000000", borde: "#3E2723", punteado: true },
   rechazada: { fondo: "#616161", color: "#FFFFFF", borde: "#616161", tachado: true },
 };
 
 // Si dos periodos caen en el mismo día, se pinta el estado más firme
-const PRIORIDAD_VACACION: CategoriaVacacion[] = ["falta", "tomada", "autorizada", "solicitada", "rechazada"];
+const PRIORIDAD_VACACION: CategoriaVacacion[] = ["falta", "tomada", "autorizada", "extra", "solicitada", "rechazada"];
 
 // Una autorizada cuyo periodo ya terminó cuenta como tomada
 const categoriaVacacion = (p: VacacionApi, hoy: string): CategoriaVacacion | null => {
@@ -234,7 +274,9 @@ const diasDeVacaciones = (periodos: VacacionApi[], hoy: string) => {
   periodos.forEach((p) => {
     // Un descuento es una fila fechada en el aniversario, no días de vacaciones
     if (esDescuento(p)) return;
-    const categoria = categoriaVacacion(p, hoy);
+    // Un día extra (pedido, autorizado o tomado) va en naranja; si lo rechazaron, como cualquier rechazada
+    const base = categoriaVacacion(p, hoy);
+    const categoria: CategoriaVacacion | null = base && esDiaExtra(p) && base !== "rechazada" ? "extra" : base;
     const inicio = p.fecha_inicio?.slice(0, 10);
     const fin = p.fecha_fin?.slice(0, 10);
     if (!categoria || !inicio || !fin || fin < inicio) return;
@@ -258,10 +300,18 @@ const textoPeriodo = (inicio: string, fin: string) =>
 const textoDias = (dias: number | null) =>
   dias == null ? "—" : `${Number(dias).toLocaleString("es-MX")} ${Number(dias) === 1 ? "día" : "días"}`;
 
-// Suma los días de los periodos de esa categoría
+// Suma los días de los periodos de esa categoría (los días extra van aparte: no son vacaciones)
 const totalDias = (periodos: VacacionApi[], categoria: CategoriaVacacion, hoy: string) =>
   periodos.reduce(
-    (suma, p) => (!esDescuento(p) && categoriaVacacion(p, hoy) === categoria ? suma + Number(p.dias ?? 0) : suma),
+    (suma, p) =>
+      !esDescuento(p) && !esDiaExtra(p) && categoriaVacacion(p, hoy) === categoria ? suma + Number(p.dias ?? 0) : suma,
+    0
+  );
+
+// Días extra pedidos, autorizados o tomados (sin los rechazados)
+const totalDiasExtra = (periodos: VacacionApi[], hoy: string) =>
+  periodos.reduce(
+    (suma, p) => (esDiaExtra(p) && categoriaVacacion(p, hoy) !== "rechazada" ? suma + Number(p.dias ?? 0) : suma),
     0
   );
 
@@ -326,6 +376,13 @@ const BOTON_NAVY = {
   boxShadow: "none",
   "&:hover": { bgcolor: "#0a2155", boxShadow: "none" },
 };
+const BOTON_EXTRA = {
+  bgcolor: NARANJA_EXTRA,
+  color: "#fff",
+  fontWeight: 700,
+  boxShadow: "none",
+  "&:hover": { bgcolor: "#D65F00", boxShadow: "none" },
+};
 const MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 const DIA_CORTO = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
@@ -364,6 +421,8 @@ interface MesProps {
   modoFalta: boolean;
   // Días en rojo (periodo de ventas): admin usa PERIODOS_BLOQUEADOS; el piloto, la regla de cualquier año
   motivoBloqueo: (clave: string) => string | undefined;
+  // Modo día extra del piloto: qué días quedan en gris (ventana especial o 20 días); si no, primerDisponible
+  sinAnticipacionDe?: (clave: string) => boolean;
   onToggle: (clave: string) => void;
 }
 
@@ -383,6 +442,7 @@ const TONOS = {
   azul: "#1565C0",
   rojo: "#C62828",
   gris: "#616161",
+  naranja: NARANJA_EXTRA,
 };
 
 interface CuadroProps {
@@ -453,9 +513,11 @@ interface CuadrosSaldoProps {
   hoy: string;
   // Piloto: "Tienes"; admin viendo a un empleado: "Tiene"
   piloto: boolean;
+  // 4º cuadro (naranja): solo si tiene días de descanso extra vigentes
+  diasExtra?: DiasExtraApi | null;
 }
 
-const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy, piloto }) => {
+const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy, piloto, diasExtra }) => {
   if (cargando) {
     return (
       <Box sx={{ mb: 2, textAlign: "center" }}>
@@ -468,11 +530,30 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
 
   const tienes = piloto ? "Tienes" : "Tiene";
   const a = saldo.actual;
-  const rejilla = { mb: 2, display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" } };
+  const extra = diasExtra && diasExtra.dias_disponibles > 0 ? diasExtra : null;
+  const rejilla = {
+    mb: 2,
+    display: "grid",
+    gap: 1.5,
+    gridTemplateColumns: extra
+      ? { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }
+      : { xs: "1fr", sm: "repeat(3, 1fr)" },
+  };
+  const cuadroExtra = extra && (
+    <CuadroSaldo
+      tono="naranja"
+      icono={<EventAvailableIcon />}
+      antes={tienes}
+      grande={String(extra.dias_disponibles)}
+      despues={`${extra.dias_disponibles === 1 ? "día" : "días"} de descanso extra${
+        extra.vence ? ` · vence ${fechaCorta(extra.vence)}` : ""
+      }`}
+    />
+  );
 
   if (!a) {
     return (
-      <Box sx={{ ...rejilla, gridTemplateColumns: "1fr" }}>
+      <Box sx={{ ...rejilla, gridTemplateColumns: { xs: "1fr", sm: extra ? "repeat(2, 1fr)" : "1fr" } }}>
         <CuadroSaldo
           tono="gris"
           icono={<CalendarMonthIcon />}
@@ -481,6 +562,7 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
           despues="No se puede calcular"
           despuesAbajo
         />
+        {cuadroExtra}
       </Box>
     );
   }
@@ -532,6 +614,7 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
         }
         despuesAbajo
       />
+      {cuadroExtra}
     </Box>
   );
 };
@@ -545,6 +628,7 @@ const MesCalendario: React.FC<MesProps> = ({
   vacaciones,
   modoFalta,
   motivoBloqueo,
+  sinAnticipacionDe,
   onToggle,
 }) => {
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
@@ -578,7 +662,8 @@ const MesCalendario: React.FC<MesProps> = ({
           const pasado = !modoFalta && clave < hoy;
           const esHoy = clave === hoy;
           // Entre hoy y el primer día disponible: gris como los pasados, pero al tocarlo sale el aviso
-          const sinAnticipacion = !modoFalta && !pasado && clave < primerDisponible;
+          const sinAnticipacion =
+            !modoFalta && !pasado && (sinAnticipacionDe ? sinAnticipacionDe(clave) : clave < primerDisponible);
           const noDisponible = pasado || sinAnticipacion;
           const marcado = seleccionadas.has(clave);
           // Un día no disponible queda gris aunque caiga en un periodo bloqueado
@@ -662,7 +747,7 @@ const DIAS_PARA_CANCELAR = 7;
 // Suya desde Mi Perfil, vacaciones, solicitada o autorizada: solo entonces aplica el límite de 7 días
 const cancelablePorEstado = (p: VacacionApi) =>
   p.origen === "mi_perfil" &&
-  p.tipo === "vacaciones" &&
+  (p.tipo === "vacaciones" || p.tipo === "dia_extra") &&
   ["solicitada", "autorizada"].includes(p.estado?.trim().toLowerCase() ?? "");
 const sePuedeCancelar = (p: VacacionApi, hoy: string) =>
   cancelablePorEstado(p) && diasHasta(hoy, p.fecha_inicio.slice(0, 10)) >= DIAS_PARA_CANCELAR;
@@ -769,6 +854,9 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
                   >
                     <TableCell sx={{ ...celdaSx, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>
                       {textoPeriodo(p.fecha_inicio.slice(0, 10), p.fecha_fin.slice(0, 10))}
+                      {esDiaExtra(p) && (
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: NARANJA_EXTRA }}>Día extra</Typography>
+                      )}
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
                       {textoDias(p.dias)}
@@ -825,7 +913,8 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
         <DialogContent>
           {porCancelar && (
             <Typography sx={{ color: "#475569" }}>
-              ¿Cancelar tus vacaciones del {fechaCorta(porCancelar.fecha_inicio.slice(0, 10))} al{" "}
+              ¿Cancelar {esDiaExtra(porCancelar) ? "tu día extra" : "tus vacaciones"} del{" "}
+              {fechaCorta(porCancelar.fecha_inicio.slice(0, 10))} al{" "}
               {fechaCorta(porCancelar.fecha_fin.slice(0, 10))}? Puedes cancelar hasta {DIAS_PARA_CANCELAR} días antes.
             </Typography>
           )}
@@ -881,6 +970,17 @@ const MiPerfil = () => {
   const [diasDescuento, setDiasDescuento] = useState("");
   const [notaDescuento, setNotaDescuento] = useState("");
   const [errorDescuento, setErrorDescuento] = useState<string | null>(null);
+  // Días de descanso extra: modo de selección, lo que tiene y el diálogo OTORGAR DÍA EXTRA (admin)
+  const [modoExtra, setModoExtra] = useState(false);
+  const [diasExtra, setDiasExtra] = useState<DiasExtraApi | null>(null);
+  const [otorgarAbierto, setOtorgarAbierto] = useState(false);
+  const [festivoOtorgar, setFestivoOtorgar] = useState("");
+  const [diasOtorgar, setDiasOtorgar] = useState("1");
+  const [motivoOtorgar, setMotivoOtorgar] = useState("");
+  const [errorOtorgar, setErrorOtorgar] = useState<string | null>(null);
+  // Quitar un otorgamiento puesto por error (solo admin; el backend da 409 si ya se usó)
+  const [porQuitar, setPorQuitar] = useState<DiaExtraOtorgadoApi | null>(null);
+  const [errorQuitar, setErrorQuitar] = useState<string | null>(null);
   // Candado inmediato contra doble clic (el estado tarda un render en deshabilitar el botón)
   const enviandoRef = useRef(false);
   // El admin sigue con la hora de su computadora; el piloto usa la de México, como el backend
@@ -959,6 +1059,27 @@ const MiPerfil = () => {
     };
   }, [empleadoSel, esAdmin, miClave, recargaVac]);
 
+  // Días extra: se vuelven a pedir con los periodos. Si falla (p. ej. la tabla aún no existe), no hay cuadro ni botón.
+  useEffect(() => {
+    setDiasExtra(null);
+    const consulta = esAdmin
+      ? empleadoSel
+        ? { url: "/api/vacaciones/dias-extra", params: { clave: empleadoSel } }
+        : null
+      : miClave
+      ? { url: "/api/mi-perfil/dias-extra", params: undefined }
+      : null;
+    if (!consulta) return;
+    let vivo = true;
+    axios
+      .get<DiasExtraApi>(consulta.url, { params: consulta.params, headers: authH() })
+      .then((r) => vivo && setDiasExtra(r.data))
+      .catch(() => vivo && setDiasExtra(null));
+    return () => {
+      vivo = false;
+    };
+  }, [empleadoSel, esAdmin, miClave, recargaVac]);
+
   const diasVacaciones = useMemo(() => diasDeVacaciones(periodos, hoy), [periodos, hoy]);
   // Tabla: de la más reciente a la más vieja
   const periodosTabla = useMemo(
@@ -978,10 +1099,19 @@ const MiPerfil = () => {
     setEmpleadoSel(clave);
     setSeleccionadas(new Set());
     setModoFalta(false);
+    setModoExtra(false);
   };
 
+  // Al entrar o salir de un modo se empieza de cero (también sale del otro modo)
   const cambiarModoFalta = (activo: boolean) => {
     setModoFalta(activo);
+    setModoExtra(false);
+    setSeleccionadas(new Set());
+  };
+
+  const cambiarModoExtra = (activo: boolean) => {
+    setModoExtra(activo);
+    setModoFalta(false);
     setSeleccionadas(new Set());
   };
 
@@ -1016,7 +1146,7 @@ const MiPerfil = () => {
               fecha_inicio: b.inicio,
               fecha_fin: b.fin,
               dias: b.dias,
-              tipo: modoFalta ? "falta_injustificada" : "vacaciones",
+              tipo: modoFalta ? "falta_injustificada" : modoExtra ? "dia_extra" : "vacaciones",
               nota: notaLimpia || undefined,
             },
             { headers: authH() }
@@ -1030,6 +1160,8 @@ const MiPerfil = () => {
               dias: b.dias,
               cubre_clave: cubre || undefined,
               nota: notaLimpia || undefined,
+              // Sin tipo el backend entiende vacaciones (como siempre)
+              ...(modoExtra ? { tipo: "dia_extra" } : {}),
             },
             { headers: authH() }
           );
@@ -1049,10 +1181,9 @@ const MiPerfil = () => {
       if (!esAdmin) {
         // Ya guardadas: se ven en "Mis solicitudes" con sus aprobaciones
         setPestana(2);
+        const que = modoExtra ? "día extra" : "vacaciones";
         setExito(
-          bloquesPorGuardar.length === 1
-            ? "Tu solicitud de vacaciones se envió."
-            : "Tus solicitudes de vacaciones se enviaron."
+          bloquesPorGuardar.length === 1 ? `Tu solicitud de ${que} se envió.` : `Tus solicitudes de ${que} se enviaron.`
         );
       }
       return;
@@ -1147,8 +1278,161 @@ const MiPerfil = () => {
     }
   };
 
+  // ── OTORGAR DÍA EXTRA (solo admin) ──
+  const abrirOtorgar = () => {
+    setFestivoOtorgar("");
+    setDiasOtorgar("1");
+    setMotivoOtorgar("");
+    setErrorOtorgar(null);
+    setOtorgarAbierto(true);
+  };
+  const diasOtorgarNum = Number(diasOtorgar);
+  const otorgarValido =
+    festivoOtorgar !== "" && Number.isInteger(diasOtorgarNum) && diasOtorgarNum >= 1 && diasOtorgarNum <= 6 &&
+    motivoOtorgar.trim() !== "";
+  const guardarOtorgar = async () => {
+    if (!empleadoSel || !otorgarValido || enviandoRef.current) return;
+    enviandoRef.current = true;
+    setGuardando(true);
+    setErrorOtorgar(null);
+    try {
+      await axios.post(
+        "/api/vacaciones/dias-extra",
+        { clave: empleadoSel, fecha_festivo: festivoOtorgar, dias: diasOtorgarNum, motivo: motivoOtorgar.trim() },
+        { headers: authH() }
+      );
+      setOtorgarAbierto(false);
+      setRecargaVac((n) => n + 1);
+      setExito(diasOtorgarNum === 1 ? "Día extra otorgado." : "Días extra otorgados.");
+    } catch (e) {
+      setErrorOtorgar(mensajeError(e, "No se pudieron otorgar los días extra."));
+    } finally {
+      setGuardando(false);
+      enviandoRef.current = false;
+    }
+  };
+
+  const quitarOtorgado = async () => {
+    if (!porQuitar || enviandoRef.current) return;
+    enviandoRef.current = true;
+    setGuardando(true);
+    setErrorQuitar(null);
+    try {
+      await axios.delete(`/api/vacaciones/dias-extra/${porQuitar.id}`, { headers: authH() });
+      setPorQuitar(null);
+      setRecargaVac((n) => n + 1);
+      setExito("Día extra quitado.");
+    } catch (e) {
+      setErrorQuitar(
+        axios.isAxiosError(e) && e.response?.status === 409
+          ? "Ya se usó, no se puede quitar"
+          : mensajeError(e, "No se pudo quitar el día extra.")
+      );
+    } finally {
+      setGuardando(false);
+      enviandoRef.current = false;
+    }
+  };
+
+  // ── Selección en modo día extra ──
+  // Piloto: ventana especial de su festivo (desde mañana, lun–vie) o 20 días; bloqueos siempre.
+  // Admin: cualquier fecha. Para los dos: que le alcancen, dentro de la vigencia y máximo 6 seguidos
+  // junto con vacaciones. No cuentan "uno por mes", los 15 días ni el saldo de vacaciones.
+  const festivosExtra = (diasExtra?.otorgados ?? []).map((o) => o.fecha_festivo);
+  const primerDisponibleExtra = sumarDias(hoy, DIAS_ANTICIPACION_EXTRA);
+  const sinAnticipacionExtra = (clave: string) => {
+    if (clave <= hoy) return true;
+    const ventana = ventanaExtra(clave, festivosExtra);
+    if (ventana) return ventana.soloEntreSemana && esFinDeSemana(clave);
+    return clave < primerDisponibleExtra;
+  };
+
+  const toggleDiaExtra = (clave: string) => {
+    if (seleccionadas.has(clave)) {
+      const propio = agruparBloques(seleccionadas).find((b) => clave >= b.inicio && clave <= b.fin)!;
+      if (clave !== propio.inicio && clave !== propio.fin) {
+        setAviso(
+          `${esAdmin ? "Solo se puede" : "Solo puedes"} quitar el primer o el último día para que sigan siendo seguidos.`
+        );
+        return;
+      }
+      setSeleccionadas((prev) => {
+        const nuevo = new Set(prev);
+        nuevo.delete(clave);
+        return nuevo;
+      });
+      return;
+    }
+    if (!esAdmin) {
+      if (clave <= hoy) {
+        setAviso("Los días extra se piden a partir de mañana.");
+        return;
+      }
+      const motivo = motivoBloqueo(clave);
+      if (motivo) {
+        setAviso(motivo.replace("vacaciones", "días extra"));
+        return;
+      }
+      const ventana = ventanaExtra(clave, festivosExtra);
+      if (ventana) {
+        if (ventana.soloEntreSemana && esFinDeSemana(clave)) {
+          setAviso(
+            `Del ${fechaLarga(ventana.inicio)} al ${fechaLarga(ventana.fin)} el día extra solo se puede de lunes a viernes.`
+          );
+          return;
+        }
+      } else if (clave < primerDisponibleExtra) {
+        setAviso(
+          `Los días extra se piden con 20 días de anticipación. Puedes elegir a partir del ${fechaLarga(
+            primerDisponibleExtra
+          )}.`
+        );
+        return;
+      }
+    }
+    const ocupado = diasVacaciones.get(clave);
+    if (ocupado && ocupado !== "rechazada") {
+      setAviso(`${esAdmin ? "Ya tiene" : "Ya tienes"} un periodo registrado ese día.`);
+      return;
+    }
+    const disponibles = diasExtra?.dias_disponibles ?? 0;
+    if (seleccionadas.size + 1 > disponibles) {
+      setAviso(
+        disponibles === 0
+          ? `${esAdmin ? "No tiene" : "No tienes"} días de descanso extra disponibles.`
+          : `Solo ${esAdmin ? "le" : "te"} ${disponibles === 1 ? "queda 1 día extra" : `quedan ${disponibles} días extra`}.`
+      );
+      return;
+    }
+    const vigente = (diasExtra?.otorgados ?? []).some(
+      (o) => o.dias_restantes > 0 && clave >= o.fecha_festivo && clave <= o.vence
+    );
+    if (!vigente) {
+      setAviso("Ese día está fuera de la vigencia de los días extra (del festivo a su vencimiento).");
+      return;
+    }
+    // Máximo 6 seguidos contando las vacaciones y los días extra que ya tiene pegados
+    const ocupados = new Set(seleccionadas).add(clave);
+    diasVacaciones.forEach((categoria, dia) => {
+      if (categoria !== "falta" && categoria !== "rechazada") ocupados.add(dia);
+    });
+    let desde = clave;
+    let hasta = clave;
+    while (ocupados.has(sumarDias(desde, -1))) desde = sumarDias(desde, -1);
+    while (ocupados.has(sumarDias(hasta, 1))) hasta = sumarDias(hasta, 1);
+    if (diasHasta(desde, hasta) + 1 > MAX_DIAS_POR_BLOQUE) {
+      setAviso("Máximo 6 días seguidos contando vacaciones y días extra.");
+      return;
+    }
+    setSeleccionadas((prev) => new Set(prev).add(clave));
+  };
+
   // Mismas reglas de selección para admin y piloto (el piloto nunca entra al modo falta)
   const toggleDia = (clave: string) => {
+    if (modoExtra) {
+      toggleDiaExtra(clave);
+      return;
+    }
     if (modoFalta) {
       setSeleccionadas((prev) => {
         const nuevo = new Set(prev);
@@ -1249,7 +1533,14 @@ const MiPerfil = () => {
   // ya sin las solicitadas) menos lo seleccionado. Cada bloque cuenta en el año donde empieza.
   // No se muestra en modo falta ni con el diálogo de descuento abierto.
   const quedanSeleccion = (() => {
-    if (total === 0 || modoFalta || descuentoAbierto || !saldo?.actual) return null;
+    if (total === 0 || modoFalta || descuentoAbierto) return null;
+    // Modo día extra: lo que le quedaría de días extra (no toca el saldo de vacaciones)
+    if (modoExtra) {
+      const quedan = Math.max((diasExtra?.dias_disponibles ?? 0) - total, 0);
+      const color = quedan > 2 ? "#2E7D32" : quedan > 0 ? "#F9A825" : "#C62828";
+      return { quedan, siguiente: null as number | null, color, extra: true };
+    }
+    if (!saldo?.actual) return null;
     let diasActual = 0;
     let diasSiguiente = 0;
     for (const b of bloques) {
@@ -1263,8 +1554,9 @@ const MiPerfil = () => {
         ? Math.max(Math.max(disponiblesDe(saldo.siguiente), 0) - diasSiguiente, 0)
         : null;
     const color = quedan > 2 ? "#2E7D32" : quedan > 0 ? "#F9A825" : "#C62828";
-    return { quedan, siguiente, color };
+    return { quedan, siguiente, color, extra: false };
   })();
+  const tieneDiasExtra = (diasExtra?.dias_disponibles ?? 0) > 0;
   // En el diálogo: el empleado elegido (admin) o la propia persona (piloto)
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
@@ -1358,7 +1650,15 @@ const MiPerfil = () => {
                       />
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569" }}>
-                      {esFalta ? "Falta" : esDescuento(p) ? "Descuento" : "Vacaciones"}
+                      {esFalta ? (
+                        "Falta"
+                      ) : esDescuento(p) ? (
+                        "Descuento"
+                      ) : esDiaExtra(p) ? (
+                        <Box component="span" sx={{ color: NARANJA_EXTRA, fontWeight: 700 }}>Día extra</Box>
+                      ) : (
+                        "Vacaciones"
+                      )}
                     </TableCell>
                     <TableCell
                       align="center"
@@ -1407,6 +1707,7 @@ const MiPerfil = () => {
                   Tomados: {textoDias(totalDias(periodosTabla, "tomada", hoy))} · Autorizados:{" "}
                   {textoDias(totalDias(periodosTabla, "autorizada", hoy))}
                   {totalDescuentos(periodosTabla) > 0 && ` · Descuentos: ${textoDias(totalDescuentos(periodosTabla))}`}
+                  {totalDiasExtra(periodosTabla, hoy) > 0 && ` · Días extra: ${textoDias(totalDiasExtra(periodosTabla, hoy))}`}
                 </TableCell>
               </TableRow>
             )}
@@ -1484,6 +1785,8 @@ const MiPerfil = () => {
               p: 2,
               display: "flex",
               flexDirection: { xs: "column", sm: "row" },
+              // Con muchos botones (admin), bajan de renglón en lugar de apretar el texto
+              flexWrap: { sm: "wrap" },
               alignItems: { xs: "stretch", sm: "center" },
               gap: 2,
               bgcolor: "#fff",
@@ -1493,7 +1796,7 @@ const MiPerfil = () => {
               boxShadow: "0 2px 8px rgba(15,23,42,0.08)",
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: "1 1 280px", minWidth: 0 }}>
               <Box
                 sx={{
                   width: 40,
@@ -1520,6 +1823,7 @@ const MiPerfil = () => {
                           <Box component="span" sx={{ color: quedanSeleccion.color, whiteSpace: "nowrap" }}>
                             · {vistaPiloto ? "Te" : "Le"} quedan {quedanSeleccion.quedan}{" "}
                             {quedanSeleccion.quedan === 1 ? "día" : "días"}
+                            {quedanSeleccion.extra ? " extra" : ""}
                           </Box>
                           {quedanSeleccion.siguiente !== null && (
                             <Box component="span" sx={{ fontSize: 13, fontWeight: 500, color: "#64748b", ml: 0.75, whiteSpace: "nowrap" }}>
@@ -1598,6 +1902,7 @@ const MiPerfil = () => {
                 justifyContent: { sm: "flex-end" },
                 alignItems: { xs: "stretch", sm: "center" },
                 gap: 1,
+                ml: { sm: "auto" },
               }}
             >
               <Button
@@ -1610,22 +1915,36 @@ const MiPerfil = () => {
                 Limpiar
               </Button>
               {vistaPiloto ? (
-                <Button
-                  variant="contained"
-                  size="small"
-                  disabled={total === 0 || !miClave}
-                  onClick={abrirConfirmacion}
-                  sx={BOTON_NAVY}
-                >
-                  SOLICITAR VACACIONES
-                </Button>
+                <>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={total === 0 || !miClave || modoExtra}
+                    onClick={abrirConfirmacion}
+                    sx={BOTON_NAVY}
+                  >
+                    SOLICITAR VACACIONES
+                  </Button>
+                  {/* Primer toque: entra al modo día extra. Ya en el modo, con días marcados: pide */}
+                  {(tieneDiasExtra || modoExtra) && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={(modoExtra && total === 0) || !miClave}
+                      onClick={() => (modoExtra ? abrirConfirmacion() : cambiarModoExtra(true))}
+                      sx={BOTON_EXTRA}
+                    >
+                      PEDIR DÍA EXTRA
+                    </Button>
+                  )}
+                </>
               ) : (
                 empleadoSel && (
                   <>
                     <Button
                       variant="contained"
                       size="small"
-                      disabled={modoFalta || total === 0}
+                      disabled={modoFalta || modoExtra || total === 0}
                       onClick={abrirConfirmacion}
                       sx={BOTON_NAVY}
                     >
@@ -1635,7 +1954,7 @@ const MiPerfil = () => {
                     <Button
                       variant="contained"
                       size="small"
-                      disabled={modoFalta && total === 0}
+                      disabled={(modoFalta && total === 0) || modoExtra}
                       onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
                       sx={{ bgcolor: "#000", color: "#fff", fontWeight: 700, boxShadow: "none", "&:hover": { bgcolor: "#333" } }}
                     >
@@ -1644,11 +1963,31 @@ const MiPerfil = () => {
                     <Button
                       variant="outlined"
                       size="small"
-                      disabled={modoFalta}
+                      disabled={modoFalta || modoExtra}
                       onClick={abrirDescuento}
                       sx={{ color: ROJO_BARRA, borderColor: ROJO_BARRA, fontWeight: 700, "&:hover": { borderColor: ROJO_BARRA, bgcolor: "#fdecea" } }}
                     >
                       REGISTRAR DESCUENTO
+                    </Button>
+                    {(tieneDiasExtra || modoExtra) && (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={(modoExtra && total === 0) || modoFalta}
+                        onClick={() => (modoExtra ? abrirConfirmacion() : cambiarModoExtra(true))}
+                        sx={BOTON_EXTRA}
+                      >
+                        REGISTRAR DÍA EXTRA
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={modoFalta || modoExtra}
+                      onClick={abrirOtorgar}
+                      sx={{ color: NARANJA_EXTRA, borderColor: NARANJA_EXTRA, fontWeight: 700, "&:hover": { borderColor: NARANJA_EXTRA, bgcolor: "#FFF3E0" } }}
+                    >
+                      OTORGAR DÍA EXTRA
                     </Button>
                   </>
                 )
@@ -1674,12 +2013,12 @@ const MiPerfil = () => {
                 px: 3,
                 py: 1.5,
                 fontWeight: 700,
-                bgcolor: AZUL,
+                bgcolor: modoExtra ? NARANJA_EXTRA : AZUL,
                 boxShadow: "0 8px 24px rgba(10,40,120,0.35)",
-                "&:hover": { bgcolor: "#081f5e" },
+                "&:hover": { bgcolor: modoExtra ? "#D65F00" : "#081f5e" },
               }}
             >
-              SOLICITAR ({total} {total === 1 ? "día" : "días"})
+              {modoExtra ? "PEDIR DÍA EXTRA" : "SOLICITAR"} ({total} {total === 1 ? "día" : "días"})
             </Button>
           )}
 
@@ -1707,8 +2046,32 @@ const MiPerfil = () => {
             </Alert>
           )}
 
+          {modoExtra && (
+            <Alert
+              severity="warning"
+              icon={<EventAvailableIcon fontSize="inherit" />}
+              sx={{ mb: 2, bgcolor: "#FFF3E0", color: "#7C2D12", "& .MuiAlert-icon": { color: NARANJA_EXTRA } }}
+              action={
+                <Button color="inherit" size="small" onClick={() => cambiarModoExtra(false)}>
+                  Salir
+                </Button>
+              }
+            >
+              {esAdmin
+                ? "Modo día extra: se puede marcar cualquier fecha dentro de la vigencia. Al terminar, pulsa REGISTRAR DÍA EXTRA."
+                : "Modo día extra: marca los días que quieres pedir. Al terminar, pulsa PEDIR DÍA EXTRA."}
+            </Alert>
+          )}
+
           {seleccionVista && (
-            <CuadrosSaldo saldo={saldo} cargando={cargandoSaldo} error={errorSaldo} hoy={hoy} piloto={vistaPiloto} />
+            <CuadrosSaldo
+              saldo={saldo}
+              cargando={cargandoSaldo}
+              error={errorSaldo}
+              hoy={hoy}
+              piloto={vistaPiloto}
+              diasExtra={diasExtra}
+            />
           )}
 
           <Box
@@ -1718,7 +2081,8 @@ const MiPerfil = () => {
               gap: 2,
             }}
           >
-            {mesesCalendario(hoy, modoFalta ? MESES_ATRAS_FALTA : 0).map(({ anio, mes }) => (
+            {/* Admin en modo día extra puede capturar fechas pasadas, como en modo falta */}
+            {mesesCalendario(hoy, modoFalta || (esAdmin && modoExtra) ? MESES_ATRAS_FALTA : 0).map(({ anio, mes }) => (
               <MesCalendario
                 key={`${anio}-${mes}`}
                 anio={anio}
@@ -1727,8 +2091,9 @@ const MiPerfil = () => {
                 primerDisponible={primerDisponible}
                 seleccionadas={seleccionadas}
                 vacaciones={diasVacaciones}
-                modoFalta={modoFalta}
+                modoFalta={modoFalta || (esAdmin && modoExtra)}
                 motivoBloqueo={motivoBloqueo}
+                sinAnticipacionDe={vistaPiloto && modoExtra ? sinAnticipacionExtra : undefined}
                 onToggle={toggleDia}
               />
             ))}
@@ -1740,7 +2105,10 @@ const MiPerfil = () => {
               { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0", color: "#cbd5e1" },
               { texto: "Periodo bloqueado por ventas", fondo: COLOR_BLOQUEO, borde: COLOR_BLOQUEO, color: "#fff" },
               ...PRIORIDAD_VACACION.map((e) => ({
-                texto: e === "falta" ? ESTILO_VACACION[e].texto : `Vacaciones ${ESTILO_VACACION[e].texto.toLowerCase()}`,
+                texto:
+                  e === "falta" || e === "extra"
+                    ? ESTILO_VACACION[e].texto
+                    : `Vacaciones ${ESTILO_VACACION[e].texto.toLowerCase()}`,
                 ...COLOR_CALENDARIO[e],
               })),
             ].map(
@@ -1802,7 +2170,15 @@ const MiPerfil = () => {
 
       <Dialog open={confirmando} onClose={() => !guardando && setConfirmando(false)} fullWidth maxWidth="xs">
         <DialogTitle>
-          {vistaPiloto ? "Solicitar vacaciones" : modoFalta ? "Registrar falta injustificada" : "Registrar vacaciones"}
+          {vistaPiloto
+            ? modoExtra
+              ? "Pedir día extra"
+              : "Solicitar vacaciones"
+            : modoFalta
+            ? "Registrar falta injustificada"
+            : modoExtra
+            ? "Registrar día extra"
+            : "Registrar vacaciones"}
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
@@ -1921,6 +2297,124 @@ const MiPerfil = () => {
           </Button>
           <Button variant="contained" disabled={guardando || !descuentoValido} onClick={guardarDescuento}>
             {guardando ? "Guardando…" : "Registrar descuento"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={otorgarAbierto} onClose={() => !guardando && setOtorgarAbierto(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Otorgar día extra</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontWeight: 700, color: "#1e293b" }}>
+            {personaSel?.nombre || "Sin nombre"} · {personaSel?.idVisible ?? empleadoSel}
+          </Typography>
+          {(diasExtra?.otorgados.length ?? 0) > 0 && (
+            <Box sx={{ mt: 1.5 }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>Ya otorgados</Typography>
+              {diasExtra!.otorgados.map((o) => (
+                <Box
+                  key={o.id}
+                  sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.25, borderBottom: "1px solid #e2e8f0" }}
+                >
+                  <Typography sx={{ fontSize: 13, color: "#1e293b", flex: 1, minWidth: 0 }}>
+                    Festivo {fechaCorta(o.fecha_festivo)} · {textoDias(o.dias)} · vence {fechaCorta(o.vence)}
+                    {!o.vigente && " (vencido)"}
+                  </Typography>
+                  <Tooltip title="Quitar este día extra">
+                    <span>
+                      <IconButton
+                        size="small"
+                        aria-label={`Quitar festivo ${fechaCorta(o.fecha_festivo)}`}
+                        disabled={guardando}
+                        onClick={() => {
+                          setErrorQuitar(null);
+                          setPorQuitar(o);
+                        }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Typography sx={{ fontSize: 13, color: "#64748b", mt: 1 }}>
+            Vence un año después del festivo (un día antes del aniversario). No sale del saldo de vacaciones.
+          </Typography>
+          <TextField
+            label="Fecha del festivo"
+            type="date"
+            value={festivoOtorgar}
+            onChange={(e) => {
+              const valor = e.target.value;
+              setFestivoOtorgar(valor);
+              // Motivo sugerido mientras no lo escriban a mano
+              if (!motivoOtorgar.trim() || motivoOtorgar.startsWith("Trabajó festivo ")) {
+                setMotivoOtorgar(valor ? `Trabajó festivo ${fechaCorta(valor)}` : "");
+              }
+            }}
+            fullWidth
+            size="small"
+            sx={{ mt: 2 }}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ max: hoy }}
+          />
+          <TextField
+            label="Días"
+            type="number"
+            value={diasOtorgar}
+            onChange={(e) => setDiasOtorgar(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mt: 2 }}
+            inputProps={{ min: 1, max: 6, step: 1 }}
+          />
+          <TextField
+            label="Motivo (obligatorio)"
+            value={motivoOtorgar}
+            onChange={(e) => setMotivoOtorgar(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mt: 2 }}
+            inputProps={{ maxLength: 500 }}
+          />
+          {errorOtorgar && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {errorOtorgar}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={guardando} onClick={() => setOtorgarAbierto(false)}>
+            Cancelar
+          </Button>
+          <Button variant="contained" disabled={guardando || !otorgarValido} onClick={guardarOtorgar} sx={BOTON_EXTRA}>
+            {guardando ? "Guardando…" : "Otorgar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={porQuitar !== null} onClose={() => !guardando && setPorQuitar(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Quitar día extra</DialogTitle>
+        <DialogContent>
+          {porQuitar && (
+            <Typography sx={{ color: "#475569" }}>
+              ¿Quitar {textoDias(porQuitar.dias)} de descanso extra del festivo {fechaCorta(porQuitar.fecha_festivo)} a{" "}
+              {personaSel?.nombre || empleadoSel}? Esta acción no se puede deshacer.
+            </Typography>
+          )}
+          {errorQuitar && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {errorQuitar}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={guardando} onClick={() => setPorQuitar(null)}>
+            Cancelar
+          </Button>
+          <Button variant="contained" color="error" disabled={guardando || errorQuitar !== null} onClick={quitarOtorgado}>
+            {guardando ? "Quitando…" : "Quitar"}
           </Button>
         </DialogActions>
       </Dialog>

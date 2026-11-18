@@ -74,7 +74,16 @@ const sinAcentos = (texto: string) =>
 const celdaEncabezadoSx = { fontSize: 13, px: 1, whiteSpace: "nowrap" };
 const celdaSx = { fontSize: 13, px: 1, py: 0.75 };
 const subEncabezadoSx = { fontSize: 12, px: 1, fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" };
-const COLUMNAS = 13;
+const COLUMNAS = 14;
+
+// GET /api/vacaciones/dias-extra/panel: solo las personas con días extra otorgados
+interface DiasExtraPanel {
+  clave: string;
+  dias_disponibles: number;
+  vence: string | null;
+  dias_usados: number;
+  dias_pendientes: number;
+}
 // Con 30 días o menos para que caduquen (y días por usar), los días van en rojo
 const AVISO_CADUCAN = 30;
 
@@ -142,6 +151,7 @@ const PanelControlVacaciones: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [abierta, setAbierta] = useState<string | null>(null);
+  const [diasExtra, setDiasExtra] = useState<Record<string, DiasExtraPanel>>({});
 
   useEffect(() => {
     let vivo = true;
@@ -150,6 +160,11 @@ const PanelControlVacaciones: React.FC = () => {
       .then((r) => vivo && setPersonas(r.data))
       .catch(() => vivo && setError("No se pudo cargar el panel de vacaciones."))
       .finally(() => vivo && setCargando(false));
+    // Columna "Días extra": consulta aparte; si falla, la columna queda con guiones
+    axios
+      .get<DiasExtraPanel[]>("/api/vacaciones/dias-extra/panel", { headers: authH() })
+      .then((r) => vivo && setDiasExtra(Object.fromEntries(r.data.map((d) => [d.clave.trim().toUpperCase(), d]))))
+      .catch(() => vivo && setDiasExtra({}));
     return () => {
       vivo = false;
     };
@@ -213,6 +228,7 @@ const PanelControlVacaciones: React.FC = () => {
               <TableCell align="center" sx={celdaEncabezadoSx}>Descuentos</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Solicitados</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Le quedan</TableCell>
+              <TableCell align="center" sx={celdaEncabezadoSx}>Días extra</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Caducan en</TableCell>
               <TableCell sx={celdaEncabezadoSx}>Ciclo actual</TableCell>
             </TableRow>
@@ -229,6 +245,7 @@ const PanelControlVacaciones: React.FC = () => {
                 const conIngreso = p.anios != null;
                 const expandible = p.ciclos.length > 0;
                 const abiertaFila = abierta === p.clave;
+                const extra = diasExtra[p.clave.trim().toUpperCase()];
                 // Los días del ciclo actual caducan el último día del ciclo (el día antes del aniversario).
                 // Sin días por usar, sin fecha de ingreso o sin su primer año: no hay nada que caduque.
                 const diasCaducan =
@@ -308,6 +325,22 @@ const PanelControlVacaciones: React.FC = () => {
                           >
                             {numero(p.dias_quedan ?? 0)}
                           </Typography>
+                        ) : (
+                          guion
+                        )}
+                      </TableCell>
+                      <TableCell align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
+                        {extra ? (
+                          <Tooltip
+                            arrow
+                            title={`Vigentes ${extra.dias_disponibles} · Usados ${extra.dias_usados} · Pedidos ${
+                              extra.dias_pendientes
+                            }${extra.vence ? ` · Vence ${fechaCorta(extra.vence)}` : ""}`}
+                          >
+                            <Typography component="span" sx={{ fontSize: 14, fontWeight: 700, color: "#EF6C00", cursor: "help" }}>
+                              {extra.dias_disponibles} / {extra.dias_usados}
+                            </Typography>
+                          </Tooltip>
                         ) : (
                           guion
                         )}

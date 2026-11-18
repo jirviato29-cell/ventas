@@ -55,6 +55,8 @@ interface Solicitud extends Aprobaciones {
   estado: string | null;
   nota: string | null;
   cubre_clave: string | null;
+  // "vacaciones" o "dia_extra" (el día extra no usa el saldo de vacaciones)
+  tipo?: string | null;
   // Saldo del año de vacaciones (GET /vacaciones/solicitudes); null sin fecha de ingreso
   modulos?: string[];
   dias_corresponden?: number | null;
@@ -262,6 +264,9 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
 
   // "Le quedan": saldo del año de vacaciones; rojo si esta solicitud no le alcanza
   const celdaQuedan = (s: Solicitud) => {
+    if (s.tipo === "dia_extra") {
+      return <Typography sx={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.2 }}>No usa saldo</Typography>;
+    }
     if (s.dias_quedan == null || s.dias_corresponden == null) {
       return <Typography sx={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.2 }}>Sin fecha de ingreso</Typography>;
     }
@@ -371,6 +376,9 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                       <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
                         {textoRango(inicio, fin)}
                       </Typography>
+                      {s.tipo === "dia_extra" && (
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#EF6C00" }}>Día extra</Typography>
+                      )}
                       {s.nota?.trim() && (
                         <Typography sx={{ fontSize: 12, color: "#64748b", whiteSpace: "normal", maxWidth: 220 }}>
                           {s.nota.trim()}
