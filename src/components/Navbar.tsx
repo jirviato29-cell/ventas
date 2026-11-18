@@ -689,7 +689,7 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
                 <ListItemText primary="📺 PANTALLA TV" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
-              {/* Para admin, Mi Perfil se llama Vacaciones (el piloto lo sigue viendo como MI PERFIL) */}
+              {/* Para admin, Mi Perfil se llama Vacaciones (el piloto lo ve como MIS VACACIONES) */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
                 <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
                 <ListItemText primary="VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
@@ -833,7 +833,7 @@ const Navbar = () => {
           {(rolToken === "asesor" || rolToken === "encargado") && esPilotoMiPerfil(usuario) && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
               <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
-              <ListItemText primary="MI PERFIL" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 

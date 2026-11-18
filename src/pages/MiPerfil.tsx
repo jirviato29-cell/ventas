@@ -315,6 +315,28 @@ const textoBloque = (b: Bloque) => {
   return `${nombreMes(b.inicio)}: ${dia(b.inicio)} al ${dia(b.fin)} (${b.dias} días)`;
 };
 
+// Barra de selección: azul marino, rojo del descuento y estilo del botón principal
+const NAVY_BARRA = "#0D2B6B";
+const ROJO_BARRA = "#C62828";
+const BOTON_NAVY = {
+  bgcolor: NAVY_BARRA,
+  color: "#fff",
+  fontWeight: 700,
+  boxShadow: "none",
+  "&:hover": { bgcolor: "#0a2155", boxShadow: "none" },
+};
+const MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+// Chip de la barra: "Ene 19 – 24 · 6 días", "Mar 16 · 1 día" o "Nov 30 – Dic 5 · 6 días"
+const textoChipBloque = (b: Bloque) => {
+  const mes = (clave: string) => MES_CORTO[Number(clave.slice(5, 7)) - 1];
+  const dia = (clave: string) => Number(clave.slice(8));
+  const dias = `${b.dias} ${b.dias === 1 ? "día" : "días"}`;
+  if (b.dias === 1) return `${mes(b.inicio)} ${dia(b.inicio)} · ${dias}`;
+  const fin = cruzaDeMes(b) ? `${mes(b.fin)} ${dia(b.fin)}` : `${dia(b.fin)}`;
+  return `${mes(b.inicio)} ${dia(b.inicio)} – ${fin} · ${dias}`;
+};
+
 // ¿Quedan al menos DIAS_ENTRE_BLOQUES días libres entre la fecha y el bloque?
 const respetaSeparacion = (clave: string, b: Bloque) =>
   clave > sumarDias(b.fin, DIAS_ENTRE_BLOQUES) || clave < sumarDias(b.inicio, -DIAS_ENTRE_BLOQUES);
@@ -1367,9 +1389,9 @@ const MiPerfil = () => {
       maxWidth={pestana >= 2 && !vistaPiloto ? false : "lg"}
       sx={{ mt: 4, mb: vistaPiloto && total > 0 && pestana === 1 ? 12 : 6 }}
     >
-      {/* Para admin la página es "Vacaciones"; el piloto la sigue viendo como "Mi Perfil" */}
+      {/* Para admin la página es "Vacaciones"; el piloto la ve como "Mis vacaciones" */}
       <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", mb: 2 }}>
-        {esAdmin ? "Vacaciones" : "Mi Perfil"}
+        {esAdmin ? "Vacaciones" : "Mis vacaciones"}
       </Typography>
 
       <Tabs
@@ -1417,35 +1439,93 @@ const MiPerfil = () => {
       {/* La selección (calendario y empleado) vive en este componente, así que no se pierde al cambiar de pestaña */}
       {pestana === 1 && (
         <>
-          {/* Barra de acciones arriba del calendario (admin y piloto): contador, bloques y botones */}
+          {/* Barra de acciones arriba del calendario (admin y piloto): se queda fija arriba al bajar */}
           <Paper
+            elevation={0}
             sx={{
+              position: "sticky",
+              top: 8,
+              zIndex: 10,
               mb: 2,
               p: 2,
               display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1.5,
-              border: `1px solid ${total > 0 ? AZUL : BORDE_TABLA}`,
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "stretch", sm: "center" },
+              gap: 2,
+              bgcolor: "#fff",
+              border: `1px solid ${BORDE_TABLA}`,
+              borderLeft: `6px solid ${NAVY_BARRA}`,
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(15,23,42,0.08)",
             }}
           >
-            <Box>
-              <Typography sx={{ fontWeight: 700, color: AZUL }}>
-                {total} {total === 1 ? "día seleccionado" : "días seleccionados"} en total
-              </Typography>
-              {bloques.map((b) => (
-                <Typography key={b.inicio} sx={{ fontSize: 14, color: "#475569", mt: 0.25 }}>
-                  {textoBloque(b)}
-                </Typography>
-              ))}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1, minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                  bgcolor: total > 0 ? NAVY_BARRA : "#cbd5e1",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CalendarMonthIcon sx={{ fontSize: 22 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                {total > 0 ? (
+                  <>
+                    <Typography sx={{ fontWeight: 700, fontSize: 18, color: "#1e293b", lineHeight: 1.3 }}>
+                      {total} {total === 1 ? "día seleccionado" : "días seleccionados"}
+                    </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mt: 0.75 }}>
+                      {bloques.map((b) => (
+                        <Chip
+                          key={b.inicio}
+                          size="small"
+                          label={textoChipBloque(b)}
+                          sx={{ bgcolor: "#f1f5f9", color: "#334155", fontWeight: 600, fontSize: 12, height: 24 }}
+                        />
+                      ))}
+                    </Box>
+                  </>
+                ) : (
+                  <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#64748b" }}>
+                    {vistaPiloto ? "Selecciona tus días en el calendario" : "Selecciona los días en el calendario"}
+                  </Typography>
+                )}
+              </Box>
             </Box>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              <Button variant="outlined" size="small" disabled={total === 0} onClick={() => setSeleccionadas(new Set())}>
-                Limpiar selección
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                flexWrap: { sm: "wrap" },
+                justifyContent: { sm: "flex-end" },
+                alignItems: { xs: "stretch", sm: "center" },
+                gap: 1,
+              }}
+            >
+              <Button
+                variant="text"
+                size="small"
+                disabled={total === 0}
+                onClick={() => setSeleccionadas(new Set())}
+                sx={{ color: "#64748b", fontWeight: 600 }}
+              >
+                Limpiar
               </Button>
               {vistaPiloto ? (
-                <Button variant="contained" size="small" disabled={total === 0 || !miClave} onClick={abrirConfirmacion}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={total === 0 || !miClave}
+                  onClick={abrirConfirmacion}
+                  sx={BOTON_NAVY}
+                >
                   SOLICITAR VACACIONES
                 </Button>
               ) : (
@@ -1456,6 +1536,7 @@ const MiPerfil = () => {
                       size="small"
                       disabled={modoFalta || total === 0}
                       onClick={abrirConfirmacion}
+                      sx={BOTON_NAVY}
                     >
                       REGISTRAR VACACIONES
                     </Button>
@@ -1465,11 +1546,17 @@ const MiPerfil = () => {
                       size="small"
                       disabled={modoFalta && total === 0}
                       onClick={() => (modoFalta ? abrirConfirmacion() : cambiarModoFalta(true))}
-                      sx={{ bgcolor: "#000", color: "#fff", "&:hover": { bgcolor: "#333" } }}
+                      sx={{ bgcolor: "#000", color: "#fff", fontWeight: 700, boxShadow: "none", "&:hover": { bgcolor: "#333" } }}
                     >
                       REGISTRAR FALTA INJUSTIFICADA
                     </Button>
-                    <Button variant="outlined" size="small" color="warning" disabled={modoFalta} onClick={abrirDescuento}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={modoFalta}
+                      onClick={abrirDescuento}
+                      sx={{ color: ROJO_BARRA, borderColor: ROJO_BARRA, fontWeight: 700, "&:hover": { borderColor: ROJO_BARRA, bgcolor: "#fdecea" } }}
+                    >
                       REGISTRAR DESCUENTO
                     </Button>
                   </>
@@ -1488,6 +1575,9 @@ const MiPerfil = () => {
                 position: "fixed",
                 right: { xs: 16, sm: 24 },
                 bottom: { xs: 16, sm: 24 },
+                // En celular no se sale de la pantalla
+                maxWidth: "calc(100vw - 32px)",
+                whiteSpace: "nowrap",
                 zIndex: 1200,
                 borderRadius: "999px",
                 px: 3,
