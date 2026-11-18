@@ -2294,11 +2294,9 @@ const FormularioVentaMultiple = () => {
                 </Box>
               );
             })}
-          </Box>
-
-          {esVentaCarrito && promosBoton.length > 0 && (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', mt: 1.5 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Promos (3x2, 2da al 30%): solo debajo de Accesorio, en su misma columna; si hay varias, apiladas */}
+            {esVentaCarrito && promosBoton.length > 0 && (
+              <Box sx={{ gridColumn: '1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {promosBoton.map((c) => {
                   const activa = promoSel === c;
                   const cp = colorPromo(c);
@@ -2328,8 +2326,8 @@ const FormularioVentaMultiple = () => {
                   );
                 })}
               </Box>
-            </Box>
-          )}
+            )}
+          </Box>
 
           {esVentaCarrito && (
             <Box sx={{ mt: 2.5 }}>
