@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -27,6 +28,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  createFilterOptions,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
@@ -178,6 +180,13 @@ const anioDeVacaciones = (saldo: SaldoApi | null, clave: string) =>
 const disponiblesDe = (a: SaldoAnioApi) => a.dias_quedan - a.dias_solicitados_pendientes;
 
 const numeroDias = (n: number) => n.toLocaleString("es-MX", { maximumFractionDigits: 1 });
+
+// ¿Quién te cubre?: lista de GET /mi-perfil/cubre-opciones; "No tengo quién me cubra" se guarda como NULL
+type CubreOpcion = { clave: string; nombre: string | null };
+const SIN_CUBRE: CubreOpcion = { clave: "", nombre: null };
+const textoCubre = (o: CubreOpcion) =>
+  o === SIN_CUBRE ? "No tengo quién me cubra" : o.nombre ? `${o.clave} · ${o.nombre}` : o.clave;
+const filtroCubre = createFilterOptions<CubreOpcion>({ stringify: textoCubre });
 
 const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
@@ -987,8 +996,10 @@ const MiPerfil = () => {
   const [guardando, setGuardando] = useState(false);
   const [erroresRegistro, setErroresRegistro] = useState<string[]>([]);
   const [porBorrar, setPorBorrar] = useState<VacacionApi | null>(null);
-  // Diálogo de solicitud del piloto: quién cubre es opcional (si no, admin lo asigna)
-  const [cubrePiloto, setCubrePiloto] = useState("");
+  // Diálogo de solicitud del piloto: quién cubre se elige de la lista (o "No tengo quién me cubra")
+  const [cubrePiloto, setCubrePiloto] = useState<CubreOpcion | null>(null);
+  const [cubreOpciones, setCubreOpciones] = useState<CubreOpcion[] | null>(null);
+  const [errorCubre, setErrorCubre] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   // Saldo del año de vacaciones actual y del siguiente de la persona elegida (admin) o propia (piloto)
   const [saldo, setSaldo] = useState<SaldoApi | null>(null);
@@ -1110,6 +1121,42 @@ const MiPerfil = () => {
     };
   }, [empleadoSel, esAdmin, miClave, recargaVac]);
 
+  // ¿Quién te cubre?: al abrir el diálogo del piloto se pide la lista para esas fechas.
+  // Con varios bloques, solo quien está libre en todos (cada bloque es un POST que el backend valida).
+  useEffect(() => {
+    if (!confirmando || esAdmin) return;
+    const bloquesCubre = agruparBloques(seleccionadas);
+    if (bloquesCubre.length === 0) return;
+    let vivo = true;
+    setCubreOpciones(null);
+    setErrorCubre(null);
+    Promise.all(
+      bloquesCubre.map((b) =>
+        axios.get<CubreOpcion[]>("/api/mi-perfil/cubre-opciones", {
+          params: { inicio: b.inicio, fin: b.fin },
+          headers: authH(),
+        })
+      )
+    )
+      .then((respuestas) => {
+        if (!vivo) return;
+        const [primera, ...resto] = respuestas.map((r) => r.data);
+        const enTodos = primera.filter((o) => resto.every((lista) => lista.some((x) => x.clave === o.clave)));
+        setCubreOpciones(enTodos);
+        setCubrePiloto((actual) =>
+          actual && actual !== SIN_CUBRE && !enTodos.some((o) => o.clave === actual.clave) ? null : actual
+        );
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setCubreOpciones([]);
+        setErrorCubre(mensajeError(e, "No se pudo cargar la lista de quién te cubre."));
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [confirmando, esAdmin, seleccionadas]);
+
   const diasVacaciones = useMemo(() => diasDeVacaciones(periodos, hoy), [periodos, hoy]);
   // Tabla: de la más reciente a la más vieja
   const periodosTabla = useMemo(
@@ -1147,7 +1194,7 @@ const MiPerfil = () => {
 
   const abrirConfirmacion = () => {
     setNota("");
-    setCubrePiloto("");
+    setCubrePiloto(null);
     setErroresRegistro([]);
     setConfirmando(true);
   };
@@ -1159,7 +1206,7 @@ const MiPerfil = () => {
     if (enviandoRef.current) return;
     enviandoRef.current = true;
     const notaLimpia = nota.trim();
-    const cubre = cubrePiloto.trim().toUpperCase();
+    const cubre = cubrePiloto && cubrePiloto !== SIN_CUBRE ? cubrePiloto.clave : "";
     const fallidos: Bloque[] = [];
     const errores: string[] = [];
     const bloquesPorGuardar = agruparBloques(seleccionadas);
@@ -2220,17 +2267,54 @@ const MiPerfil = () => {
             </Typography>
           ))}
           {vistaPiloto && (
-            <TextField
-              label="¿Quién te cubre? (opcional)"
-              placeholder="A15-CYNNA"
-              helperText="ID de la persona que te cubre. Si lo dejas vacío, lo asigna administración."
+            <Autocomplete
+              options={[...(cubreOpciones ?? []), SIN_CUBRE]}
               value={cubrePiloto}
-              onChange={(e) => setCubrePiloto(e.target.value.toUpperCase())}
+              onChange={(_, valor) => setCubrePiloto(valor)}
+              getOptionLabel={textoCubre}
+              isOptionEqualToValue={(a, b) => a.clave === b.clave}
+              // "No tengo quién me cubra" siempre al final, aunque se esté buscando
+              filterOptions={(opciones, estado) => [
+                ...filtroCubre(
+                  opciones.filter((o) => o !== SIN_CUBRE),
+                  estado
+                ),
+                SIN_CUBRE,
+              ]}
+              renderOption={(props, o) => (
+                <li
+                  {...props}
+                  key={o.clave || "sin-cubre"}
+                  style={o === SIN_CUBRE ? { borderTop: "1px solid #e2e8f0", fontStyle: "italic", color: "#475569" } : undefined}
+                >
+                  {textoCubre(o)}
+                </li>
+              )}
+              loading={cubreOpciones === null}
+              loadingText="Cargando…"
+              disabled={guardando}
               fullWidth
               size="small"
               sx={{ mt: 2 }}
-              inputProps={{ maxLength: 50 }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="¿Quién te cubre?"
+                  placeholder="Busca por clave o nombre"
+                  helperText={
+                    cubreOpciones?.length === 0 && !errorCubre
+                      ? "No hay nadie disponible para esas fechas."
+                      : "Solo aparece quien puede cubrirte en esas fechas."
+                  }
+                  inputProps={{ ...params.inputProps, autoComplete: "off" }}
+                />
+              )}
             />
+          )}
+          {vistaPiloto && errorCubre && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              {errorCubre}
+            </Alert>
           )}
           <TextField
             label="Nota (opcional)"
