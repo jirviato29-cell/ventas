@@ -43,6 +43,8 @@ const AZUL = "#1565C0";
 const NARANJA = "#f97316";
 const LIMITE = 30;
 const TEXTO_MAXIMO = 2000;
+// Avisos para RH y encargados: llevan a su pantalla aunque no tengan Mi Perfil
+const ENLACE_REVISAR = "/revisar-solicitudes";
 
 interface CoberturaApi {
   vacacion_id: number;
@@ -287,7 +289,7 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
                 )}
               </Box>
             )}
-            {a.enlace && conEnlace && (
+            {a.enlace && (conEnlace || a.enlace === ENLACE_REVISAR) && (
               <Button
                 size="small"
                 variant="outlined"
@@ -298,7 +300,7 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
                 }}
                 sx={{ color: AZUL, borderColor: AZUL, whiteSpace: "nowrap", flexShrink: 0 }}
               >
-                {esAdmin ? "Ver solicitudes" : "Ver mis solicitudes"}
+                {a.enlace === ENLACE_REVISAR ? "Revisar solicitud" : esAdmin ? "Ver solicitudes" : "Ver mis solicitudes"}
               </Button>
             )}
           </Paper>

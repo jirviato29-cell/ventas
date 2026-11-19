@@ -17,6 +17,8 @@ export interface NoLeidos {
   avisos: number;
   mensajes: number;
   total: number;
+  // Solo RH y encargados: solicitudes donde les falta marcar su columna (no viene si no revisa)
+  por_revisar?: number;
 }
 
 // Quién PREGUNTA; si de verdad tiene MENSAJES lo contesta el backend

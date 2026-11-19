@@ -61,6 +61,7 @@ import PantallaTVPage from './pages/PantallaTVPage';
 import PortabilidadesPage from './pages/PortabilidadesPage';
 import MetasPage from './pages/MetasPage';
 import MiPerfil from './pages/MiPerfil';
+import RevisarSolicitudes from './pages/RevisarSolicitudes';
 import MensajesPage from './pages/MensajesPage';
 import OfertasComercialesPage from './pages/OfertasComercialesPage';
 import ComoVanPage from './pages/ComoVanPage';
@@ -153,6 +154,7 @@ const App: React.FC = () => {
     { path: '/metas', element: <RutaProtegida><MetasPage /></RutaProtegida> },
     { path: '/mi-perfil', element: <RutaProtegida><MiPerfil /></RutaProtegida> },
     { path: '/mensajes', element: <RutaProtegida><MensajesPage /></RutaProtegida> },
+    { path: '/revisar-solicitudes', element: <RutaProtegida><RevisarSolicitudes /></RutaProtegida> },
     { path: '/ofertas', element: <RutaProtegida><OfertasComercialesPage /></RutaProtegida> },
     { path: '/como-van', element: <RutaProtegida><ComoVanPage /></RutaProtegida> },
     { path: '/chats-whatsapp', element: <RutaProtegida><SoloAdmin><ChatsWhatsappPage /></SoloAdmin></RutaProtegida> },

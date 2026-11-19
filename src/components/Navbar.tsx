@@ -172,6 +172,8 @@ const Navbar = () => {
   const { estado: estadoMensajes, noLeidos } = useNoLeidos(puedeVerMensajes(rolToken, usuario));
   const verMensajes = estadoMensajes === "si";
   const totalNoLeidos = verMensajes ? noLeidos?.total ?? 0 : 0;
+  // RH y encargados: el backend agrega por_revisar al contador; a los demás no les llega el campo
+  const porRevisar = verMensajes && typeof noLeidos?.por_revisar === "number" ? noLeidos.por_revisar : null;
 
   // CHATS WHATSAPP (bot de ventas): solo admin. Globito = chats que esperan al asesor.
   const resumenChats = useResumenChats(rolToken === "admin");
@@ -878,6 +880,17 @@ const Navbar = () => {
           )}
           {/* MENSAJES para asesor y encargado (solo aparece si el backend lo tiene abierto para ellos) */}
           {(rolToken === "asesor" || rolToken === "encargado") && itemMensajes}
+          {/* REVISAR SOLICITUDES: solo RH y encargados (el backend manda por_revisar) */}
+          {(rolToken === "asesor" || rolToken === "encargado") && porRevisar !== null && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/revisar-solicitudes")}>
+              <ListItemIcon sx={drawerIconSx}>
+                <Badge badgeContent={porRevisar} color="error" max={99}>
+                  <FactCheckIcon />
+                </Badge>
+              </ListItemIcon>
+              <ListItemText primary="REVISAR SOLICITUDES" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
 
           {/* ── DIRECCIÓN ─────────────────────────────────────────────────────── */}
           {rolToken === "direccion" && (
