@@ -34,7 +34,7 @@ import CelebrationIcon from "@mui/icons-material/Celebration";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import { keyframes } from "@mui/material/styles";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 import MisDatosPerfil, {
@@ -944,7 +944,13 @@ const MiPerfil = () => {
   const [estadoPiloto, setEstadoPiloto] = useState<EstadoPiloto>("cargando");
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [aviso, setAviso] = useState<string | null>(null);
-  const [pestana, setPestana] = useState(0);
+  // ?tab=solicitudes (botón de los avisos de MENSAJES) abre "Mis solicitudes"
+  const [parametros] = useSearchParams();
+  const tabUrl = parametros.get("tab");
+  const [pestana, setPestana] = useState(() => (tabUrl === "solicitudes" ? 2 : 0));
+  useEffect(() => {
+    if (tabUrl === "solicitudes") setPestana(2);
+  }, [tabUrl]);
   const [empleadoSel, setEmpleadoSel] = useState<string | null>(null);
   const { personas, cargando: cargandoPersonas, error: errorPersonas } = usePersonas(rol === "admin");
   const [periodos, setPeriodos] = useState<VacacionApi[]>([]);

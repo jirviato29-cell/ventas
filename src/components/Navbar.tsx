@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   AppBar, Toolbar, Typography, Button, Box, MenuItem, Menu,
   IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Collapse,
+  Divider, Collapse, Badge,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -37,10 +37,12 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 import PercentIcon from "@mui/icons-material/Percent";
 import TodayIcon from "@mui/icons-material/Today";
 import HistoryIcon from "@mui/icons-material/History";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
 import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
+import { puedeVerMensajes, useNoLeidos } from "./useNoLeidos";
 
 const navBtnSx = {
   color: "#f1f5f9",
@@ -163,6 +165,21 @@ const Navbar = () => {
     setDrawerOpen(false);
   };
 
+  // MENSAJES: por ahora admin y piloto. Quien no lo tiene no hace ninguna petición.
+  const verMensajes = puedeVerMensajes(rolToken, usuario);
+  const noLeidos = useNoLeidos(verMensajes);
+  const totalNoLeidos = verMensajes ? noLeidos?.total ?? 0 : 0;
+  const itemMensajes = verMensajes && (
+    <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mensajes")}>
+      <ListItemIcon sx={drawerIconSx}>
+        <Badge badgeContent={totalNoLeidos} color="error" max={99}>
+          <MailOutlineIcon />
+        </Badge>
+      </ListItemIcon>
+      <ListItemText primary="MENSAJES" primaryTypographyProps={{ fontWeight: 700 }} />
+    </ListItemButton>
+  );
+
   return (
     <>
       <AppBar position="static">
@@ -170,7 +187,14 @@ const Navbar = () => {
 
           {/* LEFT: menú (☰) pegado al logo de ATO */}
           <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: "#f1f5f9", p: 0.5 }}>
-            <MenuIcon />
+            {/* Globito rojo también en ☰ (el menú lateral casi siempre está cerrado); sin MENSAJES, igual que antes */}
+            {verMensajes ? (
+              <Badge badgeContent={totalNoLeidos} color="error" max={99}>
+                <MenuIcon />
+              </Badge>
+            ) : (
+              <MenuIcon />
+            )}
           </IconButton>
 
           {/* LEFT: Logo + user info */}
@@ -694,6 +718,7 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
                 <ListItemText primary="VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
+              {itemMensajes}
             </>
           )}
 
@@ -831,10 +856,13 @@ const Navbar = () => {
 
           {/* ── MI PERFIL (piloto): asesor/encargado de la lista PILOTO_MI_PERFIL ── */}
           {(rolToken === "asesor" || rolToken === "encargado") && esPilotoMiPerfil(usuario) && (
-            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
-              <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
-              <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
-            </ListItemButton>
+            <>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
+                <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
+                <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
+              {itemMensajes}
+            </>
           )}
 
           {/* ── DIRECCIÓN ─────────────────────────────────────────────────────── */}
