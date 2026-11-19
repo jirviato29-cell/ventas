@@ -797,13 +797,13 @@ const Navbar = () => {
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
+                <ListItemText primary="MIS COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
               {rolToken === "encargado" && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
                   <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
-                  <ListItemText primary="TASAS DE COMISIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
+                  <ListItemText primary="LISTAS DE COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario/modulo")}>
@@ -834,10 +834,7 @@ const Navbar = () => {
                   <ListItemText primary="¿CÓMO VAN?" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
-                <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
-                <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
+              {/* ESTADÍSTICAS (/ranking) ya no va en el menú de asesor ni encargado */}
             </>
           )}
 
@@ -850,13 +847,13 @@ const Navbar = () => {
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
-                <ListItemText primary="COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
+                <ListItemText primary="MIS COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               {/* Tasas de comisión (antes pestaña COMISIONES de arriba). Asesor de Cadenas: "LISTA DE COMISIONES" en sus pestañas. */}
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=tasas")}>
                   <ListItemIcon sx={drawerIconSx}><PercentIcon /></ListItemIcon>
-                  <ListItemText primary="TASAS DE COMISIÓN" primaryTypographyProps={{ fontWeight: 700 }} />
+                  <ListItemText primary="LISTAS DE COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
@@ -873,12 +870,6 @@ const Navbar = () => {
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
                   <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
                   <ListItemText primary="¿CÓMO VAN?" primaryTypographyProps={{ fontWeight: 700 }} />
-                </ListItemButton>
-              )}
-              {!modulo.toLowerCase().includes("cadena") && (
-                <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ranking")}>
-                  <ListItemIcon sx={drawerIconSx}><BarChartIcon /></ListItemIcon>
-                  <ListItemText primary="ESTADÍSTICAS" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
             </>
@@ -942,8 +933,8 @@ const Navbar = () => {
             </ListItemButton>
           )}
 
-          {/* ── ASISTENCIA (asistencia propia) ─────────────────────────────────── */}
-          {mostrarMiAsistencia && (
+          {/* ── ASISTENCIA (asistencia propia): ya no va en el menú de asesor ni encargado ── */}
+          {mostrarMiAsistencia && rolToken !== "asesor" && rolToken !== "encargado" && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-asistencia")}>
               <ListItemIcon sx={drawerIconSx}><EmojiPeopleIcon /></ListItemIcon>
               <ListItemText primary="ASISTENCIA" primaryTypographyProps={{ fontWeight: 700 }} />
