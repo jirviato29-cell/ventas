@@ -38,11 +38,13 @@ import PercentIcon from "@mui/icons-material/Percent";
 import TodayIcon from "@mui/icons-material/Today";
 import HistoryIcon from "@mui/icons-material/History";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
 import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 import { puedeVerMensajes, useNoLeidos } from "./useNoLeidos";
+import { useResumenChats } from "./useChatsWhatsapp";
 
 const navBtnSx = {
   color: "#f1f5f9",
@@ -169,6 +171,10 @@ const Navbar = () => {
   const verMensajes = puedeVerMensajes(rolToken, usuario);
   const noLeidos = useNoLeidos(verMensajes);
   const totalNoLeidos = verMensajes ? noLeidos?.total ?? 0 : 0;
+
+  // CHATS WHATSAPP (bot de ventas): solo admin. Globito = chats que esperan al asesor.
+  const resumenChats = useResumenChats(rolToken === "admin");
+  const chatsPendientes = resumenChats?.pendientes ?? 0;
   const itemMensajes = verMensajes && (
     <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mensajes")}>
       <ListItemIcon sx={drawerIconSx}>
@@ -547,6 +553,14 @@ const Navbar = () => {
           {/* ── ADMIN ─────────────────────────────────────────────────────────── */}
           {rolToken === "admin" && (
             <>
+              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/chats-whatsapp")}>
+                <ListItemIcon sx={drawerIconSx}>
+                  <Badge badgeContent={chatsPendientes} color="success" max={99}>
+                    <WhatsAppIcon />
+                  </Badge>
+                </ListItemIcon>
+                <ListItemText primary="CHATS WHATSAPP" primaryTypographyProps={{ fontWeight: 700 }} />
+              </ListItemButton>
               {/* VENTAS expandible */}
               <ListItemButton sx={drawerItemSx} onClick={() => setVentasOpen((o) => !o)}>
                 <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>

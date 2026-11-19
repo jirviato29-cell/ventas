@@ -64,6 +64,7 @@ import MiPerfil from './pages/MiPerfil';
 import MensajesPage from './pages/MensajesPage';
 import OfertasComercialesPage from './pages/OfertasComercialesPage';
 import ComoVanPage from './pages/ComoVanPage';
+import ChatsWhatsappPage from './pages/ChatsWhatsappPage';
 import CandadoAsistencia from './components/CandadoAsistencia';
 
 const RutaProtegida: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -154,6 +155,7 @@ const App: React.FC = () => {
     { path: '/mensajes', element: <RutaProtegida><MensajesPage /></RutaProtegida> },
     { path: '/ofertas', element: <RutaProtegida><OfertasComercialesPage /></RutaProtegida> },
     { path: '/como-van', element: <RutaProtegida><ComoVanPage /></RutaProtegida> },
+    { path: '/chats-whatsapp', element: <RutaProtegida><SoloAdmin><ChatsWhatsappPage /></SoloAdmin></RutaProtegida> },
   ]);
 
   return routes;
