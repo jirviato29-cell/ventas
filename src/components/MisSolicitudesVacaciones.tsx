@@ -55,6 +55,10 @@ interface Solicitud extends Aprobaciones {
   estado: string | null;
   nota: string | null;
   cubre_clave: string | null;
+  // Confirmación de quien cubre: null sin respuesta, true confirmó, false no puede
+  cubre_confirmado?: boolean | null;
+  cubre_confirmado_por?: string | null;
+  cubre_confirmado_at?: string | null;
   // "vacaciones" o "dia_extra" (el día extra no usa el saldo de vacaciones)
   tipo?: string | null;
   // Saldo del año de vacaciones (GET /vacaciones/solicitudes); null sin fecha de ingreso
@@ -103,6 +107,22 @@ const textoRango = (inicio: string, fin: string) =>
 const celdaEncabezadoSx = { fontSize: 13, px: 1, whiteSpace: "nowrap" };
 const celdaSx = { fontSize: 13, px: 1, py: 0.75 };
 const COLUMNAS = 9;
+// Fila en rojo cuando empieza en estos días (o ya empezó) y todavía no están los 4 en verde
+const DIAS_ALERTA = 7;
+
+// Celda "¿Quién cubre?": amarillo esperando, verde confirmó, rojo no puede
+const ESTILO_CUBRE = {
+  esperando: { fondo: "#FEF9C3", borde: "#CA8A04", color: "#854D0E", texto: "Esperando respuesta" },
+  confirmo: { fondo: "#DCFCE7", borde: "#16A34A", color: VERDE, texto: "Confirmó" },
+  noPuede: { fondo: "#FDE2E2", borde: ROJO, color: ROJO, texto: "No puede · elige a otra persona" },
+} as const;
+
+const hoyLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const diasEntre = (desde: string, hasta: string) =>
+  Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000);
 // "¿Quién cubre?" más bajo que el Autocomplete normal (letra 13 y menos relleno)
 const selectorCompactoSx = {
   "& .MuiAutocomplete-root .MuiInputBase-root": { fontSize: 13, py: "1px" },
@@ -120,6 +140,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [exito, setExito] = useState<string | null>(null);
   const [ocupada, setOcupada] = useState<number | null>(null);
   const [decisionGerencia, setDecisionGerencia] = useState<{ solicitud: Solicitud; aprobado: boolean } | null>(null);
   const [busqueda, setBusqueda] = useState("");
@@ -172,6 +193,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
           ? prev.map((s) => (s.id === id ? { ...s, ...data } : s))
           : prev.filter((s) => s.id !== id)
       );
+      if (data.estado === "autorizada") setExito("Autorizada: ya están RH, Encargado, Gerencia y quien cubre en verde.");
       cerrarEdicion(id, nivel);
     } catch (e) {
       setAviso(mensajeError(e, "No se pudo guardar la decisión."));
@@ -180,7 +202,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     }
   };
 
-  // Lo que decide Gerencia ya no se puede cambiar, por eso pide confirmación
+  // Gerencia pide confirmación: su rechazo es inmediato y final
   const pulsarNivel = (s: Solicitud, nivel: Nivel, aprobado: boolean) => {
     if (nivel === "gerencia") setDecisionGerencia({ solicitud: s, aprobado });
     else marcar(s.id, nivel, aprobado);
@@ -206,6 +228,80 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     } finally {
       setOcupada(null);
     }
+  };
+
+  // Reenvía "¿Confirmas que vas a cubrir...?" (sirve para las que ya estaban antes de este flujo)
+  const reenviarAviso = async (s: Solicitud) => {
+    setOcupada(s.id);
+    try {
+      await axios.post(`${API}/vacaciones/${s.id}/cubre/recordatorio`, {}, { headers: authH() });
+      setExito(`Aviso reenviado a ${claveCubre(s.cubre_clave)}.`);
+    } catch (e) {
+      setAviso(mensajeError(e, "No se pudo reenviar el aviso."));
+    } finally {
+      setOcupada(null);
+    }
+  };
+
+  // "Confirmar por él": quien cubre avisó por otro medio
+  const confirmarPorEl = async (s: Solicitud) => {
+    setOcupada(s.id);
+    try {
+      const { data } = await axios.patch<Solicitud>(
+        `${API}/vacaciones/${s.id}/cubre/confirmacion`,
+        { confirmo: true },
+        { headers: authH() }
+      );
+      setSolicitudes((prev) =>
+        data.estado === "solicitada"
+          ? prev.map((x) => (x.id === s.id ? { ...x, ...data } : x))
+          : prev.filter((x) => x.id !== s.id)
+      );
+      setExito(
+        data.estado === "autorizada"
+          ? "Autorizada: ya están RH, Encargado, Gerencia y quien cubre en verde."
+          : `Confirmado por ${claveCubre(s.cubre_clave)}.`
+      );
+    } catch (e) {
+      setAviso(mensajeError(e, "No se pudo confirmar."));
+    } finally {
+      setOcupada(null);
+    }
+  };
+
+  // Debajo del selector: estado de la confirmación y acciones
+  const estadoCubre = (s: Solicitud) => {
+    if (!claveCubre(s.cubre_clave)) return null;
+    const estilo =
+      s.cubre_confirmado === true ? ESTILO_CUBRE.confirmo : s.cubre_confirmado === false ? ESTILO_CUBRE.noPuede : ESTILO_CUBRE.esperando;
+    const quien = s.cubre_confirmado_por ? ` · ${s.cubre_confirmado_por} · ${momento(s.cubre_confirmado_at ?? null)}` : "";
+    return (
+      <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.5 }}>
+        <Tooltip arrow title={s.cubre_confirmado != null ? `Respondió${quien}` : "Todavía no responde"}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: estilo.color, cursor: "help" }}>{estilo.texto}</Typography>
+        </Tooltip>
+        {s.cubre_confirmado == null && (
+          <Button
+            size="small"
+            disabled={ocupada === s.id}
+            onClick={() => reenviarAviso(s)}
+            sx={{ minWidth: 0, fontSize: 11, px: 0.5, py: 0, textTransform: "none" }}
+          >
+            Reenviar aviso
+          </Button>
+        )}
+        {s.cubre_confirmado !== true && (
+          <Button
+            size="small"
+            disabled={ocupada === s.id}
+            onClick={() => confirmarPorEl(s)}
+            sx={{ minWidth: 0, fontSize: 11, px: 0.5, py: 0, textTransform: "none", color: VERDE }}
+          >
+            Confirmar por él
+          </Button>
+        )}
+      </Box>
+    );
   };
 
   // Celda de un nivel: botones ✓ ✗; ya marcado, el chip (clic para cambiar la decisión)
@@ -290,6 +386,8 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     );
   };
 
+  const hoy = hoyLocal();
+
   // Todos los hooks van arriba: este return no puede quedar antes de ninguno
   if (cargando) {
     return (
@@ -327,7 +425,9 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
             ),
           }}
         />
-        <Typography sx={{ fontSize: 12, color: "#64748b" }}>La decisión final es de Gerencia</Typography>
+        <Typography sx={{ fontSize: 12, color: "#64748b" }}>
+          Se autoriza con RH, Encargado, Gerencia y quien cubre en verde · Gerencia ✗ rechaza de inmediato
+        </Typography>
       </Box>
 
       {/* En computadora las columnas se reparten el ancho; solo en celular se desliza de lado */}
@@ -359,8 +459,19 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                 const fin = s.fecha_fin.slice(0, 10);
                 // El backend solo acepta personas con ID englobado, y nadie se cubre a sí mismo
                 const opcionesCubre = personas.filter((p) => p.englobado && p.clave !== claveCubre(s.clave));
+                // Nada automático al llegar la fecha: solo se marca en rojo para que admin lo resuelva
+                const faltan = diasEntre(hoy, inicio);
+                const alerta = faltan <= DIAS_ALERTA;
+                const estiloCubre =
+                  !claveCubre(s.cubre_clave)
+                    ? null
+                    : s.cubre_confirmado === true
+                    ? ESTILO_CUBRE.confirmo
+                    : s.cubre_confirmado === false
+                    ? ESTILO_CUBRE.noPuede
+                    : ESTILO_CUBRE.esperando;
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow key={s.id} sx={alerta ? { bgcolor: "#FEF2F2", "& > td:first-of-type": { boxShadow: `inset 4px 0 0 ${ROJO}` } } : undefined}>
                     <TableCell sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
                       {/* El nombre completo va en el tooltip */}
                       <Tooltip arrow title={s.nombre_completo?.trim().toUpperCase() || "Sin nombre"}>
@@ -379,6 +490,17 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                       {s.tipo === "dia_extra" && (
                         <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#EF6C00" }}>Día extra</Typography>
                       )}
+                      {alerta && (
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: ROJO }}>
+                          {faltan > 1
+                            ? `Empieza en ${faltan} días sin completar`
+                            : faltan === 1
+                            ? "Empieza mañana sin completar"
+                            : faltan === 0
+                            ? "Empieza hoy sin completar"
+                            : `Empezó hace ${-faltan} ${faltan === -1 ? "día" : "días"} sin completar`}
+                        </Typography>
+                      )}
                       {s.nota?.trim() && (
                         <Typography sx={{ fontSize: 12, color: "#64748b", whiteSpace: "normal", maxWidth: 220 }}>
                           {s.nota.trim()}
@@ -393,7 +515,15 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                         {celdaNivel(s, nivel, texto)}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...celdaSx, width: "22%", minWidth: 170, ...selectorCompactoSx }}>
+                    <TableCell
+                      sx={{
+                        ...celdaSx,
+                        width: "22%",
+                        minWidth: 170,
+                        ...selectorCompactoSx,
+                        ...(estiloCubre ? { bgcolor: estiloCubre.fondo, boxShadow: `inset 0 0 0 2px ${estiloCubre.borde}` } : {}),
+                      }}
+                    >
                       <SelectorEmpleado
                         personas={opcionesCubre}
                         cargando={cargandoPersonas}
@@ -402,6 +532,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                         etiqueta="Cubre"
                         margenInferior={0}
                       />
+                      {estadoCubre(s)}
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, minWidth: 80 }}>
                       {celdaQuedan(s)}
@@ -424,10 +555,12 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
         <DialogContent>
           {decisionGerencia && (
             <Typography sx={{ color: "#475569" }}>
-              ¿{decisionGerencia.aprobado ? "Autorizar" : "Rechazar"} las vacaciones de{" "}
+              ¿{decisionGerencia.aprobado ? "Aprobar" : "Rechazar"} las vacaciones de{" "}
               {decisionGerencia.solicitud.nombre_completo?.trim() || decisionGerencia.solicitud.clave.trim()} del{" "}
-              {fechaCorta(decisionGerencia.solicitud.fecha_inicio)} al {fechaCorta(decisionGerencia.solicitud.fecha_fin)}?
-              Esta decisión es final.
+              {fechaCorta(decisionGerencia.solicitud.fecha_inicio)} al {fechaCorta(decisionGerencia.solicitud.fecha_fin)}?{" "}
+              {decisionGerencia.aprobado
+                ? "Quedan autorizadas cuando RH, Encargado, Gerencia y quien cubre estén en verde."
+                : "Se rechazan de inmediato. Esta decisión es final."}
             </Typography>
           )}
         </DialogContent>
@@ -441,10 +574,21 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
             disabled={ocupada !== null}
             onClick={confirmarGerencia}
           >
-            {decisionGerencia?.aprobado ? "Autorizar" : "Rechazar"}
+            {decisionGerencia?.aprobado ? "Aprobar" : "Rechazar"}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={exito !== null}
+        autoHideDuration={4000}
+        onClose={() => setExito(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setExito(null)} sx={{ width: "100%" }}>
+          {exito}
+        </Alert>
+      </Snackbar>
 
       <Snackbar
         open={aviso !== null}

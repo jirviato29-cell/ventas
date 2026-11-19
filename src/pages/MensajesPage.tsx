@@ -28,7 +28,13 @@ import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 import { authH } from "../components/MisDatosPerfil";
 import { mensajeError } from "../components/MisSolicitudesVacaciones";
-import { INTERVALO_NO_LEIDOS_MS, puedeVerMensajes, refrescarNoLeidos, useNoLeidos } from "../components/useNoLeidos";
+import {
+  INTERVALO_NO_LEIDOS_MS,
+  puedeVerMensajes,
+  puedeVerMisSolicitudes,
+  refrescarNoLeidos,
+  useNoLeidos,
+} from "../components/useNoLeidos";
 
 // MENSAJES: avisos automáticos (los crea el backend) y conversación empleado <-> administración.
 // La bandeja de administración es compartida entre todos los admins.
@@ -38,6 +44,11 @@ const NARANJA = "#f97316";
 const LIMITE = 30;
 const TEXTO_MAXIMO = 2000;
 
+interface CoberturaApi {
+  vacacion_id: number;
+  puede_responder: boolean;
+  respuesta: boolean | null;
+}
 interface AvisoApi {
   id: number;
   tipo: string;
@@ -46,6 +57,8 @@ interface AvisoApi {
   sobre_clave: string | null;
   creado_at: string | null;
   leido_at: string | null;
+  // Solo en "¿Confirmas que vas a cubrir...?": botones CONFIRMO / NO PUEDO
+  cobertura?: CoberturaApi | null;
 }
 interface MensajeApi {
   id: number;
@@ -79,6 +92,10 @@ const COLOR_TIPO: Record<string, string> = {
   solicitud_autorizada: "#2E7D32",
   solicitud_rechazada: "#C62828",
   dia_extra_otorgado: "#EF6C00",
+  encargado_aprobo: "#2E7D32",
+  cubrir_solicitud: "#7B1FA2",
+  cubre_no_puede: "#C62828",
+  cobertura_cancelada: "#64748b",
 };
 
 // Refresca mientras la pestaña está a la vista (mismo ritmo que el contador)
@@ -95,8 +112,10 @@ const useCadaMinuto = (fn: () => void, activo: boolean) => {
 };
 
 // ───────────────────────────── Avisos ─────────────────────────────
-const ListaAvisos: React.FC<{ esAdmin: boolean }> = ({ esAdmin }) => {
+const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdmin, conEnlace }) => {
   const navigate = useNavigate();
+  const [respondiendo, setRespondiendo] = useState<number | null>(null);
+  const [porNoPoder, setPorNoPoder] = useState<AvisoApi | null>(null);
   const [avisos, setAvisos] = useState<AvisoApi[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +164,31 @@ const ListaAvisos: React.FC<{ esAdmin: boolean }> = ({ esAdmin }) => {
       refrescarNoLeidos();
     } catch (e) {
       setError(mensajeError(e, "No se pudieron marcar los avisos."));
+    }
+  };
+
+  // CONFIRMO / NO PUEDO de "¿Confirmas que vas a cubrir...?"
+  const responder = async (a: AvisoApi, confirmo: boolean) => {
+    if (!a.cobertura || respondiendo !== null) return;
+    setRespondiendo(a.id);
+    try {
+      await axios.post(`/api/mensajes/cobertura/${a.cobertura.vacacion_id}`, { confirmo }, { headers: authH() });
+      const ahora = new Date().toISOString();
+      setAvisos((prev) =>
+        prev.map((x) =>
+          x.cobertura?.vacacion_id === a.cobertura?.vacacion_id
+            ? { ...x, leido_at: x.leido_at ?? ahora, cobertura: { ...x.cobertura!, puede_responder: false, respuesta: confirmo } }
+            : x
+        )
+      );
+      setPorNoPoder(null);
+      refrescarNoLeidos();
+    } catch (e) {
+      setError(mensajeError(e, "No se pudo guardar tu respuesta."));
+      setPorNoPoder(null);
+      cargar();
+    } finally {
+      setRespondiendo(null);
     }
   };
 
@@ -203,7 +247,47 @@ const ListaAvisos: React.FC<{ esAdmin: boolean }> = ({ esAdmin }) => {
               </Typography>
               <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>{momento(a.creado_at)}</Typography>
             </Box>
-            {a.enlace && (
+            {a.cobertura && (
+              <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }} onClick={(ev) => ev.stopPropagation()}>
+                {a.cobertura.puede_responder ? (
+                  <>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      disabled={respondiendo !== null}
+                      onClick={() => responder(a, true)}
+                    >
+                      Confirmo
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      disabled={respondiendo !== null}
+                      onClick={() => setPorNoPoder(a)}
+                    >
+                      No puedo
+                    </Button>
+                  </>
+                ) : (
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: a.cobertura.respuesta === true ? "#2E7D32" : a.cobertura.respuesta === false ? "#C62828" : "#94a3b8",
+                    }}
+                  >
+                    {a.cobertura.respuesta === true
+                      ? "Confirmado"
+                      : a.cobertura.respuesta === false
+                      ? "Dijiste que no puedes"
+                      : "Ya no aplica"}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            {a.enlace && conEnlace && (
               <Button
                 size="small"
                 variant="outlined"
@@ -225,6 +309,29 @@ const ListaAvisos: React.FC<{ esAdmin: boolean }> = ({ esAdmin }) => {
           Ver avisos anteriores
         </Button>
       )}
+
+      <Dialog open={porNoPoder !== null} onClose={() => respondiendo === null && setPorNoPoder(null)} fullWidth maxWidth="xs">
+        <DialogTitle>No puedo cubrir</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#475569" }}>
+            {porNoPoder?.texto.replace(/^¿Confirmas que vas a cubrir a /, "¿Seguro que no puedes cubrir a ")} Se le avisará a
+            administración para que elija a otra persona.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={respondiendo !== null} onClick={() => setPorNoPoder(null)}>
+            Regresar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={respondiendo !== null}
+            onClick={() => porNoPoder && responder(porNoPoder, false)}
+          >
+            {respondiendo !== null ? "Enviando…" : "No puedo"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
@@ -592,12 +699,15 @@ const MensajesAdmin: React.FC = () => {
 const MensajesPage: React.FC = () => {
   const rol = obtenerRolDesdeToken();
   const usuario = localStorage.getItem("usuario");
-  const permitido = puedeVerMensajes(rol, usuario);
   const esAdmin = rol === "admin";
-  const noLeidos = useNoLeidos(permitido);
+  // Si de verdad tiene MENSAJES lo contesta el backend (variable MENSAJES_PARA_TODOS)
+  const { noLeidos, estado } = useNoLeidos(puedeVerMensajes(rol, usuario));
   const [pestana, setPestana] = useState(0);
 
-  if (!permitido) {
+  if (estado === "cargando") {
+    return <CircularProgress size={28} sx={{ display: "block", mx: "auto", my: 6 }} />;
+  }
+  if (estado === "no") {
     return (
       <Container maxWidth="md" sx={{ mt: 4 }}>
         <Alert severity="info">MENSAJES todavía no está disponible para tu usuario.</Alert>
@@ -627,7 +737,7 @@ const MensajesPage: React.FC = () => {
           <Tab key={i} label={l} sx={{ textTransform: "none", fontWeight: 600, "&.Mui-selected": { color: AZUL } }} />
         ))}
       </Tabs>
-      {pestana === 0 && <ListaAvisos esAdmin={esAdmin} />}
+      {pestana === 0 && <ListaAvisos esAdmin={esAdmin} conEnlace={puedeVerMisSolicitudes(rol, usuario)} />}
       {pestana === 1 &&
         (esAdmin ? (
           <MensajesAdmin />

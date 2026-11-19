@@ -4,8 +4,11 @@ import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
 
 // Contador de MENSAJES sin leer (globito rojo del menú).
 // Ligero a propósito: una sola consulta compartida por toda la app, cada 60 s, en pausa con la
-// pestaña oculta y sin ninguna petición para quien no tiene MENSAJES. Usa fetch (no axios) para
-// que un 401 del contador NO dispare el cierre de sesión forzado del interceptor: solo se detiene.
+// pestaña oculta. Usa fetch (no axios) para que un 401 del contador NO dispare el cierre de sesión
+// forzado del interceptor: solo se detiene.
+// Quién tiene MENSAJES lo decide el backend (variable MENSAJES_PARA_TODOS en Render): admin, asesor y
+// encargado preguntan; con 403 se detienen (una sola consulta por sesión) y el menú no muestra MENSAJES.
+// Dirección, contador y demás roles no hacen ninguna petición.
 
 export const INTERVALO_NO_LEIDOS_MS = 60_000;
 const URL_NO_LEIDOS = "/api/mensajes/no-leidos";
@@ -16,9 +19,15 @@ export interface NoLeidos {
   total: number;
 }
 
-// Por ahora: admin y el piloto de Mi Perfil (mismo criterio que el backend)
-export const puedeVerMensajes = (rol: string | null, usuario: string | null | undefined) =>
+// Quién PREGUNTA; si de verdad tiene MENSAJES lo contesta el backend
+export const puedeVerMensajes = (rol: string | null, _usuario?: string | null) =>
+  rol === "admin" || rol === "asesor" || rol === "encargado";
+
+// "Ver mis solicitudes" lleva a Mi Perfil, que por ahora solo usan admin y el piloto
+export const puedeVerMisSolicitudes = (rol: string | null, usuario: string | null | undefined) =>
   rol === "admin" || ((rol === "asesor" || rol === "encargado") && esPilotoMiPerfil(usuario));
+
+export type EstadoMensajes = "cargando" | "si" | "no";
 
 // ── Estado compartido (un solo contador aunque el hook se use en varios lugares) ──
 let valor: NoLeidos | null = null;
@@ -76,17 +85,28 @@ export const reiniciarNoLeidos = () => {
   detenidoPara = null;
 };
 
-export const useNoLeidos = (habilitado: boolean): NoLeidos | null => {
+const estadoActual = (habilitado: boolean): EstadoMensajes => {
+  const token = tokenActual();
+  if (!habilitado || !token || token === detenidoPara || tokenVencido(token)) return "no";
+  return valor !== null && tokenDelValor === token ? "si" : "cargando";
+};
+
+export const useNoLeidos = (habilitado: boolean): { noLeidos: NoLeidos | null; estado: EstadoMensajes } => {
   const [actual, setActual] = useState<NoLeidos | null>(() =>
     habilitado && tokenDelValor === tokenActual() ? valor : null
   );
+  const [estado, setEstado] = useState<EstadoMensajes>(() => estadoActual(habilitado));
 
   useEffect(() => {
     if (!habilitado) {
       setActual(null);
+      setEstado("no");
       return;
     }
-    const oyente = (v: NoLeidos | null) => setActual(tokenDelValor === tokenActual() ? v : null);
+    const oyente = (v: NoLeidos | null) => {
+      setActual(tokenDelValor === tokenActual() ? v : null);
+      setEstado(estadoActual(true));
+    };
     oyentes.add(oyente);
     oyente(valor);
 
@@ -106,5 +126,5 @@ export const useNoLeidos = (habilitado: boolean): NoLeidos | null => {
     };
   }, [habilitado]);
 
-  return actual;
+  return { noLeidos: actual, estado };
 };

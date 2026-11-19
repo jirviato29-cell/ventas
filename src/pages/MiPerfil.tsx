@@ -148,6 +148,8 @@ interface VacacionApi {
   aprobado_rh?: boolean | null;
   aprobado_encargado?: boolean | null;
   aprobado_gerencia?: boolean | null;
+  // Confirmación de quien cubre: null sin respuesta, true confirmó, false no puede
+  cubre_confirmado?: boolean | null;
 }
 
 // Saldo del año de vacaciones (GET /api/vacaciones/saldo y /api/mi-perfil/vacaciones/saldo)
@@ -876,6 +878,28 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
                       {p.cubre_clave?.trim() || "—"}
+                      {/* Pendiente: se autoriza con RH, Encargado, Gerencia y quien cubre confirmado */}
+                      {(p.estado ?? "").trim().toLowerCase() === "solicitada" &&
+                        (p.cubre_clave?.trim() ? (
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color:
+                                p.cubre_confirmado === true ? "#15803D" : p.cubre_confirmado === false ? "#B91C1C" : "#A16207",
+                            }}
+                          >
+                            {p.cubre_confirmado === true
+                              ? "Confirmó"
+                              : p.cubre_confirmado === false
+                              ? "No puede · RH elegirá a otra persona"
+                              : `Falta que ${p.cubre_clave.trim()} confirme`}
+                          </Typography>
+                        ) : (
+                          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#A16207" }}>
+                            Falta elegir quién te cubre
+                          </Typography>
+                        ))}
                     </TableCell>
                     {NIVELES_APROBACION.map(({ nivel }) => (
                       <TableCell key={nivel} align="center" sx={celdaSx}>

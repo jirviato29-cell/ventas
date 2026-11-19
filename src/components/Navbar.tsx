@@ -167,9 +167,10 @@ const Navbar = () => {
     setDrawerOpen(false);
   };
 
-  // MENSAJES: por ahora admin y piloto. Quien no lo tiene no hace ninguna petición.
-  const verMensajes = puedeVerMensajes(rolToken, usuario);
-  const noLeidos = useNoLeidos(verMensajes);
+  // MENSAJES: admin, asesor y encargado preguntan; se muestra solo si el backend contestó que sí
+  // (variable MENSAJES_PARA_TODOS en Render). Dirección, contador y demás no hacen ninguna petición.
+  const { estado: estadoMensajes, noLeidos } = useNoLeidos(puedeVerMensajes(rolToken, usuario));
+  const verMensajes = estadoMensajes === "si";
   const totalNoLeidos = verMensajes ? noLeidos?.total ?? 0 : 0;
 
   // CHATS WHATSAPP (bot de ventas): solo admin. Globito = chats que esperan al asesor.
@@ -870,14 +871,13 @@ const Navbar = () => {
 
           {/* ── MI PERFIL (piloto): asesor/encargado de la lista PILOTO_MI_PERFIL ── */}
           {(rolToken === "asesor" || rolToken === "encargado") && esPilotoMiPerfil(usuario) && (
-            <>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
-                <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
-                <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
-              {itemMensajes}
-            </>
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
+              <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
+              <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
           )}
+          {/* MENSAJES para asesor y encargado (solo aparece si el backend lo tiene abierto para ellos) */}
+          {(rolToken === "asesor" || rolToken === "encargado") && itemMensajes}
 
           {/* ── DIRECCIÓN ─────────────────────────────────────────────────────── */}
           {rolToken === "direccion" && (
