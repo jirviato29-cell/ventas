@@ -513,7 +513,21 @@ const Navbar = () => {
 
         <List disablePadding>
 
-          {/* ── REGISTRAR VENTA: primero del menú (mismos roles que antes) ── */}
+          {/* ── MENSAJES: primer renglón para quien lo tiene (admin, asesor, encargado; lo decide el backend) ── */}
+          {itemMensajes}
+          {/* REVISAR SOLICITUDES: solo RH y encargados (el backend manda por_revisar) */}
+          {(rolToken === "asesor" || rolToken === "encargado") && porRevisar !== null && (
+            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/revisar-solicitudes")}>
+              <ListItemIcon sx={drawerIconSx}>
+                <Badge badgeContent={porRevisar} color="error" max={99}>
+                  <FactCheckIcon />
+                </Badge>
+              </ListItemIcon>
+              <ListItemText primary="REVISAR SOLICITUDES" primaryTypographyProps={{ fontWeight: 700 }} />
+            </ListItemButton>
+          )}
+
+          {/* ── REGISTRAR VENTA (mismos roles que antes) ── */}
           {(rolToken === "admin" || rolToken === "encargado" || rolToken === "asesor") && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas")}>
               <ListItemIcon sx={drawerIconSx}><PointOfSaleIcon /></ListItemIcon>
@@ -735,7 +749,6 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
                 <ListItemText primary="VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
-              {itemMensajes}
             </>
           )}
 
@@ -876,19 +889,6 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
               <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
               <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />
-            </ListItemButton>
-          )}
-          {/* MENSAJES para asesor y encargado (solo aparece si el backend lo tiene abierto para ellos) */}
-          {(rolToken === "asesor" || rolToken === "encargado") && itemMensajes}
-          {/* REVISAR SOLICITUDES: solo RH y encargados (el backend manda por_revisar) */}
-          {(rolToken === "asesor" || rolToken === "encargado") && porRevisar !== null && (
-            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/revisar-solicitudes")}>
-              <ListItemIcon sx={drawerIconSx}>
-                <Badge badgeContent={porRevisar} color="error" max={99}>
-                  <FactCheckIcon />
-                </Badge>
-              </ListItemIcon>
-              <ListItemText primary="REVISAR SOLICITUDES" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
