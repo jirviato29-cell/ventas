@@ -33,7 +33,6 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import PercentIcon from "@mui/icons-material/Percent";
 import TodayIcon from "@mui/icons-material/Today";
 import HistoryIcon from "@mui/icons-material/History";
@@ -541,15 +540,6 @@ const Navbar = () => {
             <ListItemButton sx={drawerItemSx} onClick={() => navegar(rolToken === "admin" ? "/recibos" : "/ventas?tab=tickets")}>
               <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
               <ListItemText primary="TICKETS DE VENTA" primaryTypographyProps={{ fontWeight: 700 }} />
-            </ListItemButton>
-          )}
-
-          {/* ── MIS VENTAS (antes pestaña de arriba): encargado y asesor (no Cadenas) ── */}
-          {/* El asesor de Cadenas tiene "MIS ACTIVACIONES" en sus pestañas dentro de este menú. */}
-          {(rolToken === "encargado" || (rolToken === "asesor" && !modulo.toLowerCase().includes("cadena"))) && (
-            <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=mis-ventas")}>
-              <ListItemIcon sx={drawerIconSx}><AssignmentIcon /></ListItemIcon>
-              <ListItemText primary="MIS VENTAS" primaryTypographyProps={{ fontWeight: 700 }} />
             </ListItemButton>
           )}
 
