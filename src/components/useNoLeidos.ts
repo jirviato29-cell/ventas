@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
-import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
+import type { AccesoMiPerfil } from "./useAccesoMiPerfil";
 
 // Contador de MENSAJES sin leer (globito rojo del menú).
 // Ligero a propósito: una sola consulta compartida por toda la app, cada 60 s, en pausa con la
@@ -25,9 +25,9 @@ export interface NoLeidos {
 export const puedeVerMensajes = (rol: string | null, _usuario?: string | null) =>
   rol === "admin" || rol === "asesor" || rol === "encargado";
 
-// "Ver mis solicitudes" lleva a Mi Perfil, que por ahora solo usan admin y el piloto
-export const puedeVerMisSolicitudes = (rol: string | null, usuario: string | null | undefined) =>
-  rol === "admin" || ((rol === "asesor" || rol === "encargado") && esPilotoMiPerfil(usuario));
+// "Ver mis solicitudes" lleva a Mi Perfil: admin, o quien tenga acceso según el backend (useAccesoMiPerfil)
+export const puedeVerMisSolicitudes = (rol: string | null, acceso: AccesoMiPerfil) =>
+  rol === "admin" || ((rol === "asesor" || rol === "encargado") && acceso === "si");
 
 export type EstadoMensajes = "cargando" | "si" | "no";
 

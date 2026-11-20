@@ -39,7 +39,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../ATO.jpeg";
 import { obtenerRolDesdeToken } from "./Token";
-import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
+import { useAccesoMiPerfil } from "./useAccesoMiPerfil";
 import { puedeVerMensajes, useNoLeidos } from "./useNoLeidos";
 import { useResumenChats } from "./useChatsWhatsapp";
 
@@ -167,6 +167,8 @@ const Navbar = () => {
   // MENSAJES: admin, asesor y encargado preguntan; se muestra solo si el backend contestó que sí
   // (variable MENSAJES_PARA_TODOS en Render). Dirección, contador y demás no hacen ninguna petición.
   const { estado: estadoMensajes, noLeidos } = useNoLeidos(puedeVerMensajes(rolToken, usuario));
+  // MIS VACACIONES: lo decide el backend (piloto, o todos con VACACIONES_PARA_TODOS en Render)
+  const accesoMiPerfil = useAccesoMiPerfil(rolToken);
   const verMensajes = estadoMensajes === "si";
   const totalNoLeidos = verMensajes ? noLeidos?.total ?? 0 : 0;
   // RH y encargados: el backend agrega por_revisar al contador; a los demás no les llega el campo
@@ -851,8 +853,8 @@ const Navbar = () => {
             </>
           )}
 
-          {/* ── MI PERFIL (piloto): asesor/encargado de la lista PILOTO_MI_PERFIL ── */}
-          {(rolToken === "asesor" || rolToken === "encargado") && esPilotoMiPerfil(usuario) && (
+          {/* ── MI PERFIL: asesor/encargado con acceso según GET /api/mi-perfil/acceso ── */}
+          {(rolToken === "asesor" || rolToken === "encargado") && accesoMiPerfil === "si" && (
             <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-perfil")}>
               <ListItemIcon sx={drawerIconSx}><AccountCircleIcon /></ListItemIcon>
               <ListItemText primary="MIS VACACIONES" primaryTypographyProps={{ fontWeight: 700 }} />

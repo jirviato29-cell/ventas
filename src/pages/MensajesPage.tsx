@@ -28,6 +28,7 @@ import axios from "axios";
 import { obtenerRolDesdeToken } from "../components/Token";
 import { authH } from "../components/MisDatosPerfil";
 import { mensajeError } from "../components/MisSolicitudesVacaciones";
+import { useAccesoMiPerfil } from "../components/useAccesoMiPerfil";
 import {
   INTERVALO_NO_LEIDOS_MS,
   puedeVerMensajes,
@@ -704,6 +705,7 @@ const MensajesPage: React.FC = () => {
   const esAdmin = rol === "admin";
   // Si de verdad tiene MENSAJES lo contesta el backend (variable MENSAJES_PARA_TODOS)
   const { noLeidos, estado } = useNoLeidos(puedeVerMensajes(rol, usuario));
+  const accesoMiPerfil = useAccesoMiPerfil(rol);
   const [pestana, setPestana] = useState(0);
 
   if (estado === "cargando") {
@@ -739,7 +741,7 @@ const MensajesPage: React.FC = () => {
           <Tab key={i} label={l} sx={{ textTransform: "none", fontWeight: 600, "&.Mui-selected": { color: AZUL } }} />
         ))}
       </Tabs>
-      {pestana === 0 && <ListaAvisos esAdmin={esAdmin} conEnlace={puedeVerMisSolicitudes(rol, usuario)} />}
+      {pestana === 0 && <ListaAvisos esAdmin={esAdmin} conEnlace={puedeVerMisSolicitudes(rol, accesoMiPerfil)} />}
       {pestana === 1 &&
         (esAdmin ? (
           <MensajesAdmin />

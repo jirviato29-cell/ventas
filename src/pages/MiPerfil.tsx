@@ -49,7 +49,7 @@ import MisDatosPerfil, {
 } from "../components/MisDatosPerfil";
 import MisSolicitudesVacaciones, { mensajeError } from "../components/MisSolicitudesVacaciones";
 import PanelControlVacaciones from "../components/PanelControlVacaciones";
-import { esPilotoMiPerfil } from "../data/pilotoMiPerfil";
+import { useAccesoMiPerfil } from "../components/useAccesoMiPerfil";
 
 const AZUL = "#0A2878";
 const ROJO_FONDO = "#FDE2E2";
@@ -966,13 +966,15 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
   );
 };
 
-type EstadoPiloto = "cargando" | "ok" | "rechazado" | "error";
+type EstadoPiloto = "cargando" | "ok" | "error";
 
 const MiPerfil = () => {
   const rol = obtenerRolDesdeToken();
   const esAdmin = rol === "admin";
-  // Piloto: no admin y con su username en PILOTO_MI_PERFIL. Solo ve SUS datos y solo usa /api/mi-perfil/*.
-  const pilotoLocal = !esAdmin && esPilotoMiPerfil(localStorage.getItem("usuario"));
+  // Vista propia (no admin): quien tenga acceso según GET /api/mi-perfil/acceso (piloto, o todos los
+  // asesores/encargados con VACACIONES_PARA_TODOS en Render). Solo ve SUS datos y solo usa /api/mi-perfil/*.
+  const acceso = useAccesoMiPerfil(esAdmin ? null : rol);
+  const pilotoLocal = !esAdmin && acceso === "si";
   const [miPersona, setMiPersona] = useState<Persona | null>(null);
   const [estadoPiloto, setEstadoPiloto] = useState<EstadoPiloto>("cargando");
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
@@ -1028,7 +1030,7 @@ const MiPerfil = () => {
   const hoy = esAdmin ? hoyLocal() : hoyMexico();
   const miClave = miPersona?.clave ?? null;
 
-  // Piloto: sus datos salen del token; se vuelve a revisar la lista con el username que regresa el backend
+  // Vista propia: sus datos salen del token
   useEffect(() => {
     if (!pilotoLocal) return;
     let vivo = true;
@@ -1037,10 +1039,6 @@ const MiPerfil = () => {
       .get<MiPerfilApi>("/api/mi-perfil", { headers: authH() })
       .then((r) => {
         if (!vivo) return;
-        if (!esPilotoMiPerfil(r.data.username)) {
-          setEstadoPiloto("rechazado");
-          return;
-        }
         setMiPersona(personaDesdeMiPerfil(r.data));
         setEstadoPiloto("ok");
       })
@@ -1589,7 +1587,8 @@ const MiPerfil = () => {
   };
 
   // Todos los hooks van arriba: este return no puede quedar antes de ninguno
-  if (!esAdmin && (!pilotoLocal || estadoPiloto === "rechazado")) return <Navigate to="/" replace />;
+  // Sin acceso se regresa al inicio; mientras el backend contesta se queda en "cargando"
+  if (!esAdmin && acceso === "no") return <Navigate to="/" replace />;
 
   const vistaPiloto = !esAdmin;
   const personasVista = esAdmin ? personas : miPersona ? [miPersona] : [];
