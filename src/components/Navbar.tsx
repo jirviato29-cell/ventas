@@ -34,8 +34,6 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import PercentIcon from "@mui/icons-material/Percent";
-import TodayIcon from "@mui/icons-material/Today";
-import HistoryIcon from "@mui/icons-material/History";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { Link, useNavigate } from "react-router-dom";
@@ -778,8 +776,8 @@ const Navbar = () => {
                 <ListItemText primary="KARDEX" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
-                <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
-                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 700 }} />
+                <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
+                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/traspasos")}>
                 <ListItemIcon sx={drawerIconSx}><SwapHorizIcon /></ListItemIcon>
@@ -796,10 +794,6 @@ const Navbar = () => {
                   <ListItemText primary="LISTAS DE COMISIONES" primaryTypographyProps={{ fontWeight: 700 }} />
                 </ListItemButton>
               )}
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/inventario/modulo")}>
-                <ListItemIcon sx={drawerIconSx}><InventoryIcon /></ListItemIcon>
-                <ListItemText primary="INVENTARIO" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
               {/* EQUIPOS TELCEL: solo admin (se quitó de encargado el 2026-11-10) */}
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas/chips")}>
                 <ListItemIcon sx={drawerIconSx}><SimCardIcon /></ListItemIcon>
@@ -809,15 +803,7 @@ const Navbar = () => {
                 <ListItemIcon sx={drawerIconSx}><ContentCutIcon /></ListItemIcon>
                 <ListItemText primary="CORTE" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
-              {/* Antes pestañas de arriba del encargado */}
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=resumen")}>
-                <ListItemIcon sx={drawerIconSx}><TodayIcon /></ListItemIcon>
-                <ListItemText primary="RESUMEN DEL DÍA" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
-              <ListItemButton sx={drawerItemSx} onClick={() => navegar("/ventas?tab=historial")}>
-                <ListItemIcon sx={drawerIconSx}><HistoryIcon /></ListItemIcon>
-                <ListItemText primary="HISTORIAL" primaryTypographyProps={{ fontWeight: 700 }} />
-              </ListItemButton>
+              {/* INVENTARIO, RESUMEN DEL DÍA e HISTORIAL ya no van en el menú del encargado */}
               {!modulo.toLowerCase().includes("cadena") && (
                 <ListItemButton sx={drawerItemSx} onClick={() => navegar("/como-van")}>
                   <ListItemIcon sx={drawerIconSx}><EmojiEventsIcon /></ListItemIcon>
@@ -832,8 +818,8 @@ const Navbar = () => {
           {rolToken === "asesor" && (
             <>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/mi-nomina")}>
-                <ListItemIcon sx={{ ...drawerIconSx, color: "#7c3aed" }}><ReceiptLongIcon /></ListItemIcon>
-                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ color: "#7c3aed", fontWeight: 700 }} />
+                <ListItemIcon sx={drawerIconSx}><ReceiptLongIcon /></ListItemIcon>
+                <ListItemText primary="MI NÓMINA" primaryTypographyProps={{ fontWeight: 700 }} />
               </ListItemButton>
               <ListItemButton sx={drawerItemSx} onClick={() => navegar("/comisiones/usuario")}>
                 <ListItemIcon sx={drawerIconSx}><MonetizationOnIcon /></ListItemIcon>
