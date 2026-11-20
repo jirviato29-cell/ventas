@@ -1850,21 +1850,9 @@ const TabAlertas: React.FC = () => {
   );
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-// TAB ACUMULADO SEMANAL (admin)
-// ═════════════════════════════════════════════════════════════════════════════
-
-const TabAcumulado: React.FC = () => {
-  const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
-  const [cicloSel, setCicloSel] = useState<string>("");
-  const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
-  const [cargando, setCargando] = useState(false);
-  const [descuentosEdit, setDescuentosEdit] = useState<Record<string, string>>({});
-  const [horasExtraEdit, setHorasExtraEdit] = useState<Record<string, number>>({});
-  const [guardarOpen, setGuardarOpen] = useState(false);
-  const [etiqueta, setEtiqueta] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [cicloSnack, setCicloSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
+// Carga /registro/usuarios: horario_semanal, módulo (o tienda en Cadenas) y dia_descanso 'rola' por usuario.
+// Compartido por Acumulado semanal y Semáforo.
+const useInfoUsuariosAsistencia = () => {
   // usuario_id → horario_semanal (solo cuentas con horario). Si la carga falla queda vacío → sin horario.
   const [horariosPorUsuario, setHorariosPorUsuario] = useState<Map<number, DiaTrabajo[]>>(() => new Map());
   // usuario_id → módulo a mostrar (o nombre de la tienda si el módulo es Cadenas)
@@ -1899,6 +1887,151 @@ const TabAcumulado: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+  return { horariosPorUsuario, moduloPorUsuario, rolaPorUsuario };
+};
+
+// Agrupa el acumulado semanal por nombre_englobado ?? username (solo ^[AC]\d+) y calcula
+// horas efectivas por día según horario (incluye regla 'rola'). Compartido por Acumulado y Semáforo.
+const agruparAcumulado = (
+  filas: EmpleadoAcumuladoSemanal[],
+  horariosPorUsuario: Map<number, DiaTrabajo[]>,
+  moduloPorUsuario: Map<number, string>,
+  rolaPorUsuario: Map<number, boolean>,
+): GrupoAcumulado[] => {
+  type Acc = {
+    ids: number[];
+    jornadas: number[];
+    sueldos: number[];
+    nombre_completo: string;
+    diasAgg: Record<string, {
+      horas: number; count: number; entrada: string | null; salida: string | null;
+      crudos: { horas: number; entrada: string | null }[];
+    }>;
+    descansos: Set<string>;
+  };
+  const map = new Map<string, Acc>();
+
+  for (const f of filas) {
+    const key = f.nombre_englobado ?? f.username;
+    if (!/^[AC]\d+/i.test(key)) continue;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ids: [],
+        jornadas: [],
+        sueldos: [],
+        nombre_completo: f.nombre_completo || f.username,
+        diasAgg: {},
+        descansos: new Set<string>(),
+      });
+    }
+    const g = map.get(key)!;
+    g.ids.push(f.usuario_id);
+    g.jornadas.push(f.jornada_fija ?? 0);
+    g.sueldos.push(f.sueldo_base ?? 0);
+    for (const fd of f.descansos ?? []) g.descansos.add(fd);
+
+    for (const [dk, dia] of Object.entries(f.dias)) {
+      if (!g.diasAgg[dk]) {
+        g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, crudos: [] };
+      }
+      if (dia) {
+        const d = g.diasAgg[dk];
+        d.horas += dia.horas;
+        d.count += 1;
+        d.crudos.push({ horas: dia.horas, entrada: dia.entrada });
+        if (d.count === 1) {
+          d.entrada = dia.entrada;
+          d.salida = dia.salida;
+        } else {
+          // 2+ perfiles activos este día → no mostrar tiempos individuales
+          d.entrada = null;
+          d.salida = null;
+        }
+      }
+    }
+  }
+
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, g]) => {
+      if (new Set(g.jornadas).size > 1) {
+        const detail = g.ids.map((id, i) => `id=${id}:${g.jornadas[i]}`).join(", ");
+        console.warn(`[JORNADA_FIJA] ${key}: perfiles con valores distintos antes de unificar → ${detail}`);
+      }
+
+      const jornada = g.jornadas[0] > 0 ? g.jornadas[0] : null;
+      let total_horas = 0;
+      const dias: Record<string, DiaCelda | null> = {};
+      // Horario de la primera cuenta del grupo que tenga horario_semanal con datos
+      const idConHorario = g.ids.find((id) => horariosPorUsuario.has(id));
+      const horario = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
+
+      // Horario aplicado a cada día. Con dia_descanso 'rola' (misma cuenta del horario),
+      // sábado y domingo se resuelven según qué día trabajó.
+      const horarios: Record<string, HorarioDelDia | null> = {};
+      for (const dk of Object.keys(g.diasAgg)) horarios[dk] = horarioDelDia(horario, dk);
+      if (idConHorario !== undefined && rolaPorUsuario.get(idConHorario)) {
+        const claves = Object.keys(g.diasAgg);
+        const sabado = claves.find((dk) => diaSemanaDeFecha(dk) === "sabado");
+        const domingo = claves.find((dk) => diaSemanaDeFecha(dk) === "domingo");
+        const finDeSemana = resolverFinDeSemanaRola(
+          horario, sabado, domingo,
+          (dk) => (g.diasAgg[dk]?.count ?? 0) > 0,
+          (dk) => g.descansos.has(dk),
+        );
+        if (finDeSemana) Object.assign(horarios, finDeSemana);
+      }
+
+      for (const [dk, d] of Object.entries(g.diasAgg)) {
+        if (d.count === 0) {
+          dias[dk] = null;
+        } else {
+          // Sin horario / descanso → horasEfectivas devuelve las horas crudas (igual que antes)
+          const hor = horarios[dk] ?? null;
+          const horasDia = d.crudos.reduce((s, c) => s + horasEfectivas(c.horas, c.entrada, hor), 0);
+          total_horas += horasDia;
+          dias[dk] = {
+            horas: Math.round(horasDia * 100) / 100,
+            entrada: d.entrada,
+            salida: d.salida,
+            multiple: d.count > 1,
+          };
+        }
+      }
+
+      total_horas = Math.round(total_horas * 100) / 100;
+      const horas_extra =
+        jornada !== null
+          ? Math.round((total_horas - jornada) * 100) / 100
+          : null;
+
+      const sueldo_base = Math.max(0, ...g.sueldos);
+
+      const modulos = Array.from(
+        new Set(g.ids.map((id) => moduloPorUsuario.get(id)).filter((m): m is string => !!m))
+      ).join(" · ");
+
+      return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos), modulos, horarios };
+    });
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB ACUMULADO SEMANAL (admin)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const TabAcumulado: React.FC = () => {
+  const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
+  const [cicloSel, setCicloSel] = useState<string>("");
+  const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [descuentosEdit, setDescuentosEdit] = useState<Record<string, string>>({});
+  const [horasExtraEdit, setHorasExtraEdit] = useState<Record<string, number>>({});
+  const [guardarOpen, setGuardarOpen] = useState(false);
+  const [etiqueta, setEtiqueta] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [cicloSnack, setCicloSnack] = useState<{ msg: string; sev: "success" | "error" } | null>(null);
+  const { horariosPorUsuario, moduloPorUsuario, rolaPorUsuario } = useInfoUsuariosAsistencia();
 
   const cargarAcumulado = useCallback(async (cicloInicio: string) => {
     if (!cicloInicio) return;
@@ -1929,124 +2062,10 @@ const TabAcumulado: React.FC = () => {
   }, [cicloSel, cargarAcumulado]);
 
   // ── Agrupar por nombre_englobado ?? username, filtrar ^[AC]\d+ ───────────────
-  const grupos = useMemo((): GrupoAcumulado[] => {
-    type Acc = {
-      ids: number[];
-      jornadas: number[];
-      sueldos: number[];
-      nombre_completo: string;
-      diasAgg: Record<string, {
-        horas: number; count: number; entrada: string | null; salida: string | null;
-        crudos: { horas: number; entrada: string | null }[];
-      }>;
-      descansos: Set<string>;
-    };
-    const map = new Map<string, Acc>();
-
-    for (const f of filas) {
-      const key = f.nombre_englobado ?? f.username;
-      if (!/^[AC]\d+/i.test(key)) continue;
-
-      if (!map.has(key)) {
-        map.set(key, {
-          ids: [],
-          jornadas: [],
-          sueldos: [],
-          nombre_completo: f.nombre_completo || f.username,
-          diasAgg: {},
-          descansos: new Set<string>(),
-        });
-      }
-      const g = map.get(key)!;
-      g.ids.push(f.usuario_id);
-      g.jornadas.push(f.jornada_fija ?? 0);
-      g.sueldos.push(f.sueldo_base ?? 0);
-      for (const fd of f.descansos ?? []) g.descansos.add(fd);
-
-      for (const [dk, dia] of Object.entries(f.dias)) {
-        if (!g.diasAgg[dk]) {
-          g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, crudos: [] };
-        }
-        if (dia) {
-          const d = g.diasAgg[dk];
-          d.horas += dia.horas;
-          d.count += 1;
-          d.crudos.push({ horas: dia.horas, entrada: dia.entrada });
-          if (d.count === 1) {
-            d.entrada = dia.entrada;
-            d.salida = dia.salida;
-          } else {
-            // 2+ perfiles activos este día → no mostrar tiempos individuales
-            d.entrada = null;
-            d.salida = null;
-          }
-        }
-      }
-    }
-
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, g]) => {
-        if (new Set(g.jornadas).size > 1) {
-          const detail = g.ids.map((id, i) => `id=${id}:${g.jornadas[i]}`).join(", ");
-          console.warn(`[JORNADA_FIJA] ${key}: perfiles con valores distintos antes de unificar → ${detail}`);
-        }
-
-        const jornada = g.jornadas[0] > 0 ? g.jornadas[0] : null;
-        let total_horas = 0;
-        const dias: Record<string, DiaCelda | null> = {};
-        // Horario de la primera cuenta del grupo que tenga horario_semanal con datos
-        const idConHorario = g.ids.find((id) => horariosPorUsuario.has(id));
-        const horario = idConHorario !== undefined ? horariosPorUsuario.get(idConHorario) : undefined;
-
-        // Horario aplicado a cada día. Con dia_descanso 'rola' (misma cuenta del horario),
-        // sábado y domingo se resuelven según qué día trabajó.
-        const horarios: Record<string, HorarioDelDia | null> = {};
-        for (const dk of Object.keys(g.diasAgg)) horarios[dk] = horarioDelDia(horario, dk);
-        if (idConHorario !== undefined && rolaPorUsuario.get(idConHorario)) {
-          const claves = Object.keys(g.diasAgg);
-          const sabado = claves.find((dk) => diaSemanaDeFecha(dk) === "sabado");
-          const domingo = claves.find((dk) => diaSemanaDeFecha(dk) === "domingo");
-          const finDeSemana = resolverFinDeSemanaRola(
-            horario, sabado, domingo,
-            (dk) => (g.diasAgg[dk]?.count ?? 0) > 0,
-            (dk) => g.descansos.has(dk),
-          );
-          if (finDeSemana) Object.assign(horarios, finDeSemana);
-        }
-
-        for (const [dk, d] of Object.entries(g.diasAgg)) {
-          if (d.count === 0) {
-            dias[dk] = null;
-          } else {
-            // Sin horario / descanso → horasEfectivas devuelve las horas crudas (igual que antes)
-            const hor = horarios[dk] ?? null;
-            const horasDia = d.crudos.reduce((s, c) => s + horasEfectivas(c.horas, c.entrada, hor), 0);
-            total_horas += horasDia;
-            dias[dk] = {
-              horas: Math.round(horasDia * 100) / 100,
-              entrada: d.entrada,
-              salida: d.salida,
-              multiple: d.count > 1,
-            };
-          }
-        }
-
-        total_horas = Math.round(total_horas * 100) / 100;
-        const horas_extra =
-          jornada !== null
-            ? Math.round((total_horas - jornada) * 100) / 100
-            : null;
-
-        const sueldo_base = Math.max(0, ...g.sueldos);
-
-        const modulos = Array.from(
-          new Set(g.ids.map((id) => moduloPorUsuario.get(id)).filter((m): m is string => !!m))
-        ).join(" · ");
-
-        return { key, ids: g.ids, nombre_completo: g.nombre_completo, dias, total_horas, jornada, horas_extra, sueldo_base, descansos: Array.from(g.descansos), modulos, horarios };
-      });
-  }, [filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario]);
+  const grupos = useMemo(
+    () => agruparAcumulado(filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario),
+    [filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario]
+  );
 
   useEffect(() => {
     const init: Record<string, string> = {};
@@ -2411,6 +2430,199 @@ const TabAcumulado: React.FC = () => {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// TAB SEMÁFORO (admin, solo lectura) — mismo ciclo y endpoint que Acumulado semanal
+// ═════════════════════════════════════════════════════════════════════════════
+
+type EstadoSemaforo = "sin" | "abierto" | "completo" | "descanso";
+
+const COLOR_SEMAFORO: Record<EstadoSemaforo, { bg: string; borde: string; label: string }> = {
+  sin:      { bg: "#e2e8f0", borde: "#cbd5e1", label: "Sin check-in" },
+  abierto:  { bg: "#facc15", borde: "#eab308", label: "Check-in sin check-out" },
+  completo: { bg: "#22c55e", borde: "#16a34a", label: "Check-in y check-out" },
+  descanso: { bg: "#bae6fd", borde: "#7dd3fc", label: "Descanso" },
+};
+
+interface CeldaSemaforo {
+  estado: EstadoSemaforo;
+  entrada: string | null;
+  salida: string | null;
+  horas: number;
+}
+
+const CuadroSemaforo: React.FC<{ estado: EstadoSemaforo }> = ({ estado }) => (
+  <Box
+    sx={{
+      width: 18, height: 18, borderRadius: "4px", mx: "auto",
+      bgcolor: COLOR_SEMAFORO[estado].bg, border: `1px solid ${COLOR_SEMAFORO[estado].borde}`,
+    }}
+  />
+);
+
+const TabSemaforo: React.FC = () => {
+  const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
+  const [cicloSel, setCicloSel] = useState<string>("");
+  const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const { horariosPorUsuario, moduloPorUsuario, rolaPorUsuario } = useInfoUsuariosAsistencia();
+
+  const cargarAcumulado = useCallback(async (cicloInicio: string) => {
+    if (!cicloInicio) return;
+    setCargando(true);
+    try {
+      const { data } = await axios.get<EmpleadoAcumuladoSemanal[]>(
+        `${API}/asistencia/acumulado-semanal?ciclo=${cicloInicio}`,
+        { headers: authH() }
+      );
+      setFilas(data);
+    } catch {
+      setFilas([]);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get<CicloSemana[]>(`${API}/asistencia/ciclos`, { headers: authH() })
+      .then(({ data }) => {
+        setCiclos(data);
+        if (data.length > 0) setCicloSel(data[0].inicio);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (cicloSel) cargarAcumulado(cicloSel);
+  }, [cicloSel, cargarAcumulado]);
+
+  const diasDelCiclo = useMemo(
+    () =>
+      cicloSel
+        ? Array.from({ length: 7 }, (_, i) => {
+            const [y, m, d] = cicloSel.split("-").map(Number);
+            const dt = new Date(y, m - 1, d + i);
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+          })
+        : [],
+    [cicloSel]
+  );
+
+  // Mismos grupos, horas efectivas y descansos (incl. 'rola') que Acumulado semanal
+  const grupos = useMemo(
+    () => agruparAcumulado(filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario),
+    [filas, horariosPorUsuario, moduloPorUsuario, rolaPorUsuario]
+  );
+
+  const empleados = useMemo(() => {
+    const porId = new Map(filas.map((f) => [f.usuario_id, f]));
+    return grupos.map((g) => {
+      const celdas: Record<string, CeldaSemaforo> = {};
+      for (const dk of diasDelCiclo) {
+        const dia = g.dias[dk];
+        if (!dia) {
+          const hor = g.horarios[dk] ?? null;
+          const esDescanso = g.descansos.includes(dk) || (hor?.tipo === "descanso" && !!hor.rola);
+          celdas[dk] = { estado: esDescanso ? "descanso" : "sin", entrada: null, salida: null, horas: 0 };
+          continue;
+        }
+        // Registros crudos de las cuentas del grupo: para saber si quedó algún check-out pendiente
+        const regs = g.ids
+          .map((id) => porId.get(id)?.dias[dk])
+          .filter((r): r is DiaResumen => !!r);
+        const abierto = regs.some((r) => !r.salida);
+        const entradas = regs.map((r) => r.entrada).filter((s): s is string => !!s).sort();
+        const salidas = regs.map((r) => r.salida).filter((s): s is string => !!s).sort();
+        celdas[dk] = {
+          estado: abierto ? "abierto" : "completo",
+          entrada: entradas[0] ?? null,
+          salida: abierto ? null : salidas[salidas.length - 1] ?? null,
+          horas: dia.horas, // horas efectivas, idénticas a Acumulado
+        };
+      }
+      return { key: g.key, celdas };
+    });
+  }, [grupos, filas, diasDelCiclo]);
+
+  const DIAS_COL = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const cell = { py: "4px", px: "4px", border: "1px solid #e2e8f0" };
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <FormControl size="small" sx={{ minWidth: 280 }}>
+          <InputLabel>Ciclo</InputLabel>
+          <Select
+            label="Ciclo"
+            value={cicloSel}
+            onChange={(e) => setCicloSel(e.target.value as string)}
+          >
+            {ciclos.map((c) => (
+              <MenuItem key={c.inicio} value={c.inicio}>
+                {c.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      <Box display="flex" flexWrap="wrap" gap={2} mb={1.5}>
+        {(Object.keys(COLOR_SEMAFORO) as EstadoSemaforo[]).map((e) => (
+          <Box key={e} display="flex" alignItems="center" gap={0.75}>
+            <CuadroSemaforo estado={e} />
+            <Typography sx={{ fontSize: 12, color: "#475569" }}>{COLOR_SEMAFORO[e].label}</Typography>
+          </Box>
+        ))}
+      </Box>
+
+      {cargando ? (
+        <Box textAlign="center" py={4}>
+          <CircularProgress />
+        </Box>
+      ) : empleados.length === 0 ? (
+        <Alert severity="info">Sin datos para este ciclo</Alert>
+      ) : (
+        <TableContainer component={Paper} elevation={1} sx={{ overflowX: "auto" }}>
+          <Table size="small" sx={{ tableLayout: "fixed", minWidth: 960 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                <TableCell sx={{ ...cell, px: "8px", width: 150, fontWeight: 700, color: "#FF6600" }}>Empleado</TableCell>
+                {DIAS_COL.map((d) => (
+                  <TableCell key={d} align="center" sx={{ ...cell, fontWeight: 700, color: "#FF6600" }}>{d}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {empleados.map((emp, idx) => (
+                <TableRow key={emp.key} sx={{ bgcolor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                  <TableCell sx={{ ...cell, px: "8px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {emp.key}
+                  </TableCell>
+                  {diasDelCiclo.map((dk) => {
+                    const c = emp.celdas[dk];
+                    return (
+                      <TableCell key={dk} align="center" sx={cell}>
+                        <CuadroSemaforo estado={c.estado} />
+                        {c.entrada && (
+                          <Box sx={{ fontSize: 10.5, color: "#475569", whiteSpace: "nowrap", mt: 0.25, lineHeight: 1.2 }}>
+                            {c.estado === "completo"
+                              ? `${formatHora24(c.entrada)} · ${c.horas.toFixed(2)}h · ${formatHora24(c.salida)}`
+                              : `${formatHora24(c.entrada)} · — · —`}
+                          </Box>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Box>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 // VISTA ADMIN / DIRECCION
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -2434,6 +2646,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Configurar Tiendas" />
         <Tab label="Alertas" />
         <Tab label="Acumulado semanal" />
+        <Tab label="Semáforo" />
         <Tab label="Quién faltó" />
       </Tabs>
 
@@ -2457,7 +2670,8 @@ const VistaAdmin: React.FC = () => {
       )}
       {tab === 4 && <TabAlertas />}
       {tab === 5 && <TabAcumulado />}
-      {tab === 6 && <TabAnomalias />}
+      {tab === 6 && <TabSemaforo />}
+      {tab === 7 && <TabAnomalias />}
     </Box>
   );
 };
