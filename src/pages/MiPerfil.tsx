@@ -232,18 +232,16 @@ const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
 
 // ── Días de descanso extra: mismas reglas que el backend (app/routers/vacaciones.py) ──
-// Fuera de una ventana especial: 20 días de anticipación (primer día = hoy + 21, como vacaciones usa hoy + 31)
-const DIAS_ANTICIPACION_EXTRA = 21;
-// Ventanas especiales por festivo: se pide sin anticipación (desde mañana). Igual que VENTANAS_DIA_EXTRA del backend.
-const VENTANAS_DIA_EXTRA = [
-  { fechaFestivo: "2026-11-16", inicio: "2026-11-19", fin: "2026-12-04", soloEntreSemana: true },
-];
-const esFinDeSemana = (clave: string) => {
-  const d = new Date(`${clave}T12:00:00`).getDay();
-  return d === 0 || d === 6;
+// Empleado: 5 días de anticipación (primer día = hoy + 5), cualquier día de la semana
+const DIAS_ANTICIPACION_EXTRA = 5;
+// Bloqueado del 15 de diciembre al 6 de enero, cada año (en rojo en el calendario)
+const motivoBloqueoExtra = (clave: string): string | undefined => {
+  const mes = Number(clave.slice(5, 7));
+  const dia = Number(clave.slice(8, 10));
+  return (mes === 12 && dia >= 15) || (mes === 1 && dia <= 6)
+    ? "Del 15 de diciembre al 6 de enero no se pueden pedir días extra."
+    : undefined;
 };
-const ventanaExtra = (clave: string, festivos: string[]) =>
-  VENTANAS_DIA_EXTRA.find((v) => festivos.includes(v.fechaFestivo) && clave >= v.inicio && clave <= v.fin);
 
 // GET /api/vacaciones/dias-extra?clave= (admin) y /api/mi-perfil/dias-extra (piloto)
 interface DiaExtraOtorgadoApi {
@@ -625,7 +623,7 @@ interface MesProps {
   modoFalta: boolean;
   // Días en rojo (periodo de ventas): admin usa PERIODOS_BLOQUEADOS; el piloto, la regla de cualquier año
   motivoBloqueo: (clave: string) => string | undefined;
-  // Modo día extra del piloto: qué días quedan en gris (ventana especial o 20 días); si no, primerDisponible
+  // Modo día extra del piloto: qué días quedan en gris (antes de hoy + 5); si no, primerDisponible
   sinAnticipacionDe?: (clave: string) => boolean;
   onToggle: (clave: string) => void;
 }
@@ -1493,6 +1491,8 @@ const MiPerfil = () => {
               fecha_fin: b.fin,
               dias: b.dias,
               cubre_clave: cubre || undefined,
+              // Eligió "No tengo quién me cubra" (el día extra exige elegir una de las dos)
+              ...(cubrePiloto === SIN_CUBRE ? { sin_cubre: true } : {}),
               nota: notaLimpia || undefined,
               // Sin tipo el backend entiende vacaciones (como siempre)
               ...(modoExtra ? { tipo: "dia_extra" } : {}),
@@ -1678,17 +1678,11 @@ const MiPerfil = () => {
   };
 
   // ── Selección en modo día extra ──
-  // Piloto: ventana especial de su festivo (desde mañana, lun–vie) o 20 días; bloqueos siempre.
+  // Piloto: 5 días de anticipación, lunes a domingo, sin 15 dic – 6 ene; debe elegir quién cubre.
   // Admin: cualquier fecha. Para los dos: que le alcancen, dentro de la vigencia y máximo 6 seguidos
   // junto con vacaciones. No cuentan "uno por mes", los 15 días ni el saldo de vacaciones.
-  const festivosExtra = (diasExtra?.otorgados ?? []).map((o) => o.fecha_festivo);
   const primerDisponibleExtra = sumarDias(hoy, DIAS_ANTICIPACION_EXTRA);
-  const sinAnticipacionExtra = (clave: string) => {
-    if (clave <= hoy) return true;
-    const ventana = ventanaExtra(clave, festivosExtra);
-    if (ventana) return ventana.soloEntreSemana && esFinDeSemana(clave);
-    return clave < primerDisponibleExtra;
-  };
+  const sinAnticipacionExtra = (clave: string) => clave < primerDisponibleExtra;
 
   const toggleDiaExtra = (clave: string) => {
     if (seleccionadas.has(clave)) {
@@ -1707,29 +1701,17 @@ const MiPerfil = () => {
       return;
     }
     if (!esAdmin) {
-      if (clave <= hoy) {
-        setAviso("Los días extra se piden a partir de mañana.");
-        return;
-      }
-      const motivo = motivoBloqueo(clave);
-      if (motivo) {
-        setAviso(motivo.replace("vacaciones", "días extra"));
-        return;
-      }
-      const ventana = ventanaExtra(clave, festivosExtra);
-      if (ventana) {
-        if (ventana.soloEntreSemana && esFinDeSemana(clave)) {
-          setAviso(
-            `Del ${fechaLarga(ventana.inicio)} al ${fechaLarga(ventana.fin)} el día extra solo se puede de lunes a viernes.`
-          );
-          return;
-        }
-      } else if (clave < primerDisponibleExtra) {
+      if (clave < primerDisponibleExtra) {
         setAviso(
-          `Los días extra se piden con 20 días de anticipación. Puedes elegir a partir del ${fechaLarga(
+          `Los días extra se piden con ${DIAS_ANTICIPACION_EXTRA} días de anticipación. Puedes elegir a partir del ${fechaLarga(
             primerDisponibleExtra
           )}.`
         );
+        return;
+      }
+      const motivo = motivoBloqueoExtra(clave);
+      if (motivo) {
+        setAviso(motivo);
         return;
       }
     }
@@ -2520,7 +2502,7 @@ const MiPerfil = () => {
                 seleccionadas={seleccionadas}
                 vacaciones={diasVacaciones}
                 modoFalta={modoFalta || (esAdmin && modoExtra)}
-                motivoBloqueo={motivoBloqueo}
+                motivoBloqueo={vistaPiloto && modoExtra ? motivoBloqueoExtra : motivoBloqueo}
                 sinAnticipacionDe={vistaPiloto && modoExtra ? sinAnticipacionExtra : undefined}
                 onToggle={toggleDia}
               />
@@ -2531,7 +2513,12 @@ const MiPerfil = () => {
             {[
               { texto: "Seleccionado", fondo: COLOR_SELECCION, borde: COLOR_SELECCION, color: "#fff" },
               { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0", color: "#cbd5e1" },
-              { texto: "Periodo bloqueado por ventas", fondo: COLOR_BLOQUEO, borde: COLOR_BLOQUEO, color: "#fff" },
+              {
+                texto: vistaPiloto && modoExtra ? "Bloqueado (15 dic – 6 ene)" : "Periodo bloqueado por ventas",
+                fondo: COLOR_BLOQUEO,
+                borde: COLOR_BLOQUEO,
+                color: "#fff",
+              },
               ...PRIORIDAD_VACACION.map((e) => ({
                 texto:
                   e === "falta" || e === "extra"
@@ -2653,7 +2640,9 @@ const MiPerfil = () => {
                   label="¿Quién te cubre?"
                   placeholder="Busca por clave o nombre"
                   helperText={
-                    cubreOpciones?.length === 0 && !errorCubre
+                    modoExtra && cubrePiloto === null
+                      ? "Obligatorio para el día extra: elige a alguien o \"No tengo quién me cubra\"."
+                      : cubreOpciones?.length === 0 && !errorCubre
                       ? "No hay nadie disponible para esas fechas."
                       : "Solo aparece quien puede cubrirte en esas fechas."
                   }
@@ -2687,7 +2676,11 @@ const MiPerfil = () => {
           <Button disabled={guardando} onClick={() => setConfirmando(false)}>
             Cancelar
           </Button>
-          <Button variant="contained" disabled={guardando || total === 0} onClick={guardarRegistro}>
+          <Button
+            variant="contained"
+            disabled={guardando || total === 0 || (vistaPiloto && modoExtra && cubrePiloto === null)}
+            onClick={guardarRegistro}
+          >
             {guardando ? (vistaPiloto ? "Enviando…" : "Guardando…") : vistaPiloto ? "Solicitar" : "Guardar"}
           </Button>
         </DialogActions>
