@@ -329,6 +329,113 @@ const totalDiasExtra = (periodos: VacacionApi[], hoy: string) =>
 const totalDescuentos = (periodos: VacacionApi[]) =>
   periodos.reduce((suma, p) => (esDescuento(p) ? suma + Number(p.dias ?? 0) : suma), 0);
 
+// ── Historial agrupado por año de vacaciones ──
+// Mismas reglas que el backend (_dias_lft, _aniversario y _calcular_saldo de app/routers/vacaciones.py).
+// El año actual y el siguiente usan tal cual los números de GET .../saldo; los cerrados se calculan aquí igual.
+
+// LFT según la tabla vigente en la FECHA DE ANIVERSARIO del año (reforma "vacaciones dignas", 01/01/2023):
+//  - desde 2023-01-01: 1=12, 2=14, 3=16, 4=18, 5=20; de ahí +2 cada 5 años (6-10=22, 11-15=24, 16-20=26, ...)
+//  - antes:            1=6, 2=8, 3=10, 4=12; 5-9=14, 10-14=16, 15-19=18, 20-24=20, 25-29=22 (+2 cada 5 años)
+const REFORMA_LFT = "2023-01-01";
+const diasLft = (anios: number, aniversarioDelAnio: string) => {
+  if (anios <= 0) return 0;
+  if (aniversarioDelAnio >= REFORMA_LFT) return anios <= 5 ? 10 + 2 * anios : 20 + 2 * Math.ceil((anios - 5) / 5);
+  return anios <= 4 ? 4 + 2 * anios : 14 + 2 * Math.floor((anios - 5) / 5);
+};
+
+// Aniversario de la fecha de ingreso en ese año; quien entró un 29/02 cumple el 28 en años no bisiestos
+const aniversario = (ingreso: string, anio: number) => {
+  const mesDia = ingreso.slice(5, 10);
+  const bisiesto = (anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0;
+  return `${anio}-${mesDia === "02-29" && !bisiesto ? "02-28" : mesDia}`;
+};
+
+// Años cumplidos en esa fecha (antes del ingreso cuenta como 0, igual que el backend)
+const aniosCumplidos = (ingreso: string, fecha: string) => {
+  const anio = Number(fecha.slice(0, 4));
+  return Math.max(0, anio - Number(ingreso.slice(0, 4)) - (aniversario(ingreso, anio) > fecha ? 1 : 0));
+};
+
+interface AnioHistorial {
+  anios: number; // 0 = antes del primer año
+  inicio: string;
+  fin: string;
+  corresponden: number;
+  usados: number; // vacaciones autorizadas/tomadas + descuentos
+  descuentos: number;
+  quedan: number;
+  cerrado: boolean;
+  periodos: VacacionApi[];
+}
+
+// Encabezado: color sólido por año (se repite cada 4); las filas del año, un tono muy claro del mismo color
+const COLORES_ANIO = [
+  { fuerte: "#1565C0", claro: "#EAF2FC" },
+  { fuerte: "#2E7D32", claro: "#EBF5EC" },
+  { fuerte: "#6A1B9A", claro: "#F4EAF8" },
+  { fuerte: "#EF6C00", claro: "#FEF1E6" },
+];
+const COLOR_ANTES_PRIMER_ANIO = { fuerte: "#616161", claro: "#F2F2F2" };
+const colorDeAnio = (anios: number) => (anios <= 0 ? COLOR_ANTES_PRIMER_ANIO : COLORES_ANIO[(anios - 1) % COLORES_ANIO.length]);
+
+// periodos ya vienen ordenados (más reciente arriba). null = no se agrupa (sin fecha de ingreso o sin saldo).
+const agruparPorAnio = (periodos: VacacionApi[], ingreso: string | null | undefined, saldo: SaldoApi | null): AnioHistorial[] | null => {
+  const actual = saldo?.actual;
+  if (!ingreso || !actual) return null;
+  // Solo fin de semana (le tocan ÷ 3): se deduce del saldo del backend, que lo calcula con su horario
+  const referencia = [actual, saldo?.siguiente].find((a): a is SaldoAnioApi => !!a && a.anios > 0);
+  const lftReferencia = referencia ? diasLft(referencia.anios, referencia.ciclo_inicio) : 0;
+  const soloFinDeSemana = !!referencia && referencia.dias_corresponden === Math.ceil(lftReferencia / 3)
+    && referencia.dias_corresponden !== lftReferencia;
+  const anioIngreso = Number(ingreso.slice(0, 4));
+
+  const porAnio = new Map<number, VacacionApi[]>();
+  periodos.forEach((p) => {
+    // Cada periodo cuenta en el año donde empieza
+    const n = aniosCumplidos(ingreso, p.fecha_inicio.slice(0, 10));
+    porAnio.set(n, [...(porAnio.get(n) ?? []), p]);
+  });
+
+  return Array.from(porAnio.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([anios, lista]) => {
+      const inicio = aniversario(ingreso, anioIngreso + anios);
+      const fin = sumarDias(aniversario(ingreso, anioIngreso + anios + 1), -1);
+      let tomados = 0;
+      let descuentos = 0;
+      lista.forEach((p) => {
+        const ini = p.fecha_inicio.slice(0, 10);
+        if (ini < inicio || ini > fin) return; // antes del ingreso: no cuenta en ningún año
+        const estado = (p.estado ?? "").trim().toLowerCase();
+        if (p.tipo === "descuento") descuentos += Number(p.dias ?? 0);
+        else if (p.tipo === "vacaciones" && (estado === "autorizada" || estado === "tomada")) tomados += Number(p.dias ?? 0);
+      });
+      const lft = diasLft(anios, inicio);
+      const corresponden = soloFinDeSemana ? Math.ceil(lft / 3) : lft;
+      const delApi = [actual, saldo?.siguiente].find((a) => a && a.anios === anios);
+      return {
+        anios,
+        inicio,
+        fin,
+        corresponden: delApi ? delApi.dias_corresponden : corresponden,
+        usados: delApi ? delApi.dias_usados : tomados + descuentos,
+        descuentos,
+        quedan: delApi ? delApi.dias_quedan : corresponden - tomados - descuentos,
+        cerrado: anios < actual.anios,
+        periodos: lista,
+      };
+    });
+};
+
+const textoEncabezadoAnio = (a: AnioHistorial) => {
+  const rango = `${fechaCorta(a.inicio)} – ${fechaCorta(a.fin)}`;
+  if (a.anios <= 0) return `ANTES DEL PRIMER AÑO · ${rango}`;
+  const usados = `Usados ${numeroDias(a.usados)}${a.descuentos > 0 ? ` (${numeroDias(a.descuentos)} de descuento)` : ""}`;
+  return a.cerrado
+    ? `AÑO ${a.anios} · ${rango} · Le tocaban ${numeroDias(a.corresponden)} · ${usados}`
+    : `AÑO ${a.anios} · ${rango} · Le tocan ${numeroDias(a.corresponden)} · ${usados} · Le quedan ${numeroDias(a.quedan)}`;
+};
+
 const BORDE_TABLA = "#e2e8f0";
 const celdaEncabezadoSx = { bgcolor: AZUL, color: "#fff", fontWeight: 700, fontSize: 13, borderColor: AZUL };
 const celdaSx = { fontSize: 14, borderRight: `1px solid ${BORDE_TABLA}`, "&:last-of-type": { borderRight: 0 } };
@@ -1636,6 +1743,125 @@ const MiPerfil = () => {
   // En el diálogo: el empleado elegido (admin) o la propia persona (piloto)
   const personaSel = esAdmin ? personas.find((p) => p.clave === empleadoSel) : miPersona;
 
+  // Agrupado por año de vacaciones (sin fecha de ingreso o sin saldo: lista como siempre). No es un hook.
+  const anosHistorial = agruparPorAnio(periodosTabla, personaSel?.fechaIngreso, saldo);
+
+  // Una fila del historial; con color = fila de un año de vacaciones (tono claro + borde izquierdo grueso)
+  const filaPeriodo = (p: VacacionApi, color?: { fuerte: string; claro: string }) => {
+    const categoria = categoriaVacacion(p, hoy);
+    const esFalta = p.tipo === "falta_injustificada";
+    const estilo: EstiloVacacion | null = esDescuento(p)
+      ? ESTILO_DESCUENTO
+      : categoria
+      ? { ...ESTILO_VACACION[categoria], texto: esFalta ? "Falta" : ESTILO_VACACION[categoria].texto }
+      : null;
+    const inicio = p.fecha_inicio.slice(0, 10);
+    const fin = p.fecha_fin.slice(0, 10);
+    const nota = p.nota?.trim();
+    return (
+      <TableRow
+        key={p.id}
+        sx={
+          color
+            ? {
+                bgcolor: color.claro,
+                "@media (hover: hover)": { "&:hover": { boxShadow: "inset 0 0 0 9999px rgba(0,0,0,0.035)" } },
+              }
+            : {
+                "&:nth-of-type(odd)": { bgcolor: "#fff" },
+                "&:nth-of-type(even)": { bgcolor: "#f8fafc" },
+                "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
+              }
+        }
+      >
+        <TableCell
+          sx={{
+            ...celdaSx,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#1e293b",
+            whiteSpace: "nowrap",
+            px: 1,
+            ...(color ? { borderLeft: `5px solid ${color.fuerte}`, pl: 0.75 } : {}),
+          }}
+        >
+          {textoPeriodo(inicio, fin)}
+        </TableCell>
+        <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}>
+          {textoDias(p.dias)}
+        </TableCell>
+        <TableCell align="center" sx={{ ...celdaSx, px: 0.5 }}>
+          <Chip
+            size="small"
+            label={estilo?.texto ?? p.estado ?? "Sin estado"}
+            sx={{
+              maxWidth: "100%",
+              fontWeight: 600,
+              fontSize: 12,
+              bgcolor: estilo?.fondo ?? "#f1f5f9",
+              color: estilo?.color ?? "#475569",
+              border: `1px solid ${estilo?.borde ?? BORDE_TABLA}`,
+              textDecoration: estilo?.tachado ? "line-through" : undefined,
+            }}
+          />
+        </TableCell>
+        <TableCell
+          align="center"
+          sx={{ ...celdaSx, fontSize: 12, color: "#475569", px: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
+          {esFalta ? (
+            "Falta"
+          ) : esDescuento(p) ? (
+            "Descuento"
+          ) : esDiaExtra(p) ? (
+            <Box component="span" sx={{ color: NARANJA_EXTRA, fontWeight: 700 }}>Día extra</Box>
+          ) : (
+            "Vacaciones"
+          )}
+        </TableCell>
+        <TableCell
+          align="center"
+          sx={{ ...celdaSx, fontSize: 12, color: "#475569", px: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
+          {p.cubre_clave?.trim() ? (
+            <Tooltip arrow title={p.cubre_clave.trim()}>
+              <span>{p.cubre_clave.trim()}</span>
+            </Tooltip>
+          ) : (
+            "—"
+          )}
+        </TableCell>
+        <TableCell
+          sx={{ ...celdaSx, fontSize: 13, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
+          {/* Si no cabe se corta con …; completa al pasar el mouse */}
+          {nota ? (
+            <Tooltip arrow title={nota}>
+              <span>{nota}</span>
+            </Tooltip>
+          ) : (
+            "—"
+          )}
+        </TableCell>
+        {!vistaPiloto && (
+          <TableCell align="center" sx={{ ...celdaSx, px: 0 }}>
+            {/* sistema = capturado por admin; ajuste = descuento */}
+            {(p.origen === "sistema" || p.origen === "ajuste") && (
+              <IconButton
+                size="small"
+                aria-label="Borrar periodo"
+                onClick={() => setPorBorrar(p)}
+                sx={{ color: ROJO_TEXTO }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            )}
+          </TableCell>
+        )}
+      </TableRow>
+    );
+  };
+
   // Historial de vacaciones (pestaña "Mis datos"): el del empleado elegido (admin) o el propio (piloto).
   // No es un hook: es solo el JSX de la tabla.
   const historial = seleccionVista && (
@@ -1651,21 +1877,22 @@ const MiPerfil = () => {
       >
         <Table size="small" sx={{ tableLayout: "fixed", width: "100%", minWidth: { xs: 720, md: 0 } }}>
           <colgroup>
-            <col style={{ width: "25%" }} />
+            {/* Periodo en una sola línea; Tipo y Cubre angostos; la Nota se queda con el resto (con …) */}
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "16%" }} />
             <col style={{ width: "11%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "13%" }} />
+            <col style={{ width: "9%" }} />
             <col />
             {!vistaPiloto && <col style={{ width: 44 }} />}
           </colgroup>
           <TableHead>
             <TableRow>
-              <TableCell sx={celdaEncabezadoSx}>Periodo</TableCell>
+              <TableCell sx={{ ...celdaEncabezadoSx, px: 1 }}>Periodo</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Días</TableCell>
               <TableCell align="center" sx={celdaEncabezadoSx}>Estado</TableCell>
-              <TableCell align="center" sx={celdaEncabezadoSx}>Tipo</TableCell>
-              <TableCell align="center" sx={celdaEncabezadoSx}>Cubre</TableCell>
+              <TableCell align="center" sx={{ ...celdaEncabezadoSx, px: 0.5 }}>Tipo</TableCell>
+              <TableCell align="center" sx={{ ...celdaEncabezadoSx, px: 0.5 }}>Cubre</TableCell>
               <TableCell sx={celdaEncabezadoSx}>Nota</TableCell>
               {!vistaPiloto && <TableCell sx={celdaEncabezadoSx} aria-label="Acciones" />}
             </TableRow>
@@ -1684,94 +1911,24 @@ const MiPerfil = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              periodosTabla.map((p) => {
-                const categoria = categoriaVacacion(p, hoy);
-                const esFalta = p.tipo === "falta_injustificada";
-                const estilo: EstiloVacacion | null = esDescuento(p)
-                  ? ESTILO_DESCUENTO
-                  : categoria
-                  ? { ...ESTILO_VACACION[categoria], texto: esFalta ? "Falta" : ESTILO_VACACION[categoria].texto }
-                  : null;
-                const inicio = p.fecha_inicio.slice(0, 10);
-                const fin = p.fecha_fin.slice(0, 10);
-                const nota = p.nota?.trim();
-                return (
-                  <TableRow
-                    key={p.id}
-                    sx={{
-                      "&:nth-of-type(odd)": { bgcolor: "#fff" },
-                      "&:nth-of-type(even)": { bgcolor: "#f8fafc" },
-                      "@media (hover: hover)": { "&:hover": { bgcolor: "rgba(10,40,120,0.05)" } },
-                    }}
-                  >
-                    <TableCell sx={{ ...celdaSx, fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
-                      {textoPeriodo(inicio, fin)}
-                    </TableCell>
-                    <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}>
-                      {textoDias(p.dias)}
-                    </TableCell>
-                    <TableCell align="center" sx={{ ...celdaSx, px: 0.5 }}>
-                      <Chip
-                        size="small"
-                        label={estilo?.texto ?? p.estado ?? "Sin estado"}
-                        sx={{
-                          maxWidth: "100%",
-                          fontWeight: 600,
-                          fontSize: 12,
-                          bgcolor: estilo?.fondo ?? "#f1f5f9",
-                          color: estilo?.color ?? "#475569",
-                          border: `1px solid ${estilo?.borde ?? BORDE_TABLA}`,
-                          textDecoration: estilo?.tachado ? "line-through" : undefined,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569" }}>
-                      {esFalta ? (
-                        "Falta"
-                      ) : esDescuento(p) ? (
-                        "Descuento"
-                      ) : esDiaExtra(p) ? (
-                        <Box component="span" sx={{ color: NARANJA_EXTRA, fontWeight: 700 }}>Día extra</Box>
-                      ) : (
-                        "Vacaciones"
-                      )}
-                    </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                    >
-                      {p.cubre_clave?.trim() || "—"}
-                    </TableCell>
-                    <TableCell
-                      sx={{ ...celdaSx, fontSize: 13, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                    >
-                      {/* Si no cabe se corta con …; completa al pasar el mouse */}
-                      {nota ? (
-                        <Tooltip arrow title={nota}>
-                          <span>{nota}</span>
-                        </Tooltip>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    {!vistaPiloto && (
-                      <TableCell align="center" sx={{ ...celdaSx, px: 0 }}>
-                        {/* sistema = capturado por admin; ajuste = descuento */}
-                        {(p.origen === "sistema" || p.origen === "ajuste") && (
-                          <IconButton
-                            size="small"
-                            aria-label="Borrar periodo"
-                            onClick={() => setPorBorrar(p)}
-                            sx={{ color: ROJO_TEXTO }}
+              anosHistorial
+                ? anosHistorial.map((a) => {
+                    const color = colorDeAnio(a.anios);
+                    return (
+                      <React.Fragment key={`anio-${a.anios}`}>
+                        <TableRow>
+                          <TableCell
+                            colSpan={columnasTabla}
+                            sx={{ bgcolor: color.fuerte, color: "#fff", fontWeight: 700, fontSize: 13, py: 0.75, borderColor: color.fuerte }}
                           >
-                            <DeleteOutlineIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })
+                            {textoEncabezadoAnio(a)}
+                          </TableCell>
+                        </TableRow>
+                        {a.periodos.map((p) => filaPeriodo(p, color))}
+                      </React.Fragment>
+                    );
+                  })
+                : periodosTabla.map((p) => filaPeriodo(p))
             )}
             {!cargandoVac && periodosTabla.length > 0 && (
               <TableRow sx={{ bgcolor: "#f1f5f9" }}>
