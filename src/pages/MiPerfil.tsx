@@ -365,6 +365,7 @@ interface AnioHistorial {
   descuentos: number;
   quedan: number;
   cerrado: boolean;
+  actual: boolean; // el año de vacaciones en curso
   periodos: VacacionApi[];
 }
 
@@ -422,18 +423,41 @@ const agruparPorAnio = (periodos: VacacionApi[], ingreso: string | null | undefi
         descuentos,
         quedan: delApi ? delApi.dias_quedan : corresponden - tomados - descuentos,
         cerrado: anios < actual.anios,
+        actual: anios === actual.anios,
         periodos: lista,
       };
     });
 };
 
-const textoEncabezadoAnio = (a: AnioHistorial) => {
+// Caducidad (LFT arts. 81 y 516): los días de un año caducan en su aniversario + 18 meses − 1 día.
+// Si ese día no existe en el mes (p. ej. 31 → febrero), se toma el último día del mes. Solo visual: no cambia el saldo.
+const MESES_CADUCIDAD = 18;
+const caducidadDe = (aniversarioDelAnio: string) => {
+  const [y, m, d] = aniversarioDelAnio.split("-").map(Number);
+  const meses = m - 1 + MESES_CADUCIDAD;
+  const anio = y + Math.floor(meses / 12);
+  const mes = meses % 12; // 0 = enero
+  const dia = Math.min(d, new Date(Date.UTC(anio, mes + 1, 0)).getUTCDate());
+  return sumarDias(`${anio}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`, -1);
+};
+
+// Texto del encabezado del año y si lleva la etiqueta PENDIENTES (año pasado con días que aún no caducan).
+// "Le quedan" solo si le sobran días; en un año pasado, solo si todavía no caducan.
+const encabezadoAnio = (a: AnioHistorial, hoy: string): { texto: string; pendientes: boolean } => {
   const rango = `${fechaCorta(a.inicio)} – ${fechaCorta(a.fin)}`;
-  if (a.anios <= 0) return `ANTES DEL PRIMER AÑO · ${rango}`;
+  if (a.anios <= 0) return { texto: `ANTES DEL PRIMER AÑO · ${rango}`, pendientes: false };
   const usados = `Usados ${numeroDias(a.usados)}${a.descuentos > 0 ? ` (${numeroDias(a.descuentos)} de descuento)` : ""}`;
-  return a.cerrado
-    ? `AÑO ${a.anios} · ${rango} · Le tocaban ${numeroDias(a.corresponden)} · ${usados}`
-    : `AÑO ${a.anios} · ${rango} · Le tocan ${numeroDias(a.corresponden)} · ${usados} · Le quedan ${numeroDias(a.quedan)}`;
+  const quedan = `Le quedan ${numeroDias(a.quedan)}`;
+  const caducan = `caducan el ${fechaCorta(caducidadDe(a.inicio))}`;
+  if (a.cerrado) {
+    const base = `AÑO ${a.anios} · ${rango} · Le tocaban ${numeroDias(a.corresponden)} · ${usados}`;
+    const vigente = hoy <= caducidadDe(a.inicio) && a.quedan > 0;
+    return vigente ? { texto: `${base} · ${quedan} · ${caducan}`, pendientes: true } : { texto: base, pendientes: false };
+  }
+  const base = `AÑO ${a.anios} · ${rango} · Le tocan ${numeroDias(a.corresponden)} · ${usados}`;
+  if (a.quedan <= 0) return { texto: base, pendientes: false };
+  // El año actual dice cuándo caducan; el siguiente (aún no empieza) solo cuántos le quedan
+  return { texto: `${base} · ${quedan}${a.actual ? ` · ${caducan}` : ""}`, pendientes: false };
 };
 
 const BORDE_TABLA = "#e2e8f0";
@@ -1914,6 +1938,7 @@ const MiPerfil = () => {
               anosHistorial
                 ? anosHistorial.map((a) => {
                     const color = colorDeAnio(a.anios);
+                    const encabezado = encabezadoAnio(a, hoy);
                     return (
                       <React.Fragment key={`anio-${a.anios}`}>
                         <TableRow>
@@ -1921,7 +1946,24 @@ const MiPerfil = () => {
                             colSpan={columnasTabla}
                             sx={{ bgcolor: color.fuerte, color: "#fff", fontWeight: 700, fontSize: 13, py: 0.75, borderColor: color.fuerte }}
                           >
-                            {textoEncabezadoAnio(a)}
+                            {encabezado.pendientes && (
+                              <Chip
+                                size="small"
+                                label="PENDIENTES"
+                                sx={{
+                                  mr: 1,
+                                  height: 20,
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  letterSpacing: 0.3,
+                                  bgcolor: NARANJA_EXTRA,
+                                  color: "#fff",
+                                  border: "1.5px solid #fff",
+                                  verticalAlign: "middle",
+                                }}
+                              />
+                            )}
+                            {encabezado.texto}
                           </TableCell>
                         </TableRow>
                         {a.periodos.map((p) => filaPeriodo(p, color))}
