@@ -41,7 +41,8 @@ interface CicloPanel {
   dias_descuentos: number;
   dias_solicitados_pendientes: number;
   dias_quedan: number;
-  dias_perdidos: number | null; // solo ciclos cerrados
+  dias_perdidos: number | null; // solo ciclos cerrados y ya caducados
+  caduca?: string | null; // aniversario + 18 meses − 1 día (LFT arts. 81 y 516)
 }
 
 interface PersonaPanel {
@@ -86,6 +87,20 @@ interface DiasExtraPanel {
 }
 // Con 30 días o menos para que caduquen (y días por usar), los días van en rojo
 const AVISO_CADUCAN = 30;
+
+// Hoy (YYYY-MM-DD, hora de México) y días entre dos fechas sin que influya la zona horaria
+const hoyMx = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
+const diasEntre = (desde: string, hasta: string) => {
+  const utc = (c: string) => Date.UTC(Number(c.slice(0, 4)), Number(c.slice(5, 7)) - 1, Number(c.slice(8, 10)));
+  return Math.round((utc(hasta) - utc(desde)) / 86400000);
+};
+
+// Caducidad más cercana de los años vigentes hoy que todavía tienen días (el atrasado o el actual),
+// igual que el aviso de Mis vacaciones. null si no hay días por caducar.
+const proximaCaducidad = (ciclos: CicloPanel[], hoy: string) =>
+  ciclos
+    .filter((c) => c.anios > 0 && c.caduca && c.ciclo_inicio <= hoy && hoy <= c.caduca && c.dias_quedan > 0)
+    .sort((a, b) => a.anios - b.anios)[0] ?? null;
 
 const ESTILO_ESTADO: Record<EstadoCiclo, { fondo: string; color: string; borde: string }> = {
   Cerrado: { fondo: "#f1f5f9", color: "#475569", borde: "#cbd5e1" },
@@ -170,6 +185,7 @@ const PanelControlVacaciones: React.FC = () => {
     };
   }, []);
 
+  const hoy = hoyMx();
   const filas = useMemo(() => {
     const filtro = sinAcentos(busqueda);
     return personas.filter(
@@ -246,13 +262,10 @@ const PanelControlVacaciones: React.FC = () => {
                 const expandible = p.ciclos.length > 0;
                 const abiertaFila = abierta === p.clave;
                 const extra = diasExtra[p.clave.trim().toUpperCase()];
-                // Los días del ciclo actual caducan el último día del ciclo (el día antes del aniversario).
-                // Sin días por usar, sin fecha de ingreso o sin su primer año: no hay nada que caduque.
-                const diasCaducan =
-                  conIngreso && (p.anios ?? 0) > 0 && (p.dias_quedan ?? 0) > 0 &&
-                  p.ciclo_fin && p.dias_para_aniversario != null
-                    ? p.dias_para_aniversario - 1
-                    : null;
+                // Regla de 18 meses: cada año caduca en su aniversario + 18 meses − 1 día; se muestra el más
+                // cercano que todavía tiene días. Sin días, sin fecha de ingreso o sin su primer año: nada caduca.
+                const proximo = conIngreso ? proximaCaducidad(p.ciclos, hoy) : null;
+                const diasCaducan = proximo?.caduca ? diasEntre(hoy, proximo.caduca) : null;
                 return (
                   <React.Fragment key={p.clave}>
                     <TableRow
@@ -346,9 +359,9 @@ const PanelControlVacaciones: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell align="center" sx={{ ...celdaSx, whiteSpace: "nowrap" }}>
-                        {diasCaducan != null && p.ciclo_fin ? (
+                        {diasCaducan != null && proximo?.caduca ? (
                           <>
-                            <Typography sx={{ fontSize: 13 }}>{fechaCorta(p.ciclo_fin)}</Typography>
+                            <Typography sx={{ fontSize: 13 }}>{fechaCorta(proximo.caduca)}</Typography>
                             <Typography
                               sx={{
                                 fontSize: 11,
@@ -358,6 +371,9 @@ const PanelControlVacaciones: React.FC = () => {
                               }}
                             >
                               {diasCaducan === 0 ? "Hoy" : `${diasCaducan} ${diasCaducan === 1 ? "día" : "días"}`}
+                            </Typography>
+                            <Typography sx={{ fontSize: 11, lineHeight: 1.2, color: "#64748b" }}>
+                              {`${numero(proximo.dias_quedan)} del año ${proximo.anios}`}
                             </Typography>
                           </>
                         ) : (

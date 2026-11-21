@@ -163,6 +163,17 @@ interface SaldoAnioApi {
   dias_usados: number; // autorizadas/tomadas + descuentos
   dias_solicitados_pendientes: number;
   dias_quedan: number; // corresponden - usados (sin restar las pendientes)
+  caduca?: string | null; // último día para tomarlos: aniversario + 18 meses − 1 día
+}
+
+// Año de vacaciones con el reparto FIFO del backend: cada día sale del año más viejo ganado y sin caducar
+interface AnioVacacionesApi extends SaldoAnioApi {
+  dias_tomados: number;
+  dias_descuentos: number;
+  dias_adelanto: number; // tomados antes de ganar el año
+  vigente: boolean;
+  caducado: boolean;
+  periodos: { id: number; dias: number }[]; // días de cada periodo que salen de este año
 }
 
 interface SaldoApi {
@@ -170,7 +181,36 @@ interface SaldoApi {
   // null si no tiene fecha de ingreso
   actual: SaldoAnioApi | null;
   siguiente: SaldoAnioApi | null;
+  // Del año 1 al siguiente (backend con la regla de 18 meses; vacío en versiones viejas)
+  anios?: AnioVacacionesApi[];
+  total_quedan?: number | null; // hoy, entre el año atrasado y el actual
+  total_disponibles?: number | null; // lo mismo sin lo ya solicitado
 }
+
+// Años ganados y sin caducar en esa fecha, el más viejo primero (a lo más 2: el atrasado y el actual)
+const vigentesEn = (anios: AnioVacacionesApi[], clave: string) =>
+  anios
+    .filter((a) => a.anios > 0 && a.caduca && a.ciclo_inicio <= clave && clave <= a.caduca)
+    .sort((x, y) => x.anios - y.anios);
+
+// Reparte bloques nuevos igual que el backend (FIFO, sin adelantos): cada bloque sale de los años vigentes
+// en su primer día, el más viejo primero. Devuelve el primer bloque que no cabe y lo que le queda a cada año.
+const repartirBloques = (anios: AnioVacacionesApi[], bloques: { inicio: string; dias: number }[]) => {
+  const restante = new Map(anios.map((a) => [a.anios, Math.max(a.dias_quedan - a.dias_solicitados_pendientes, 0)]));
+  const ordenados = [...bloques].sort((x, y) => (x.inicio < y.inicio ? -1 : x.inicio > y.inicio ? 1 : 0));
+  for (const b of ordenados) {
+    const vig = vigentesEn(anios, b.inicio);
+    const disponibles = vig.reduce((s, a) => s + (restante.get(a.anios) ?? 0), 0);
+    let falta = b.dias;
+    for (const a of vig) {
+      const t = Math.min(falta, restante.get(a.anios) ?? 0);
+      restante.set(a.anios, (restante.get(a.anios) ?? 0) - t);
+      falta -= t;
+    }
+    if (falta > 1e-9) return { noCabe: b, disponibles, restante };
+  }
+  return { noCabe: null as { inicio: string; dias: number } | null, disponibles: 0, restante };
+};
 
 // Año de vacaciones (actual o siguiente) donde cae una fecha; null si cae fuera de los dos
 const anioDeVacaciones = (saldo: SaldoApi | null, clave: string) =>
@@ -363,10 +403,12 @@ interface AnioHistorial {
   corresponden: number;
   usados: number; // vacaciones autorizadas/tomadas + descuentos
   descuentos: number;
+  adelanto: number; // de los usados, los que se tomaron antes de ganar el año
   quedan: number;
   cerrado: boolean;
   actual: boolean; // el año de vacaciones en curso
-  periodos: VacacionApi[];
+  // parteDias: el periodo se partió entre dos años; aquí solo va esta parte
+  periodos: (VacacionApi & { parteDias?: number })[];
 }
 
 // Encabezado: color sólido por año (se repite cada 4); las filas del año, un tono muy claro del mismo color
@@ -390,8 +432,22 @@ const agruparPorAnio = (periodos: VacacionApi[], ingreso: string | null | undefi
     && referencia.dias_corresponden !== lftReferencia;
   const anioIngreso = Number(ingreso.slice(0, 4));
 
-  const porAnio = new Map<number, VacacionApi[]>();
+  // Con el reparto del backend (regla de 18 meses) cada periodo va en el año del que salieron sus días
+  // (si se partió entre dos años, sale en los dos con su parte); lo que no usa saldo, en el año donde empieza.
+  const delReparto = new Map<number, AnioVacacionesApi>((saldo?.anios ?? []).map((a) => [a.anios, a]));
+  const asignado = new Map<number, { anios: number; dias: number }[]>();
+  delReparto.forEach((a) =>
+    a.periodos.forEach(({ id, dias }) => asignado.set(id, [...(asignado.get(id) ?? []), { anios: a.anios, dias }]))
+  );
+  const porAnio = new Map<number, (VacacionApi & { parteDias?: number })[]>();
   periodos.forEach((p) => {
+    const partes = asignado.get(p.id);
+    if (partes?.length) {
+      partes.forEach(({ anios, dias }) =>
+        porAnio.set(anios, [...(porAnio.get(anios) ?? []), dias === Number(p.dias ?? 0) ? p : { ...p, parteDias: dias }])
+      );
+      return;
+    }
     // Cada periodo cuenta en el año donde empieza
     const n = aniosCumplidos(ingreso, p.fecha_inicio.slice(0, 10));
     porAnio.set(n, [...(porAnio.get(n) ?? []), p]);
@@ -413,14 +469,16 @@ const agruparPorAnio = (periodos: VacacionApi[], ingreso: string | null | undefi
       });
       const lft = diasLft(anios, inicio);
       const corresponden = soloFinDeSemana ? Math.ceil(lft / 3) : lft;
-      const delApi = [actual, saldo?.siguiente].find((a) => a && a.anios === anios);
+      const repartido = delReparto.get(anios);
+      const delApi = repartido ?? [actual, saldo?.siguiente].find((a) => a && a.anios === anios);
       return {
         anios,
         inicio,
         fin,
         corresponden: delApi ? delApi.dias_corresponden : corresponden,
         usados: delApi ? delApi.dias_usados : tomados + descuentos,
-        descuentos,
+        descuentos: repartido ? repartido.dias_descuentos : descuentos,
+        adelanto: repartido?.dias_adelanto ?? 0,
         quedan: delApi ? delApi.dias_quedan : corresponden - tomados - descuentos,
         cerrado: anios < actual.anios,
         actual: anios === actual.anios,
@@ -446,7 +504,11 @@ const caducidadDe = (aniversarioDelAnio: string) => {
 const encabezadoAnio = (a: AnioHistorial, hoy: string): { texto: string; pendientes: boolean } => {
   const rango = `${fechaCorta(a.inicio)} – ${fechaCorta(a.fin)}`;
   if (a.anios <= 0) return { texto: `ANTES DEL PRIMER AÑO · ${rango}`, pendientes: false };
-  const usados = `Usados ${numeroDias(a.usados)}${a.descuentos > 0 ? ` (${numeroDias(a.descuentos)} de descuento)` : ""}`;
+  const notas = [
+    a.descuentos > 0 ? `${numeroDias(a.descuentos)} de descuento` : "",
+    a.adelanto > 0 ? `${numeroDias(a.adelanto)} adelantados` : "",
+  ].filter(Boolean);
+  const usados = `Usados ${numeroDias(a.usados)}${notas.length ? ` (${notas.join(", ")})` : ""}`;
   const quedan = `Le quedan ${numeroDias(a.quedan)}`;
   const caducan = `caducan el ${fechaCorta(caducidadDe(a.inicio))}`;
   if (a.cerrado) {
@@ -710,9 +772,13 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
   }
 
   const primerAnio = a.anios === 0;
-  // Último día del año de vacaciones; con 0 años, el día en que cumple su primer año
-  const fechaClave = primerAnio ? sumarDias(a.ciclo_fin, 1) : a.ciclo_fin;
-  const porCaducar = !primerAnio && diasHasta(hoy, a.ciclo_fin) <= AVISO_CADUCAN;
+  // Regla de 18 meses: el verde suma el año atrasado y el actual; la fecha es la caducidad más cercana
+  // de los años que todavía tienen días. Con 0 años, el día en que cumple su primer año.
+  const quedanTotal = saldo.total_quedan ?? a.dias_quedan;
+  const conDias = saldo.anios ? vigentesEn(saldo.anios, hoy).filter((x) => x.dias_quedan > 0) : [];
+  const fechaTomar = conDias[0]?.caduca ?? (saldo.anios?.length ? a.caduca : null) ?? a.ciclo_fin;
+  const fechaClave = primerAnio ? sumarDias(a.ciclo_fin, 1) : fechaTomar;
+  const porCaducar = !primerAnio && diasHasta(hoy, fechaTomar) <= AVISO_CADUCAN;
 
   return (
     <Box sx={rejilla}>
@@ -730,8 +796,8 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
           tono="verde"
           icono={<BeachAccessIcon />}
           antes={tienes}
-          grande={numeroDias(a.dias_quedan)}
-          despues={a.dias_quedan === 1 ? "día de vacaciones" : "días de vacaciones"}
+          grande={numeroDias(quedanTotal)}
+          despues={quedanTotal === 1 ? "día de vacaciones" : "días de vacaciones"}
         />
       )}
       <CuadroSaldo
@@ -757,6 +823,68 @@ const CuadrosSaldo: React.FC<CuadrosSaldoProps> = ({ saldo, cargando, error, hoy
         despuesAbajo
       />
       {cuadroExtra}
+    </Box>
+  );
+};
+
+// ── Aviso de "Mis vacaciones": cuántos días le quedan, de qué año y cuándo caducan (LFT arts. 76, 81 y 516) ──
+const MESES_AVISO_NARANJA = 3;
+
+// Suma meses a una fecha YYYY-MM-DD; si el día no existe en ese mes, el último del mes
+const sumarMeses = (clave: string, meses: number) => {
+  const [y, m, d] = clave.split("-").map(Number);
+  const total = m - 1 + meses;
+  const anio = y + Math.floor(total / 12);
+  const mes = ((total % 12) + 12) % 12;
+  const dia = Math.min(d, new Date(Date.UTC(anio, mes + 1, 0)).getUTCDate());
+  return `${anio}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+};
+
+const AvisoCaducidad: React.FC<{ saldo: SaldoApi | null; hoy: string; piloto: boolean }> = ({ saldo, hoy, piloto }) => {
+  if (!saldo?.actual || !saldo.anios?.length) return null;
+  const conDias = vigentesEn(saldo.anios, hoy).filter((a) => a.dias_quedan > 0);
+  const total = saldo.total_quedan ?? conDias.reduce((s, a) => s + a.dias_quedan, 0);
+  const limiteNaranja = sumarMeses(hoy, MESES_AVISO_NARANJA);
+  const dias = (n: number) => `${numeroDias(n)} ${n === 1 ? "día" : "días"}`;
+  return (
+    <Box
+      sx={{
+        mb: 2,
+        px: 2,
+        py: 1.5,
+        borderRadius: "12px",
+        bgcolor: "#F5F8FF",
+        border: "1px solid #D6E0F5",
+        color: "#1e293b",
+      }}
+    >
+      <Typography sx={{ fontSize: 16, fontWeight: 800, color: AZUL }}>
+        {piloto
+          ? `${total === 1 ? "Te queda" : "Te quedan"} ${dias(total)} en total.`
+          : `${total === 1 ? "Le queda" : "Le quedan"} ${dias(total)} en total.`}
+      </Typography>
+      {conDias.map((a) => {
+        const caduca = a.caduca as string;
+        const pronto = caduca < limiteNaranja;
+        return (
+          <Box key={a.anios} sx={{ mt: 0.5 }}>
+            <Typography sx={{ fontSize: 14 }}>
+              {`${dias(a.dias_quedan)} de ${piloto ? "tu" : "su"} año ${a.anios} — caducan el ${fechaCorta(caduca)}.`}
+            </Typography>
+            {pronto && (
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: NARANJA_EXTRA }}>
+                {piloto
+                  ? `Tómalos antes del ${fechaCorta(caduca)} o se pierden.`
+                  : `Debe tomarlos antes del ${fechaCorta(caduca)} o se pierden.`}
+              </Typography>
+            )}
+          </Box>
+        );
+      })}
+      <Typography sx={{ mt: 1, fontSize: 11.5, color: "#64748b", lineHeight: 1.35 }}>
+        Conforme a la Ley Federal del Trabajo, art. 76, 81 y 516: cada año de vacaciones se puede tomar hasta 18
+        meses después de tu aniversario.
+      </Typography>
     </Box>
   );
 };
@@ -1426,12 +1554,21 @@ const MiPerfil = () => {
         ? "No tiene fecha de ingreso; RH debe registrarla."
         : "No tienes fecha de ingreso; pide a RH que la registre.";
     }
+    const bloques = agruparBloques(nueva);
     const porAnio = new Map<SaldoAnioApi, number>();
-    for (const b of agruparBloques(nueva)) {
+    for (const b of bloques) {
       const anio = anioDeVacaciones(saldo, b.inicio);
       if (!anio) continue;
       if (anio.anios === 0) return esAdmin ? "Aún no cumple su primer año." : "Aún no cumples tu primer año.";
       porAnio.set(anio, (porAnio.get(anio) ?? 0) + b.dias);
+    }
+    // Regla de 18 meses (LFT arts. 81 y 516): sale primero del año atrasado si no ha caducado
+    if (saldo.anios?.length) {
+      const { noCabe, disponibles } = repartirBloques(saldo.anios, bloques);
+      if (!noCabe) return null;
+      return `Solo ${esAdmin ? "le" : "te"} quedan ${numeroDias(disponibles)} ${
+        disponibles === 1 ? "día" : "días"
+      } para tomar a partir del ${fechaCorta(noCabe.inicio)}.`;
     }
     for (const [anio, dias] of Array.from(porAnio.entries())) {
       const disponibles = Math.max(disponiblesDe(anio), 0);
@@ -1627,7 +1764,7 @@ const MiPerfil = () => {
     while (ocupados.has(sumarDias(desde, -1))) desde = sumarDias(desde, -1);
     while (ocupados.has(sumarDias(hasta, 1))) hasta = sumarDias(hasta, 1);
     if (diasHasta(desde, hasta) + 1 > MAX_DIAS_POR_BLOQUE) {
-      setAviso("Máximo 6 días seguidos contando vacaciones y días extra.");
+      setAviso("Máximo 6 días por solicitud. Si necesitas más días, habla con Gerencia.");
       return;
     }
     setSeleccionadas((prev) => new Set(prev).add(clave));
@@ -1701,7 +1838,7 @@ const MiPerfil = () => {
       return;
     }
     if (pegado && pegado.dias >= MAX_DIAS_POR_BLOQUE) {
-      setAviso("Máximo 6 días seguidos por periodo.");
+      setAviso("Máximo 6 días por solicitud. Si necesitas más días, habla con Gerencia.");
       return;
     }
     if (!otrosBloques.every((b) => respetaSeparacion(clave, b))) {
@@ -1748,6 +1885,18 @@ const MiPerfil = () => {
       return { quedan, siguiente: null as number | null, color, extra: true };
     }
     if (!saldo?.actual) return null;
+    // Regla de 18 meses: lo que le quedaría hoy entre el atrasado y el actual; aparte, el año siguiente
+    // si la selección ya cae en él
+    if (saldo.anios?.length) {
+      const { restante } = repartirBloques(saldo.anios, bloques);
+      const deHoy = vigentesEn(saldo.anios, hoy);
+      const quedan = deHoy.reduce((s, a) => s + (restante.get(a.anios) ?? 0), 0);
+      const tocados = new Set(bloques.flatMap((b) => vigentesEn(saldo.anios ?? [], b.inicio).map((a) => a.anios)));
+      const futuros = Array.from(tocados).filter((n) => !deHoy.some((a) => a.anios === n));
+      const siguiente = futuros.length ? futuros.reduce((s, n) => s + (restante.get(n) ?? 0), 0) : null;
+      const color = quedan > 2 ? "#2E7D32" : quedan > 0 ? "#F9A825" : "#C62828";
+      return { quedan, siguiente, color, extra: false };
+    }
     let diasActual = 0;
     let diasSiguiente = 0;
     for (const b of bloques) {
@@ -1771,7 +1920,7 @@ const MiPerfil = () => {
   const anosHistorial = agruparPorAnio(periodosTabla, personaSel?.fechaIngreso, saldo);
 
   // Una fila del historial; con color = fila de un año de vacaciones (tono claro + borde izquierdo grueso)
-  const filaPeriodo = (p: VacacionApi, color?: { fuerte: string; claro: string }) => {
+  const filaPeriodo = (p: VacacionApi & { parteDias?: number }, color?: { fuerte: string; claro: string }) => {
     const categoria = categoriaVacacion(p, hoy);
     const esFalta = p.tipo === "falta_injustificada";
     const estilo: EstiloVacacion | null = esDescuento(p)
@@ -1812,7 +1961,7 @@ const MiPerfil = () => {
           {textoPeriodo(inicio, fin)}
         </TableCell>
         <TableCell align="center" sx={{ ...celdaSx, fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}>
-          {textoDias(p.dias)}
+          {p.parteDias != null ? `${numeroDias(p.parteDias)} de ${textoDias(p.dias)}` : textoDias(p.dias)}
         </TableCell>
         <TableCell align="center" sx={{ ...celdaSx, px: 0.5 }}>
           <Chip
@@ -2347,6 +2496,10 @@ const MiPerfil = () => {
               piloto={vistaPiloto}
               diasExtra={diasExtra}
             />
+          )}
+
+          {seleccionVista && !cargandoSaldo && !errorSaldo && (
+            <AvisoCaducidad saldo={saldo} hoy={hoy} piloto={vistaPiloto} />
           )}
 
           <Box
