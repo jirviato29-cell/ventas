@@ -86,6 +86,8 @@ interface AsistenciaResumen {
   regreso_comida?: string | null;
   minutos_comida?: number;
   puede_registrar_comida?: boolean;
+  foto_salida_comida_url?: string | null;
+  foto_regreso_comida_url?: string | null;
 }
 
 type TipoCheck = "entrada" | "salida" | "salida_comida" | "regreso_comida";
@@ -465,12 +467,95 @@ const FotoThumb: React.FC<{ url: string | null; size?: number }> = ({ url, size 
     <>
       <FotoAsistencia url={url} size={size} onClick={() => setOpen(true)} />
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md">
+        <IconButton
+          onClick={() => setOpen(false)}
+          aria-label="Cerrar foto"
+          sx={{ position: "absolute", top: 8, right: 8, bgcolor: "rgba(0,0,0,0.5)", color: "#fff", "&:hover": { bgcolor: "rgba(0,0,0,0.7)" } }}
+        >
+          <CloseIcon />
+        </IconButton>
         <DialogContent sx={{ p: 1 }}>
           <img src={url} alt="foto grande" decoding="async" style={{ maxWidth: "80vw", maxHeight: "80vh" }} />
         </DialogContent>
       </Dialog>
     </>
   );
+};
+
+// ── Línea de tiempo del día (empleado con comida) ────────────────────────────
+
+// Minutos desde medianoche → "3:15 p.m." (12 h, a.m./p.m.)
+const minutosA12h = (min: number): string => {
+  const m = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  return `${h % 12 || 12}:${String(m % 60).padStart(2, "0")} ${h < 12 ? "a.m." : "p.m."}`;
+};
+
+// ISO → "3:15 p.m." en hora de México
+const hora12 = (iso: string | null | undefined): string => {
+  const min = iso ? minutosMX(iso) : null;
+  return min === null ? "—" : minutosA12h(min);
+};
+
+// 75 → "1 h 15 min"; 45 → "45 min"
+const textoDuracion = (minutos: number): string => {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return h > 0 ? `${h} h ${m} min` : `${m} min`;
+};
+
+const COLOR_MARCA = {
+  verde: { bg: "#f0fdf4", borde: "#16a34a", texto: "#15803d" },
+  amarillo: { bg: "#fefce8", borde: "#eab308", texto: "#a16207" },
+  naranja: { bg: "#fff7ed", borde: "#FF6600", texto: "#c2410c" },
+};
+
+const FilaMarca: React.FC<{
+  color: keyof typeof COLOR_MARCA; texto: string; foto: string | null | undefined; extra?: string;
+}> = ({ color, texto, foto, extra }) => {
+  const c = COLOR_MARCA[color];
+  return (
+    <Box sx={{
+      display: "flex", alignItems: "center", gap: 1.5, p: 1, mb: 1,
+      bgcolor: c.bg, borderLeft: `5px solid ${c.borde}`, borderRadius: 1,
+    }}>
+      <FotoThumb url={foto ?? null} size={56} />
+      <Box>
+        <Typography variant="body2" fontWeight={700} sx={{ color: c.texto }}>{texto}</Typography>
+        {extra && <Typography variant="body2" sx={{ color: c.texto }}>{extra}</Typography>}
+      </Box>
+    </Box>
+  );
+};
+
+// Una fila por cada marca que exista, en orden: entrada, salida a comer, regreso, salida.
+const LineaTiempoDia: React.FC<{ r: AsistenciaResumen }> = ({ r }) => (
+  <Box>
+    {r.entrada && (
+      <FilaMarca color="verde" texto={`Hiciste CHECK-IN a las ${hora12(r.entrada)}`} foto={r.foto_entrada_url} />
+    )}
+    {r.salida_comida && (
+      <FilaMarca color="amarillo" texto={`Saliste a comer a las ${hora12(r.salida_comida)}`} foto={r.foto_salida_comida_url} />
+    )}
+    {r.regreso_comida && (
+      <FilaMarca
+        color="amarillo"
+        texto={`Regresaste de comer a las ${hora12(r.regreso_comida)}`}
+        foto={r.foto_regreso_comida_url}
+        extra={`Comida: ${textoDuracion(r.minutos_comida ?? 0)}`}
+      />
+    )}
+    {r.salida && (
+      <FilaMarca color="naranja" texto={`Hiciste CHECK-OUT a las ${hora12(r.salida)}`} foto={r.foto_salida_url} />
+    )}
+  </Box>
+);
+
+// "YYYY-MM-DD" de hoy en México menos N días
+const fechaMXMenosDias = (dias: number): string => {
+  const [y, m, d] = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }).split("-").map(Number);
+  const dt = new Date(y, m - 1, d - dias);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 };
 
 // ── ZonaChip ─────────────────────────────────────────────────────────────────
@@ -499,6 +584,12 @@ const VistaEmpleado: React.FC = () => {
   const [candado, setCandado] = useState<EstadoCandado | null>(null);
   const [cargandoCandado, setCargandoCandado] = useState(true);
   const [cancelandoDescanso, setCancelandoDescanso] = useState(false);
+  // Mis registros (historial con línea de tiempo; solo se muestra a quien puede registrar comida)
+  const [misDesde, setMisDesde] = useState(() => fechaMXMenosDias(6));
+  const [misHasta, setMisHasta] = useState(() => fechaMXMenosDias(0));
+  const [misRegistros, setMisRegistros] = useState<AsistenciaResumen[]>([]);
+  const [cargandoMis, setCargandoMis] = useState(false);
+  const [misBuscado, setMisBuscado] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -517,6 +608,13 @@ const VistaEmpleado: React.FC = () => {
   const regresoDeComer = puedeComida && !!estadoHoy?.regreso_comida;
   const enComida = salioAComer && !regresoDeComer;
   const mostrarSalidaComida = puedeComida && yaEntro && !yaSalio && !salioAComer;
+  // Hora límite de regreso = salida a comer + 2 h exactas
+  const minSalidaComida = estadoHoy?.salida_comida ? minutosMX(estadoHoy.salida_comida) : null;
+  const horaRegresoLimite = minSalidaComida !== null ? minutosA12h(minSalidaComida + 120) : "—";
+  // "Mis registros" solo para encargado. Se decide con el rol de la sesión (login);
+  // puede_registrar_comida solo como respaldo si el rol de la sesión no está disponible.
+  const rolSesion = (localStorage.getItem("rol") ?? "").trim().toLowerCase();
+  const verMisRegistros = rolSesion ? rolSesion === "encargado" : puedeComida;
 
   // Hasta no tener las dos respuestas no se pinta nada: evita que aparezca
   // el CHECK-IN y un instante despues lo tape el aviso de descanso.
@@ -545,6 +643,30 @@ const VistaEmpleado: React.FC = () => {
   }, []);
 
   useEffect(() => { cargarEstadoHoy(); }, [cargarEstadoHoy]);
+
+  const buscarMisRegistros = useCallback(async (desde: string, hasta: string) => {
+    if (!desde || !hasta) return;
+    setCargandoMis(true);
+    try {
+      const { data } = await axios.get<AsistenciaResumen[]>(
+        `${API}/asistencia/mi-historial?desde=${desde}&hasta=${hasta}`,
+        { headers: authH() }
+      );
+      setMisRegistros([...data].sort((a, b) => b.fecha.localeCompare(a.fecha)));
+    } catch {
+      setMisRegistros([]);
+    } finally {
+      setCargandoMis(false);
+      setMisBuscado(true);
+    }
+  }, []);
+
+  // Carga inicial: últimos 7 días, solo para encargado (asesores y demás roles no hacen esta petición).
+  // Luego se usa el botón BUSCAR.
+  useEffect(() => {
+    if (!verMisRegistros) return;
+    buscarMisRegistros(fechaMXMenosDias(6), fechaMXMenosDias(0));
+  }, [verMisRegistros, buscarMisRegistros]);
 
   const cargarCandado = useCallback(async () => {
     try {
@@ -681,6 +803,7 @@ const VistaEmpleado: React.FC = () => {
         setSnack({ msg: MSG_CHECK_OK[tipo], sev: "success" });
       }
       cargarEstadoHoy();
+      if (verMisRegistros) buscarMisRegistros(misDesde, misHasta);
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (detail && typeof detail === "object" && detail.codigo) {
@@ -821,7 +944,49 @@ const VistaEmpleado: React.FC = () => {
         </Box>
       )}
 
-      {yaEntro && (
+      {/* Encargado en su hora de comida: aviso grande con la hora límite de regreso */}
+      {enComida && (
+        <Alert
+          severity="warning"
+          icon={<RestaurantIcon sx={{ fontSize: 32 }} />}
+          sx={{
+            mb: 3, py: 2, alignItems: "center",
+            bgcolor: "#fef08a", border: "2px solid #eab308", color: "#713f12",
+            "& .MuiAlert-message": { fontSize: 20, fontWeight: 700 },
+          }}
+        >
+          Saliste a comer a las {hora12(estadoHoy?.salida_comida)}. Debes regresar a las {horaRegresoLimite}
+        </Alert>
+      )}
+
+      {/* Encargado: MI REGISTRO DE HOY como línea de tiempo */}
+      {yaEntro && puedeComida && estadoHoy && (
+        <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+          <Typography fontWeight={700} sx={{ color: "#1e293b", mb: 1.5 }}>
+            MI REGISTRO DE HOY
+          </Typography>
+          <LineaTiempoDia r={estadoHoy} />
+          {yaSalio && (
+            <>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Horas trabajadas: {(estadoHoy.horas_trabajadas ?? 0).toFixed(2)} h
+              </Typography>
+              <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 1 }}>
+                Día completo
+              </Typography>
+            </>
+          )}
+          {!yaSalio && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              No olvides hacer tu CHECK-OUT al terminar tu turno. Si no lo haces,
+              no se cuenta tu asistencia del día y no se te puede pagar.
+            </Alert>
+          )}
+        </Paper>
+      )}
+
+      {/* Asesores y demás roles: tarjeta de siempre, sin cambios */}
+      {yaEntro && !puedeComida && (
         <Paper elevation={1} sx={{ p: 2, mb: 3, bgcolor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
           <Typography fontWeight={700} sx={{ color: "#16a34a", mb: 1 }}>
             Ya hiciste tu CHECK-IN
@@ -851,18 +1016,6 @@ const VistaEmpleado: React.FC = () => {
             )}
           </Box>
 
-          {enComida && (
-            <Alert severity="info" icon={<RestaurantIcon />} sx={{ mt: 2 }}>
-              Estás en tu hora de comida desde las {formatHora24(estadoHoy?.salida_comida ?? null)}
-            </Alert>
-          )}
-
-          {regresoDeComer && (
-            <Typography variant="body2" sx={{ mt: 1.5 }}>
-              Comida: {formatHora24(estadoHoy?.salida_comida ?? null)} – {formatHora24(estadoHoy?.regreso_comida ?? null)} ({estadoHoy?.minutos_comida ?? 0} min)
-            </Typography>
-          )}
-
           {yaSalio && (
             <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 2 }}>
               Día completo
@@ -879,6 +1032,53 @@ const VistaEmpleado: React.FC = () => {
       )}
 
       {cargando && <Box textAlign="center" mb={2}><CircularProgress /></Box>}
+
+      {/* Encargado: MIS REGISTROS (historial por rango de fechas) */}
+      {verMisRegistros && (
+        <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+          <Typography fontWeight={700} sx={{ color: "#1e293b", mb: 1.5 }}>
+            MIS REGISTROS
+          </Typography>
+          <Box display="flex" flexWrap="wrap" gap={1.5} mb={2} alignItems="center">
+            <TextField
+              size="small" type="date" label="Desde" InputLabelProps={{ shrink: true }}
+              value={misDesde}
+              onChange={(e) => setMisDesde(e.target.value)}
+            />
+            <TextField
+              size="small" type="date" label="Hasta" InputLabelProps={{ shrink: true }}
+              value={misHasta}
+              onChange={(e) => setMisHasta(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              disabled={cargandoMis || !misDesde || !misHasta}
+              onClick={() => buscarMisRegistros(misDesde, misHasta)}
+              sx={{ bgcolor: "#FF6600", "&:hover": { bgcolor: "#ea5c00" } }}
+            >
+              BUSCAR
+            </Button>
+          </Box>
+
+          {cargandoMis ? (
+            <Box textAlign="center" py={2}><CircularProgress size={28} /></Box>
+          ) : misBuscado && misRegistros.length === 0 ? (
+            <Typography variant="body2" sx={{ color: "#94a3b8" }}>Sin registros en esas fechas</Typography>
+          ) : (
+            misRegistros.map((r) => (
+              <Box key={r.fecha} sx={{ mb: 2, pb: 1.5, borderBottom: "1px solid #e2e8f0" }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                  {formatFecha(r.fecha)}
+                </Typography>
+                <LineaTiempoDia r={r} />
+                <Typography variant="body2" sx={{ color: "#475569" }}>
+                  Horas trabajadas: {(r.horas_trabajadas ?? 0).toFixed(2)} h
+                </Typography>
+              </Box>
+            ))
+          )}
+        </Paper>
+      )}
 
       {/* Dialog de cámara fullscreen */}
       <Dialog
@@ -1102,7 +1302,15 @@ const TabRegistros: React.FC = () => {
                     <TableCell><FotoThumb url={r.foto_entrada_url} /></TableCell>
                     <TableCell>{formatHora(r.salida)}</TableCell>
                     <TableCell><FotoThumb url={r.foto_salida_url} /></TableCell>
-                    <TableCell sx={{ whiteSpace: "nowrap" }}>{textoComida(r)}</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      {textoComida(r)}
+                      {(r.foto_salida_comida_url || r.foto_regreso_comida_url) && (
+                        <Box display="flex" gap={0.5} mt={0.5}>
+                          {r.foto_salida_comida_url && <FotoThumb url={r.foto_salida_comida_url} />}
+                          {r.foto_regreso_comida_url && <FotoThumb url={r.foto_regreso_comida_url} />}
+                        </Box>
+                      )}
+                    </TableCell>
                     <TableCell>{textoMinComida(r)}</TableCell>
                     <TableCell>{r.horas_trabajadas.toFixed(2)} h</TableCell>
                     <TableCell><ZonaChip dentro={r.dentro_de_zona_entrada ?? null} /></TableCell>
