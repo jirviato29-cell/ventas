@@ -188,6 +188,8 @@ interface DiaResumen {
   salida: string | null;
   horas: number;
   minutos_comida?: number;
+  salida_comida?: string | null;
+  regreso_comida?: string | null;
 }
 
 interface EmpleadoAcumuladoSemanal {
@@ -220,6 +222,10 @@ interface DiaCelda {
   salida: string | null;
   multiple: boolean;
   minutos_comida: number; // suma de todas las cuentas del grupo (informativo; horas ya vienen netas)
+  // Comida de la cuenta del grupo que la tenga (varias cuentas el mismo día → la primera con salida_comida)
+  salida_comida: string | null;
+  regreso_comida: string | null;
+  minutos_comida_cuenta: number;
 }
 
 interface GrupoAcumulado {
@@ -2194,6 +2200,7 @@ const agruparAcumulado = (
     nombre_completo: string;
     diasAgg: Record<string, {
       horas: number; count: number; entrada: string | null; salida: string | null; minutos_comida: number;
+      salida_comida: string | null; regreso_comida: string | null; minutos_comida_cuenta: number;
       crudos: { horas: number; entrada: string | null }[];
     }>;
     descansos: Set<string>;
@@ -2222,7 +2229,10 @@ const agruparAcumulado = (
 
     for (const [dk, dia] of Object.entries(f.dias)) {
       if (!g.diasAgg[dk]) {
-        g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, minutos_comida: 0, crudos: [] };
+        g.diasAgg[dk] = {
+          horas: 0, count: 0, entrada: null, salida: null, minutos_comida: 0,
+          salida_comida: null, regreso_comida: null, minutos_comida_cuenta: 0, crudos: [],
+        };
       }
       if (dia) {
         const d = g.diasAgg[dk];
@@ -2230,6 +2240,11 @@ const agruparAcumulado = (
         d.count += 1;
         d.minutos_comida += dia.minutos_comida ?? 0; // solo informativo: dia.horas ya viene neta
         d.crudos.push({ horas: dia.horas, entrada: dia.entrada });
+        if (dia.salida_comida && !d.salida_comida) {
+          d.salida_comida = dia.salida_comida;
+          d.regreso_comida = dia.regreso_comida ?? null;
+          d.minutos_comida_cuenta = dia.minutos_comida ?? 0;
+        }
         if (d.count === 1) {
           d.entrada = dia.entrada;
           d.salida = dia.salida;
@@ -2287,6 +2302,9 @@ const agruparAcumulado = (
             salida: d.salida,
             multiple: d.count > 1,
             minutos_comida: d.minutos_comida,
+            salida_comida: d.salida_comida,
+            regreso_comida: d.regreso_comida,
+            minutos_comida_cuenta: d.minutos_comida_cuenta,
           };
         }
       }
@@ -2743,7 +2761,47 @@ interface CeldaSemaforo {
   entrada: string | null;
   salida: string | null;
   horas: number;
+  salida_comida: string | null;
+  regreso_comida: string | null;
+  minutos_comida: number;
 }
+
+// Comida de encargados: dura 2 h exactas
+const MIN_COMIDA = 120;
+
+const COLOR_COMIDA = { comiendo: "#ea580c", a_tiempo: "#16a34a", tarde: "#dc2626" };
+
+// Duración de la comida en minutos: la del backend; si no viene, se calcula con las horas
+const duracionComida = (salida: string, regreso: string, minutosBackend: number): number => {
+  if (minutosBackend > 0) return minutosBackend;
+  const ms = new Date(regreso).getTime() - new Date(salida).getTime();
+  return isNaN(ms) ? 0 : Math.max(0, Math.round(ms / 60000));
+};
+
+// Minutos desde medianoche → "HH:MM" (24 h)
+const minutosA24h = (min: number): string => {
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+};
+
+const ComidaSemaforo: React.FC<{ salida: string; regreso: string | null; minutos: number }> = ({ salida, regreso, minutos }) => {
+  let color: string;
+  let texto: string;
+  if (!regreso) {
+    const ms = minutosMX(salida);
+    color = COLOR_COMIDA.comiendo;
+    texto = `${formatHora24(salida)} → ${ms !== null ? minutosA24h(ms + MIN_COMIDA) : "—"}`;
+  } else {
+    const dur = duracionComida(salida, regreso, minutos);
+    color = dur <= MIN_COMIDA ? COLOR_COMIDA.a_tiempo : COLOR_COMIDA.tarde;
+    texto = textoDuracion(dur);
+  }
+  return (
+    <Box sx={{ fontSize: 10.5, color, fontWeight: 600, whiteSpace: "nowrap", mt: 0.25, lineHeight: 1.2 }}>
+      🍴 {texto}
+    </Box>
+  );
+};
 
 const CuadroSemaforo: React.FC<{ estado: EstadoSemaforo }> = ({ estado }) => (
   <Box
@@ -2818,7 +2876,10 @@ const TabSemaforo: React.FC = () => {
         if (!dia) {
           const hor = g.horarios[dk] ?? null;
           const esDescanso = g.descansos.includes(dk) || (hor?.tipo === "descanso" && !!hor.rola);
-          celdas[dk] = { estado: esDescanso ? "descanso" : "sin", entrada: null, salida: null, horas: 0 };
+          celdas[dk] = {
+            estado: esDescanso ? "descanso" : "sin", entrada: null, salida: null, horas: 0,
+            salida_comida: null, regreso_comida: null, minutos_comida: 0,
+          };
           continue;
         }
         // Registros crudos de las cuentas del grupo: para saber si quedó algún check-out pendiente
@@ -2833,6 +2894,9 @@ const TabSemaforo: React.FC = () => {
           entrada: entradas[0] ?? null,
           salida: abierto ? null : salidas[salidas.length - 1] ?? null,
           horas: dia.horas, // horas efectivas, idénticas a Acumulado
+          salida_comida: dia.salida_comida,
+          regreso_comida: dia.regreso_comida,
+          minutos_comida: dia.minutos_comida_cuenta,
         };
       }
       return { key: g.key, celdas };
@@ -2868,6 +2932,9 @@ const TabSemaforo: React.FC = () => {
             <Typography sx={{ fontSize: 12, color: "#475569" }}>{COLOR_SEMAFORO[e].label}</Typography>
           </Box>
         ))}
+        <Typography sx={{ fontSize: 12, color: "#475569" }}>
+          🍴 Comida (naranja: comiendo, verde: a tiempo, rojo: se pasó)
+        </Typography>
       </Box>
 
       {cargando ? (
@@ -2905,9 +2972,156 @@ const TabSemaforo: React.FC = () => {
                               : `${formatHora24(c.entrada)} · — · —`}
                           </Box>
                         )}
+                        {c.salida_comida && (
+                          <ComidaSemaforo salida={c.salida_comida} regreso={c.regreso_comida} minutos={c.minutos_comida} />
+                        )}
                       </TableCell>
                     );
                   })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Box>
+  );
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB COMIDAS (admin) — quién salió a comer en un día y si regresó a tiempo
+// ═════════════════════════════════════════════════════════════════════════════
+
+const TabComidas: React.FC = () => {
+  const [fecha, setFecha] = useState(() => fechaMXMenosDias(0));
+  const [registros, setRegistros] = useState<AsistenciaResumen[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [buscado, setBuscado] = useState(false);
+  const [ahora, setAhora] = useState(() => Date.now());
+
+  const buscar = useCallback(async (dia: string) => {
+    if (!dia) return;
+    setCargando(true);
+    try {
+      const { data } = await axios.get<AsistenciaResumen[]>(
+        `${API}/asistencia/admin?desde=${dia}&hasta=${dia}`,
+        { headers: authH() }
+      );
+      setRegistros(data.filter((r) => !!r.salida_comida));
+    } catch {
+      setRegistros([]);
+    } finally {
+      setAhora(Date.now());
+      setCargando(false);
+      setBuscado(true);
+    }
+  }, []);
+
+  // Carga inicial (hoy); luego se usa el botón BUSCAR
+  useEffect(() => { buscar(fechaMXMenosDias(0)); }, [buscar]);
+
+  // Refresca "ahora" cada minuto para que "En comida" pase a "Retrasado" solo
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const filas = useMemo(() => {
+    return registros
+      .map((r) => {
+        const sal = r.salida_comida as string;
+        const salMs = new Date(sal).getTime();
+        const limiteMs = salMs + MIN_COMIDA * 60000;
+        const minSal = minutosMX(sal);
+        const debeRegresar = minSal !== null ? minutosA12h(minSal + MIN_COMIDA) : "—";
+        let estado: string;
+        let color: string;
+        let duracion = "—";
+        const enComida = !r.regreso_comida;
+        if (enComida) {
+          if (ahora <= limiteMs) {
+            estado = "🟠 En comida";
+            color = COLOR_COMIDA.comiendo;
+          } else {
+            estado = `🔴 Retrasado ${Math.floor((ahora - limiteMs) / 60000)} min`;
+            color = COLOR_COMIDA.tarde;
+          }
+        } else {
+          const dur = duracionComida(sal, r.regreso_comida as string, r.minutos_comida ?? 0);
+          duracion = textoDuracion(dur);
+          if (dur <= MIN_COMIDA) {
+            estado = "🟢 A tiempo";
+            color = COLOR_COMIDA.a_tiempo;
+          } else {
+            estado = `🔴 Se pasó ${dur - MIN_COMIDA} min`;
+            color = COLOR_COMIDA.tarde;
+          }
+        }
+        return { r, salMs, enComida, debeRegresar, estado, color, duracion };
+      })
+      .sort((a, b) => (a.enComida === b.enComida ? a.salMs - b.salMs : a.enComida ? -1 : 1));
+  }, [registros, ahora]);
+
+  const head = { fontWeight: 700, color: "#FF6600" };
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <TextField
+          type="date"
+          size="small"
+          label="Fecha"
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <Button
+          variant="contained"
+          onClick={() => buscar(fecha)}
+          disabled={cargando || !fecha}
+          sx={{ bgcolor: "#FF6600", "&:hover": { bgcolor: "#e65c00" } }}
+        >
+          BUSCAR
+        </Button>
+      </Box>
+
+      {cargando ? (
+        <Box textAlign="center" py={4}>
+          <CircularProgress />
+        </Box>
+      ) : buscado && filas.length === 0 ? (
+        <Alert severity="info">Nadie ha salido a comer en esta fecha</Alert>
+      ) : (
+        <TableContainer component={Paper} elevation={1}>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                <TableCell sx={head}>Encargado</TableCell>
+                <TableCell sx={head}>Módulo</TableCell>
+                <TableCell sx={head}>Salió</TableCell>
+                <TableCell sx={head}>Debe regresar</TableCell>
+                <TableCell sx={head}>Regresó</TableCell>
+                <TableCell sx={head}>Duración</TableCell>
+                <TableCell sx={head}>Estado</TableCell>
+                <TableCell sx={head}>Fotos</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filas.map(({ r, debeRegresar, estado, color, duracion }) => (
+                <TableRow key={`${r.username ?? ""}-${r.fecha}-${r.salida_comida}`}>
+                  <TableCell sx={{ fontWeight: 600 }}>{r.username ?? "—"}</TableCell>
+                  <TableCell>{r.modulo_nombre ?? "—"}</TableCell>
+                  <TableCell>{hora12(r.salida_comida)}</TableCell>
+                  <TableCell>{debeRegresar}</TableCell>
+                  <TableCell>{hora12(r.regreso_comida)}</TableCell>
+                  <TableCell>{duracion}</TableCell>
+                  <TableCell sx={{ color, fontWeight: 700, whiteSpace: "nowrap" }}>{estado}</TableCell>
+                  <TableCell>
+                    <Box display="flex" gap={0.75}>
+                      <FotoThumb url={r.foto_salida_comida_url ?? null} />
+                      <FotoThumb url={r.foto_regreso_comida_url ?? null} />
+                    </Box>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -2943,6 +3157,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Alertas" />
         <Tab label="Acumulado semanal" />
         <Tab label="Semáforo" />
+        <Tab label="Comidas" />
         <Tab label="Quién faltó" />
       </Tabs>
 
@@ -2967,7 +3182,8 @@ const VistaAdmin: React.FC = () => {
       {tab === 4 && <TabAlertas />}
       {tab === 5 && <TabAcumulado />}
       {tab === 6 && <TabSemaforo />}
-      {tab === 7 && <TabAnomalias />}
+      {tab === 7 && <TabComidas />}
+      {tab === 8 && <TabAnomalias />}
     </Box>
   );
 };
