@@ -39,6 +39,7 @@ import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import CloseIcon from "@mui/icons-material/Close";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { DiaTrabajo } from "../Types";
@@ -80,7 +81,21 @@ interface AsistenciaResumen {
   modulo_id?: number;
   modulo_nombre?: string;
   lugar_trabajo?: string | null;
+  // Comida (solo encargados). horas_trabajadas ya viene NETA (comida restada).
+  salida_comida?: string | null;
+  regreso_comida?: string | null;
+  minutos_comida?: number;
+  puede_registrar_comida?: boolean;
 }
+
+type TipoCheck = "entrada" | "salida" | "salida_comida" | "regreso_comida";
+
+const MSG_CHECK_OK: Record<TipoCheck, string> = {
+  entrada: "CHECK-IN registrado ✓",
+  salida: "CHECK-OUT registrado ✓",
+  salida_comida: "Salida a comer registrada ✓",
+  regreso_comida: "Regreso de comer registrado ✓",
+};
 
 interface CheckResponse {
   id: number;
@@ -170,6 +185,7 @@ interface DiaResumen {
   entrada: string | null;
   salida: string | null;
   horas: number;
+  minutos_comida?: number;
 }
 
 interface EmpleadoAcumuladoSemanal {
@@ -201,6 +217,7 @@ interface DiaCelda {
   entrada: string | null;
   salida: string | null;
   multiple: boolean;
+  minutos_comida: number; // suma de todas las cuentas del grupo (informativo; horas ya vienen netas)
 }
 
 interface GrupoAcumulado {
@@ -485,13 +502,21 @@ const VistaEmpleado: React.FC = () => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const pendingRef = useRef<{ tipo: "entrada" | "salida"; lat: number; lng: number } | null>(null);
+  const pendingRef = useRef<{ tipo: TipoCheck; lat: number; lng: number } | null>(null);
 
   const esMovil = isMobileDevice();
   const bloquearCheckIn = !esMovil;
 
   const yaEntro = !!estadoHoy?.entrada;
   const yaSalio = !!estadoHoy?.salida;
+
+  // Comida: solo si el backend dice que este usuario puede (rol encargado).
+  // Para cualquier otro rol todo esto queda en false y la pantalla no cambia.
+  const puedeComida = !!estadoHoy?.puede_registrar_comida;
+  const salioAComer = puedeComida && !!estadoHoy?.salida_comida;
+  const regresoDeComer = puedeComida && !!estadoHoy?.regreso_comida;
+  const enComida = salioAComer && !regresoDeComer;
+  const mostrarSalidaComida = puedeComida && yaEntro && !yaSalio && !salioAComer;
 
   // Hasta no tener las dos respuestas no se pinta nada: evita que aparezca
   // el CHECK-IN y un instante despues lo tape el aviso de descanso.
@@ -561,7 +586,7 @@ const VistaEmpleado: React.FC = () => {
     setCameraReady(false);
   };
 
-  const handleCheck = (tipo: "entrada" | "salida") => {
+  const handleCheck = (tipo: TipoCheck) => {
     if (!navigator.geolocation) {
       setSnack({ msg: "Tu navegador no soporta geolocalización", sev: "error" });
       return;
@@ -653,7 +678,7 @@ const VistaEmpleado: React.FC = () => {
           sev: "warning",
         });
       } else {
-        setSnack({ msg: `${tipo === "entrada" ? "CHECK-IN" : "CHECK-OUT"} registrado ✓`, sev: "success" });
+        setSnack({ msg: MSG_CHECK_OK[tipo], sev: "success" });
       }
       cargarEstadoHoy();
     } catch (err: any) {
@@ -709,7 +734,7 @@ const VistaEmpleado: React.FC = () => {
           </Button>
         </Paper>
         ) : (
-        <Box display="flex" gap={2} mb={4}>
+        <Box display="flex" gap={2} mb={4} flexWrap={puedeComida ? "wrap" : undefined}>
           <Button
             variant="contained"
             size="large"
@@ -726,7 +751,7 @@ const VistaEmpleado: React.FC = () => {
           <Button
             variant="contained"
             size="large"
-            disabled={cargando || cargandoEstado || !yaEntro || yaSalio}
+            disabled={cargando || cargandoEstado || !yaEntro || yaSalio || enComida}
             onClick={() => handleCheck("salida")}
             startIcon={<AccessTimeIcon />}
             sx={{
@@ -736,6 +761,36 @@ const VistaEmpleado: React.FC = () => {
           >
             CHECK-OUT (SALIDA)
           </Button>
+          {mostrarSalidaComida && (
+            <Button
+              variant="contained"
+              size="large"
+              disabled={cargando || cargandoEstado}
+              onClick={() => handleCheck("salida_comida")}
+              startIcon={<RestaurantIcon />}
+              sx={{
+                flexBasis: "100%", py: 2.5, fontSize: 18, fontWeight: 700,
+                bgcolor: "#d97706", "&:hover": { bgcolor: "#b45309" },
+              }}
+            >
+              SALIDA A COMER
+            </Button>
+          )}
+          {enComida && (
+            <Button
+              variant="contained"
+              size="large"
+              disabled={cargando || cargandoEstado}
+              onClick={() => handleCheck("regreso_comida")}
+              startIcon={<RestaurantIcon />}
+              sx={{
+                flexBasis: "100%", py: 2.5, fontSize: 18, fontWeight: 700,
+                bgcolor: "#0284c7", "&:hover": { bgcolor: "#0369a1" },
+              }}
+            >
+              REGRESO DE COMER
+            </Button>
+          )}
         </Box>
         )
       ) : (
@@ -795,6 +850,18 @@ const VistaEmpleado: React.FC = () => {
               </>
             )}
           </Box>
+
+          {enComida && (
+            <Alert severity="info" icon={<RestaurantIcon />} sx={{ mt: 2 }}>
+              Estás en tu hora de comida desde las {formatHora24(estadoHoy?.salida_comida ?? null)}
+            </Alert>
+          )}
+
+          {regresoDeComer && (
+            <Typography variant="body2" sx={{ mt: 1.5 }}>
+              Comida: {formatHora24(estadoHoy?.salida_comida ?? null)} – {formatHora24(estadoHoy?.regreso_comida ?? null)} ({estadoHoy?.minutos_comida ?? 0} min)
+            </Typography>
+          )}
 
           {yaSalio && (
             <Typography fontWeight={700} sx={{ color: "#16a34a", mt: 2 }}>
@@ -873,6 +940,16 @@ const VistaEmpleado: React.FC = () => {
 // TAB REGISTROS (admin)
 // ═════════════════════════════════════════════════════════════════════════════
 
+// "HH:MM – HH:MM" de la comida; "HH:MM – …" si sigue abierta; "" si no hubo comida.
+const textoComida = (r: AsistenciaResumen): string => {
+  if (!r.salida_comida) return "";
+  return `${formatHora24(r.salida_comida)} – ${r.regreso_comida ? formatHora24(r.regreso_comida) : "…"}`;
+};
+
+// Minutos de comida solo si se cerró (hay regreso); vacío en otro caso.
+const textoMinComida = (r: AsistenciaResumen): string =>
+  r.salida_comida && r.regreso_comida ? String(r.minutos_comida ?? 0) : "";
+
 const TabRegistros: React.FC = () => {
   const [registros, setRegistros] = useState<AsistenciaResumen[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioBasico[]>([]);
@@ -925,6 +1002,8 @@ const TabRegistros: React.FC = () => {
       Fecha: formatFecha(r.fecha),
       Entrada: formatHora(r.entrada),
       Salida: formatHora(r.salida),
+      Comida: textoComida(r),
+      "Min comida": textoMinComida(r),
       "Horas trabajadas": r.horas_trabajadas.toFixed(2),
       Estado:
         r.dentro_de_zona_entrada === false || r.dentro_de_zona_salida === false
@@ -996,7 +1075,7 @@ const TabRegistros: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                {["Usuario","Módulo","Lugar","Fecha","Entrada","Foto E","Salida","Foto S","Horas","Estado E","Estado S"].map((h) => (
+                {["Usuario","Módulo","Lugar","Fecha","Entrada","Foto E","Salida","Foto S","Comida","Min comida","Horas","Estado E","Estado S"].map((h) => (
                   <TableCell key={h} sx={{ fontWeight: 700, color: "#FF6600" }}>{h}</TableCell>
                 ))}
               </TableRow>
@@ -1004,7 +1083,7 @@ const TabRegistros: React.FC = () => {
             <TableBody>
               {registros.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} align="center" sx={{ color: "#94a3b8", py: 3 }}>
+                  <TableCell colSpan={13} align="center" sx={{ color: "#94a3b8", py: 3 }}>
                     Usa los filtros y presiona BUSCAR
                   </TableCell>
                 </TableRow>
@@ -1023,6 +1102,8 @@ const TabRegistros: React.FC = () => {
                     <TableCell><FotoThumb url={r.foto_entrada_url} /></TableCell>
                     <TableCell>{formatHora(r.salida)}</TableCell>
                     <TableCell><FotoThumb url={r.foto_salida_url} /></TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>{textoComida(r)}</TableCell>
+                    <TableCell>{textoMinComida(r)}</TableCell>
                     <TableCell>{r.horas_trabajadas.toFixed(2)} h</TableCell>
                     <TableCell><ZonaChip dentro={r.dentro_de_zona_entrada ?? null} /></TableCell>
                     <TableCell><ZonaChip dentro={r.dentro_de_zona_salida ?? null} /></TableCell>
@@ -1031,7 +1112,7 @@ const TabRegistros: React.FC = () => {
               })}
               {registros.length > 0 && (
                 <TableRow sx={{ bgcolor: "#f1f5f9" }}>
-                  <TableCell colSpan={8} sx={{ fontWeight: 700 }}>Total general</TableCell>
+                  <TableCell colSpan={10} sx={{ fontWeight: 700 }}>Total general</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>{totalHoras.toFixed(2)} h</TableCell>
                   <TableCell /><TableCell />
                 </TableRow>
@@ -1904,7 +1985,7 @@ const agruparAcumulado = (
     sueldos: number[];
     nombre_completo: string;
     diasAgg: Record<string, {
-      horas: number; count: number; entrada: string | null; salida: string | null;
+      horas: number; count: number; entrada: string | null; salida: string | null; minutos_comida: number;
       crudos: { horas: number; entrada: string | null }[];
     }>;
     descansos: Set<string>;
@@ -1933,12 +2014,13 @@ const agruparAcumulado = (
 
     for (const [dk, dia] of Object.entries(f.dias)) {
       if (!g.diasAgg[dk]) {
-        g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, crudos: [] };
+        g.diasAgg[dk] = { horas: 0, count: 0, entrada: null, salida: null, minutos_comida: 0, crudos: [] };
       }
       if (dia) {
         const d = g.diasAgg[dk];
         d.horas += dia.horas;
         d.count += 1;
+        d.minutos_comida += dia.minutos_comida ?? 0; // solo informativo: dia.horas ya viene neta
         d.crudos.push({ horas: dia.horas, entrada: dia.entrada });
         if (d.count === 1) {
           d.entrada = dia.entrada;
@@ -1996,6 +2078,7 @@ const agruparAcumulado = (
             entrada: d.entrada,
             salida: d.salida,
             multiple: d.count > 1,
+            minutos_comida: d.minutos_comida,
           };
         }
       }
@@ -2254,6 +2337,11 @@ const TabAcumulado: React.FC = () => {
                               <Box sx={{ fontSize: 14, fontWeight: 700, color: "#64748b", ...estiloHoras }}>
                                 {dia.horas.toFixed(2)}h
                               </Box>
+                              {dia.minutos_comida > 0 && (
+                                <Box sx={{ fontSize: 12, color: "#b45309", whiteSpace: "nowrap" }}>
+                                  Comida {dia.minutos_comida} min
+                                </Box>
+                              )}
                               <LineaHorario hor={hor} />
                             </Box>
                           ) : grupo.descansos.includes(diaKey) ? (
