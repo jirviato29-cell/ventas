@@ -80,6 +80,8 @@ interface ConversacionApi {
   ultimo_texto: string | null;
   ultimo_at: string | null;
   ultimo_de_admin: boolean | null;
+  // Si el último es mío: cuándo lo abrió la persona (null = todavía no)
+  ultimo_leido_at?: string | null;
   no_leidos: number;
 }
 // GET /mensajes/grupos: personas = a quienes les llega (tienen MENSAJES); en_grupo = todas las del grupo
@@ -368,6 +370,9 @@ const Chat: React.FC<ChatProps> = ({ url, soyAdmin, titulo, puedeEscribir, onCam
   const finRef = useRef<HTMLDivElement | null>(null);
   const bajarRef = useRef(true);
   const cargadoRef = useRef(false);
+  // Último id visto: si llega uno nuevo con la conversación abierta, el backend lo marca leído
+  // al recargar y hay que actualizar el globito del menú y la lista
+  const ultimoIdRef = useRef<number | null>(null);
 
   const cargar = useCallback(
     async (antesDe?: number) => {
@@ -390,11 +395,14 @@ const Chat: React.FC<ChatProps> = ({ url, soyAdmin, titulo, puedeEscribir, onCam
         }
         if (antesDe || !cargadoRef.current) setHayAnteriores(r.data.length === LIMITE);
         setError(null);
-        // Al abrir, el backend marca leídos los del otro lado: se actualizan el globito y la lista
-        if (!cargadoRef.current) {
+        // Al abrir (o si llegó algo nuevo), el backend marca leídos los del otro lado:
+        // se actualizan el globito y la lista
+        const ultimoId = r.data[r.data.length - 1]?.id ?? null;
+        if (!antesDe && (!cargadoRef.current || ultimoId !== ultimoIdRef.current)) {
           refrescarNoLeidos();
           onCambio?.();
         }
+        if (!antesDe) ultimoIdRef.current = ultimoId;
         cargadoRef.current = true;
       } catch (e) {
         setError(mensajeError(e, "No se pudo cargar la conversación."));
@@ -412,6 +420,7 @@ const Chat: React.FC<ChatProps> = ({ url, soyAdmin, titulo, puedeEscribir, onCam
     setTexto("");
     bajarRef.current = true;
     cargadoRef.current = false;
+    ultimoIdRef.current = null;
     cargar();
   }, [cargar]);
   useCadaMinuto(() => cargar(), true);
@@ -544,6 +553,8 @@ const MensajesAdmin: React.FC = () => {
   const [enviandoTodos, setEnviandoTodos] = useState(false);
   const [errorTodos, setErrorTodos] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+  // Filtro de la lista: todas o solo las que tienen mensajes sin leer
+  const [soloNoLeidos, setSoloNoLeidos] = useState(false);
   // Escribir por grupo (Cadenas / Asesores / Encargados)
   const [grupos, setGrupos] = useState<GrupoApi[]>([]);
   const [grupoAbierto, setGrupoAbierto] = useState<GrupoApi | null>(null);
@@ -581,6 +592,21 @@ const MensajesAdmin: React.FC = () => {
   useCadaMinuto(cargar, true);
 
   const conAcceso = conversaciones.filter((c) => c.tiene_acceso).length;
+  // Primero las que tienen sin leer, luego la más reciente (misma regla que el backend)
+  const ordenadas = [...conversaciones].sort(
+    (a, b) =>
+      Number(b.no_leidos > 0) - Number(a.no_leidos > 0) ||
+      (b.ultimo_at ? Date.parse(b.ultimo_at) : 0) - (a.ultimo_at ? Date.parse(a.ultimo_at) : 0) ||
+      a.clave.localeCompare(b.clave)
+  );
+  const conNoLeidos = ordenadas.filter((c) => c.no_leidos > 0).length;
+  const visibles = soloNoLeidos ? ordenadas.filter((c) => c.no_leidos > 0) : ordenadas;
+
+  const abrir = (clave: string) => {
+    setAbierta(clave);
+    // Se quita el color al instante; el backend lo marca al cargar la conversación
+    setConversaciones((prev) => prev.map((c) => (c.clave === clave ? { ...c, no_leidos: 0 } : c)));
+  };
   const actual = conversaciones.find((c) => c.clave === abierta) ?? null;
 
   const enviarTodos = async () => {
@@ -670,25 +696,56 @@ const MensajesAdmin: React.FC = () => {
             ))}
           </Box>
         )}
+        <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+          {[
+            { valor: false, texto: "Todos" },
+            { valor: true, texto: `No leídos${conNoLeidos ? ` (${conNoLeidos})` : ""}` },
+          ].map((f) => (
+            <Button
+              key={f.texto}
+              size="small"
+              variant={soloNoLeidos === f.valor ? "contained" : "text"}
+              onClick={() => setSoloNoLeidos(f.valor)}
+              disableElevation
+              sx={{
+                fontSize: 12,
+                fontWeight: 700,
+                borderRadius: 999,
+                px: 1.5,
+                minWidth: 0,
+                ...(soloNoLeidos === f.valor
+                  ? { bgcolor: AZUL, "&:hover": { bgcolor: "#0d47a1" } }
+                  : { color: "#475569" }),
+              }}
+            >
+              {f.texto}
+            </Button>
+          ))}
+        </Box>
       </Box>
       {cargando && <CircularProgress size={24} sx={{ display: "block", mx: "auto", my: 3 }} />}
       {!cargando && conversaciones.length === 0 && (
         <Typography sx={{ p: 2, color: "#94a3b8" }}>Nadie tiene MENSAJES todavía.</Typography>
       )}
-      {conversaciones.map((c) => (
+      {!cargando && conversaciones.length > 0 && visibles.length === 0 && (
+        <Typography sx={{ p: 2, color: "#94a3b8" }}>No hay conversaciones sin leer.</Typography>
+      )}
+      {visibles.map((c) => (
         <Box
           key={c.clave}
           role="button"
           tabIndex={0}
-          onClick={() => setAbierta(c.clave)}
-          onKeyDown={(e) => e.key === "Enter" && setAbierta(c.clave)}
+          onClick={() => abrir(c.clave)}
+          onKeyDown={(e) => e.key === "Enter" && abrir(c.clave)}
           sx={{
             px: 1.5,
             py: 1.25,
             borderBottom: "1px solid #f1f5f9",
+            // Sin leer: fondo azul claro con raya azul a la izquierda
+            borderLeft: `3px solid ${c.no_leidos > 0 ? AZUL : "transparent"}`,
             cursor: "pointer",
-            bgcolor: c.clave === abierta ? "#e3f2fd" : "transparent",
-            "&:hover": { bgcolor: c.clave === abierta ? "#e3f2fd" : "#f8fafc" },
+            bgcolor: c.clave === abierta ? "#e3f2fd" : c.no_leidos > 0 ? "#eff6ff" : "transparent",
+            "&:hover": { bgcolor: c.clave === abierta ? "#e3f2fd" : c.no_leidos > 0 ? "#dbeafe" : "#f8fafc" },
             display: "flex",
             alignItems: "center",
             gap: 1,
@@ -698,13 +755,43 @@ const MensajesAdmin: React.FC = () => {
             <Typography sx={{ fontWeight: c.no_leidos ? 800 : 600, color: "#1e293b", fontSize: 14 }} noWrap>
               {c.nombre || c.clave} · {c.clave}
             </Typography>
-            <Typography sx={{ fontSize: 13, color: "#64748b" }} noWrap>
+            <Typography sx={{ fontSize: 13, color: c.no_leidos ? "#1e293b" : "#64748b", fontWeight: c.no_leidos ? 600 : 400 }} noWrap>
               {c.ultimo_texto ? `${c.ultimo_de_admin ? "Tú: " : ""}${c.ultimo_texto}` : "Sin mensajes"}
             </Typography>
           </Box>
-          <Box sx={{ textAlign: "right", flexShrink: 0 }}>
-            <Typography sx={{ fontSize: 11, color: "#94a3b8" }}>{momento(c.ultimo_at)}</Typography>
-            {c.no_leidos > 0 && <Badge badgeContent={c.no_leidos} color="error" sx={{ mr: 1.2 }} />}
+          <Box sx={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.5 }}>
+            <Typography sx={{ fontSize: 11, color: c.no_leidos ? AZUL : "#94a3b8", fontWeight: c.no_leidos ? 700 : 400 }}>
+              {c.ultimo_de_admin && (
+                <Box
+                  component="span"
+                  sx={{ color: c.ultimo_leido_at ? AZUL : "#94a3b8", fontWeight: 700, mr: 0.75 }}
+                  title={c.ultimo_leido_at ? `Visto ${momento(c.ultimo_leido_at)}` : "Todavía no lo abre"}
+                >
+                  {c.ultimo_leido_at ? "✓✓ Visto" : "✓ Enviado"}
+                </Box>
+              )}
+              {momento(c.ultimo_at)}
+            </Typography>
+            {c.no_leidos > 0 && (
+              <Box
+                sx={{
+                  minWidth: 20,
+                  height: 20,
+                  px: 0.75,
+                  borderRadius: 999,
+                  bgcolor: AZUL,
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-label={`${c.no_leidos} sin leer`}
+              >
+                {c.no_leidos > 99 ? "99+" : c.no_leidos}
+              </Box>
+            )}
           </Box>
         </Box>
       ))}
