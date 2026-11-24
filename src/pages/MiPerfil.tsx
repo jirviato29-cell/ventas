@@ -152,6 +152,17 @@ interface VacacionApi {
   aprobado_gerencia?: boolean | null;
   // Confirmación de quien cubre: null sin respuesta, true confirmó, false no puede
   cubre_confirmado?: boolean | null;
+  // Quién cubre cada día (solo si eligió gente distinta por día; vacío = como siempre, cubre_clave)
+  cubre_por_dia?: CubreDiaApi[];
+}
+
+// Un día de "Cubrir por día": cubre_clave null = "No tengo quién me cubra" ese día
+interface CubreDiaApi {
+  fecha: string; // "YYYY-MM-DD"
+  cubre_clave: string | null;
+  confirmado: boolean | null;
+  confirmado_por?: string | null;
+  confirmado_at?: string | null;
 }
 
 // Saldo del año de vacaciones (GET /api/vacaciones/saldo y /api/mi-perfil/vacaciones/saldo)
@@ -227,6 +238,90 @@ const SIN_CUBRE: CubreOpcion = { clave: "", nombre: null };
 const textoCubre = (o: CubreOpcion) =>
   o === SIN_CUBRE ? "No tengo quién me cubra" : o.nombre ? `${o.clave} · ${o.nombre}` : o.clave;
 const filtroCubre = createFilterOptions<CubreOpcion>({ stringify: textoCubre });
+
+// Selector "¿Quién te cubre?" (lista + "No tengo quién me cubra" siempre al final). Lo usan el modo
+// de una persona y cada fila de "Cubrir por día".
+const SelectorCubre: React.FC<{
+  opciones: CubreOpcion[] | null;
+  valor: CubreOpcion | null;
+  onCambio: (o: CubreOpcion | null) => void;
+  disabled?: boolean;
+  label?: string;
+  helperText?: string;
+  sx?: object;
+}> = ({ opciones, valor, onCambio, disabled, label, helperText, sx }) => (
+  <Autocomplete
+    options={[...(opciones ?? []), SIN_CUBRE]}
+    value={valor}
+    onChange={(_, v) => onCambio(v)}
+    getOptionLabel={textoCubre}
+    isOptionEqualToValue={(a, b) => a.clave === b.clave}
+    // "No tengo quién me cubra" siempre al final, aunque se esté buscando
+    filterOptions={(lista, estado) => [
+      ...filtroCubre(
+        lista.filter((o) => o !== SIN_CUBRE),
+        estado
+      ),
+      SIN_CUBRE,
+    ]}
+    renderOption={(props, o) => (
+      <li
+        {...props}
+        key={o.clave || "sin-cubre"}
+        style={o === SIN_CUBRE ? { borderTop: "1px solid #e2e8f0", fontStyle: "italic", color: "#475569" } : undefined}
+      >
+        {textoCubre(o)}
+      </li>
+    )}
+    loading={opciones === null}
+    loadingText="Cargando…"
+    disabled={disabled}
+    fullWidth
+    size="small"
+    sx={sx}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        label={label}
+        placeholder="Busca por clave o nombre"
+        helperText={helperText}
+        inputProps={{ ...params.inputProps, autoComplete: "off" }}
+      />
+    )}
+  />
+);
+
+const NOMBRE_DIA = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+// "2027-02-08" → "lun 08/02"
+const etiquetaDia = (clave: string) => {
+  const d = new Date(Date.UTC(Number(clave.slice(0, 4)), Number(clave.slice(5, 7)) - 1, Number(clave.slice(8, 10))));
+  return `${NOMBRE_DIA[d.getUTCDay()]} ${clave.slice(8, 10)}/${clave.slice(5, 7)}`;
+};
+
+const colorCubreDia = (confirmado: boolean | null) =>
+  confirmado === true ? "#15803D" : confirmado === false ? "#B91C1C" : "#A16207";
+
+// Quién cubre cada día: una línea por fecha (verde confirmó, rojo no puede, amarillo esperando)
+const CubrePorDiaLista: React.FC<{ dias: CubreDiaApi[]; conEstado: boolean }> = ({ dias, conEstado }) => (
+  <Box sx={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
+    {dias.map((d) => (
+      <Typography key={d.fecha} sx={{ fontSize: 12, lineHeight: 1.35, whiteSpace: "nowrap" }}>
+        <Box component="span" sx={{ opacity: 0.75 }}>{etiquetaDia(d.fecha.slice(0, 10))}</Box>{" "}
+        <Box
+          component="span"
+          sx={{ fontWeight: 700, color: conEstado && d.cubre_clave ? colorCubreDia(d.confirmado) : "inherit" }}
+        >
+          {d.cubre_clave?.trim() || "Sin quién cubra"}
+        </Box>
+        {conEstado && d.cubre_clave && (
+          <Box component="span" sx={{ color: colorCubreDia(d.confirmado) }}>
+            {d.confirmado === true ? " · confirmó" : d.confirmado === false ? " · no puede" : " · falta confirmar"}
+          </Box>
+        )}
+      </Typography>
+    ))}
+  </Box>
+);
 
 const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
@@ -1143,9 +1238,24 @@ const SolicitudesPiloto: React.FC<SolicitudesPilotoProps> = ({ periodos, cargand
                       />
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, color: "#475569", whiteSpace: "nowrap" }}>
-                      {p.cubre_clave?.trim() || "—"}
+                      {p.cubre_por_dia && p.cubre_por_dia.length > 0 ? (
+                        <>
+                          <CubrePorDiaLista
+                            dias={p.cubre_por_dia}
+                            conEstado={(p.estado ?? "").trim().toLowerCase() === "solicitada"}
+                          />
+                          {(p.estado ?? "").trim().toLowerCase() === "solicitada" && p.cubre_confirmado === false && (
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#B91C1C" }}>
+                              RH elegirá a otra persona
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        p.cubre_clave?.trim() || "—"
+                      )}
                       {/* Pendiente: se autoriza con RH, Encargado, Gerencia y quien cubre confirmado */}
                       {(p.estado ?? "").trim().toLowerCase() === "solicitada" &&
+                        !(p.cubre_por_dia && p.cubre_por_dia.length > 0) &&
                         (p.cubre_clave?.trim() ? (
                           <Typography
                             sx={{
@@ -1259,6 +1369,10 @@ const MiPerfil = () => {
   const [cubrePiloto, setCubrePiloto] = useState<CubreOpcion | null>(null);
   const [cubreOpciones, setCubreOpciones] = useState<CubreOpcion[] | null>(null);
   const [errorCubre, setErrorCubre] = useState<string | null>(null);
+  // "Cubrir por día": una persona por fecha; la lista de cada fecha sale de /mi-perfil/cubre-opciones-por-dia
+  const [cubrirPorDia, setCubrirPorDia] = useState(false);
+  const [cubreDia, setCubreDia] = useState<Record<string, CubreOpcion | null>>({});
+  const [opcionesDia, setOpcionesDia] = useState<Record<string, CubreOpcion[]> | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   // Saldo del año de vacaciones actual y del siguiente de la persona elegida (admin) o propia (piloto)
   const [saldo, setSaldo] = useState<SaldoApi | null>(null);
@@ -1412,6 +1526,46 @@ const MiPerfil = () => {
     };
   }, [confirmando, esAdmin, seleccionadas]);
 
+  // "Cubrir por día": la lista de cada fecha (misma regla que la de una persona, revisada ese día)
+  useEffect(() => {
+    if (!confirmando || esAdmin || !cubrirPorDia) return;
+    const bloquesDia = agruparBloques(seleccionadas);
+    if (bloquesDia.length === 0) return;
+    let vivo = true;
+    setOpcionesDia(null);
+    setErrorCubre(null);
+    Promise.all(
+      bloquesDia.map((b) =>
+        axios.get<{ fecha: string; opciones: CubreOpcion[] }[]>("/api/mi-perfil/cubre-opciones-por-dia", {
+          params: { inicio: b.inicio, fin: b.fin },
+          headers: authH(),
+        })
+      )
+    )
+      .then((respuestas) => {
+        if (!vivo) return;
+        const mapa: Record<string, CubreOpcion[]> = {};
+        respuestas.forEach((r) => r.data.forEach((d) => (mapa[d.fecha.slice(0, 10)] = d.opciones)));
+        setOpcionesDia(mapa);
+        // Lo que ya estaba elegido y ese día no se puede, se borra
+        setCubreDia((prev) => {
+          const nuevo = { ...prev };
+          for (const [fecha, o] of Object.entries(prev)) {
+            if (o && o !== SIN_CUBRE && !(mapa[fecha] ?? []).some((x) => x.clave === o.clave)) nuevo[fecha] = null;
+          }
+          return nuevo;
+        });
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setOpcionesDia({});
+        setErrorCubre(mensajeError(e, "No se pudo cargar la lista de quién te cubre por día."));
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [confirmando, esAdmin, cubrirPorDia, seleccionadas]);
+
   const diasVacaciones = useMemo(() => diasDeVacaciones(periodos, hoy), [periodos, hoy]);
   // Tabla: de la más reciente a la más vieja
   const periodosTabla = useMemo(
@@ -1450,6 +1604,9 @@ const MiPerfil = () => {
   const abrirConfirmacion = () => {
     setNota("");
     setCubrePiloto(null);
+    setCubrirPorDia(false);
+    setCubreDia({});
+    setOpcionesDia(null);
     setErroresRegistro([]);
     setConfirmando(true);
   };
@@ -1484,15 +1641,28 @@ const MiPerfil = () => {
             { headers: authH() }
           );
         } else {
+          // Cubrir por día: una fila por fecha del bloque (null = "No tengo quién me cubra");
+          // si todas quedan con la misma persona, el backend lo guarda como siempre
+          const diasBloque = Array.from({ length: b.dias }, (_, i) => sumarDias(b.inicio, i));
+          const cubreBloque = cubrirPorDia
+            ? {
+                cubre_por_dia: diasBloque.map((fecha) => {
+                  const o = cubreDia[fecha];
+                  return { fecha, cubre_clave: o && o !== SIN_CUBRE ? o.clave : null };
+                }),
+              }
+            : {
+                cubre_clave: cubre || undefined,
+                // Eligió "No tengo quién me cubra" (el día extra exige elegir una de las dos)
+                ...(cubrePiloto === SIN_CUBRE ? { sin_cubre: true } : {}),
+              };
           await axios.post(
             "/api/mi-perfil/vacaciones",
             {
               fecha_inicio: b.inicio,
               fecha_fin: b.fin,
               dias: b.dias,
-              cubre_clave: cubre || undefined,
-              // Eligió "No tengo quién me cubra" (el día extra exige elegir una de las dos)
-              ...(cubrePiloto === SIN_CUBRE ? { sin_cubre: true } : {}),
+              ...cubreBloque,
               nota: notaLimpia || undefined,
               // Sin tipo el backend entiende vacaciones (como siempre)
               ...(modoExtra ? { tipo: "dia_extra" } : {}),
@@ -1854,6 +2024,15 @@ const MiPerfil = () => {
 
   const total = seleccionadas.size;
   const bloques = agruparBloques(seleccionadas);
+  // Fechas del diálogo en orden (para "Cubrir por día")
+  const diasOrdenados = Array.from(seleccionadas).sort();
+  // Día extra: cada día necesita a alguien o "No tengo quién me cubra"
+  const faltaCubrePorDia = cubrirPorDia && modoExtra && diasOrdenados.some((f) => !cubreDia[f]);
+  const activarCubrirPorDia = () => {
+    // Empieza con lo que ya había elegido para todos (si ese día no se puede, se borra al cargar la lista)
+    setCubreDia(Object.fromEntries(diasOrdenados.map((f) => [f, cubrePiloto])));
+    setCubrirPorDia(true);
+  };
 
   // "· Te/Le quedan Y días" junto al título de la barra: lo que se puede pedir (igual que el tope,
   // ya sin las solicitadas) menos lo seleccionado. Cada bloque cuenta en el año donde empieza.
@@ -1978,7 +2157,11 @@ const MiPerfil = () => {
           align="center"
           sx={{ ...celdaSx, fontSize: 12, color: "#475569", px: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
         >
-          {p.cubre_clave?.trim() ? (
+          {p.cubre_por_dia && p.cubre_por_dia.length > 0 ? (
+            <Tooltip arrow title={<CubrePorDiaLista dias={p.cubre_por_dia} conEstado={false} />}>
+              <span>Por día</span>
+            </Tooltip>
+          ) : p.cubre_clave?.trim() ? (
             <Tooltip arrow title={p.cubre_clave.trim()}>
               <span>{p.cubre_clave.trim()}</span>
             </Tooltip>
@@ -2604,52 +2787,56 @@ const MiPerfil = () => {
               {textoPeriodo(b.inicio, b.fin)} ({textoDias(b.dias)})
             </Typography>
           ))}
-          {vistaPiloto && (
-            <Autocomplete
-              options={[...(cubreOpciones ?? []), SIN_CUBRE]}
-              value={cubrePiloto}
-              onChange={(_, valor) => setCubrePiloto(valor)}
-              getOptionLabel={textoCubre}
-              isOptionEqualToValue={(a, b) => a.clave === b.clave}
-              // "No tengo quién me cubra" siempre al final, aunque se esté buscando
-              filterOptions={(opciones, estado) => [
-                ...filtroCubre(
-                  opciones.filter((o) => o !== SIN_CUBRE),
-                  estado
-                ),
-                SIN_CUBRE,
-              ]}
-              renderOption={(props, o) => (
-                <li
-                  {...props}
-                  key={o.clave || "sin-cubre"}
-                  style={o === SIN_CUBRE ? { borderTop: "1px solid #e2e8f0", fontStyle: "italic", color: "#475569" } : undefined}
-                >
-                  {textoCubre(o)}
-                </li>
-              )}
-              loading={cubreOpciones === null}
-              loadingText="Cargando…"
+          {vistaPiloto && !cubrirPorDia && (
+            <SelectorCubre
+              opciones={cubreOpciones}
+              valor={cubrePiloto}
+              onCambio={setCubrePiloto}
               disabled={guardando}
-              fullWidth
-              size="small"
               sx={{ mt: 2 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="¿Quién te cubre?"
-                  placeholder="Busca por clave o nombre"
-                  helperText={
-                    modoExtra && cubrePiloto === null
-                      ? "Obligatorio para el día extra: elige a alguien o \"No tengo quién me cubra\"."
-                      : cubreOpciones?.length === 0 && !errorCubre
-                      ? "No hay nadie disponible para esas fechas."
-                      : "Solo aparece quien puede cubrirte en esas fechas."
-                  }
-                  inputProps={{ ...params.inputProps, autoComplete: "off" }}
-                />
-              )}
+              label="¿Quién te cubre?"
+              helperText={
+                modoExtra && cubrePiloto === null
+                  ? "Obligatorio para el día extra: elige a alguien o \"No tengo quién me cubra\"."
+                  : cubreOpciones?.length === 0 && !errorCubre
+                  ? "No hay nadie disponible para esas fechas."
+                  : "Solo aparece quien puede cubrirte en esas fechas."
+              }
             />
+          )}
+          {vistaPiloto && cubrirPorDia && (
+            <Box sx={{ mt: 2 }}>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#1e293b", mb: 1 }}>¿Quién te cubre cada día?</Typography>
+              {diasOrdenados.map((fecha) => (
+                <Box key={fecha} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#475569", width: 78, flexShrink: 0 }}>
+                    {etiquetaDia(fecha)}
+                  </Typography>
+                  <SelectorCubre
+                    opciones={opcionesDia ? opcionesDia[fecha] ?? [] : null}
+                    valor={cubreDia[fecha] ?? null}
+                    onCambio={(o) => setCubreDia((prev) => ({ ...prev, [fecha]: o }))}
+                    disabled={guardando}
+                    label="Cubre"
+                  />
+                </Box>
+              ))}
+              <Typography sx={{ fontSize: 12, color: "#64748b" }}>
+                {modoExtra
+                  ? "Obligatorio para el día extra: en cada día elige a alguien o \"No tengo quién me cubra\"."
+                  : "Cada día muestra solo a quien puede cubrirte esa fecha. A cada quien le llega un aviso con sus días."}
+              </Typography>
+            </Box>
+          )}
+          {vistaPiloto && total >= 2 && (
+            <Button
+              size="small"
+              disabled={guardando}
+              onClick={() => (cubrirPorDia ? setCubrirPorDia(false) : activarCubrirPorDia())}
+              sx={{ mt: 0.5, px: 0.5, textTransform: "none", fontWeight: 700 }}
+            >
+              {cubrirPorDia ? "Una sola persona para todos los días" : "Cubrir por día"}
+            </Button>
           )}
           {vistaPiloto && errorCubre && (
             <Alert severity="warning" sx={{ mt: 1 }}>
@@ -2678,7 +2865,11 @@ const MiPerfil = () => {
           </Button>
           <Button
             variant="contained"
-            disabled={guardando || total === 0 || (vistaPiloto && modoExtra && cubrePiloto === null)}
+            disabled={
+              guardando ||
+              total === 0 ||
+              (vistaPiloto && modoExtra && (cubrirPorDia ? faltaCubrePorDia : cubrePiloto === null))
+            }
             onClick={guardarRegistro}
           >
             {guardando ? (vistaPiloto ? "Enviando…" : "Guardando…") : vistaPiloto ? "Solicitar" : "Guardar"}

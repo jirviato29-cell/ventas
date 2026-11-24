@@ -59,6 +59,8 @@ interface Solicitud extends Aprobaciones {
   cubre_confirmado?: boolean | null;
   cubre_confirmado_por?: string | null;
   cubre_confirmado_at?: string | null;
+  // Quién cubre cada día (solo si se eligió gente distinta por día; vacío = como siempre, cubre_clave)
+  cubre_por_dia?: CubreDia[];
   // "vacaciones" o "dia_extra" (el día extra no usa el saldo de vacaciones)
   tipo?: string | null;
   // Saldo del año de vacaciones (GET /vacaciones/solicitudes); null sin fecha de ingreso
@@ -69,6 +71,22 @@ interface Solicitud extends Aprobaciones {
   dias_usados?: number | null;
   dias_quedan?: number | null;
 }
+
+// Un día de "Cubrir por día": cubre_clave null = "No tengo quién me cubra" ese día
+interface CubreDia {
+  fecha: string; // "YYYY-MM-DD"
+  cubre_clave: string | null;
+  confirmado: boolean | null;
+  confirmado_por?: string | null;
+  confirmado_at?: string | null;
+}
+
+const NOMBRE_DIA = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+// "2027-02-08" → "lun 08/02"
+const etiquetaDia = (iso: string) => {
+  const d = new Date(Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))));
+  return `${NOMBRE_DIA[d.getUTCDay()]} ${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+};
 
 // El detail del backend (409 de empalme, 400 de clave) o, si no hay, el texto dado
 export const mensajeError = (e: unknown, porDefecto: string) => {
@@ -230,12 +248,33 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     }
   };
 
-  // Reenvía "¿Confirmas que vas a cubrir...?" (sirve para las que ya estaban antes de este flujo)
-  const reenviarAviso = async (s: Solicitud) => {
+  // Por día: cambia quién cubre ESA fecha (solo admin reasigna)
+  const guardarCubreDia = async (id: number, fecha: string, cubre_clave: string | null) => {
+    setOcupada(id);
+    try {
+      const { data } = await axios.patch<Solicitud>(
+        `${API}/vacaciones/${id}/cubre`,
+        { cubre_clave, fecha },
+        { headers: authH() }
+      );
+      setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+    } catch (e) {
+      setAviso(mensajeError(e, "No se pudo guardar quién cubre ese día."));
+    } finally {
+      setOcupada(null);
+    }
+  };
+
+  // Reenvía "¿Confirmas que vas a cubrir...?" (sirve para las que ya estaban antes de este flujo).
+  // Por día va a una persona (persona) con sus días que siguen sin respuesta.
+  const reenviarAviso = async (s: Solicitud, persona?: string) => {
     setOcupada(s.id);
     try {
-      await axios.post(`${API}/vacaciones/${s.id}/cubre/recordatorio`, {}, { headers: authH() });
-      setExito(`Aviso reenviado a ${claveCubre(s.cubre_clave)}.`);
+      await axios.post(`${API}/vacaciones/${s.id}/cubre/recordatorio`, {}, {
+        headers: authH(),
+        params: persona ? { cubre_clave: persona } : undefined,
+      });
+      setExito(`Aviso reenviado a ${persona ?? claveCubre(s.cubre_clave)}.`);
     } catch (e) {
       setAviso(mensajeError(e, "No se pudo reenviar el aviso."));
     } finally {
@@ -243,13 +282,13 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
     }
   };
 
-  // "Confirmar por él": quien cubre avisó por otro medio
-  const confirmarPorEl = async (s: Solicitud) => {
+  // "Confirmar por él": quien cubre avisó por otro medio. Por día, confirma todos los días de esa persona.
+  const confirmarPorEl = async (s: Solicitud, persona?: string) => {
     setOcupada(s.id);
     try {
       const { data } = await axios.patch<Solicitud>(
         `${API}/vacaciones/${s.id}/cubre/confirmacion`,
-        { confirmo: true },
+        persona ? { confirmo: true, cubre_clave: persona } : { confirmo: true },
         { headers: authH() }
       );
       setSolicitudes((prev) =>
@@ -260,7 +299,7 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
       setExito(
         data.estado === "autorizada"
           ? "Autorizada: ya están RH, Encargado, Gerencia y quien cubre en verde."
-          : `Confirmado por ${claveCubre(s.cubre_clave)}.`
+          : `Confirmado por ${persona ?? claveCubre(s.cubre_clave)}.`
       );
     } catch (e) {
       setAviso(mensajeError(e, "No se pudo confirmar."));
@@ -303,6 +342,66 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
       </Box>
     );
   };
+
+  // Por día: una fila por fecha con su selector, su estado y sus acciones (por persona)
+  const cubrePorDia = (s: Solicitud, opcionesCubre: Persona[]) => (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+      {(s.cubre_por_dia ?? []).map((d) => {
+        const persona = claveCubre(d.cubre_clave);
+        const estilo =
+          d.confirmado === true ? ESTILO_CUBRE.confirmo : d.confirmado === false ? ESTILO_CUBRE.noPuede : ESTILO_CUBRE.esperando;
+        const quien = d.confirmado_por ? ` · ${d.confirmado_por} · ${momento(d.confirmado_at ?? null)}` : "";
+        return (
+          <Box key={d.fecha} sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#475569", width: 62, flexShrink: 0, pt: "6px" }}>
+              {etiquetaDia(d.fecha)}
+            </Typography>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <SelectorEmpleado
+                personas={opcionesCubre}
+                cargando={cargandoPersonas}
+                seleccion={persona}
+                onSeleccion={(clave) => guardarCubreDia(s.id, d.fecha.slice(0, 10), clave)}
+                etiqueta="Cubre"
+                margenInferior={0}
+              />
+              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.5 }}>
+                {persona ? (
+                  <Tooltip arrow title={d.confirmado != null ? `Respondió${quien}` : "Todavía no responde"}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 700, color: estilo.color, cursor: "help" }}>
+                      {estilo.texto}
+                    </Typography>
+                  </Tooltip>
+                ) : (
+                  <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#854D0E" }}>Sin quién cubra · elige a alguien</Typography>
+                )}
+                {persona && d.confirmado == null && (
+                  <Button
+                    size="small"
+                    disabled={ocupada === s.id}
+                    onClick={() => reenviarAviso(s, persona)}
+                    sx={{ minWidth: 0, fontSize: 11, px: 0.5, py: 0, textTransform: "none" }}
+                  >
+                    Reenviar aviso
+                  </Button>
+                )}
+                {persona && d.confirmado !== true && (
+                  <Button
+                    size="small"
+                    disabled={ocupada === s.id}
+                    onClick={() => confirmarPorEl(s, persona)}
+                    sx={{ minWidth: 0, fontSize: 11, px: 0.5, py: 0, textTransform: "none", color: VERDE }}
+                  >
+                    Confirmar por él
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </Box>
+        );
+      })}
+    </Box>
+  );
 
   // Celda de un nivel: botones ✓ ✗; ya marcado, el chip (clic para cambiar la decisión)
   const celdaNivel = (s: Solicitud, nivel: Nivel, texto: string) => {
@@ -462,8 +561,15 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                 // Nada automático al llegar la fecha: solo se marca en rojo para que admin lo resuelva
                 const faltan = diasEntre(hoy, inicio);
                 const alerta = faltan <= DIAS_ALERTA;
-                const estiloCubre =
-                  !claveCubre(s.cubre_clave)
+                const porDia = (s.cubre_por_dia ?? []).length > 0;
+                // Por día: verde solo si todos confirmaron, rojo si alguien no puede, si no amarillo
+                const estiloCubre = porDia
+                  ? s.cubre_confirmado === true
+                    ? ESTILO_CUBRE.confirmo
+                    : s.cubre_confirmado === false
+                    ? ESTILO_CUBRE.noPuede
+                    : ESTILO_CUBRE.esperando
+                  : !claveCubre(s.cubre_clave)
                     ? null
                     : s.cubre_confirmado === true
                     ? ESTILO_CUBRE.confirmo
@@ -519,20 +625,26 @@ const MisSolicitudesVacaciones: React.FC<Props> = ({ personas, cargandoPersonas 
                       sx={{
                         ...celdaSx,
                         width: "22%",
-                        minWidth: 170,
+                        minWidth: porDia ? 250 : 170,
                         ...selectorCompactoSx,
                         ...(estiloCubre ? { bgcolor: estiloCubre.fondo, boxShadow: `inset 0 0 0 2px ${estiloCubre.borde}` } : {}),
                       }}
                     >
-                      <SelectorEmpleado
-                        personas={opcionesCubre}
-                        cargando={cargandoPersonas}
-                        seleccion={claveCubre(s.cubre_clave)}
-                        onSeleccion={(clave) => guardarCubre(s.id, clave)}
-                        etiqueta="Cubre"
-                        margenInferior={0}
-                      />
-                      {estadoCubre(s)}
+                      {porDia ? (
+                        cubrePorDia(s, opcionesCubre)
+                      ) : (
+                        <>
+                          <SelectorEmpleado
+                            personas={opcionesCubre}
+                            cargando={cargandoPersonas}
+                            seleccion={claveCubre(s.cubre_clave)}
+                            onSeleccion={(clave) => guardarCubre(s.id, clave)}
+                            etiqueta="Cubre"
+                            margenInferior={0}
+                          />
+                          {estadoCubre(s)}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell align="center" sx={{ ...celdaSx, minWidth: 80 }}>
                       {celdaQuedan(s)}
