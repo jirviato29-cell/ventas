@@ -232,8 +232,8 @@ const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
 
 // ── Días de descanso extra: mismas reglas que el backend (app/routers/vacaciones.py) ──
-// Empleado: 5 días de anticipación (primer día = hoy + 5), cualquier día de la semana
-const DIAS_ANTICIPACION_EXTRA = 5;
+// Empleado: 7 días de anticipación (primer día = hoy + 7), cualquier día de la semana
+const DIAS_ANTICIPACION_EXTRA = 7;
 // Bloqueado del 15 de diciembre al 6 de enero, cada año (en rojo en el calendario)
 const motivoBloqueoExtra = (clave: string): string | undefined => {
   const mes = Number(clave.slice(5, 7));
@@ -623,7 +623,7 @@ interface MesProps {
   modoFalta: boolean;
   // Días en rojo (periodo de ventas): admin usa PERIODOS_BLOQUEADOS; el piloto, la regla de cualquier año
   motivoBloqueo: (clave: string) => string | undefined;
-  // Modo día extra del piloto: qué días quedan en gris (antes de hoy + 5); si no, primerDisponible
+  // Modo día extra del piloto: qué días quedan en gris (antes de hoy + 7); si no, primerDisponible
   sinAnticipacionDe?: (clave: string) => boolean;
   onToggle: (clave: string) => void;
 }
@@ -1678,7 +1678,7 @@ const MiPerfil = () => {
   };
 
   // ── Selección en modo día extra ──
-  // Piloto: 5 días de anticipación, lunes a domingo, sin 15 dic – 6 ene; debe elegir quién cubre.
+  // Piloto: 7 días de anticipación, lunes a domingo, sin 15 dic – 6 ene; debe elegir quién cubre.
   // Admin: cualquier fecha. Para los dos: que le alcancen, dentro de la vigencia y máximo 6 seguidos
   // junto con vacaciones. No cuentan "uno por mes", los 15 días ni el saldo de vacaciones.
   const primerDisponibleExtra = sumarDias(hoy, DIAS_ANTICIPACION_EXTRA);
