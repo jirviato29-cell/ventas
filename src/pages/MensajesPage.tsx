@@ -21,6 +21,7 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import GroupsIcon from "@mui/icons-material/Groups";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import { useNavigate } from "react-router-dom";
@@ -80,6 +81,14 @@ interface ConversacionApi {
   ultimo_at: string | null;
   ultimo_de_admin: boolean | null;
   no_leidos: number;
+}
+// GET /mensajes/grupos: personas = a quienes les llega (tienen MENSAJES); en_grupo = todas las del grupo
+interface GrupoApi {
+  grupo: string;
+  titulo: string;
+  personas: number;
+  claves: string[];
+  en_grupo: number;
 }
 
 // El backend manda UTC; se muestra en la hora de la computadora
@@ -535,8 +544,27 @@ const MensajesAdmin: React.FC = () => {
   const [enviandoTodos, setEnviandoTodos] = useState(false);
   const [errorTodos, setErrorTodos] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+  // Escribir por grupo (Cadenas / Asesores / Encargados)
+  const [grupos, setGrupos] = useState<GrupoApi[]>([]);
+  const [grupoAbierto, setGrupoAbierto] = useState<GrupoApi | null>(null);
+  const [textoGrupo, setTextoGrupo] = useState("");
+  const [enviandoGrupo, setEnviandoGrupo] = useState(false);
+  const [errorGrupo, setErrorGrupo] = useState<string | null>(null);
+  // El borrador es de UN grupo: al abrir otro grupo se empieza vacío (no mandar a Asesores lo escrito para Cadenas)
+  const [borradorDe, setBorradorDe] = useState<string | null>(null);
+
+  const cargarGrupos = useCallback(async () => {
+    try {
+      const r = await axios.get<GrupoApi[]>("/api/mensajes/grupos", { headers: authH() });
+      setGrupos(r.data);
+      return r.data;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const cargar = useCallback(async () => {
+    cargarGrupos();
     try {
       const r = await axios.get<ConversacionApi[]>("/api/mensajes/conversaciones", { headers: authH() });
       setConversaciones(r.data);
@@ -546,7 +574,7 @@ const MensajesAdmin: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [cargarGrupos]);
   useEffect(() => {
     cargar();
   }, [cargar]);
@@ -573,6 +601,41 @@ const MensajesAdmin: React.FC = () => {
     }
   };
 
+  const abrirGrupo = async (g: GrupoApi) => {
+    setErrorGrupo(null);
+    if (borradorDe !== g.grupo) {
+      setTextoGrupo("");
+      setBorradorDe(g.grupo);
+    }
+    setGrupoAbierto(g);
+    // Conteo fresco al abrir: el diálogo confirma con el número real
+    const frescos = await cargarGrupos();
+    const fresco = frescos?.find((x) => x.grupo === g.grupo);
+    if (fresco) setGrupoAbierto(fresco);
+  };
+
+  const enviarGrupo = async () => {
+    const limpio = textoGrupo.trim();
+    if (!grupoAbierto || !limpio || enviandoGrupo) return;
+    setEnviandoGrupo(true);
+    setErrorGrupo(null);
+    try {
+      const r = await axios.post<{ enviados: number }>(
+        `/api/mensajes/grupos/${encodeURIComponent(grupoAbierto.grupo)}`,
+        { texto: limpio },
+        { headers: authH() },
+      );
+      setGrupoAbierto(null);
+      setTextoGrupo("");
+      setExito(`Mensaje enviado a ${r.data.enviados} ${r.data.enviados === 1 ? "persona" : "personas"} (${grupoAbierto.titulo}).`);
+      cargar();
+    } catch (e) {
+      setErrorGrupo(mensajeError(e, "No se pudo enviar."));
+    } finally {
+      setEnviandoGrupo(false);
+    }
+  };
+
   const lista = (
     <Paper variant="outlined" sx={{ height: { xs: "auto", md: 560 }, overflowY: "auto", minWidth: 0 }}>
       <Box sx={{ p: 1.5, borderBottom: "1px solid #e2e8f0" }}>
@@ -589,6 +652,24 @@ const MensajesAdmin: React.FC = () => {
         >
           Escribir a todos
         </Button>
+        {grupos.length > 0 && (
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 1, mt: 1 }}>
+            {grupos.map((g) => (
+              <Button
+                key={g.grupo}
+                variant="outlined"
+                size="small"
+                startIcon={<GroupsIcon />}
+                onClick={() => abrirGrupo(g)}
+                disabled={g.personas === 0}
+                title={g.personas === 0 ? `Nadie de ${g.titulo} tiene MENSAJES todavía` : undefined}
+                sx={{ color: AZUL, borderColor: "#bfdbfe", fontWeight: 700, fontSize: 12, lineHeight: 1.2, px: 0.5 }}
+              >
+                {g.titulo} ({g.personas})
+              </Button>
+            ))}
+          </Box>
+        )}
       </Box>
       {cargando && <CircularProgress size={24} sx={{ display: "block", mx: "auto", my: 3 }} />}
       {!cargando && conversaciones.length === 0 && (
@@ -685,6 +766,47 @@ const MensajesAdmin: React.FC = () => {
             sx={{ bgcolor: NARANJA, "&:hover": { bgcolor: "#ea580c" } }}
           >
             {enviandoTodos ? "Enviando…" : "Enviar a todos"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={grupoAbierto !== null} onClose={() => !enviandoGrupo && setGrupoAbierto(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Escribir a {grupoAbierto?.titulo.toLowerCase()}</DialogTitle>
+        <DialogContent>
+          {grupoAbierto && (
+            <>
+              <Typography sx={{ color: "#1e293b", fontWeight: 700 }}>
+                Se enviará a {grupoAbierto.personas} {grupoAbierto.personas === 1 ? "persona" : "personas"}
+              </Typography>
+              <Typography sx={{ color: "#475569", fontSize: 14, mb: 2 }}>
+                Cada quien lo recibe una vez, en su conversación.
+                {grupoAbierto.en_grupo > grupoAbierto.personas &&
+                  ` Hay ${grupoAbierto.en_grupo} en el grupo; ${grupoAbierto.en_grupo - grupoAbierto.personas} todavía no tienen MENSAJES y no lo recibirán.`}
+              </Typography>
+            </>
+          )}
+          <TextField
+            value={textoGrupo}
+            onChange={(e) => setTextoGrupo(e.target.value)}
+            multiline
+            minRows={3}
+            fullWidth
+            label="Mensaje"
+            inputProps={{ maxLength: TEXTO_MAXIMO }}
+          />
+          {errorGrupo && <Alert severity="error" sx={{ mt: 2 }}>{errorGrupo}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={enviandoGrupo} onClick={() => setGrupoAbierto(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            disabled={enviandoGrupo || !textoGrupo.trim() || !grupoAbierto || grupoAbierto.personas === 0}
+            onClick={enviarGrupo}
+            sx={{ bgcolor: NARANJA, "&:hover": { bgcolor: "#ea580c" } }}
+          >
+            {enviandoGrupo ? "Enviando…" : `Enviar a ${grupoAbierto?.personas ?? 0}`}
           </Button>
         </DialogActions>
       </Dialog>
