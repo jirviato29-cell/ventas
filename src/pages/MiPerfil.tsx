@@ -727,6 +727,9 @@ interface MesProps {
   motivoBloqueo: (clave: string) => string | undefined;
   // Modo día extra del piloto: qué días quedan en gris (antes de hoy + 7); si no, primerDisponible
   sinAnticipacionDe?: (clave: string) => boolean;
+  // Admin registrando vacaciones: cualquier fecha (pasados y sin anticipación); los bloqueados
+  // siguen en rojo pero se pueden tocar (MiPerfil pide confirmar dentro de la página)
+  fechaLibre?: boolean;
   onToggle: (clave: string) => void;
 }
 
@@ -999,6 +1002,7 @@ const MesCalendario: React.FC<MesProps> = ({
   modoFalta,
   motivoBloqueo,
   sinAnticipacionDe,
+  fechaLibre = false,
   onToggle,
 }) => {
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
@@ -1029,11 +1033,14 @@ const MesCalendario: React.FC<MesProps> = ({
           const dia = i + 1;
           const clave = claveFecha(anio, mes, dia);
           // En modo falta no aplica ninguna regla de vacaciones: todos los días se pueden marcar
-          const pasado = !modoFalta && clave < hoy;
+          const pasado = !modoFalta && !fechaLibre && clave < hoy;
           const esHoy = clave === hoy;
           // Entre hoy y el primer día disponible: gris como los pasados, pero al tocarlo sale el aviso
           const sinAnticipacion =
-            !modoFalta && !pasado && (sinAnticipacionDe ? sinAnticipacionDe(clave) : clave < primerDisponible);
+            !modoFalta &&
+            !fechaLibre &&
+            !pasado &&
+            (sinAnticipacionDe ? sinAnticipacionDe(clave) : clave < primerDisponible);
           const noDisponible = pasado || sinAnticipacion;
           const marcado = seleccionadas.has(clave);
           // Un día no disponible queda gris aunque caiga en un periodo bloqueado
@@ -1048,7 +1055,7 @@ const MesCalendario: React.FC<MesProps> = ({
               component="button"
               type="button"
               disabled={pasado}
-              aria-disabled={bloqueado || sinAnticipacion || undefined}
+              aria-disabled={(bloqueado && !fechaLibre) || sinAnticipacion || undefined}
               title={vac ? ESTILO_VACACION[vac].texto : undefined}
               onClick={() => onToggle(clave)}
               sx={{
@@ -1061,7 +1068,11 @@ const MesCalendario: React.FC<MesProps> = ({
                 fontWeight: marcado || esHoy ? 700 : 500,
                 fontFamily: "inherit",
                 p: 0,
-                cursor: pasado ? "default" : bloqueado || sinAnticipacion ? "not-allowed" : "pointer",
+                cursor: pasado
+                  ? "default"
+                  : (bloqueado && !fechaLibre) || sinAnticipacion
+                  ? "not-allowed"
+                  : "pointer",
                 border: esHoy
                   ? `2px solid ${AZUL}`
                   : estiloVac?.punteado
@@ -1401,6 +1412,8 @@ const MiPerfil = () => {
   const [errorOtorgar, setErrorOtorgar] = useState<string | null>(null);
   // Quitar un otorgamiento puesto por error (solo admin; el backend da 409 si ya se usó)
   const [porQuitar, setPorQuitar] = useState<DiaExtraOtorgadoApi | null>(null);
+  // Admin tocó un día en periodo bloqueado: se pregunta dentro de la página antes de marcarlo
+  const [bloqueoPorConfirmar, setBloqueoPorConfirmar] = useState<string | null>(null);
   const [errorQuitar, setErrorQuitar] = useState<string | null>(null);
   // Candado inmediato contra doble clic (el estado tarda un render en deshabilitar el botón)
   const enviandoRef = useRef(false);
@@ -1936,8 +1949,10 @@ const MiPerfil = () => {
     setSeleccionadas((prev) => new Set(prev).add(clave));
   };
 
-  // Mismas reglas de selección para admin y piloto (el piloto nunca entra al modo falta)
-  const toggleDia = (clave: string) => {
+  // Mismas reglas de selección para admin y piloto (el piloto nunca entra al modo falta), salvo
+  // las fechas: el admin registra cualquier día (pasados, sin anticipación y en periodo bloqueado,
+  // este último con confirmación). `confirmoBloqueo`: ya dijo "registrar de todos modos".
+  const toggleDia = (clave: string, confirmoBloqueo = false) => {
     if (modoExtra) {
       toggleDiaExtra(clave);
       return;
@@ -1950,19 +1965,31 @@ const MiPerfil = () => {
       });
       return;
     }
-    if (clave < hoy) return;
-    if (clave < primerDisponible) {
-      setAviso(
+    if (!esAdmin) {
+      if (clave < hoy) return;
+      if (clave < primerDisponible) {
         // Regla del negocio: "30 días de anticipación"; el cálculo sigue siendo hoy + 31
-        `Las vacaciones se piden con 30 días de anticipación. ${
-          esAdmin ? "Se puede elegir" : "Puedes elegir"
-        } a partir del ${fechaLarga(primerDisponible)}.`
-      );
-      return;
+        setAviso(
+          `Las vacaciones se piden con 30 días de anticipación. Puedes elegir a partir del ${fechaLarga(
+            primerDisponible
+          )}.`
+        );
+        return;
+      }
     }
     const motivo = motivoBloqueo(clave);
-    if (motivo) {
+    if (motivo && !esAdmin) {
       setAviso(motivo);
+      return;
+    }
+    // Admin: se pregunta una vez por selección (si ya marcó un día bloqueado, ya confirmó)
+    if (
+      motivo &&
+      !confirmoBloqueo &&
+      !seleccionadas.has(clave) &&
+      !Array.from(seleccionadas).some((d) => motivoBloqueo(d))
+    ) {
+      setBloqueoPorConfirmar(clave);
       return;
     }
 
@@ -2688,8 +2715,8 @@ const MiPerfil = () => {
               gap: 2,
             }}
           >
-            {/* Admin en modo día extra puede capturar fechas pasadas, como en modo falta */}
-            {mesesCalendario(hoy, modoFalta || (esAdmin && modoExtra) ? MESES_ATRAS_FALTA : 0).map(({ anio, mes }) => (
+            {/* Admin (vacaciones, falta o día extra) puede capturar fechas pasadas: se muestran 2 meses atrás */}
+            {mesesCalendario(hoy, modoFalta || esAdmin ? MESES_ATRAS_FALTA : 0).map(({ anio, mes }) => (
               <MesCalendario
                 key={`${anio}-${mes}`}
                 anio={anio}
@@ -2701,6 +2728,7 @@ const MiPerfil = () => {
                 modoFalta={modoFalta || (esAdmin && modoExtra)}
                 motivoBloqueo={vistaPiloto && modoExtra ? motivoBloqueoExtra : motivoBloqueo}
                 sinAnticipacionDe={vistaPiloto && modoExtra ? sinAnticipacionExtra : undefined}
+                fechaLibre={esAdmin && !modoFalta && !modoExtra}
                 onToggle={toggleDia}
               />
             ))}
@@ -2892,6 +2920,35 @@ const MiPerfil = () => {
             onClick={guardarRegistro}
           >
             {guardando ? (vistaPiloto ? "Enviando…" : "Guardando…") : vistaPiloto ? "Solicitar" : "Guardar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Admin: día en periodo bloqueado (en la página, no confirm() del navegador) */}
+      <Dialog open={bloqueoPorConfirmar !== null} onClose={() => setBloqueoPorConfirmar(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Periodo bloqueado</DialogTitle>
+        <DialogContent>
+          {bloqueoPorConfirmar && (
+            <>
+              <Typography sx={{ color: "#1e293b", fontWeight: 600 }}>
+                Este día está en periodo bloqueado, ¿registrarlo de todos modos?
+              </Typography>
+              <Typography sx={{ color: "#475569", mt: 1, fontSize: 14 }}>{fechaLarga(bloqueoPorConfirmar)}</Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBloqueoPorConfirmar(null)}>No, regresar</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const dia = bloqueoPorConfirmar;
+              setBloqueoPorConfirmar(null);
+              if (dia) toggleDia(dia, true);
+            }}
+            sx={BOTON_NAVY}
+          >
+            Registrar de todos modos
           </Button>
         </DialogActions>
       </Dialog>
