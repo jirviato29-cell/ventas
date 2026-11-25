@@ -23,6 +23,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import GroupsIcon from "@mui/icons-material/Groups";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -134,6 +136,10 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hayMas, setHayMas] = useState(false);
+  // Borrar (solo admin): un aviso, o todos los leídos (cuántos = lo que dice el backend)
+  const [porBorrar, setPorBorrar] = useState<AvisoApi | null>(null);
+  const [leidosPorBorrar, setLeidosPorBorrar] = useState<number | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(async (antesDe?: number) => {
     try {
@@ -181,6 +187,47 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
     }
   };
 
+  // Solo borra el aviso: la solicitud de vacaciones o el día extra no cambian
+  const eliminarAviso = async (a: AvisoApi) => {
+    setBorrando(true);
+    try {
+      await axios.delete(`/api/mensajes/avisos/${a.id}`, { headers: authH() });
+      setAvisos((prev) => prev.filter((x) => x.id !== a.id));
+      setPorBorrar(null);
+      refrescarNoLeidos();
+    } catch (e) {
+      setError(mensajeError(e, "No se pudo eliminar el aviso."));
+      setPorBorrar(null);
+      cargar();
+    } finally {
+      setBorrando(false);
+    }
+  };
+
+  const pedirEliminarLeidos = async () => {
+    try {
+      const r = await axios.get<{ total: number }>("/api/mensajes/avisos/leidos/total", { headers: authH() });
+      setLeidosPorBorrar(r.data.total);
+    } catch (e) {
+      setError(mensajeError(e, "No se pudieron contar los avisos leídos."));
+    }
+  };
+
+  const eliminarLeidos = async () => {
+    setBorrando(true);
+    try {
+      await axios.delete("/api/mensajes/avisos/leidos", { headers: authH() });
+      setLeidosPorBorrar(null);
+      refrescarNoLeidos();
+      cargar();
+    } catch (e) {
+      setError(mensajeError(e, "No se pudieron eliminar los avisos leídos."));
+      setLeidosPorBorrar(null);
+    } finally {
+      setBorrando(false);
+    }
+  };
+
   // CONFIRMO / NO PUEDO de "¿Confirmas que vas a cubrir...?"
   const responder = async (a: AvisoApi, confirmo: boolean) => {
     if (!a.cobertura || respondiendo !== null) return;
@@ -221,6 +268,11 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
         <Button size="small" startIcon={<DoneAllIcon />} disabled={!sinLeer} onClick={leerTodos} sx={{ color: AZUL }}>
           Marcar todos como leídos
         </Button>
+        {esAdmin && (
+          <Button size="small" color="error" startIcon={<DeleteSweepIcon />} onClick={pedirEliminarLeidos}>
+            Eliminar leídos
+          </Button>
+        )}
       </Box>
       {avisos.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: "center", color: "#64748b" }}>
@@ -315,6 +367,20 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
                 {a.enlace === ENLACE_REVISAR ? "Revisar solicitud" : esAdmin ? "Ver solicitudes" : "Ver mis solicitudes"}
               </Button>
             )}
+            {esAdmin && !a.cobertura && (
+              <IconButton
+                size="small"
+                aria-label="Eliminar aviso"
+                title="Eliminar aviso"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  setPorBorrar(a);
+                }}
+                sx={{ color: "#94a3b8", flexShrink: 0, "&:hover": { color: "#C62828" } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            )}
           </Paper>
         );
       })}
@@ -344,6 +410,50 @@ const ListaAvisos: React.FC<{ esAdmin: boolean; conEnlace: boolean }> = ({ esAdm
           >
             {respondiendo !== null ? "Enviando…" : "No puedo"}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={porBorrar !== null} onClose={() => !borrando && setPorBorrar(null)} fullWidth maxWidth="xs">
+        <DialogTitle>¿Eliminar este aviso?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#1e293b", mb: 1, overflowWrap: "anywhere" }}>{porBorrar?.texto}</Typography>
+          <Typography sx={{ color: "#64748b", fontSize: 14 }}>
+            Se quita para todos los admins. La solicitud y los días extra no cambian.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={borrando} onClick={() => setPorBorrar(null)}>
+            Cancelar
+          </Button>
+          <Button variant="contained" color="error" disabled={borrando} onClick={() => porBorrar && eliminarAviso(porBorrar)}>
+            {borrando ? "Eliminando…" : "Eliminar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={leidosPorBorrar !== null} onClose={() => !borrando && setLeidosPorBorrar(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Eliminar avisos leídos</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: "#1e293b" }}>
+            {leidosPorBorrar === 0
+              ? "No hay avisos leídos para eliminar."
+              : `Se van a eliminar ${leidosPorBorrar} ${leidosPorBorrar === 1 ? "aviso leído" : "avisos leídos"}.`}
+          </Typography>
+          {!!leidosPorBorrar && (
+            <Typography sx={{ color: "#64748b", fontSize: 14, mt: 1 }}>
+              Los que no se han leído se quedan. Las solicitudes y los días extra no cambian.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={borrando} onClick={() => setLeidosPorBorrar(null)}>
+            {leidosPorBorrar === 0 ? "Cerrar" : "Cancelar"}
+          </Button>
+          {!!leidosPorBorrar && (
+            <Button variant="contained" color="error" disabled={borrando} onClick={eliminarLeidos}>
+              {borrando ? "Eliminando…" : `Eliminar ${leidosPorBorrar}`}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
