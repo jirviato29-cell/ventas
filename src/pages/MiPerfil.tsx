@@ -57,23 +57,22 @@ const ROJO_TEXTO = "#B91C1C";
 // Días de descanso extra: naranja en el cuadro, el calendario, la leyenda y los botones
 const NARANJA_EXTRA = "#EF6C00";
 
-// Periodos en los que no se pueden pedir vacaciones (fechas YYYY-MM-DD, ambos días incluidos).
-// Se comparan como texto, así no intervienen horas ni zona horaria.
+// Periodos en los que no se pueden pedir vacaciones, cualquier año (ambos días incluidos):
+// ventas navideñas 7 dic – 7 ene y Buen Fin 13 – 16 nov. Misma regla que _dia_bloqueado del backend.
+// Las claves YYYY-MM-DD se comparan por mes y día, sin horas ni zona horaria.
 const PERIODOS_BLOQUEADOS = [
   {
-    inicio: "2026-11-13",
-    fin: "2026-11-16",
+    esta: (mes: number, dia: number) => mes === 11 && dia >= 13 && dia <= 16,
     motivo: "Periodo de ventas del Buen Fin: no se pueden ingresar vacaciones.",
   },
   {
-    inicio: "2026-12-07",
-    fin: "2027-01-07",
+    esta: (mes: number, dia: number) => (mes === 12 && dia >= 7) || (mes === 1 && dia <= 7),
     motivo: "Periodo de ventas navideñas: no se pueden ingresar vacaciones.",
   },
 ];
 
 const periodoBloqueado = (clave: string) =>
-  PERIODOS_BLOQUEADOS.find((p) => clave >= p.inicio && clave <= p.fin);
+  PERIODOS_BLOQUEADOS.find((p) => p.esta(Number(clave.slice(5, 7)), Number(clave.slice(8, 10))));
 
 // Meses del calendario de vacaciones (mes en base 0, como Date): el mes actual y los 5 siguientes.
 // Lo ya tomado en meses pasados no sale en el calendario, solo en la tabla de periodos;
@@ -327,15 +326,21 @@ const esDescuento = (p: VacacionApi) => p.tipo === "descuento";
 const esDiaExtra = (p: VacacionApi) => p.tipo === "dia_extra";
 
 // ── Días de descanso extra: mismas reglas que el backend (app/routers/vacaciones.py) ──
-// Empleado: 7 días de anticipación (primer día = hoy + 7), cualquier día de la semana
+// Empleado: 7 días de anticipación (primer día = hoy + 7)
 const DIAS_ANTICIPACION_EXTRA = 7;
-// Bloqueado del 15 de diciembre al 6 de enero, cada año (en rojo en el calendario)
+// Bloqueado del 7 de diciembre al 7 de enero, cada año, para todos (en rojo en el calendario)
 const motivoBloqueoExtra = (clave: string): string | undefined => {
   const mes = Number(clave.slice(5, 7));
   const dia = Number(clave.slice(8, 10));
-  return (mes === 12 && dia >= 15) || (mes === 1 && dia <= 6)
-    ? "Del 15 de diciembre al 6 de enero no se pueden pedir días extra."
+  return (mes === 12 && dia >= 7) || (mes === 1 && dia <= 7)
+    ? "Del 7 de diciembre al 7 de enero no se pueden pedir días extra."
     : undefined;
+};
+// RO, M2, DR, M1 y VL: solo sábado o domingo (el backend lo manda en solo_fin_semana)
+const MENSAJE_FIN_SEMANA_EXTRA = "En tu módulo el día extra solo se puede pedir en sábado o domingo.";
+const esEntreSemana = (clave: string) => {
+  const d = new Date(`${clave}T12:00:00`).getDay();
+  return d >= 1 && d <= 5;
 };
 
 // GET /api/vacaciones/dias-extra?clave= (admin) y /api/mi-perfil/dias-extra (piloto)
@@ -350,6 +355,8 @@ interface DiaExtraOtorgadoApi {
 }
 interface DiasExtraApi {
   clave: string;
+  // Solo /mi-perfil/dias-extra: su módulo pide el día extra solo en sábado o domingo
+  solo_fin_semana?: boolean;
   dias_disponibles: number;
   vence: string | null;
   dias_usados: number;
@@ -716,7 +723,7 @@ interface MesProps {
   seleccionadas: Set<string>;
   vacaciones: Map<string, CategoriaVacacion>;
   modoFalta: boolean;
-  // Días en rojo (periodo de ventas): admin usa PERIODOS_BLOQUEADOS; el piloto, la regla de cualquier año
+  // Días en rojo (periodo de ventas): admin usa PERIODOS_BLOQUEADOS; el piloto, motivoBloqueoPiloto (los dos, cualquier año)
   motivoBloqueo: (clave: string) => string | undefined;
   // Modo día extra del piloto: qué días quedan en gris (antes de hoy + 7); si no, primerDisponible
   sinAnticipacionDe?: (clave: string) => boolean;
@@ -1577,7 +1584,7 @@ const MiPerfil = () => {
   );
   // Hoy + 31 para los dos; el backend del piloto usa el mismo número
   const primerDisponible = primerDiaDisponible(hoy);
-  // Días en rojo: admin con PERIODOS_BLOQUEADOS (como siempre); piloto con la regla de cualquier año del backend
+  // Días en rojo: admin con PERIODOS_BLOQUEADOS; piloto con motivoBloqueoPiloto (mismas fechas, cualquier año)
   const motivoBloqueo = esAdmin ? motivoBloqueoAdmin : motivoBloqueoPiloto;
 
   // Los días marcados son de una persona y un modo: al cambiar cualquiera se empieza de cero
@@ -1848,11 +1855,14 @@ const MiPerfil = () => {
   };
 
   // ── Selección en modo día extra ──
-  // Piloto: 7 días de anticipación, lunes a domingo, sin 15 dic – 6 ene; debe elegir quién cubre.
+  // Piloto: 7 días de anticipación, sin 7 dic – 7 ene (RO, M2, DR, M1, VL: solo sáb/dom); debe elegir quién cubre.
   // Admin: cualquier fecha. Para los dos: que le alcancen, dentro de la vigencia y máximo 6 seguidos
   // junto con vacaciones. No cuentan "uno por mes", los 15 días ni el saldo de vacaciones.
   const primerDisponibleExtra = sumarDias(hoy, DIAS_ANTICIPACION_EXTRA);
-  const sinAnticipacionExtra = (clave: string) => clave < primerDisponibleExtra;
+  // Piloto de RO, M2, DR, M1 o VL: lunes a viernes en gris, como los días sin anticipación
+  const soloFinSemanaExtra = !esAdmin && !!diasExtra?.solo_fin_semana;
+  const sinAnticipacionExtra = (clave: string) =>
+    clave < primerDisponibleExtra || (soloFinSemanaExtra && esEntreSemana(clave));
 
   const toggleDiaExtra = (clave: string) => {
     if (seleccionadas.has(clave)) {
@@ -1877,6 +1887,10 @@ const MiPerfil = () => {
             primerDisponibleExtra
           )}.`
         );
+        return;
+      }
+      if (soloFinSemanaExtra && esEntreSemana(clave)) {
+        setAviso(MENSAJE_FIN_SEMANA_EXTRA);
         return;
       }
       const motivo = motivoBloqueoExtra(clave);
@@ -2695,9 +2709,14 @@ const MiPerfil = () => {
           <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 2 }}>
             {[
               { texto: "Seleccionado", fondo: COLOR_SELECCION, borde: COLOR_SELECCION, color: "#fff" },
-              { texto: "No disponible", fondo: "#f1f5f9", borde: "#e2e8f0", color: "#cbd5e1" },
               {
-                texto: vistaPiloto && modoExtra ? "Bloqueado (15 dic – 6 ene)" : "Periodo bloqueado por ventas",
+                texto: vistaPiloto && modoExtra && soloFinSemanaExtra ? "No disponible (solo sáb y dom)" : "No disponible",
+                fondo: "#f1f5f9",
+                borde: "#e2e8f0",
+                color: "#cbd5e1",
+              },
+              {
+                texto: vistaPiloto && modoExtra ? "Bloqueado (7 dic – 7 ene)" : "Periodo bloqueado por ventas",
                 fondo: COLOR_BLOQUEO,
                 borde: COLOR_BLOQUEO,
                 color: "#fff",
