@@ -1378,6 +1378,8 @@ const MiPerfil = () => {
   const [errorVac, setErrorVac] = useState<string | null>(null);
   const [recargaVac, setRecargaVac] = useState(0);
   const [modoFalta, setModoFalta] = useState(false);
+  // Admin: el calendario empieza en el mes actual; con el botón se agregan los 2 meses previos
+  const [verMesesAnteriores, setVerMesesAnteriores] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -1619,6 +1621,15 @@ const MiPerfil = () => {
     setModoExtra(activo);
     setModoFalta(false);
     setSeleccionadas(new Set());
+  };
+
+  // Al ocultar los meses anteriores se quitan los días marcados en ellos, para no guardar algo que ya no se ve
+  const alternarMesesAnteriores = () => {
+    if (verMesesAnteriores) {
+      const inicioMes = `${hoy.slice(0, 7)}-01`;
+      setSeleccionadas((prev) => new Set([...prev].filter((clave) => clave >= inicioMes)));
+    }
+    setVerMesesAnteriores(!verMesesAnteriores);
   };
 
   const abrirConfirmacion = () => {
@@ -2708,6 +2719,15 @@ const MiPerfil = () => {
             <AvisoCaducidad saldo={saldo} hoy={hoy} piloto={vistaPiloto} />
           )}
 
+          {/* Admin: empieza en el mes actual; para capturar días pasados abre los 2 meses previos */}
+          {esAdmin && (
+            <Box sx={{ mb: 1 }}>
+              <Button size="small" onClick={alternarMesesAnteriores}>
+                {verMesesAnteriores ? "Ocultar meses anteriores" : "← Ver meses anteriores"}
+              </Button>
+            </Box>
+          )}
+
           <Box
             sx={{
               display: "grid",
@@ -2715,8 +2735,10 @@ const MiPerfil = () => {
               gap: 2,
             }}
           >
-            {/* Admin (vacaciones, falta o día extra) puede capturar fechas pasadas: se muestran 2 meses atrás */}
-            {mesesCalendario(hoy, modoFalta || esAdmin ? MESES_ATRAS_FALTA : 0).map(({ anio, mes }) => (
+            {mesesCalendario(
+              hoy,
+              (esAdmin ? verMesesAnteriores : modoFalta) ? MESES_ATRAS_FALTA : 0,
+            ).map(({ anio, mes }) => (
               <MesCalendario
                 key={`${anio}-${mes}`}
                 anio={anio}
