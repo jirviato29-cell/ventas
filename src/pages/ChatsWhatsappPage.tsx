@@ -29,6 +29,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import axios from "axios";
 import { authH } from "../components/MisDatosPerfil";
 import { mensajeError } from "../components/MisSolicitudesVacaciones";
+import CatalogoWhatsapp from "../components/CatalogoWhatsapp";
 
 // CHATS WHATSAPP (solo admin): pláticas del bot del 449 102 7916.
 // El bot atiende hasta pasar el chat al asesor; aquí se ve todo y se contesta.
@@ -166,7 +167,7 @@ const ImagenWhatsapp: React.FC<{ mediaId: string }> = ({ mediaId }) => {
 
 const ChatsWhatsappPage: React.FC = () => {
   const esCelular = useMediaQuery("(max-width:900px)");
-  const [pestana, setPestana] = useState<"chats" | "config">("chats");
+  const [pestana, setPestana] = useState<"chats" | "config" | "catalogo">("chats");
   const [filtro, setFiltro] = useState("asesor");
   const [buscar, setBuscar] = useState("");
   const [lista, setLista] = useState<ConvApi[]>([]);
@@ -564,9 +565,12 @@ const ChatsWhatsappPage: React.FC = () => {
       <Tabs value={pestana} onChange={(_, v) => setPestana(v)} sx={{ mb: 1 }}>
         <Tab value="chats" label="Chats" />
         <Tab value="config" label="Configuración del bot" />
+        <Tab value="catalogo" label="Catálogo" />
       </Tabs>
 
-      {pestana === "config" ? (
+      {pestana === "catalogo" ? (
+        <CatalogoWhatsapp />
+      ) : pestana === "config" ? (
         vistaConfig
       ) : esCelular ? (
         <Box sx={{ height: "calc(100vh - 190px)" }}>{abierto === null ? vistaLista : vistaChat}</Box>
