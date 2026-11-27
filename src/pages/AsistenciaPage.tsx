@@ -190,6 +190,8 @@ interface DiaResumen {
   minutos_comida?: number;
   salida_comida?: string | null;
   regreso_comida?: string | null;
+  dentro_de_zona_entrada?: boolean | null;
+  dentro_de_zona_salida?: boolean | null;
 }
 
 interface EmpleadoAcumuladoSemanal {
@@ -204,6 +206,7 @@ interface EmpleadoAcumuladoSemanal {
   jornada_fija?: number | null;
   sueldo_base?: number | null;
   descansos?: string[];
+  rol?: string | null;
 }
 
 interface EstadoCandado {
@@ -2749,12 +2752,25 @@ const TabAcumulado: React.FC = () => {
 
 type EstadoSemaforo = "sin" | "abierto" | "completo" | "descanso";
 
-const COLOR_SEMAFORO: Record<EstadoSemaforo, { bg: string; borde: string; label: string }> = {
-  sin:      { bg: "#e2e8f0", borde: "#cbd5e1", label: "Sin check-in" },
-  abierto:  { bg: "#facc15", borde: "#eab308", label: "Check-in sin check-out" },
-  completo: { bg: "#22c55e", borde: "#16a34a", label: "Check-in y check-out" },
-  descanso: { bg: "#bae6fd", borde: "#7dd3fc", label: "Descanso" },
+// Cuadrito chico: solo para días sin check-in o de descanso
+type EstadoCuadro = "sin" | "descanso";
+
+const COLOR_CUADRO: Record<EstadoCuadro, { bg: string; borde: string }> = {
+  sin:      { bg: "#e2e8f0", borde: "#cbd5e1" },
+  descanso: { bg: "#bae6fd", borde: "#7dd3fc" },
 };
+
+// Mitades ENTRADA / SALIDA de la celda: verde en zona, rojo fuera, gris sin dato
+const COLOR_ZONA = {
+  dentro: { bg: "#dcfce7", texto: "#15803d" },
+  fuera:  { bg: "#fee2e2", texto: "#b91c1c" },
+  sin:    { bg: "#f1f5f9", texto: "#64748b" },
+};
+
+const colorZona = (zona: boolean | null | undefined) =>
+  zona === true ? COLOR_ZONA.dentro : zona === false ? COLOR_ZONA.fuera : COLOR_ZONA.sin;
+
+const LINEA_SEMAFORO = "1px solid #cbd5e1";
 
 interface CeldaSemaforo {
   estado: EstadoSemaforo;
@@ -2764,6 +2780,8 @@ interface CeldaSemaforo {
   salida_comida: string | null;
   regreso_comida: string | null;
   minutos_comida: number;
+  zona_entrada: boolean | null;
+  zona_salida: boolean | null;
 }
 
 // Comida de encargados: dura 2 h exactas
@@ -2790,29 +2808,75 @@ const ComidaSemaforo: React.FC<{ salida: string; regreso: string | null; minutos
   if (!regreso) {
     const ms = minutosMX(salida);
     color = COLOR_COMIDA.comiendo;
-    texto = `${formatHora24(salida)} → ${ms !== null ? minutosA24h(ms + MIN_COMIDA) : "—"}`;
+    texto = `Comiendo · regresa ${ms !== null ? minutosA24h(ms + MIN_COMIDA) : "—"}`;
   } else {
     const dur = duracionComida(salida, regreso, minutos);
     color = dur <= MIN_COMIDA ? COLOR_COMIDA.a_tiempo : COLOR_COMIDA.tarde;
-    texto = textoDuracion(dur);
+    texto = `Comió ${textoDuracion(dur)}`;
   }
   return (
-    <Box sx={{ fontSize: 10.5, color, fontWeight: 600, whiteSpace: "nowrap", mt: 0.25, lineHeight: 1.2 }}>
+    <Box sx={{ fontSize: 10.5, color, fontWeight: 600, lineHeight: 1.2 }}>
       🍴 {texto}
     </Box>
   );
 };
 
-const CuadroSemaforo: React.FC<{ estado: EstadoSemaforo }> = ({ estado }) => (
+const CuadroSemaforo: React.FC<{ estado: EstadoCuadro }> = ({ estado }) => (
   <Box
     sx={{
       width: 18, height: 18, borderRadius: "4px", mx: "auto",
-      bgcolor: COLOR_SEMAFORO[estado].bg, border: `1px solid ${COLOR_SEMAFORO[estado].borde}`,
+      bgcolor: COLOR_CUADRO[estado].bg, border: `1px solid ${COLOR_CUADRO[estado].borde}`,
     }}
   />
 );
 
-const TabSemaforo: React.FC = () => {
+// Mitad ENTRADA o SALIDA de la celda; sin hora = gris con "—"
+const MitadSemaforo: React.FC<{ etiqueta: string; hora: string | null; zona: boolean | null }> = ({ etiqueta, hora, zona }) => {
+  const c = hora ? colorZona(zona) : COLOR_ZONA.sin;
+  return (
+    <Box sx={{ flex: 1, minWidth: 0, bgcolor: c.bg, color: c.texto, py: "3px", textAlign: "center" }}>
+      <Box sx={{ fontSize: 8.5, fontWeight: 700, letterSpacing: 0.3 }}>{etiqueta}</Box>
+      <Box sx={{ fontSize: 11.5, fontWeight: 700 }}>{hora ? formatHora24(hora) : "—"}</Box>
+    </Box>
+  );
+};
+
+// Celda con check-in o check-out: ENTRADA | SALIDA, luego horas y (si hay) la comida
+const CeldaDividida: React.FC<{ c: CeldaSemaforo }> = ({ c }) => (
+  <Box sx={{ border: LINEA_SEMAFORO, borderRadius: "4px", overflow: "hidden", lineHeight: 1.2 }}>
+    <Box display="flex">
+      <MitadSemaforo etiqueta="ENTRADA" hora={c.entrada} zona={c.zona_entrada} />
+      <Box sx={{ width: "1px", flexShrink: 0, bgcolor: "#cbd5e1" }} />
+      <MitadSemaforo etiqueta="SALIDA" hora={c.salida} zona={c.zona_salida} />
+    </Box>
+    <Box sx={{ borderTop: LINEA_SEMAFORO, py: "2px", fontSize: 11, fontWeight: 600, color: "#334155" }}>
+      {c.entrada && c.salida ? `${c.horas.toFixed(2)} h` : "—"}
+    </Box>
+    {c.salida_comida && (
+      <Box sx={{ borderTop: LINEA_SEMAFORO, py: "2px", px: "2px" }}>
+        <ComidaSemaforo salida={c.salida_comida} regreso={c.regreso_comida} minutos={c.minutos_comida} />
+      </Box>
+    )}
+  </Box>
+);
+
+// Muestra de la leyenda: cuadrito de color, opcionalmente con texto adentro
+const MuestraLeyenda: React.FC<{ bg: string; borde: string; texto?: string; color?: string; etiqueta: string }> = ({ bg, borde, texto, color, etiqueta }) => (
+  <Box display="flex" alignItems="center" gap={0.75}>
+    <Box
+      sx={{
+        width: 18, height: 18, borderRadius: "4px", bgcolor: bg, border: `1px solid ${borde}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 11, fontWeight: 700, color: color ?? "#64748b", lineHeight: 1,
+      }}
+    >
+      {texto}
+    </Box>
+    <Typography sx={{ fontSize: 12, color: "#475569" }}>{etiqueta}</Typography>
+  </Box>
+);
+
+const TabSemaforo: React.FC<{ soloEncargados?: boolean }> = ({ soloEncargados = false }) => {
   const [ciclos, setCiclos] = useState<CicloSemana[]>([]);
   const [cicloSel, setCicloSel] = useState<string>("");
   const [filas, setFilas] = useState<EmpleadoAcumuladoSemanal[]>([]);
@@ -2869,7 +2933,9 @@ const TabSemaforo: React.FC = () => {
 
   const empleados = useMemo(() => {
     const porId = new Map(filas.map((f) => [f.usuario_id, f]));
-    return grupos.map((g) => {
+    // Encargado si alguna cuenta del grupo lo es; cada pestaña muestra solo su lado
+    const esGrupoEncargado = (ids: number[]) => ids.some((id) => porId.get(id)?.rol === "encargado");
+    return grupos.filter((g) => esGrupoEncargado(g.ids) === soloEncargados).map((g) => {
       const celdas: Record<string, CeldaSemaforo> = {};
       for (const dk of diasDelCiclo) {
         const dia = g.dias[dk];
@@ -2879,6 +2945,7 @@ const TabSemaforo: React.FC = () => {
           celdas[dk] = {
             estado: esDescanso ? "descanso" : "sin", entrada: null, salida: null, horas: 0,
             salida_comida: null, regreso_comida: null, minutos_comida: 0,
+            zona_entrada: null, zona_salida: null,
           };
           continue;
         }
@@ -2887,21 +2954,26 @@ const TabSemaforo: React.FC = () => {
           .map((id) => porId.get(id)?.dias[dk])
           .filter((r): r is DiaResumen => !!r);
         const abierto = regs.some((r) => !r.salida);
-        const entradas = regs.map((r) => r.entrada).filter((s): s is string => !!s).sort();
-        const salidas = regs.map((r) => r.salida).filter((s): s is string => !!s).sort();
+        // Zona: la de la cuenta con la entrada más temprana / la salida más tardía
+        const porEntrada = regs.filter((r) => !!r.entrada).sort((a, b) => (a.entrada as string).localeCompare(b.entrada as string));
+        const porSalida = regs.filter((r) => !!r.salida).sort((a, b) => (a.salida as string).localeCompare(b.salida as string));
+        const primera = porEntrada[0];
+        const ultima = porSalida[porSalida.length - 1];
         celdas[dk] = {
           estado: abierto ? "abierto" : "completo",
-          entrada: entradas[0] ?? null,
-          salida: abierto ? null : salidas[salidas.length - 1] ?? null,
+          entrada: primera?.entrada ?? null,
+          salida: abierto ? null : ultima?.salida ?? null,
           horas: dia.horas, // horas efectivas, idénticas a Acumulado
           salida_comida: dia.salida_comida,
           regreso_comida: dia.regreso_comida,
           minutos_comida: dia.minutos_comida_cuenta,
+          zona_entrada: primera?.dentro_de_zona_entrada ?? null,
+          zona_salida: abierto ? null : ultima?.dentro_de_zona_salida ?? null,
         };
       }
       return { key: g.key, celdas };
     });
-  }, [grupos, filas, diasDelCiclo]);
+  }, [grupos, filas, diasDelCiclo, soloEncargados]);
 
   const DIAS_COL = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
   const cell = { py: "4px", px: "4px", border: "1px solid #e2e8f0" };
@@ -2926,15 +2998,16 @@ const TabSemaforo: React.FC = () => {
       </Box>
 
       <Box display="flex" flexWrap="wrap" gap={2} mb={1.5}>
-        {(Object.keys(COLOR_SEMAFORO) as EstadoSemaforo[]).map((e) => (
-          <Box key={e} display="flex" alignItems="center" gap={0.75}>
-            <CuadroSemaforo estado={e} />
-            <Typography sx={{ fontSize: 12, color: "#475569" }}>{COLOR_SEMAFORO[e].label}</Typography>
-          </Box>
-        ))}
-        <Typography sx={{ fontSize: 12, color: "#475569" }}>
-          🍴 Comida (naranja: comiendo, verde: a tiempo, rojo: se pasó)
-        </Typography>
+        <MuestraLeyenda bg={COLOR_CUADRO.sin.bg} borde={COLOR_CUADRO.sin.borde} etiqueta="Sin check-in" />
+        <MuestraLeyenda bg={COLOR_CUADRO.descanso.bg} borde={COLOR_CUADRO.descanso.borde} etiqueta="Descanso" />
+        <MuestraLeyenda bg={COLOR_ZONA.dentro.bg} borde={COLOR_ZONA.dentro.texto} etiqueta="En zona" />
+        <MuestraLeyenda bg={COLOR_ZONA.fuera.bg} borde={COLOR_ZONA.fuera.texto} etiqueta="Fuera de zona" />
+        <MuestraLeyenda bg={COLOR_ZONA.sin.bg} borde="#cbd5e1" texto="—" etiqueta="Sin check-out" />
+        {soloEncargados && (
+          <Typography sx={{ fontSize: 12, color: "#475569" }}>
+            🍴 Comida (naranja: comiendo, verde: a tiempo, rojo: se pasó)
+          </Typography>
+        )}
       </Box>
 
       {cargando ? (
@@ -2964,16 +3037,10 @@ const TabSemaforo: React.FC = () => {
                     const c = emp.celdas[dk];
                     return (
                       <TableCell key={dk} align="center" sx={cell}>
-                        <CuadroSemaforo estado={c.estado} />
-                        {c.entrada && (
-                          <Box sx={{ fontSize: 10.5, color: "#475569", whiteSpace: "nowrap", mt: 0.25, lineHeight: 1.2 }}>
-                            {c.estado === "completo"
-                              ? `${formatHora24(c.entrada)} · ${c.horas.toFixed(2)}h · ${formatHora24(c.salida)}`
-                              : `${formatHora24(c.entrada)} · — · —`}
-                          </Box>
-                        )}
-                        {c.salida_comida && (
-                          <ComidaSemaforo salida={c.salida_comida} regreso={c.regreso_comida} minutos={c.minutos_comida} />
+                        {c.entrada || c.salida ? (
+                          <CeldaDividida c={c} />
+                        ) : (
+                          <CuadroSemaforo estado={c.estado === "descanso" ? "descanso" : "sin"} />
                         )}
                       </TableCell>
                     );
@@ -3157,6 +3224,7 @@ const VistaAdmin: React.FC = () => {
         <Tab label="Alertas" />
         <Tab label="Acumulado semanal" />
         <Tab label="Semáforo" />
+        <Tab label="Semáforo encargados" />
         <Tab label="Comidas" />
         <Tab label="Quién faltó" />
       </Tabs>
@@ -3181,9 +3249,10 @@ const VistaAdmin: React.FC = () => {
       )}
       {tab === 4 && <TabAlertas />}
       {tab === 5 && <TabAcumulado />}
-      {tab === 6 && <TabSemaforo />}
-      {tab === 7 && <TabComidas />}
-      {tab === 8 && <TabAnomalias />}
+      {tab === 6 && <TabSemaforo key="semaforo" />}
+      {tab === 7 && <TabSemaforo key="semaforo-encargados" soloEncargados />}
+      {tab === 8 && <TabComidas />}
+      {tab === 9 && <TabAnomalias />}
     </Box>
   );
 };
