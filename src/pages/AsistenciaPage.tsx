@@ -192,6 +192,8 @@ interface DiaResumen {
   regreso_comida?: string | null;
   dentro_de_zona_entrada?: boolean | null;
   dentro_de_zona_salida?: boolean | null;
+  dentro_de_zona_salida_comida?: boolean | null;
+  dentro_de_zona_regreso_comida?: boolean | null;
 }
 
 interface EmpleadoAcumuladoSemanal {
@@ -229,6 +231,8 @@ interface DiaCelda {
   salida_comida: string | null;
   regreso_comida: string | null;
   minutos_comida_cuenta: number;
+  zona_salida_comida: boolean | null;
+  zona_regreso_comida: boolean | null;
 }
 
 interface GrupoAcumulado {
@@ -2204,6 +2208,7 @@ const agruparAcumulado = (
     diasAgg: Record<string, {
       horas: number; count: number; entrada: string | null; salida: string | null; minutos_comida: number;
       salida_comida: string | null; regreso_comida: string | null; minutos_comida_cuenta: number;
+      zona_salida_comida: boolean | null; zona_regreso_comida: boolean | null;
       crudos: { horas: number; entrada: string | null }[];
     }>;
     descansos: Set<string>;
@@ -2234,7 +2239,8 @@ const agruparAcumulado = (
       if (!g.diasAgg[dk]) {
         g.diasAgg[dk] = {
           horas: 0, count: 0, entrada: null, salida: null, minutos_comida: 0,
-          salida_comida: null, regreso_comida: null, minutos_comida_cuenta: 0, crudos: [],
+          salida_comida: null, regreso_comida: null, minutos_comida_cuenta: 0,
+          zona_salida_comida: null, zona_regreso_comida: null, crudos: [],
         };
       }
       if (dia) {
@@ -2247,6 +2253,9 @@ const agruparAcumulado = (
           d.salida_comida = dia.salida_comida;
           d.regreso_comida = dia.regreso_comida ?? null;
           d.minutos_comida_cuenta = dia.minutos_comida ?? 0;
+          // Zona de la misma cuenta que dio la hora de comida
+          d.zona_salida_comida = dia.dentro_de_zona_salida_comida ?? null;
+          d.zona_regreso_comida = dia.dentro_de_zona_regreso_comida ?? null;
         }
         if (d.count === 1) {
           d.entrada = dia.entrada;
@@ -2308,6 +2317,8 @@ const agruparAcumulado = (
             salida_comida: d.salida_comida,
             regreso_comida: d.regreso_comida,
             minutos_comida_cuenta: d.minutos_comida_cuenta,
+            zona_salida_comida: d.zona_salida_comida,
+            zona_regreso_comida: d.zona_regreso_comida,
           };
         }
       }
@@ -2782,6 +2793,8 @@ interface CeldaSemaforo {
   minutos_comida: number;
   zona_entrada: boolean | null;
   zona_salida: boolean | null;
+  zona_salida_comida: boolean | null;
+  zona_regreso_comida: boolean | null;
 }
 
 // Comida de encargados: dura 2 h exactas
@@ -2802,13 +2815,19 @@ const minutosA24h = (min: number): string => {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
 
+// Hora a la que debe regresar de comer: salida_comida + 2 h
+const horaLimiteRegreso = (salida: string): string => {
+  const ms = minutosMX(salida);
+  return ms !== null ? minutosA24h(ms + MIN_COMIDA) : "—";
+};
+
 const ComidaSemaforo: React.FC<{ salida: string; regreso: string | null; minutos: number }> = ({ salida, regreso, minutos }) => {
   let color: string;
   let texto: string;
   if (!regreso) {
-    const ms = minutosMX(salida);
+    // La hora límite ya sale en REGRESA
     color = COLOR_COMIDA.comiendo;
-    texto = `Comiendo · regresa ${ms !== null ? minutosA24h(ms + MIN_COMIDA) : "—"}`;
+    texto = "Comiendo";
   } else {
     const dur = duracionComida(salida, regreso, minutos);
     color = dur <= MIN_COMIDA ? COLOR_COMIDA.a_tiempo : COLOR_COMIDA.tarde;
@@ -2830,33 +2849,47 @@ const CuadroSemaforo: React.FC<{ estado: EstadoCuadro }> = ({ estado }) => (
   />
 );
 
-// Mitad ENTRADA o SALIDA de la celda; sin hora = gris con "—"
-const MitadSemaforo: React.FC<{ etiqueta: string; hora: string | null; zona: boolean | null }> = ({ etiqueta, hora, zona }) => {
+// Mitad de una fila (ENTRADA/SALIDA o SALE A COMER/REGRESA); sin hora = gris con `sinHora` ("—" por defecto)
+const MitadSemaforo: React.FC<{ etiqueta: string; hora: string | null; zona: boolean | null; sinHora?: string }> = ({ etiqueta, hora, zona, sinHora = "—" }) => {
   const c = hora ? colorZona(zona) : COLOR_ZONA.sin;
   return (
     <Box sx={{ flex: 1, minWidth: 0, bgcolor: c.bg, color: c.texto, py: "3px", textAlign: "center" }}>
       <Box sx={{ fontSize: 8.5, fontWeight: 700, letterSpacing: 0.3 }}>{etiqueta}</Box>
-      <Box sx={{ fontSize: 11.5, fontWeight: 700 }}>{hora ? formatHora24(hora) : "—"}</Box>
+      <Box sx={{ fontSize: 11.5, fontWeight: 700 }}>{hora ? formatHora24(hora) : sinHora}</Box>
     </Box>
   );
 };
 
-// Celda con check-in o check-out: ENTRADA | SALIDA, luego horas y (si hay) la comida
+const DivisorVertical: React.FC = () => <Box sx={{ width: "1px", flexShrink: 0, bgcolor: "#cbd5e1" }} />;
+
+// Celda con check-in o check-out: ENTRADA | SALIDA, (si comió) SALE A COMER | REGRESA, luego horas y la comida
 const CeldaDividida: React.FC<{ c: CeldaSemaforo }> = ({ c }) => (
   <Box sx={{ border: LINEA_SEMAFORO, borderRadius: "4px", overflow: "hidden", lineHeight: 1.2 }}>
     <Box display="flex">
       <MitadSemaforo etiqueta="ENTRADA" hora={c.entrada} zona={c.zona_entrada} />
-      <Box sx={{ width: "1px", flexShrink: 0, bgcolor: "#cbd5e1" }} />
+      <DivisorVertical />
       <MitadSemaforo etiqueta="SALIDA" hora={c.salida} zona={c.zona_salida} />
     </Box>
-    <Box sx={{ borderTop: LINEA_SEMAFORO, py: "2px", fontSize: 11, fontWeight: 600, color: "#334155" }}>
-      {c.entrada && c.salida ? `${c.horas.toFixed(2)} h` : "—"}
-    </Box>
     {c.salida_comida && (
-      <Box sx={{ borderTop: LINEA_SEMAFORO, py: "2px", px: "2px" }}>
-        <ComidaSemaforo salida={c.salida_comida} regreso={c.regreso_comida} minutos={c.minutos_comida} />
+      <Box display="flex" sx={{ borderTop: LINEA_SEMAFORO }}>
+        <MitadSemaforo etiqueta="SALE A COMER" hora={c.salida_comida} zona={c.zona_salida_comida} />
+        <DivisorVertical />
+        <MitadSemaforo
+          etiqueta="REGRESA"
+          hora={c.regreso_comida}
+          zona={c.zona_regreso_comida}
+          sinHora={`regresa ${horaLimiteRegreso(c.salida_comida)}`}
+        />
       </Box>
     )}
+    <Box sx={{ borderTop: LINEA_SEMAFORO, py: "2px", px: "2px" }}>
+      <Box sx={{ fontSize: 11, fontWeight: 600, color: "#334155" }}>
+        {c.entrada && c.salida ? `${c.horas.toFixed(2)} h` : "—"}
+      </Box>
+      {c.salida_comida && (
+        <ComidaSemaforo salida={c.salida_comida} regreso={c.regreso_comida} minutos={c.minutos_comida} />
+      )}
+    </Box>
   </Box>
 );
 
@@ -2945,7 +2978,7 @@ const TabSemaforo: React.FC<{ soloEncargados?: boolean }> = ({ soloEncargados = 
           celdas[dk] = {
             estado: esDescanso ? "descanso" : "sin", entrada: null, salida: null, horas: 0,
             salida_comida: null, regreso_comida: null, minutos_comida: 0,
-            zona_entrada: null, zona_salida: null,
+            zona_entrada: null, zona_salida: null, zona_salida_comida: null, zona_regreso_comida: null,
           };
           continue;
         }
@@ -2969,6 +3002,9 @@ const TabSemaforo: React.FC<{ soloEncargados?: boolean }> = ({ soloEncargados = 
           minutos_comida: dia.minutos_comida_cuenta,
           zona_entrada: primera?.dentro_de_zona_entrada ?? null,
           zona_salida: abierto ? null : ultima?.dentro_de_zona_salida ?? null,
+          // Misma cuenta que dio salida_comida / regreso_comida (ver agruparAcumulado)
+          zona_salida_comida: dia.zona_salida_comida,
+          zona_regreso_comida: dia.zona_regreso_comida,
         };
       }
       return { key: g.key, celdas };
@@ -3006,6 +3042,11 @@ const TabSemaforo: React.FC<{ soloEncargados?: boolean }> = ({ soloEncargados = 
         {soloEncargados && (
           <Typography sx={{ fontSize: 12, color: "#475569" }}>
             🍴 Comida (naranja: comiendo, verde: a tiempo, rojo: se pasó)
+          </Typography>
+        )}
+        {soloEncargados && (
+          <Typography sx={{ fontSize: 12, color: "#475569" }}>
+            Comida: SALE A COMER | REGRESA (verde en zona, rojo fuera de zona)
           </Typography>
         )}
       </Box>
