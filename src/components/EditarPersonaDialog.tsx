@@ -35,6 +35,7 @@ interface FormPersona {
   cuenta_interbancaria: string;
   nombre_englobado: string;
   sueldo_total: string;
+  fecha_ingreso: string; // "YYYY-MM-DD" o ""
 }
 
 interface ResultadoCuenta {
@@ -58,6 +59,8 @@ const formInicial = (cuentas: Usuario[]): FormPersona => {
   const aseguradas = cuentas.filter((c) => c.asegurado).length;
   // Valores crudos de la BD (no en mayúsculas): las mayúsculas de la tabla son solo visuales
   const nombre = cuentas.find((c) => (c.nombre_completo ?? "").trim())?.nombre_completo ?? "";
+  // Es la misma persona: la de la principal, o la primera cuenta que la tenga
+  const ingreso = principal.fecha_ingreso || cuentas.find((c) => c.fecha_ingreso)?.fecha_ingreso || "";
   return {
     nombre_completo: nombre,
     rol: roles.size === 1 ? cuentas[0].rol : MIXTO,
@@ -69,6 +72,7 @@ const formInicial = (cuentas: Usuario[]): FormPersona => {
     cuenta_interbancaria: principal.cuenta_interbancaria ?? "",
     nombre_englobado: principal.nombre_englobado ?? "",
     sueldo_total: sumaSueldos(cuentas).toString(),
+    fecha_ingreso: ingreso.slice(0, 10),
   };
 };
 
@@ -126,6 +130,8 @@ const EditarPersonaDialog: React.FC<Props> = ({ open, cuentas, onClose, onGuarda
     }
     if (form.nombre_englobado !== inicial.nombre_englobado)
       p.nombre_englobado = form.nombre_englobado.trim() || null;
+    // Solo si cambió y tiene valor; el input date ya da "YYYY-MM-DD"
+    if (form.fecha_ingreso && form.fecha_ingreso !== inicial.fecha_ingreso) p.fecha_ingreso = form.fecha_ingreso;
     return p;
   };
 
@@ -263,6 +269,18 @@ const EditarPersonaDialog: React.FC<Props> = ({ open, cuentas, onClose, onGuarda
               ? `Suma de sus cuentas. Si lo cambias, va completo a ${cuentaPrincipal(cuentas).username} y las demás quedan en $0`
               : undefined
           }
+        />
+
+        <TextField
+          label="Fecha de ingreso"
+          type="date"
+          value={form.fecha_ingreso}
+          onChange={(e) => setF("fecha_ingreso", e.target.value)}
+          fullWidth
+          margin="normal"
+          size="small"
+          InputLabelProps={{ shrink: true }}
+          helperText={varia(cuentas, "fecha_ingreso") ? "Hoy varía entre cuentas; si la cambias se unifica en todas" : undefined}
         />
 
         <TextField
