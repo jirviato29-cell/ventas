@@ -12,6 +12,8 @@ import { obtenerRolDesdeToken } from "../components/Token";
 import HorarioDialog from "../components/HorarioDialog";
 import { DiaTrabajo } from "../Types";
 
+// Mismas opciones que EditarPersonaDialog
+const TALLAS = ["CH", "M", "G", "XG", "XXG"];
 
 const CrearUsuario = () => {
   const esAdmin = obtenerRolDesdeToken() === "admin";
@@ -37,6 +39,12 @@ const CrearUsuario = () => {
   const [jornadaFija, setJornadaFija] = useState(0);
   const [horarioLocal, setHorarioLocal] = useState<DiaTrabajo[]>([]);
   const [horarioOpen, setHorarioOpen] = useState(false);
+  // Datos de nuevo ingreso (todos opcionales)
+  const [asegurado, setAsegurado] = useState("no"); // "si" | "no"
+  const [sueldoTotal, setSueldoTotal] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [talla, setTalla] = useState("");
+  const [fechaIngreso, setFechaIngreso] = useState(""); // "YYYY-MM-DD" o ""
   const token = localStorage.getItem("token");
   const config = {
     headers: { Authorization: `Bearer ${token}` },
@@ -113,6 +121,11 @@ const CrearUsuario = () => {
           jornada_fija: jornadaFija,
           horario_semanal: horarioLocal.length > 0 ? horarioLocal : [],
           tienda_id: esCadenas ? (tiendaId || null) : null,
+          asegurado: asegurado === "si",
+          sueldo_base: parseFloat(sueldoTotal) || 0,
+          whatsapp: whatsapp || null,
+          talla: talla || null,
+          fecha_ingreso: fechaIngreso || null,
         },
         config
       );
@@ -271,6 +284,64 @@ const CrearUsuario = () => {
             />
           </>
         )}
+
+        <TextField
+          select
+          label="¿Está asegurado?"
+          value={asegurado}
+          onChange={(e) => setAsegurado(e.target.value)}
+          fullWidth
+          margin="normal"
+        >
+          <MenuItem value="si">Sí</MenuItem>
+          <MenuItem value="no">No</MenuItem>
+        </TextField>
+
+        <TextField
+          label="Sueldo total"
+          type="number"
+          value={sueldoTotal}
+          onChange={(e) => setSueldoTotal(e.target.value)}
+          fullWidth
+          margin="normal"
+          inputProps={{ min: 0, step: 0.01 }}
+          helperText="Opcional. Vacío = $0"
+        />
+
+        <TextField
+          label="WhatsApp"
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 15))}
+          fullWidth
+          margin="normal"
+          inputProps={{ inputMode: "numeric", maxLength: 15 }}
+        />
+
+        <TextField
+          select
+          label="Talla"
+          value={talla}
+          onChange={(e) => setTalla(e.target.value)}
+          fullWidth
+          margin="normal"
+        >
+          <MenuItem value="">(Sin talla)</MenuItem>
+          {TALLAS.map((t) => (
+            <MenuItem key={t} value={t}>
+              {t}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          label="Fecha de ingreso"
+          type="date"
+          value={fechaIngreso}
+          onChange={(e) => setFechaIngreso(e.target.value)}
+          fullWidth
+          margin="normal"
+          InputLabelProps={{ shrink: true }}
+        />
 
         <TextField
           label="Nombre englobado"
